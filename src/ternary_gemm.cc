@@ -396,12 +396,84 @@ static inline void ternary_dot4_neon(const uint8_t* w0, const uint8_t* w1,
             out[r] += code_at(wp[r], j) * (int32_t)q[j];
 }
 
+// One weight row against SEVERAL activation vectors, loading the row once.
+//
+// Prefill is the reason. The per-row loop below was nested INSIDE a loop over the
+// m activation rows, so a 16-token prefill re-read all 328 MB of weights 16 times
+// and came out at 69 ms/token against decode's 80 — a 1.16x gain where the whole
+// point of batching is to read the weights once and amortize them.
+static inline void ternary_dot_multi(const uint8_t* wr, const int8_t* planes,
+                                     int quads, int k, const int8_t* q_rows,
+                                     int m, int32_t* out) {
+    const uint8x16_t mask = vdupq_n_u8(0x3);
+    for (int c = 0; c < m; c++) out[c] = 0;
+    int i = 0;
+    for (; i + 16 <= quads; i += 16) {
+        const uint8x16_t p = vld1q_u8(wr + i);
+        const int8x16_t c0 = vreinterpretq_s8_u8(vandq_u8(p, mask));
+        const int8x16_t c1 = vreinterpretq_s8_u8(vandq_u8(vshrq_n_u8(p, 2), mask));
+        const int8x16_t c2 = vreinterpretq_s8_u8(vandq_u8(vshrq_n_u8(p, 4), mask));
+        const int8x16_t c3 = vreinterpretq_s8_u8(vandq_u8(vshrq_n_u8(p, 6), mask));
+        for (int c = 0; c < m; c++) {
+            const int8_t* pc = planes + (size_t)c * quads * 4;
+            const int8x16_t x0 = vld1q_s8(pc + 0 * quads + i);
+            const int8x16_t x1 = vld1q_s8(pc + 1 * quads + i);
+            const int8x16_t x2 = vld1q_s8(pc + 2 * quads + i);
+            const int8x16_t x3 = vld1q_s8(pc + 3 * quads + i);
+            int16x8_t s01 = vmull_s8(vget_low_s8(c0), vget_low_s8(x0));
+            s01 = vmlal_s8(s01, vget_high_s8(c0), vget_high_s8(x0));
+            s01 = vmlal_s8(s01, vget_low_s8(c1), vget_low_s8(x1));
+            s01 = vmlal_s8(s01, vget_high_s8(c1), vget_high_s8(x1));
+            int16x8_t s23 = vmull_s8(vget_low_s8(c2), vget_low_s8(x2));
+            s23 = vmlal_s8(s23, vget_high_s8(c2), vget_high_s8(x2));
+            s23 = vmlal_s8(s23, vget_low_s8(c3), vget_low_s8(x3));
+            s23 = vmlal_s8(s23, vget_high_s8(c3), vget_high_s8(x3));
+            int32x4_t a = vpaddlq_s16(s01);
+            a = vaddq_s32(a, vpaddlq_s16(s23));
+            out[c] += vaddvq_s32(a);
+        }
+    }
+    for (int c = 0; c < m; c++) {
+        const int8_t* qc = q_rows + (size_t)c * k;
+        for (int j = i * 4; j < k; j++) out[c] += code_at(wr, j) * (int32_t)qc[j];
+    }
+}
+
 void ternary_gemm(const uint8_t* packed_w, int n_rows, int k,
                   const int8_t* q, const float* x_scale, int m,
                   const float* w_scale, int w_scale_is_per_row,
                   const float* bias, float* y) {
     const int stride = (k + 3) / 4;
     const int quads = k / 4;
+
+    if (m > 1) {
+        // Batched (prefill): weight row outermost so each row is read ONCE and
+        // reused across all m activation vectors.
+        std::vector<int8_t> planes((size_t)m * quads * 4);
+        std::vector<int32_t> xsum((size_t)m, 0);
+        for (int c = 0; c < m; c++) {
+            const int8_t* qc = q + (size_t)c * k;
+            deinterleave_activations(qc, k, planes.data() + (size_t)c * quads * 4);
+            int32_t sum = 0;
+            for (int j = 0; j < k; j++) sum += qc[j];
+            xsum[c] = sum;
+        }
+        const int8_t* pl = planes.data();
+        ternary_parallel_for(n_rows, (size_t)n_rows * stride, [&](int r0, int r1) {
+            std::vector<int32_t> acc((size_t)m);
+            for (int r = r0; r < r1; r++) {
+                ternary_dot_multi(packed_w + (size_t)r * stride, pl, quads, k, q, m, acc.data());
+                const float ws = w_scale_is_per_row ? w_scale[r] : w_scale[0];
+                for (int c = 0; c < m; c++) {
+                    float v = (float)(acc[c] - xsum[c]) * ws * x_scale[c];
+                    if (bias) v += bias[r];
+                    y[(size_t)c * n_rows + r] = v;
+                }
+            }
+        });
+        return;
+    }
+
     std::vector<int8_t> planes((size_t)quads * 4);
 
     for (int i = 0; i < m; i++) {
@@ -450,6 +522,49 @@ const char* ternary_gemm_impl_name(void) {
 }
 
 #else  // no NEON
+
+// One weight row against SEVERAL activation vectors, loading the row once.
+//
+// Prefill is the reason. The per-row loop below was nested INSIDE a loop over the
+// m activation rows, so a 16-token prefill re-read all 328 MB of weights 16 times
+// and came out at 69 ms/token against decode's 80 — a 1.16x gain where the whole
+// point of batching is to read the weights once and amortize them.
+static inline void ternary_dot_multi(const uint8_t* wr, const int8_t* planes,
+                                     int quads, int k, const int8_t* q_rows,
+                                     int m, int32_t* out) {
+    const uint8x16_t mask = vdupq_n_u8(0x3);
+    for (int c = 0; c < m; c++) out[c] = 0;
+    int i = 0;
+    for (; i + 16 <= quads; i += 16) {
+        const uint8x16_t p = vld1q_u8(wr + i);
+        const int8x16_t c0 = vreinterpretq_s8_u8(vandq_u8(p, mask));
+        const int8x16_t c1 = vreinterpretq_s8_u8(vandq_u8(vshrq_n_u8(p, 2), mask));
+        const int8x16_t c2 = vreinterpretq_s8_u8(vandq_u8(vshrq_n_u8(p, 4), mask));
+        const int8x16_t c3 = vreinterpretq_s8_u8(vandq_u8(vshrq_n_u8(p, 6), mask));
+        for (int c = 0; c < m; c++) {
+            const int8_t* pc = planes + (size_t)c * quads * 4;
+            const int8x16_t x0 = vld1q_s8(pc + 0 * quads + i);
+            const int8x16_t x1 = vld1q_s8(pc + 1 * quads + i);
+            const int8x16_t x2 = vld1q_s8(pc + 2 * quads + i);
+            const int8x16_t x3 = vld1q_s8(pc + 3 * quads + i);
+            int16x8_t s01 = vmull_s8(vget_low_s8(c0), vget_low_s8(x0));
+            s01 = vmlal_s8(s01, vget_high_s8(c0), vget_high_s8(x0));
+            s01 = vmlal_s8(s01, vget_low_s8(c1), vget_low_s8(x1));
+            s01 = vmlal_s8(s01, vget_high_s8(c1), vget_high_s8(x1));
+            int16x8_t s23 = vmull_s8(vget_low_s8(c2), vget_low_s8(x2));
+            s23 = vmlal_s8(s23, vget_high_s8(c2), vget_high_s8(x2));
+            s23 = vmlal_s8(s23, vget_low_s8(c3), vget_low_s8(x3));
+            s23 = vmlal_s8(s23, vget_high_s8(c3), vget_high_s8(x3));
+            int32x4_t a = vpaddlq_s16(s01);
+            a = vaddq_s32(a, vpaddlq_s16(s23));
+            out[c] += vaddvq_s32(a);
+        }
+    }
+    for (int c = 0; c < m; c++) {
+        const int8_t* qc = q_rows + (size_t)c * k;
+        for (int j = i * 4; j < k; j++) out[c] += code_at(wr, j) * (int32_t)qc[j];
+    }
+}
 
 void ternary_gemm(const uint8_t* packed_w, int n_rows, int k,
                   const int8_t* q, const float* x_scale, int m,

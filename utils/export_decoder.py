@@ -68,9 +68,13 @@ class Decoder(torch.nn.Module):
     """Norm weights and biases stay baked in (they are float and tiny). Only the
     ternary projections come in as arguments, since only they need the custom op."""
 
-    def __init__(self, layers, ctx, meta):
+    def __init__(self, layers, ctx, meta, n_tok=1):
         super().__init__()
-        self.L, self.ctx = layers, ctx
+        # n_tok > 1 exports a PREFILL graph: the same weights and the same maths,
+        # but T tokens ingested in one pass. Decode remains n_tok=1. Prompt
+        # ingestion is otherwise T sequential decode steps, each re-reading all
+        # 328 MB of weights, when one batched pass reads them once.
+        self.L, self.ctx, self.T = layers, ctx, n_tok
         for i, m in enumerate(meta):
             for k, v in m.items():
                 self.register_buffer(f"l{i}_{k}", v)
@@ -98,9 +102,9 @@ class Decoder(torch.nn.Module):
             k = qkv[:, dq:dq + dk] + getattr(self, f"l{i}_kb")
             v = qkv[:, dq + dk:] + getattr(self, f"l{i}_vb")
 
-            q = rope(q.view(1, N_HEAD, HEAD_DIM), cos, sin)
-            k = rope(k.view(1, N_KV, HEAD_DIM), cos, sin)
-            v = v.view(1, N_KV, HEAD_DIM)
+            q = rope(q.view(self.T, N_HEAD, HEAD_DIM), cos, sin)
+            k = rope(k.view(self.T, N_KV, HEAD_DIM), cos, sin)
+            v = v.view(self.T, N_KV, HEAD_DIM)
 
             # Write this step into the cache at `pos`. dynamic_update_slice touches
             # ONE row; the obvious one-hot scatter
@@ -110,7 +114,7 @@ class Decoder(torch.nn.Module):
             # time, and it grows linearly with context.
             # Indices must be 0-D scalars; a shape-[1] tensor is rejected with
             # "operand #2 must be variadic of 0D tensor".
-            p0 = pos[0]
+            p0 = pos[0]   # batch is contiguous, so it starts at pos[0]
             z0 = torch.zeros_like(p0)
             k_new = dus(k_cache, k, (p0, z0, z0))
             v_new = dus(v_cache, v, (p0, z0, z0))
@@ -118,10 +122,14 @@ class Decoder(torch.nn.Module):
             v_out.append(v_new)
 
             # GQA without materializing expanded K/V: group the queries instead.
-            qg = q.view(1, N_KV, N_HEAD // N_KV, HEAD_DIM)
+            qg = q.view(self.T, N_KV, N_HEAD // N_KV, HEAD_DIM)
             att = torch.einsum("tgnd,sgd->gnts", qg, k_new) / (HEAD_DIM ** 0.5)
-            att = (att + neg.reshape(1, 1, 1, -1)).softmax(-1)
-            o = torch.einsum("gnts,sgd->tgnd", att, v_new).reshape(1, N_HEAD * HEAD_DIM)
+            # att is [group, head_in_group, T, ctx]; neg is [T, 1, ctx]. Broadcast
+            # it as [1, 1, T, ctx] so each query row masks the slots after its own
+            # position — which is also what makes prefill causal WITHIN the batch,
+            # since pos = 0..T-1.
+            att = (att + neg[:, 0, :].reshape(1, 1, self.T, self.ctx)).softmax(-1)
+            o = torch.einsum("gnts,sgd->tgnd", att, v_new).reshape(self.T, N_HEAD * HEAD_DIM)
             x = x + torch.ops.voxsum.ternary_matmul(o, ow, os_)
 
             h2 = rms(x, getattr(self, f"l{i}_ffn_norm"))
@@ -142,8 +150,11 @@ def main():
     # is ~20x larger, and with residual connections that compounds through the
     # stack (rms 21.7 by layer 8) and wrecks the int8 activation quantization.
     ap.add_argument("--token", type=int, default=9707)
+    ap.add_argument("--tokens", type=int, default=1,
+                    help=">1 exports a batched PREFILL graph instead of a decode step")
     args = ap.parse_args()
-    out = args.out or f"decoder_{args.layers}L_{args.ctx}.tflite"
+    out = args.out or (f"decoder_{args.layers}L_{args.ctx}.tflite" if args.tokens == 1
+                       else f"prefill_{args.layers}L_{args.ctx}_t{args.tokens}.tflite")
 
     g = G.Gguf(LM)
     meta, weights = [], []
@@ -181,9 +192,11 @@ def main():
     print(f"loaded {args.layers} layers ({len(weights)} weight tensors)      ")
 
     dim = 1536
-    x = torch.from_numpy(G.token_embedding(g, args.token, dim)).reshape(1, dim)
-    print(f"input: token {args.token}, rms={x.pow(2).mean().sqrt():.5f}")
-    pos = torch.tensor([3])
+    T = args.tokens
+    rows = [G.token_embedding(g, args.token + i, dim) for i in range(T)]
+    x = torch.from_numpy(np.stack(rows)).reshape(T, dim)
+    print(f"input: {T} token(s) from {args.token}, rms={x.pow(2).mean().sqrt():.5f}")
+    pos = torch.arange(T)
     caches = []
     for _ in range(args.layers):
         caches.append(torch.zeros(args.ctx, N_KV, HEAD_DIM))
@@ -194,7 +207,7 @@ def main():
     for i in range(args.layers):
         inter += [caches[i], caches[args.layers + i]]
 
-    mod = Decoder(args.layers, args.ctx, meta).eval()
+    mod = Decoder(args.layers, args.ctx, meta, n_tok=T).eval()
     sample = (x, pos, *weights, *inter)
     with torch.no_grad():
         y = mod(*sample)
@@ -205,17 +218,20 @@ def main():
     litert_torch.convert(mod, sample).export(out)
     print(f"wrote {out}")
 
-    np.asarray(y[0].numpy()).tofile(f"dec_{args.layers}L_expected.bin")
-    names = ["dec_x.bin", "dec_pos.bin"]
-    x.numpy().tofile("dec_x.bin")
-    pos.numpy().astype(np.int64).tofile("dec_pos.bin")
+    tag = "dec" if T == 1 else f"pre{T}"
+    np.asarray(y[0].numpy()).tofile(f"{tag}_{args.layers}L_expected.bin")
+    names = [f"{tag}_x.bin", f"{tag}_pos.bin"]
+    x.numpy().tofile(f"{tag}_x.bin")
+    pos.numpy().astype(np.int64).tofile(f"{tag}_pos.bin")
+    # Weights and caches are IDENTICAL between decode and prefill — same tensors,
+    # same order — so the engine loads them once and binds them to both graphs.
     for j, t in enumerate(weights):
-        t.numpy().tofile(f"dec_w{j:03d}.bin")
+        if T == 1: t.numpy().tofile(f"dec_w{j:03d}.bin")
         names.append(f"dec_w{j:03d}.bin")
     for j, t in enumerate(inter):
-        t.numpy().tofile(f"dec_c{j:03d}.bin")
+        if T == 1: t.numpy().tofile(f"dec_c{j:03d}.bin")
         names.append(f"dec_c{j:03d}.bin")
-    with open(f"dec_{args.layers}L_manifest.txt", "w") as f:
+    with open(f"{tag}_{args.layers}L_manifest.txt", "w") as f:
         f.write("\n".join(names) + "\n")
     print(f"wrote {len(names)} input files + manifest")
 

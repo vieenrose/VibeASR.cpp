@@ -110,6 +110,33 @@ With the condvar, "parallelism" made the decoder 1.8x SLOWER than single-threade
 Spinning (8192 `yield` instructions before falling back to `sched_yield`) makes 4
 threads 2.4x faster than 1. ggml's threadpool spins for exactly this reason.
 
+## Prefill: batching gains only 1.2x, and the reason is instructive
+
+A 16-token prefill graph exports and runs correctly (cosine 0.986 against a dense
+reference over the same 16 steps), and the kernel gained a batched path where the
+weight row is outermost so each row is read once for all m activation vectors.
+Bit-exact at m=1 and m=16.
+
+  decode  (1 token)   82 ms        -> 82 ms/token
+  prefill (16 tokens) 1090 ms      -> 68 ms/token
+
+Only 1.2x. The batched kernel measured across m shows why:
+
+  m=1    0.801 ms/call
+  m=4    1.751 ms
+  m=16   6.431 ms
+
+Time scales with m at about 8x for 16x the work. If weight reads were the
+bottleneck, batching would make it nearly flat. They are not: **on ARMv8.0 without
+dotprod this kernel is COMPUTE-bound**, needing ~16 SIMD ops (8 unpack + 8
+`vmlal_s8`) per 16 bytes of weights. Batching amortizes the reads; it cannot
+amortize the arithmetic.
+
+So prefill batching is worth having but is not the order-of-magnitude win it is on
+bandwidth-bound stacks. On an ARMv8.2 device with `vdotq_s32` the unpack-multiply
+halves and the balance shifts toward bandwidth, where batching should pay much
+better — untested, no such device here.
+
 ## What is already settled
 
 * Ternary custom op runs on the **stock** LiteRT runtime — `LiteRtAddCustomOpKernelOption`
