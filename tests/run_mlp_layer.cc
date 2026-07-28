@@ -189,21 +189,27 @@ int main(int argc, char** argv) {
             LiteRtUnlockTensorBuffer(ins[i]);
         }
     }
-    LiteRtTensorBuffer out = nullptr;
-    {
+    // A decoder step returns the hidden state AND every updated KV cache, so
+    // allocate all of them; only output 0 is compared.
+    LiteRtParamIndex n_out_sig = 0;
+    LiteRtGetNumSignatureOutputs(sig, &n_out_sig);
+    std::vector<LiteRtTensorBuffer> outs((size_t)n_out_sig, nullptr);
+    for (LiteRtParamIndex i = 0; i < n_out_sig; i++) {
         LiteRtTensor t = nullptr;
         LiteRtRankedTensorType tt;
         LiteRtTensorBufferRequirements reqs = nullptr;
         size_t bytes = 0;
-        LiteRtGetSignatureOutputTensorByIndex(sig, 0, &t);
+        LiteRtGetSignatureOutputTensorByIndex(sig, i, &t);
         LiteRtGetRankedTensorType(t, &tt);
-        LiteRtGetCompiledModelOutputBufferRequirements(cm, 0, 0, &reqs);
+        LiteRtGetCompiledModelOutputBufferRequirements(cm, 0, i, &reqs);
         LiteRtGetTensorBufferRequirementsBufferSize(reqs, &bytes);
-        LiteRtCreateManagedTensorBuffer(env, kLiteRtTensorBufferTypeHostMemory, &tt, bytes, &out);
+        LiteRtCreateManagedTensorBuffer(env, kLiteRtTensorBufferTypeHostMemory, &tt, bytes, &outs[i]);
     }
+    printf("model has %llu outputs\n", (unsigned long long)n_out_sig);
+    LiteRtTensorBuffer out = outs[0];
 
-    if (LiteRtRunCompiledModel(cm, 0, (LiteRtParamIndex)ins.size(), ins.data(), 1, &out)
-        != kLiteRtStatusOk) {
+    if (LiteRtRunCompiledModel(cm, 0, (LiteRtParamIndex)ins.size(), ins.data(),
+                               (LiteRtParamIndex)outs.size(), outs.data()) != kLiteRtStatusOk) {
         fprintf(stderr, "invoke failed\n"); return 1;
     }
     // Latch before the timing loop below adds to it.
@@ -230,7 +236,8 @@ int main(int argc, char** argv) {
 
     const double t0 = now_s();
     for (int i = 0; i < iters; i++)
-        LiteRtRunCompiledModel(cm, 0, (LiteRtParamIndex)ins.size(), ins.data(), 1, &out);
+        LiteRtRunCompiledModel(cm, 0, (LiteRtParamIndex)ins.size(), ins.data(),
+                               (LiteRtParamIndex)outs.size(), outs.data());
     const double each = (now_s() - t0) / iters;
     // Packed weight bytes actually streamed per run — every int8 input that is
     // large enough to be a weight matrix rather than a scale vector.
@@ -239,7 +246,11 @@ int main(int argc, char** argv) {
         if (blobs[i].size() > 65536) wbytes += (double)blobs[i].size();
     printf("\n%.3f ms per block, %.2f GB/s over packed weights (%.1f MB)\n",
            each * 1e3, wbytes / each / 1e9, wbytes / 1e6);
-    printf("28 layers => %.0f ms/token (%s)\n", each * 28 * 1e3, ternary_gemm_impl_name());
+    // Per LAYER, from the custom op count: 7 ternary projections per decoder layer.
+    // Scaling the whole graph by 28 would be wrong for a multi-layer export.
+    const int layers = calls_first_run > 0 ? std::max(1, calls_first_run / 7) : 1;
+    printf("%d layer(s) in this graph => %.2f ms/layer, %.0f ms/token at 28 layers (%s)\n",
+           layers, each * 1e3 / layers, each * 1e3 / layers * 28, ternary_gemm_impl_name());
 
     // Activation quantization is the only expected difference from the dense
     // reference; the weights themselves are bit-identical.
