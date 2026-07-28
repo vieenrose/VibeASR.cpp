@@ -171,3 +171,10 @@ if (VIBEASR_LITERT)
         ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
     target_link_libraries(bench_partition PRIVATE ${LITERT_LIB})
 endif()
+
+# Does the shipped I2_S weight layout match ternary_gemm's packing? ggml as oracle.
+add_executable(test_i2s_layout tests/test_i2s_layout.cc src/ternary_gemm.cc)
+target_include_directories(test_i2s_layout PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/llama.cpp/ggml/include)
+target_link_libraries(test_i2s_layout PRIVATE ggml)

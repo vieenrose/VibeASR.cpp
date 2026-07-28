@@ -122,3 +122,37 @@ if __name__ == "__main__":
     for name, t in g.tensors.items():
         if name.startswith("blk.0."):
             print(f"  {name:36} {t.type_name:6} {t.dims} {t.nbytes} B")
+
+
+def unpack_i2s(raw: np.ndarray, k: int, n: int) -> np.ndarray:
+    """ggml I2_S bytes -> dense int8 [n, k] in {-1,0,+1}.
+
+    The layout is BIT-PLANE MAJOR over 128-element groups, not the sequential
+    4-per-byte packing it looks like. Established by feeding one-hot vectors
+    through ggml's own kernel and seeing which packed slot answered
+    (tests/test_i2s_layout.cc --probe, cosine 1.0000 on every probe):
+
+        element j of a 128-group, with g = j // 32 and i = j % 32,
+        lives in byte i at bit-pair (3 - g)
+
+    which is what the AVX2 kernel does: xq8_0 = bits 6-7 (elements 0-31),
+    xq8_1 = bits 4-5 (32-63), xq8_2 = bits 2-3 (64-95), xq8_3 = bits 0-1 (96-127).
+    The NEON kernel reads 64-element blocks instead and compensates by permuting
+    the ACTIVATIONS (I2S_Y_BASE), so the file layout is the same either way.
+
+    Codes are u = w + 1 over {0,1,2}; code 3 is unused.
+    """
+    if (k * n) % 128:
+        raise ValueError("I2_S groups are 128 elements; k*n must be a multiple of 128")
+    data = raw[: k * n // 4]
+    # [groups, 32] bytes -> 4 bit-planes -> [groups, 4, 32] -> flat element order
+    per_group = data.reshape(-1, 32)
+    planes = np.stack([(per_group >> s) & 3 for s in (6, 4, 2, 0)], axis=1)
+    codes = planes.reshape(-1)
+    return (codes.astype(np.int8) - 1).reshape(n, k)
+
+
+def i2s_scale(raw: np.ndarray, k: int, n: int) -> float:
+    """Per-tensor scale: first float of the 32-byte tail."""
+    tail = raw[k * n // 4:].tobytes()[:4]
+    return float(np.frombuffer(tail, dtype=np.float32)[0])
