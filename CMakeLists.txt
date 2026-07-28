@@ -156,3 +156,11 @@ install(TARGETS llama LIBRARY PUBLIC_HEADER)
 # kernel a LiteRT custom op would call (LiteRT/XNNPACK has no ternary path).
 add_executable(test_ternary_gemm tests/test_ternary_gemm.cc src/ternary_gemm.cc)
 target_include_directories(test_ternary_gemm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# End-to-end: ternary custom op on the STOCK LiteRT runtime.
+if (VIBEASR_LITERT)
+    add_executable(test_ternary_custom_op tests/test_ternary_custom_op.cc src/ternary_gemm.cc)
+    target_include_directories(test_ternary_custom_op PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
+    target_link_libraries(test_ternary_custom_op PRIVATE ${LITERT_LIB})
+endif()
