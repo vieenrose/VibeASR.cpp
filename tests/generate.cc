@@ -19,6 +19,11 @@
 #include <string>
 #include <vector>
 
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include "q6k.h"
 #include "ternary_gemm.h"
 
@@ -62,6 +67,44 @@ double now_s() {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return ts.tv_sec + ts.tv_nsec / 1e9;
+}
+
+// mmap a file read-only. Weight tensors are the bulk of resident memory (344 MB
+// of layer weights, 191 MB of embedding table), and reading them into heap buffers
+// makes every byte ANONYMOUS: unevictable, and counted in full against an Android
+// app's budget. Mapped, they are clean file-backed pages the kernel can drop and
+// re-read, and they are shared between processes opening the same model.
+//
+// The same fix was worth 1020 -> 347 MB of RssAnon on the VAE side of this repo.
+struct Mapped {
+    void* addr = nullptr;
+    size_t size = 0;
+    Mapped() = default;
+    Mapped(const Mapped&) = delete;
+    Mapped(Mapped&& o) noexcept : addr(o.addr), size(o.size) { o.addr = nullptr; o.size = 0; }
+    Mapped& operator=(Mapped&& o) noexcept {
+        if (this != &o) {
+            if (addr) munmap(addr, size);
+            addr = o.addr; size = o.size;
+            o.addr = nullptr; o.size = 0;
+        }
+        return *this;
+    }
+    ~Mapped() { if (addr) munmap(addr, size); }
+    const uint8_t* data() const { return (const uint8_t*)addr; }
+};
+
+static Mapped map_file(const std::string& p) {
+    Mapped m;
+    const int fd = open(p.c_str(), O_RDONLY);
+    if (fd < 0) { fprintf(stderr, "missing %s\n", p.c_str()); exit(1); }
+    struct stat st;
+    if (fstat(fd, &st) != 0 || st.st_size <= 0) { close(fd); fprintf(stderr, "stat %s\n", p.c_str()); exit(1); }
+    m.size = (size_t)st.st_size;
+    m.addr = mmap(nullptr, m.size, PROT_READ, MAP_PRIVATE, fd, 0);
+    close(fd);
+    if (m.addr == MAP_FAILED) { m.addr = nullptr; fprintf(stderr, "mmap %s\n", p.c_str()); exit(1); }
+    return m;
 }
 
 std::vector<uint8_t> read_file(const std::string& p) {
@@ -211,19 +254,45 @@ int main(int argc, char** argv) {
         return 1;
     }
     L.ins.resize(n_in);
+    std::vector<Mapped> maps(n_in);
+    size_t n_mapped = 0, n_copied = 0, mapped_bytes = 0;
     for (LiteRtParamIndex i = 0; i < n_in; i++) {
-        size_t need = 0;
-        if (!L.make_buffer(env, true, i, &need, &L.ins[i])) {
-            fprintf(stderr, "layer input %llu failed\n", (unsigned long long)i); return 1;
+        maps[i] = map_file(dir + "/" + files[i]);
+
+        // Wrap the MAPPING directly where the runtime allows it, so 344 MB of layer
+        // weights stay clean file-backed pages instead of becoming anonymous heap.
+        // Inputs 0 and 1 are the embedding and pos, rewritten every step, so they
+        // need writable managed buffers.
+        LiteRtTensor t = nullptr;
+        LiteRtRankedTensorType tt;
+        LiteRtTensorBufferRequirements reqs = nullptr;
+        size_t want = maps[i].size;
+        LiteRtGetSignatureInputTensorByIndex(L.sig, i, &t);
+        LiteRtGetRankedTensorType(t, &tt);
+        if (LiteRtGetCompiledModelInputBufferRequirements(L.cm, 0, i, &reqs) == kLiteRtStatusOk) {
+            size_t req = 0;
+            if (LiteRtGetTensorBufferRequirementsBufferSize(reqs, &req) == kLiteRtStatusOk)
+                want = req;
         }
-        // Read, copy into the tensor buffer, then FREE the staging copy. Holding
-        // both meant 344 MB of weights twice over; with the 191 MB embedding table
-        // and the 235 MB head that pushed the working set past what a 3.7 GB device
-        // keeps resident, so the head's pages were evicted and re-read every step —
-        // measured 350 ms/token against ~168 for the same graphs benchmarked apart.
-        {
-            const auto blob = read_file(dir + "/" + files[i]);
-            write_buf(L.ins[i], blob.data(), std::min(need, blob.size()));
+        // Writable, so NOT mappable read-only: inputs 0/1 are the embedding and pos
+        // (rewritten every step), and the trailing 2*L are the KV caches, which are
+        // aliased as OUTPUTS so the graph writes into them. Mapping those PROT_READ
+        // segfaults on the first decode step.
+        const LiteRtParamIndex n_layers_guess = (n_out - 1) / 2;
+        const LiteRtParamIndex cache_first = n_in - 2 * n_layers_guess;
+        const bool writable = (i <= 1) || (i >= cache_first);
+        if (!writable && want <= maps[i].size &&
+            LiteRtCreateTensorBufferFromHostMemory(&tt, (void*)maps[i].data(), want, nullptr,
+                                                   &L.ins[i]) == kLiteRtStatusOk) {
+            n_mapped++;
+            mapped_bytes += want;
+        } else {
+            size_t need = 0;
+            if (!L.make_buffer(env, true, i, &need, &L.ins[i])) {
+                fprintf(stderr, "layer input %llu failed\n", (unsigned long long)i); return 1;
+            }
+            write_buf(L.ins[i], maps[i].data(), std::min(need, maps[i].size));
+            n_copied++;
         }
     }
     L.outs.resize(n_out);
@@ -243,6 +312,8 @@ int main(int argc, char** argv) {
         LiteRtDestroyTensorBuffer(L.outs[1 + n_layers + i]);
         L.outs[1 + n_layers + i] = L.ins[cache_base + 2 * i + 1];
     }
+    printf("layer inputs: %zu mapped (%.0f MB file-backed), %zu copied\n",
+           n_mapped, mapped_bytes / 1e6, n_copied);
     printf("layers: %llu inputs, %llu outputs, %llu layers, KV aliased\n",
            (unsigned long long)n_in, (unsigned long long)n_out,
            (unsigned long long)n_layers);
@@ -265,7 +336,7 @@ int main(int argc, char** argv) {
     printf("head: vocab %d\n\n", vocab);
 
     // --- embedding table -------------------------------------------------------
-    const auto embd = read_file(embd_path);
+    const Mapped embd = map_file(embd_path);
     std::vector<float> scratch(DIM + 2 * Q6K_BLOCK), emb(DIM);
 
     // --- generate --------------------------------------------------------------
