@@ -137,6 +137,22 @@ int main(int argc, char** argv) {
     CHECK_OK(LiteRtCreateOptions(&opts), "CreateOptions");
     CHECK_OK(LiteRtSetOptionsHardwareAccelerators(opts, kLiteRtHwAcceleratorCpu), "SetAccelerators");
 
+    // VIBEASR_EXTERNAL_W: supply the packed weights ZERO-COPY from caller memory.
+    //
+    // Needed because the dispatcher will not hand CONSTANT tensors to a custom
+    // kernel, so weights must enter as a graph input — and a graph input would
+    // otherwise mean allocating a managed buffer and copying a decoder's worth of
+    // packed bytes into anonymous memory, which is exactly what we are trying to
+    // avoid. LiteRtAddExternalTensorBinding looked like the answer but does NOT
+    // override an explicit run input (tested: the managed buffer won, silently),
+    // so the zero-copy has to come from the buffer itself.
+    std::vector<uint8_t> ext_w;
+    const bool use_external = getenv("VIBEASR_EXTERNAL_W") != nullptr;
+    if (use_external) {
+        ext_w.resize(32 * 16);
+        for (size_t j = 0; j < ext_w.size(); j++) ext_w[j] = (uint8_t)(0x1B + (j % 7));
+    }
+
     TernaryOpState state;
     LiteRtCustomOpKernel kernel = {TernaryInit, TernaryGetOutputLayouts, TernaryRun,
                                    TernaryDestroy};
@@ -173,6 +189,24 @@ int main(int argc, char** argv) {
     CHECK_OK(LiteRtGetNumSignatureInputs(sig, &n_in), "GetNumSignatureInputs");
     std::vector<LiteRtTensorBuffer> ins((size_t)n_in, nullptr);
     for (LiteRtParamIndex i = 0; i < n_in; i++) {
+        // Weights: wrap the caller's memory instead of allocating a managed buffer.
+        // LiteRtAddExternalTensorBinding does NOT override an explicit run input
+        // (verified: the managed buffer won), so zero-copy has to come from the
+        // buffer itself. With real weights this is what keeps a decoder's worth of
+        // packed bytes mmap'd and file-backed rather than copied into anon memory.
+        if (use_external && i == 1) {
+            LiteRtTensor t = nullptr;
+            LiteRtRankedTensorType tt;
+            if (LiteRtGetSignatureInputTensorByIndex(sig, i, &t) != kLiteRtStatusOk ||
+                LiteRtGetRankedTensorType(t, &tt) != kLiteRtStatusOk ||
+                LiteRtCreateTensorBufferFromHostMemory(&tt, ext_w.data(), ext_w.size(),
+                                                       nullptr, &ins[i]) != kLiteRtStatusOk) {
+                fprintf(stderr, "FAIL: CreateTensorBufferFromHostMemory\n");
+                return 1;
+            }
+            printf("wrapped args_1 zero-copy from host memory (%zu bytes)\n", ext_w.size());
+            continue;
+        }
         if (!make(true, i, &ins[i])) { fprintf(stderr, "FAIL: input buffer %llu\n",
                                                (unsigned long long)i); return 1; }
         size_t nb = 0;
@@ -186,7 +220,11 @@ int main(int argc, char** argv) {
         if (i == 0) for (size_t j = 0; j < nb / sizeof(float); j++)
             ((float*)q)[j] = sinf((float)j * 0.37f);
         else if (i == 1) for (size_t j = 0; j < nb; j++)
-            ((uint8_t*)q)[j] = (uint8_t)(0x1B + (j % 7));   // mixed ternary codes
+            // When testing the external binding, leave the MANAGED buffer holding a
+            // different pattern (0x55) than the external one (0x1B+): if the output
+            // still matches the external data, the binding is demonstrably in use
+            // rather than the managed copy silently winning.
+            ((uint8_t*)q)[j] = use_external ? 0x55 : (uint8_t)(0x1B + (j % 7));
         else for (size_t j = 0; j < nb / sizeof(float); j++)
             ((float*)q)[j] = 0.02f;
         LiteRtUnlockTensorBuffer(ins[i]);
@@ -227,13 +265,14 @@ int main(int argc, char** argv) {
         LiteRtGetTensorBufferSize(ins[2], &bs);
         LiteRtLockTensorBuffer(ins[0], &qx, kLiteRtTensorBufferLockModeRead);
         LiteRtLockTensorBuffer(ins[1], &qw, kLiteRtTensorBufferLockModeRead);
+        const uint8_t* wsrc = use_external ? ext_w.data() : (const uint8_t*)qw;
         LiteRtLockTensorBuffer(ins[2], &qs, kLiteRtTensorBufferLockModeRead);
         const int nr = (int)(bs / sizeof(float));
         const int kk = (int)(bw / nr) * 4;
         std::vector<int8_t> q((size_t)kk);
         std::vector<float> xs(1), expect((size_t)nr);
         ternary_quantize_activations((const float*)qx, 1, kk, q.data(), xs.data());
-        ternary_gemm((const uint8_t*)qw, nr, kk, q.data(), xs.data(), 1,
+        ternary_gemm(wsrc, nr, kk, q.data(), xs.data(), 1,
                      (const float*)qs, 1, nullptr, expect.data());
         LiteRtLockTensorBuffer(out, &p, kLiteRtTensorBufferLockModeRead);
         for (int i = 0; i < nr; i++)
