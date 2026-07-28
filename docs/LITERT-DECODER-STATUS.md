@@ -16,8 +16,8 @@ for a long time I mistook my own kernel's 2.64 GB/s for the hardware limit.
 | stage | bytes/token | measured | GB/s |
 |---|---|---|---|
 | 28 decoder layers | 328 MB | ~125-140 ms | 2.3-2.6 |
-| LM head (F16, projected from a 1/8 f32 slice) | 467 MB | ~109 ms | 4.3 |
-| **total** | **795 MB** | **~235-250 ms** | |
+| LM head, **int8 per-channel** (from a 1/8 slice) | 233 MB | **~28 ms** | 8.3 |
+| **total** | **561 MB** | **~153-168 ms** | |
 | ggml, same work | 795 MB | **141 ms** | 5.6 |
 
 **~1.9x slower than ggml.** Earlier notes in this repo claimed 1.12x; that compared
@@ -45,10 +45,17 @@ bandwidth" was wrong — it is at *our kernel's* bandwidth.
    o (590 KB) sit at ~1.9 GB/s and do not benefit from threads at all — verified by
    lowering the parallelism gate, which made the whole decoder *slower*
    (124.8 -> 141.5 -> 160.6 ms at gates of 1024 / 256 / 64 KB).
-2. **Quantize the LM head to int8** (467 -> 233 MB), worth ~55 ms. Changes numerics
-   where ggml keeps F16, so it needs an accuracy gate.
+2. ~~Quantize the LM head to int8~~ **DONE, and it beat the projection.** A 1/8
+   slice measures 3.53 ms, so the full head is ~28 ms — not the ~54 ms the byte
+   count predicted. XNNPACK's int8 matmul runs it at ~8.3 GB/s, well above the
+   ~5.6 GB/s this device sustains on f16/ternary traffic, because int8 halves the
+   bytes AND uses a faster kernel. Accuracy: cosine 0.999703 vs the f32 head.
+   Weights bake in as constants (29.4 MB for the slice, ~233 MB full) rather than
+   needing runtime binding, since no custom op is involved.
 
-Both together give ~144 ms, i.e. parity. Either alone does not.
+Total now ~153-168 ms against ggml's 141: about **1.1x**. The remaining gap is the
+small projections (fused qkv 786 KB, o 590 KB) which sit at ~1.9 GB/s and gain
+nothing from threading.
 
 ## What is already settled
 
