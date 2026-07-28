@@ -1,13 +1,51 @@
 #include "ternary_gemm.h"
 
 #include <math.h>
+#include <stdlib.h>
 #include <string.h>
+
+#include <algorithm>
+#include <functional>
+#include <thread>
+#include <vector>
 
 #if defined(__ARM_NEON)
 #include <arm_neon.h>
 #elif defined(__AVX2__)
 #include <immintrin.h>
 #endif
+
+// Row-parallel split. A batch-1 decode GEMM is bandwidth-bound, so this scales
+// only until the memory system saturates — but on a big.LITTLE phone that point
+// is above one core, and single-threaded was leaving most of it unused.
+// TERNARY_GEMM_THREADS overrides; 0/unset = hardware_concurrency capped at 4,
+// matching VoxSum's bigCoreThreads (surplus threads land on little cores and the
+// parallel step runs at the pace of the slowest one).
+static int ternary_threads() {
+    static int n = [] {
+        if (const char* e = getenv("TERNARY_GEMM_THREADS")) {
+            const int v = atoi(e);
+            if (v > 0) return v;
+        }
+        const unsigned hc = std::thread::hardware_concurrency();
+        return (int)std::min(4u, hc ? hc : 1u);
+    }();
+    return n;
+}
+
+static void ternary_parallel_for(int n, const std::function<void(int, int)>& body) {
+    const int nt = std::min(ternary_threads(), n);
+    if (nt <= 1) { body(0, n); return; }
+    std::vector<std::thread> pool;
+    pool.reserve(nt - 1);
+    const int chunk = (n + nt - 1) / nt;
+    for (int t = 1; t < nt; t++) {
+        const int lo = std::min(n, t * chunk), hi = std::min(n, lo + chunk);
+        if (lo < hi) pool.emplace_back([&body, lo, hi] { body(lo, hi); });
+    }
+    body(0, std::min(n, chunk));
+    for (auto& th : pool) th.join();
+}
 
 // Four 2-bit codes per byte; element j sits at shift 2*(j%4).
 static inline int code_at(const uint8_t* row, int j) {
@@ -87,8 +125,69 @@ void ternary_gemm_reference(const uint8_t* packed_w, int n_rows, int k,
 
 #if defined(__ARM_NEON)
 
-// One row of packed weights against one row of int8 activations.
+// Activations de-interleaved into the order the packed codes arrive in:
+// plane t holds elements {t, 4+t, 8+t, ...}. Doing this ONCE per GEMM instead of
+// per row is the difference between paying the shuffle k times and n_rows*k
+// times — for a 1536-row projection that is 1536x redundant work.
+static void deinterleave_activations(const int8_t* q, int k, int8_t* planes) {
+    const int quads = k / 4;
+    int i = 0;
+#if defined(__ARM_NEON)
+    for (; i + 16 <= quads; i += 16) {
+        const int8x16x4_t v = vld4q_s8(q + i * 4);
+        vst1q_s8(planes + 0 * quads + i, v.val[0]);
+        vst1q_s8(planes + 1 * quads + i, v.val[1]);
+        vst1q_s8(planes + 2 * quads + i, v.val[2]);
+        vst1q_s8(planes + 3 * quads + i, v.val[3]);
+    }
+#endif
+    for (; i < quads; i++)
+        for (int t = 0; t < 4; t++) planes[t * quads + i] = q[i * 4 + t];
+}
+
+// One row of packed weights against pre-de-interleaved activations.
 // Returns sum((w+1) * x); the caller subtracts sum(x).
+static inline int32_t ternary_dot_neon_planes(const uint8_t* wr, const int8_t* planes,
+                                              int quads, int k, const int8_t* q) {
+    const uint8x16_t mask = vdupq_n_u8(0x3);
+    int32x4_t acc = vdupq_n_s32(0);
+    int i = 0;
+    for (; i + 16 <= quads; i += 16) {
+        const uint8x16_t p = vld1q_u8(wr + i);
+        const int8x16_t w0 = vreinterpretq_s8_u8(vandq_u8(p, mask));
+        const int8x16_t w1 = vreinterpretq_s8_u8(vandq_u8(vshrq_n_u8(p, 2), mask));
+        const int8x16_t w2 = vreinterpretq_s8_u8(vandq_u8(vshrq_n_u8(p, 4), mask));
+        const int8x16_t w3 = vreinterpretq_s8_u8(vandq_u8(vshrq_n_u8(p, 6), mask));
+        const int8x16_t x0 = vld1q_s8(planes + 0 * quads + i);
+        const int8x16_t x1 = vld1q_s8(planes + 1 * quads + i);
+        const int8x16_t x2 = vld1q_s8(planes + 2 * quads + i);
+        const int8x16_t x3 = vld1q_s8(planes + 3 * quads + i);
+#if defined(__ARM_FEATURE_DOTPROD)
+        acc = vdotq_s32(acc, w0, x0);
+        acc = vdotq_s32(acc, w1, x1);
+        acc = vdotq_s32(acc, w2, x2);
+        acc = vdotq_s32(acc, w3, x3);
+#else
+        // ARMv8.0: no dot product. Codes are 0..2 and |x| <= 127, so each product
+        // is <= 254 and eight of them stay well inside int16 before widening.
+        int16x8_t s01 = vmull_s8(vget_low_s8(w0), vget_low_s8(x0));
+        s01 = vmlal_s8(s01, vget_high_s8(w0), vget_high_s8(x0));
+        s01 = vmlal_s8(s01, vget_low_s8(w1), vget_low_s8(x1));
+        s01 = vmlal_s8(s01, vget_high_s8(w1), vget_high_s8(x1));
+        int16x8_t s23 = vmull_s8(vget_low_s8(w2), vget_low_s8(x2));
+        s23 = vmlal_s8(s23, vget_high_s8(w2), vget_high_s8(x2));
+        s23 = vmlal_s8(s23, vget_low_s8(w3), vget_low_s8(x3));
+        s23 = vmlal_s8(s23, vget_high_s8(w3), vget_high_s8(x3));
+        acc = vaddq_s32(acc, vpaddlq_s16(s01));
+        acc = vaddq_s32(acc, vpaddlq_s16(s23));
+#endif
+    }
+    int32_t sum = vaddvq_s32(acc);
+    for (int j = i * 4; j < k; j++) sum += code_at(wr, j) * (int32_t)q[j];
+    return sum;
+}
+
+// Kept for reference//A-B: the naive version that shuffles inside the row loop.
 static inline int32_t ternary_dot_neon(const uint8_t* wr, const int8_t* q, int k) {
     const uint8x16_t mask = vdupq_n_u8(0x3);
     int32x4_t acc = vdupq_n_s32(0);
@@ -140,6 +239,9 @@ void ternary_gemm(const uint8_t* packed_w, int n_rows, int k,
                   const float* w_scale, int w_scale_is_per_row,
                   const float* bias, float* y) {
     const int stride = (k + 3) / 4;
+    const int quads = k / 4;
+    std::vector<int8_t> planes((size_t)quads * 4);
+
     for (int i = 0; i < m; i++) {
         const int8_t* qi = q + (size_t)i * k;
 
@@ -149,13 +251,21 @@ void ternary_gemm(const uint8_t* packed_w, int n_rows, int k,
         int32_t xsum = vaddvq_s32(xs);
         for (; j < k; j++) xsum += qi[j];
 
-        for (int r = 0; r < n_rows; r++) {
-            const int32_t acc = ternary_dot_neon(packed_w + (size_t)r * stride, qi, k);
-            const float ws = w_scale_is_per_row ? w_scale[r] : w_scale[0];
-            float v = (float)(acc - xsum) * ws * x_scale[i];
-            if (bias) v += bias[r];
-            y[(size_t)i * n_rows + r] = v;
-        }
+        deinterleave_activations(qi, k, planes.data());
+        const int8_t* pl = planes.data();
+        const float xsc = x_scale[i];
+        float* yi = y + (size_t)i * n_rows;
+
+        ternary_parallel_for(n_rows, [&](int r0, int r1) {
+            for (int r = r0; r < r1; r++) {
+                const int32_t acc =
+                    ternary_dot_neon_planes(packed_w + (size_t)r * stride, pl, quads, k, qi);
+                const float ws = w_scale_is_per_row ? w_scale[r] : w_scale[0];
+                float v = (float)(acc - xsum) * ws * xsc;
+                if (bias) v += bias[r];
+                yi[r] = v;
+            }
+        });
     }
 }
 
