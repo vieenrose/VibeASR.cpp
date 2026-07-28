@@ -337,6 +337,27 @@ int main(int argc, char ** argv) {
         // Use the minimum frame count
         int n_frames = std::min(acoustic_frames, semantic_frames);
 
+        // VIBEASR_DUMP_DIR: write the resampled input and both feature planes as raw
+        // little-endian f32, so an independent implementation of the front end can be
+        // gated numerically against this one. Dumping the AUDIO too removes the
+        // resampler from the comparison — whoever is being compared reads the exact
+        // samples the encoder saw, rather than re-deriving them.
+        if (const char * dump = getenv("VIBEASR_DUMP_DIR")) {
+            const auto write = [&](const char * name, const void * p, size_t bytes) {
+                char path[1024];
+                snprintf(path, sizeof(path), "%s/%s", dump, name);
+                if (FILE * f = fopen(path, "wb")) { fwrite(p, 1, bytes, f); fclose(f); }
+                else fprintf(stderr, "[dump] could not write %s\n", path);
+            };
+            write("audio24k.f32", audio.samples.data(), audio.samples.size() * sizeof(float));
+            write("acoustic.f32", acoustic_features.data(),
+                  (size_t)n_frames * acoustic_dim * sizeof(float));
+            write("semantic.f32", semantic_features.data(),
+                  (size_t)n_frames * semantic_dim * sizeof(float));
+            fprintf(stderr, "[dump] %s: audio=%zu samples, features=%dx%d\n",
+                    dump, audio.samples.size(), n_frames, acoustic_dim);
+        }
+
         // ========================================
         // Step 6: Build prompt tokens
         // ========================================
