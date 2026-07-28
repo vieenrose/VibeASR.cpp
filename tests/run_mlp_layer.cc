@@ -270,11 +270,15 @@ int main(int argc, char** argv) {
         if (blobs[i].size() > 65536) wbytes += (double)blobs[i].size();
     printf("\n%.3f ms per block, %.2f GB/s over packed weights (%.1f MB)\n",
            each * 1e3, wbytes / each / 1e9, wbytes / 1e6);
-    // Per LAYER, from the custom op count: 7 ternary projections per decoder layer.
-    // Scaling the whole graph by 28 would be wrong for a multi-layer export.
-    const int layers = calls_first_run > 0 ? std::max(1, calls_first_run / 7) : 1;
-    printf("%d layer(s) in this graph => %.2f ms/layer, %.0f ms/token at 28 layers (%s)\n",
-           layers, each * 1e3 / layers, each * 1e3 / layers * 28, ternary_gemm_impl_name());
+    // Layers cannot be inferred from the custom op count: an unfused decoder has 7
+    // projections per layer, a qkv/gate-up fused one has 4. Guessing 7 reported a
+    // fused 28-layer graph as 16 layers. VIBEASR_LAYERS states it.
+    int layers = 1;
+    if (const char* e = getenv("VIBEASR_LAYERS")) layers = std::max(1, atoi(e));
+    printf("whole graph %.1f ms/step; %d layer(s) => %.2f ms/layer, "
+           "%.0f ms/token at 28 layers (%s)\n",
+           each * 1e3, layers, each * 1e3 / layers, each * 1e3 / layers * 28,
+           ternary_gemm_impl_name());
 
     // Activation quantization is the only expected difference from the dense
     // reference; the weights themselves are bit-identical.

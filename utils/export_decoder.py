@@ -40,11 +40,22 @@ def f32(g, name):
     return torch.from_numpy(np.frombuffer(g.raw(name).tobytes(), dtype=np.float32).copy())
 
 
-def rope(x, pos):
-    half = x.shape[-1] // 2
+def rope_tables(pos, half=HEAD_DIM // 2):
+    """cos/sin for this position, shaped to broadcast over [T, heads, dim].
+
+    Hoisted out of the layer loop: it depends only on `pos`, so computing it inside
+    rope() meant 56 identical evaluations per decode step (two per layer).
+    """
     inv = 1.0 / (ROPE_THETA ** (torch.arange(0, half, dtype=torch.float32) / half))
-    ang = pos.float().reshape(-1, 1) * inv
-    cos, sin = ang.cos(), ang.sin()
+    ang = pos.float().reshape(-1, 1) * inv                 # [T, half]
+    return ang.cos().reshape(-1, 1, half), ang.sin().reshape(-1, 1, half)
+
+
+def rope(x, cos, sin):
+    """x is [T, heads, dim] — no transposes. The earlier version moved heads to the
+    front and back again purely so a [T, half] table would broadcast, which for
+    T=1 decode is pure copying."""
+    half = x.shape[-1] // 2
     x1, x2 = x[..., :half], x[..., half:]
     return torch.cat([x1 * cos - x2 * sin, x1 * sin + x2 * cos], dim=-1)
 
@@ -65,27 +76,30 @@ class Decoder(torch.nn.Module):
                 self.register_buffer(f"l{i}_{k}", v)
 
     def forward(self, x, pos, *rest):
-        # rest = per layer: qw,qs,kw,ks,vw,vs,ow,os,gw,gs,uw,us,dw,ds then k$i,v$i
-        n_w = self.L * 14
+        # rest = per layer: qkv_w,qkv_s, o_w,o_s, gateup_w,gateup_s, down_w,down_s
+        # then the interleaved k,v caches.
+        n_w = self.L * 8
         W, caches = rest[:n_w], rest[n_w:]
         k_out, v_out = [], []
         # Causal mask over the cache: only slots already written (< pos+1) count.
         idx = torch.arange(self.ctx).reshape(1, 1, -1)
         mask = (idx <= pos.reshape(-1, 1, 1)).float()
         neg = (1.0 - mask) * -1e30
+        cos, sin = rope_tables(pos)
 
         for i in range(self.L):
-            w = W[i * 14:(i + 1) * 14]
-            qw, qs, kw, ks, vw, vs, ow, os_, gw, gs, uw, us, dw, ds = w
+            qkv_w, qkv_s, ow, os_, gu_w, gu_s, dw, ds = W[i * 8:(i + 1) * 8]
             k_cache, v_cache = caches[2 * i], caches[2 * i + 1]
 
             h = rms(x, getattr(self, f"l{i}_attn_norm"))
-            q = torch.ops.voxsum.ternary_matmul(h, qw, qs) + getattr(self, f"l{i}_qb")
-            k = torch.ops.voxsum.ternary_matmul(h, kw, ks) + getattr(self, f"l{i}_kb")
-            v = torch.ops.voxsum.ternary_matmul(h, vw, vs) + getattr(self, f"l{i}_vb")
+            qkv = torch.ops.voxsum.ternary_matmul(h, qkv_w, qkv_s)
+            dq, dk = N_HEAD * HEAD_DIM, N_KV * HEAD_DIM
+            q = qkv[:, :dq] + getattr(self, f"l{i}_qb")
+            k = qkv[:, dq:dq + dk] + getattr(self, f"l{i}_kb")
+            v = qkv[:, dq + dk:] + getattr(self, f"l{i}_vb")
 
-            q = rope(q.view(1, N_HEAD, HEAD_DIM).transpose(0, 1), pos).transpose(0, 1)
-            k = rope(k.view(1, N_KV, HEAD_DIM).transpose(0, 1), pos).transpose(0, 1)
+            q = rope(q.view(1, N_HEAD, HEAD_DIM), cos, sin)
+            k = rope(k.view(1, N_KV, HEAD_DIM), cos, sin)
             v = v.view(1, N_KV, HEAD_DIM)
 
             # Write this step into the cache at `pos`. dynamic_update_slice touches
@@ -111,10 +125,10 @@ class Decoder(torch.nn.Module):
             x = x + torch.ops.voxsum.ternary_matmul(o, ow, os_)
 
             h2 = rms(x, getattr(self, f"l{i}_ffn_norm"))
-            gate = torch.ops.voxsum.ternary_matmul(h2, gw, gs)
-            up = torch.ops.voxsum.ternary_matmul(h2, uw, us)
+            gu = torch.ops.voxsum.ternary_matmul(h2, gu_w, gu_s)
+            ff = gu.shape[-1] // 2
             x = x + torch.ops.voxsum.ternary_matmul(
-                torch.nn.functional.silu(gate) * up, dw, ds)
+                torch.nn.functional.silu(gu[:, :ff]) * gu[:, ff:], dw, ds)
 
         return (x, *k_out, *v_out)
 
@@ -141,12 +155,28 @@ def main():
              "kb": f32(g, p + "attn_k.bias"),
              "vb": f32(g, p + "attn_v.bias")}
         meta.append(m)
-        for tag, gname in (("q", "attn_q"), ("k", "attn_k"), ("v", "attn_v"),
-                           ("o", "attn_output"), ("g", "ffn_gate"),
-                           ("u", "ffn_up"), ("d", "ffn_down")):
-            packed, sc, rows = load_proj(g, p + gname + ".weight")
-            weights.append(packed)
-            weights.append(torch.full((rows,), float(sc)))
+        # FUSE projections that share an input. q/k/v all consume the same post-norm
+        # h, and gate/up both consume h2, so concatenating their rows turns 3 custom
+        # ops into 1 and 2 into 1: seven per layer become four.
+        #
+        # This is about PARTITION COUNT, not arithmetic. Each custom op is opaque to
+        # XNNPACK and splits the graph, and 7 of them per layer produced 282
+        # partitions across 28 layers — every boundary hands control back to the
+        # interpreter. Row concatenation is free with this packing (rows are
+        # independent) and per-row scales absorb the differing per-tensor scales.
+        def fused(names):
+            ps, ss = [], []
+            for nm in names:
+                packed, sc, rows = load_proj(g, p + nm + ".weight")
+                ps.append(packed)
+                ss.append(torch.full((rows,), float(sc)))
+            return torch.cat(ps, dim=0), torch.cat(ss, dim=0)
+
+        for group in (["attn_q", "attn_k", "attn_v"], ["attn_output"],
+                      ["ffn_gate", "ffn_up"], ["ffn_down"]):
+            pw, ps_ = fused(group)
+            weights.append(pw)
+            weights.append(ps_)
         print(f"  layer {i} loaded", end="\r")
     print(f"loaded {args.layers} layers ({len(weights)} weight tensors)      ")
 
