@@ -104,6 +104,13 @@ static Mapped map_file(const std::string& p) {
     m.addr = mmap(nullptr, m.size, PROT_READ, MAP_PRIVATE, fd, 0);
     close(fd);
     if (m.addr == MAP_FAILED) { m.addr = nullptr; fprintf(stderr, "mmap %s\n", p.c_str()); exit(1); }
+    // Ask the kernel to read the pages in now rather than faulting them one by one
+    // during inference. Mapping cut RssAnon by 3x but moved 330 MB of page faults
+    // into the first decode step: a cold run measured 207 ms/token against 124 warm.
+    // MADV_WILLNEED is advisory and cheap; MADV_SEQUENTIAL tells readahead that the
+    // access pattern is a straight sweep, which is exactly how weights are read.
+    madvise(m.addr, m.size, MADV_WILLNEED);
+    madvise(m.addr, m.size, MADV_SEQUENTIAL);
     return m;
 }
 

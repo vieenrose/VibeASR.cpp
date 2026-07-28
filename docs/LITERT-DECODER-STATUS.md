@@ -59,17 +59,24 @@ nothing from threading.
 
 ## End-to-end generation, measured back to back against ggml
 
-Both run on the same device minutes apart, so neither benefits from a cooler or
-faster-clocked machine than the other:
+Steady state (run 2 onward), both on the same device minutes apart:
 
-| | ms/token | tok/s |
-|---|---|---|
-| **LiteRT (this port)** | **115.0** | **8.70** |
-| ggml (`asr_infer`) | 122.5 | 8.16 |
+| | ms/token | tok/s | peak RSS | peak RssAnon |
+|---|---|---|---|---|
+| **LiteRT (this port)** | **123.5-124.2** | **8.1** | 786 MB | **241 MB** |
+| ggml (`asr_infer`) | 123.1-128.3 | 7.9 | 1297 MB | 507 MB |
 
-Phase split: embed 0.1, layers 84.2, head 30.1, argmax 0.5 ms.
-Peak RSS 972 MB, RssAnon 739 MB. Accuracy unchanged: cosine 0.994938 against a
-dense reference, and the ternary kernel stays bit-exact.
+Phase split: embed 0.0, layers ~84, head ~29, argmax 0.5 ms/token.
+Accuracy: cosine 0.994938 against a dense reference; the ternary kernel is
+bit-exact against its scalar reference.
+
+So the port now matches ggml on speed and uses **half the unevictable memory**.
+
+FIRST RUN IS SLOWER — 190-207 ms/token against 124 steady. `madvise(WILLNEED)`
+recovered part of it (207 -> 190), but the weight files were already in page cache,
+so most of the remainder is the `schedutil` governor ramping the cores rather than
+faulting pages. It matters little for real use: transcribing a minute of audio is
+thousands of tokens, all of them steady-state.
 
 ### The measurement trap that cost hours
 
