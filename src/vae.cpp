@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include "vae.h"
 
 #include "ggml.h"
@@ -341,10 +342,19 @@ struct vae_model {
 struct vae_context {
     vae_model_t* model = nullptr;
     int n_threads = 4;
-    
+
     struct ggml_context* compute_ctx = nullptr;
-    
+    // Graph allocator: sizes the compute buffer from the graph's actual
+    // liveness and REUSES storage between tensors whose lifetimes do not
+    // overlap. Kept on the context so consecutive encodes (acoustic then
+    // semantic, window after window) reuse one buffer instead of each
+    // allocating and freeing its own.
+    ggml_gallocr_t galloc = nullptr;
+
     ~vae_context() {
+        if (galloc) {
+            ggml_gallocr_free(galloc);
+        }
         if (compute_ctx) {
             ggml_free(compute_ctx);
         }
@@ -646,35 +656,66 @@ static int32_t vae_encode_impl(
         clock_gettime(CLOCK_MONOTONIC, &start_time);
     }
     
-    // Create computation context with sufficient memory
-    // F32 models need more memory than I8_S due to 4x larger intermediate tensors
-#ifdef _WIN32
-    // Windows has no memory overcommit: a 128 GB reservation fails outright.
-    // 6 GB is ample for the VAE intermediate tensors at typical audio lengths.
-    const size_t vae_ctx_mem_size = (size_t)6 * 1024 * 1024 * 1024;
-#else
-    const size_t vae_ctx_mem_size = (size_t)128 * 1024 * 1024 * 1024;
-#endif
+    // Build the graph in a METADATA-ONLY context (no_alloc), then let
+    // ggml_gallocr size and pack the compute buffer.
+    //
+    // This used to be one flat ggml context with no_alloc=false, sized by a
+    // 128 GB reservation that leaned on Linux overcommit. That allocated every
+    // intermediate tensor in the encoder simultaneously and never reused one,
+    // so cost grew ~270 MB per second of audio: a 30 s window needed an 8 GB
+    // context and peaked near 8 GB RSS. It also aborted outright wherever a
+    // 128 GB request is refused — Windows, Android, and plain Linux under the
+    // DEFAULT heuristic overcommit (vm.overcommit_memory=0).
+    //
+    // The graph allocator computes each tensor's live range and reuses storage
+    // between tensors that never coexist. A ConvNeXt encoder is a near-linear
+    // chain, so nearly everything folds into a couple of ping-pong buffers.
+    const size_t max_nodes = vae_model_max_nodes(ctx->model);
+    const size_t meta_size = ggml_tensor_overhead() * max_nodes
+                           + ggml_graph_overhead_custom(max_nodes, false);
     struct ggml_init_params ctx_params = {
-        /*.mem_size   =*/ vae_ctx_mem_size,
+        /*.mem_size   =*/ meta_size,
         /*.mem_buffer =*/ nullptr,
-        /*.no_alloc   =*/ false,  // Let ggml allocate tensors
+        /*.no_alloc   =*/ true,   // tensor structs only; gallocr owns the data
     };
-    
+
     if (ctx->compute_ctx) {
         ggml_free(ctx->compute_ctx);
     }
     ctx->compute_ctx = ggml_init(ctx_params);
-    
+    if (!ctx->compute_ctx) {
+        fprintf(stderr, "[VAE] Error: could not create the graph context\n");
+        return -1;
+    }
+
     // Check if model weights are I8_S — if so, quantize input to I8_S for full INT8 pipeline
     bool use_i8_s = (encoder.downsamples[0].conv_weight->type == GGML_TYPE_I8_S);
-    
-    struct ggml_tensor* input;
+
+    struct ggml_tensor* input = ggml_new_tensor_3d(
+        ctx->compute_ctx, use_i8_s ? GGML_TYPE_I8_S : GGML_TYPE_F32, n_samples, 1, 1);
+    ggml_set_name(input, use_i8_s ? "input_audio_i8s" : "input_audio");
+    // Marks the buffer as caller-written so the allocator won't hand its
+    // storage to some later tensor while it is still needed.
+    ggml_set_input(input);
+
+    // Build computation graph
+    struct ggml_tensor* result = encoder.forward(ctx->compute_ctx, input);
+    ggml_set_output(result);
+
+    struct ggml_cgraph* gf = ggml_new_graph_custom(ctx->compute_ctx, max_nodes, false);
+    ggml_build_forward_expand(gf, result);
+
+    if (!ctx->galloc) {
+        ctx->galloc = ggml_gallocr_new(ggml_backend_get_default_buffer_type(ctx->model->backend));
+    }
+    if (!ctx->galloc || !ggml_gallocr_alloc_graph(ctx->galloc, gf)) {
+        fprintf(stderr, "[VAE] Error: could not allocate the compute buffer\n");
+        return -1;
+    }
+
+    // Tensor data pointers only become valid once the graph is allocated, so
+    // the input is filled HERE rather than at construction time.
     if (use_i8_s) {
-        // Quantize F32 audio to I8_S
-        input = ggml_new_tensor_3d(ctx->compute_ctx, GGML_TYPE_I8_S, n_samples, 1, 1);
-        ggml_set_name(input, "input_audio_i8s");
-        
         // Find max abs value
         float amax = 0.00001f;
         for (int32_t i = 0; i < n_samples; i++) {
@@ -682,7 +723,7 @@ static int32_t vae_encode_impl(
             if (abs_val > amax) amax = abs_val;
         }
         float scale = 127.0f / amax;
-        
+
         // Quantize to int8
         int8_t * dst_i8 = (int8_t *) input->data;
         for (int32_t i = 0; i < n_samples; i++) {
@@ -691,31 +732,21 @@ static int32_t vae_encode_impl(
             if (v < -128) v = -128;
             dst_i8[i] = (int8_t)v;
         }
-        
+
         // Store scale after int8 data
         float * scale_ptr = (float *)((char *) input->data + n_samples);
         *scale_ptr = scale;
     } else {
-        // Use F32 input directly
-        input = ggml_new_tensor_3d(ctx->compute_ctx, GGML_TYPE_F32, n_samples, 1, 1);
-        ggml_set_name(input, "input_audio");
         memcpy(input->data, audio, n_samples * sizeof(float));
     }
-    
-    // Build computation graph
-    struct ggml_tensor* result = encoder.forward(ctx->compute_ctx, input);
-    
-    // Build graph with pre-allocated nodes (similar to llama_ref.cpp)
-    size_t max_nodes = vae_model_max_nodes(ctx->model);
-    struct ggml_cgraph* gf = ggml_new_graph_custom(ctx->compute_ctx, max_nodes, false);
-    ggml_build_forward_expand(gf, result);
-    
+
     // Compute
-    if (ggml_graph_compute_with_ctx(ctx->compute_ctx, gf, ctx->n_threads) != GGML_STATUS_SUCCESS) {
+    ggml_backend_cpu_set_n_threads(ctx->model->backend, ctx->n_threads);
+    if (ggml_backend_graph_compute(ctx->model->backend, gf) != GGML_STATUS_SUCCESS) {
         fprintf(stderr, "[VAE] Error: Graph computation failed\n");
         return -1;
     }
-    
+
     // Get output dimensions
     int64_t batch = result->ne[2];
     int64_t n_frames = result->ne[1];
