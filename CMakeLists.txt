@@ -178,3 +178,10 @@ target_include_directories(test_i2s_layout PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/llama.cpp/ggml/include)
 target_link_libraries(test_i2s_layout PRIVATE ggml)
+
+if (VIBEASR_LITERT)
+    add_executable(run_mlp_layer tests/run_mlp_layer.cc src/ternary_gemm.cc)
+    target_include_directories(run_mlp_layer PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
+    target_link_libraries(run_mlp_layer PRIVATE ${LITERT_LIB})
+endif()

@@ -227,6 +227,32 @@ bench_partition/fast:
 .PHONY : bench_partition/fast
 
 #=============================================================================
+# Target rules for targets named test_i2s_layout
+
+# Build rule for target.
+test_i2s_layout: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_i2s_layout
+.PHONY : test_i2s_layout
+
+# fast build rule for target.
+test_i2s_layout/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_i2s_layout.dir/build.make CMakeFiles/test_i2s_layout.dir/build
+.PHONY : test_i2s_layout/fast
+
+#=============================================================================
+# Target rules for targets named run_mlp_layer
+
+# Build rule for target.
+run_mlp_layer: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 run_mlp_layer
+.PHONY : run_mlp_layer
+
+# fast build rule for target.
+run_mlp_layer/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/run_mlp_layer.dir/build.make CMakeFiles/run_mlp_layer.dir/build
+.PHONY : run_mlp_layer/fast
+
+#=============================================================================
 # Target rules for targets named ggml
 
 # Build rule for target.
@@ -854,6 +880,8 @@ src/ternary_gemm.cc.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_ternary_gemm.dir/build.make CMakeFiles/test_ternary_gemm.dir/src/ternary_gemm.cc.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_ternary_custom_op.dir/build.make CMakeFiles/test_ternary_custom_op.dir/src/ternary_gemm.cc.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/bench_partition.dir/build.make CMakeFiles/bench_partition.dir/src/ternary_gemm.cc.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_i2s_layout.dir/build.make CMakeFiles/test_i2s_layout.dir/src/ternary_gemm.cc.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/run_mlp_layer.dir/build.make CMakeFiles/run_mlp_layer.dir/src/ternary_gemm.cc.o
 .PHONY : src/ternary_gemm.cc.o
 
 src/ternary_gemm.i: src/ternary_gemm.cc.i
@@ -864,6 +892,8 @@ src/ternary_gemm.cc.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_ternary_gemm.dir/build.make CMakeFiles/test_ternary_gemm.dir/src/ternary_gemm.cc.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_ternary_custom_op.dir/build.make CMakeFiles/test_ternary_custom_op.dir/src/ternary_gemm.cc.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/bench_partition.dir/build.make CMakeFiles/bench_partition.dir/src/ternary_gemm.cc.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_i2s_layout.dir/build.make CMakeFiles/test_i2s_layout.dir/src/ternary_gemm.cc.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/run_mlp_layer.dir/build.make CMakeFiles/run_mlp_layer.dir/src/ternary_gemm.cc.i
 .PHONY : src/ternary_gemm.cc.i
 
 src/ternary_gemm.s: src/ternary_gemm.cc.s
@@ -874,6 +904,8 @@ src/ternary_gemm.cc.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_ternary_gemm.dir/build.make CMakeFiles/test_ternary_gemm.dir/src/ternary_gemm.cc.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_ternary_custom_op.dir/build.make CMakeFiles/test_ternary_custom_op.dir/src/ternary_gemm.cc.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/bench_partition.dir/build.make CMakeFiles/bench_partition.dir/src/ternary_gemm.cc.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_i2s_layout.dir/build.make CMakeFiles/test_i2s_layout.dir/src/ternary_gemm.cc.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/run_mlp_layer.dir/build.make CMakeFiles/run_mlp_layer.dir/src/ternary_gemm.cc.s
 .PHONY : src/ternary_gemm.cc.s
 
 src/vae.o: src/vae.cpp.o
@@ -950,6 +982,54 @@ tests/bench_partition.s: tests/bench_partition.cc.s
 tests/bench_partition.cc.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/bench_partition.dir/build.make CMakeFiles/bench_partition.dir/tests/bench_partition.cc.s
 .PHONY : tests/bench_partition.cc.s
+
+tests/run_mlp_layer.o: tests/run_mlp_layer.cc.o
+.PHONY : tests/run_mlp_layer.o
+
+# target to build an object file
+tests/run_mlp_layer.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/run_mlp_layer.dir/build.make CMakeFiles/run_mlp_layer.dir/tests/run_mlp_layer.cc.o
+.PHONY : tests/run_mlp_layer.cc.o
+
+tests/run_mlp_layer.i: tests/run_mlp_layer.cc.i
+.PHONY : tests/run_mlp_layer.i
+
+# target to preprocess a source file
+tests/run_mlp_layer.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/run_mlp_layer.dir/build.make CMakeFiles/run_mlp_layer.dir/tests/run_mlp_layer.cc.i
+.PHONY : tests/run_mlp_layer.cc.i
+
+tests/run_mlp_layer.s: tests/run_mlp_layer.cc.s
+.PHONY : tests/run_mlp_layer.s
+
+# target to generate assembly for a file
+tests/run_mlp_layer.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/run_mlp_layer.dir/build.make CMakeFiles/run_mlp_layer.dir/tests/run_mlp_layer.cc.s
+.PHONY : tests/run_mlp_layer.cc.s
+
+tests/test_i2s_layout.o: tests/test_i2s_layout.cc.o
+.PHONY : tests/test_i2s_layout.o
+
+# target to build an object file
+tests/test_i2s_layout.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_i2s_layout.dir/build.make CMakeFiles/test_i2s_layout.dir/tests/test_i2s_layout.cc.o
+.PHONY : tests/test_i2s_layout.cc.o
+
+tests/test_i2s_layout.i: tests/test_i2s_layout.cc.i
+.PHONY : tests/test_i2s_layout.i
+
+# target to preprocess a source file
+tests/test_i2s_layout.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_i2s_layout.dir/build.make CMakeFiles/test_i2s_layout.dir/tests/test_i2s_layout.cc.i
+.PHONY : tests/test_i2s_layout.cc.i
+
+tests/test_i2s_layout.s: tests/test_i2s_layout.cc.s
+.PHONY : tests/test_i2s_layout.s
+
+# target to generate assembly for a file
+tests/test_i2s_layout.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_i2s_layout.dir/build.make CMakeFiles/test_i2s_layout.dir/tests/test_i2s_layout.cc.s
+.PHONY : tests/test_i2s_layout.cc.s
 
 tests/test_ternary_custom_op.o: tests/test_ternary_custom_op.cc.o
 .PHONY : tests/test_ternary_custom_op.o
@@ -1055,8 +1135,10 @@ help:
 	@echo "... llava"
 	@echo "... llava_shared"
 	@echo "... llava_static"
+	@echo "... run_mlp_layer"
 	@echo "... sha1"
 	@echo "... sha256"
+	@echo "... test_i2s_layout"
 	@echo "... test_ternary_custom_op"
 	@echo "... test_ternary_gemm"
 	@echo "... xxhash"
@@ -1078,6 +1160,12 @@ help:
 	@echo "... tests/bench_partition.o"
 	@echo "... tests/bench_partition.i"
 	@echo "... tests/bench_partition.s"
+	@echo "... tests/run_mlp_layer.o"
+	@echo "... tests/run_mlp_layer.i"
+	@echo "... tests/run_mlp_layer.s"
+	@echo "... tests/test_i2s_layout.o"
+	@echo "... tests/test_i2s_layout.i"
+	@echo "... tests/test_i2s_layout.s"
 	@echo "... tests/test_ternary_custom_op.o"
 	@echo "... tests/test_ternary_custom_op.i"
 	@echo "... tests/test_ternary_custom_op.s"
