@@ -164,3 +164,10 @@ if (VIBEASR_LITERT)
         ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
     target_link_libraries(test_ternary_custom_op PRIVATE ${LITERT_LIB})
 endif()
+
+if (VIBEASR_LITERT)
+    add_executable(bench_partition tests/bench_partition.cc src/ternary_gemm.cc)
+    target_include_directories(bench_partition PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
+    target_link_libraries(bench_partition PRIVATE ${LITERT_LIB})
+endif()

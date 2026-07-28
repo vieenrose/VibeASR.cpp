@@ -201,6 +201,32 @@ test_ternary_gemm/fast:
 .PHONY : test_ternary_gemm/fast
 
 #=============================================================================
+# Target rules for targets named test_ternary_custom_op
+
+# Build rule for target.
+test_ternary_custom_op: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_ternary_custom_op
+.PHONY : test_ternary_custom_op
+
+# fast build rule for target.
+test_ternary_custom_op/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_ternary_custom_op.dir/build.make CMakeFiles/test_ternary_custom_op.dir/build
+.PHONY : test_ternary_custom_op/fast
+
+#=============================================================================
+# Target rules for targets named bench_partition
+
+# Build rule for target.
+bench_partition: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 bench_partition
+.PHONY : bench_partition
+
+# fast build rule for target.
+bench_partition/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bench_partition.dir/build.make CMakeFiles/bench_partition.dir/build
+.PHONY : bench_partition/fast
+
+#=============================================================================
 # Target rules for targets named ggml
 
 # Build rule for target.
@@ -826,6 +852,8 @@ src/ternary_gemm.o: src/ternary_gemm.cc.o
 # target to build an object file
 src/ternary_gemm.cc.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_ternary_gemm.dir/build.make CMakeFiles/test_ternary_gemm.dir/src/ternary_gemm.cc.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_ternary_custom_op.dir/build.make CMakeFiles/test_ternary_custom_op.dir/src/ternary_gemm.cc.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bench_partition.dir/build.make CMakeFiles/bench_partition.dir/src/ternary_gemm.cc.o
 .PHONY : src/ternary_gemm.cc.o
 
 src/ternary_gemm.i: src/ternary_gemm.cc.i
@@ -834,6 +862,8 @@ src/ternary_gemm.i: src/ternary_gemm.cc.i
 # target to preprocess a source file
 src/ternary_gemm.cc.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_ternary_gemm.dir/build.make CMakeFiles/test_ternary_gemm.dir/src/ternary_gemm.cc.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_ternary_custom_op.dir/build.make CMakeFiles/test_ternary_custom_op.dir/src/ternary_gemm.cc.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bench_partition.dir/build.make CMakeFiles/bench_partition.dir/src/ternary_gemm.cc.i
 .PHONY : src/ternary_gemm.cc.i
 
 src/ternary_gemm.s: src/ternary_gemm.cc.s
@@ -842,6 +872,8 @@ src/ternary_gemm.s: src/ternary_gemm.cc.s
 # target to generate assembly for a file
 src/ternary_gemm.cc.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_ternary_gemm.dir/build.make CMakeFiles/test_ternary_gemm.dir/src/ternary_gemm.cc.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_ternary_custom_op.dir/build.make CMakeFiles/test_ternary_custom_op.dir/src/ternary_gemm.cc.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bench_partition.dir/build.make CMakeFiles/bench_partition.dir/src/ternary_gemm.cc.s
 .PHONY : src/ternary_gemm.cc.s
 
 src/vae.o: src/vae.cpp.o
@@ -895,6 +927,54 @@ src/vae_litert.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/asr_infer.dir/build.make CMakeFiles/asr_infer.dir/src/vae_litert.cpp.s
 .PHONY : src/vae_litert.cpp.s
 
+tests/bench_partition.o: tests/bench_partition.cc.o
+.PHONY : tests/bench_partition.o
+
+# target to build an object file
+tests/bench_partition.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bench_partition.dir/build.make CMakeFiles/bench_partition.dir/tests/bench_partition.cc.o
+.PHONY : tests/bench_partition.cc.o
+
+tests/bench_partition.i: tests/bench_partition.cc.i
+.PHONY : tests/bench_partition.i
+
+# target to preprocess a source file
+tests/bench_partition.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bench_partition.dir/build.make CMakeFiles/bench_partition.dir/tests/bench_partition.cc.i
+.PHONY : tests/bench_partition.cc.i
+
+tests/bench_partition.s: tests/bench_partition.cc.s
+.PHONY : tests/bench_partition.s
+
+# target to generate assembly for a file
+tests/bench_partition.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/bench_partition.dir/build.make CMakeFiles/bench_partition.dir/tests/bench_partition.cc.s
+.PHONY : tests/bench_partition.cc.s
+
+tests/test_ternary_custom_op.o: tests/test_ternary_custom_op.cc.o
+.PHONY : tests/test_ternary_custom_op.o
+
+# target to build an object file
+tests/test_ternary_custom_op.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_ternary_custom_op.dir/build.make CMakeFiles/test_ternary_custom_op.dir/tests/test_ternary_custom_op.cc.o
+.PHONY : tests/test_ternary_custom_op.cc.o
+
+tests/test_ternary_custom_op.i: tests/test_ternary_custom_op.cc.i
+.PHONY : tests/test_ternary_custom_op.i
+
+# target to preprocess a source file
+tests/test_ternary_custom_op.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_ternary_custom_op.dir/build.make CMakeFiles/test_ternary_custom_op.dir/tests/test_ternary_custom_op.cc.i
+.PHONY : tests/test_ternary_custom_op.cc.i
+
+tests/test_ternary_custom_op.s: tests/test_ternary_custom_op.cc.s
+.PHONY : tests/test_ternary_custom_op.s
+
+# target to generate assembly for a file
+tests/test_ternary_custom_op.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_ternary_custom_op.dir/build.make CMakeFiles/test_ternary_custom_op.dir/tests/test_ternary_custom_op.cc.s
+.PHONY : tests/test_ternary_custom_op.cc.s
+
 tests/test_ternary_gemm.o: tests/test_ternary_gemm.cc.o
 .PHONY : tests/test_ternary_gemm.o
 
@@ -933,6 +1013,7 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... asr_infer"
 	@echo "... asr_stream_server"
+	@echo "... bench_partition"
 	@echo "... build_info"
 	@echo "... common"
 	@echo "... ggml"
@@ -976,6 +1057,7 @@ help:
 	@echo "... llava_static"
 	@echo "... sha1"
 	@echo "... sha256"
+	@echo "... test_ternary_custom_op"
 	@echo "... test_ternary_gemm"
 	@echo "... xxhash"
 	@echo "... demo/asr_infer.o"
@@ -993,6 +1075,12 @@ help:
 	@echo "... src/vae_litert.o"
 	@echo "... src/vae_litert.i"
 	@echo "... src/vae_litert.s"
+	@echo "... tests/bench_partition.o"
+	@echo "... tests/bench_partition.i"
+	@echo "... tests/bench_partition.s"
+	@echo "... tests/test_ternary_custom_op.o"
+	@echo "... tests/test_ternary_custom_op.i"
+	@echo "... tests/test_ternary_custom_op.s"
 	@echo "... tests/test_ternary_gemm.o"
 	@echo "... tests/test_ternary_gemm.i"
 	@echo "... tests/test_ternary_gemm.s"

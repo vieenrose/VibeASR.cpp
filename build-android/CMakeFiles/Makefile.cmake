@@ -159,6 +159,8 @@ set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/asr_infer.dir/DependInfo.cmake"
   "CMakeFiles/asr_stream_server.dir/DependInfo.cmake"
   "CMakeFiles/test_ternary_gemm.dir/DependInfo.cmake"
+  "CMakeFiles/test_ternary_custom_op.dir/DependInfo.cmake"
+  "CMakeFiles/bench_partition.dir/DependInfo.cmake"
   "3rdparty/llama.cpp/ggml/src/CMakeFiles/ggml.dir/DependInfo.cmake"
   "3rdparty/llama.cpp/src/CMakeFiles/llama.dir/DependInfo.cmake"
   "3rdparty/llama.cpp/common/CMakeFiles/build_info.dir/DependInfo.cmake"
