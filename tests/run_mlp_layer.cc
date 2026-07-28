@@ -8,7 +8,10 @@
 // The MLP is 88% of a decoder layer's weight bytes (41.3 M of 46.8 M), and decode
 // is bandwidth-bound, so getting this right is most of the decoder.
 //
-//   ./run_mlp_layer mlp_layer_c.tflite <dir-with-mlp_*.bin> [iters]
+//   ./run_mlp_layer <model.tflite> <dir> [iters] [manifest.txt] [expected.bin]
+//
+// manifest.txt lists one input filename per line, in signature order; without it
+// the MLP block's own file set is assumed.
 
 #include <cmath>
 #include <cstdio>
@@ -101,12 +104,27 @@ int main(int argc, char** argv) {
     if (argc < 3) { fprintf(stderr, "usage: %s <model.tflite> <dir> [iters]\n", argv[0]); return 1; }
     const std::string model_path = argv[1], dir = argv[2];
     const int iters = argc > 3 ? atoi(argv[3]) : 10;
+    const std::string manifest = argc > 4 ? argv[4] : "";
+    const std::string expected_name = argc > 5 ? argv[5] : "mlp_expected.bin";
 
-    // Signature order matches export_mlp_layer.py:
+    // Signature order matches export_mlp_layer.py when no manifest is given:
     //   args_0 x, 1 gate_w, 2 gate_s, 3 up_w, 4 up_s, 5 down_w, 6 down_s
-    const char* files[7] = {"mlp_input.bin", "mlp_gate_w.bin", "mlp_gate_s.bin",
-                            "mlp_up_w.bin", "mlp_up_s.bin",
-                            "mlp_down_w.bin", "mlp_down_s.bin"};
+    std::vector<std::string> files = {"mlp_input.bin", "mlp_gate_w.bin", "mlp_gate_s.bin",
+                                      "mlp_up_w.bin", "mlp_up_s.bin",
+                                      "mlp_down_w.bin", "mlp_down_s.bin"};
+    if (!manifest.empty()) {
+        files.clear();
+        FILE* mf = fopen((dir + "/" + manifest).c_str(), "r");
+        if (!mf) { fprintf(stderr, "no manifest %s\n", manifest.c_str()); return 1; }
+        char line[512];
+        while (fgets(line, sizeof(line), mf)) {
+            std::string t(line);
+            while (!t.empty() && (t.back() == '\n' || t.back() == '\r' || t.back() == ' ')) t.pop_back();
+            if (!t.empty()) files.push_back(t);
+        }
+        fclose(mf);
+        printf("manifest: %zu inputs\n", files.size());
+    }
 
     LiteRtEnvironment env = nullptr;
     LiteRtModel model = nullptr;
@@ -159,10 +177,10 @@ int main(int argc, char** argv) {
         if (LiteRtCreateTensorBufferFromHostMemory(&tt, blobs.back().data(), need, nullptr,
                                                    &ins[i]) != kLiteRtStatusOk) {
             fprintf(stderr, "zero-copy wrap refused for %s (%zu bytes); "
-                            "falling back to a managed copy\n", files[i], need);
+                            "falling back to a managed copy\n", files[i].c_str(), need);
             if (LiteRtCreateManagedTensorBuffer(env, kLiteRtTensorBufferTypeHostMemory, &tt,
                                                 need, &ins[i]) != kLiteRtStatusOk) {
-                fprintf(stderr, "managed buffer also failed for %s\n", files[i]);
+                fprintf(stderr, "managed buffer also failed for %s\n", files[i].c_str());
                 return 1;
             }
             void* dst = nullptr;
@@ -190,9 +208,9 @@ int main(int argc, char** argv) {
     }
     // Latch before the timing loop below adds to it.
     const int calls_first_run = st.calls;
-    printf("custom op invocations: %d (expect 3: gate, up, down)\n", calls_first_run);
+    printf("custom op invocations: %d\n", calls_first_run);
 
-    const auto expect_raw = read_file(dir + "/mlp_expected.bin");
+    const auto expect_raw = read_file(dir + "/" + expected_name);
     const float* expect = (const float*)expect_raw.data();
     const size_t n_out = expect_raw.size() / sizeof(float);
     void* p = nullptr;
@@ -214,16 +232,19 @@ int main(int argc, char** argv) {
     for (int i = 0; i < iters; i++)
         LiteRtRunCompiledModel(cm, 0, (LiteRtParamIndex)ins.size(), ins.data(), 1, &out);
     const double each = (now_s() - t0) / iters;
-    const double wbytes = 3.0 * 8960 * 1536 / 4;
+    // Packed weight bytes actually streamed per run — every int8 input that is
+    // large enough to be a weight matrix rather than a scale vector.
+    double wbytes = 0;
+    for (size_t i = 0; i < blobs.size(); i++)
+        if (blobs[i].size() > 65536) wbytes += (double)blobs[i].size();
     printf("\n%.3f ms per block, %.2f GB/s over packed weights (%.1f MB)\n",
            each * 1e3, wbytes / each / 1e9, wbytes / 1e6);
-    printf("28 layers => %.0f ms/token for the MLP half (%s)\n", each * 28 * 1e3,
-           ternary_gemm_impl_name());
+    printf("28 layers => %.0f ms/token (%s)\n", each * 28 * 1e3, ternary_gemm_impl_name());
 
     // Activation quantization is the only expected difference from the dense
     // reference; the weights themselves are bit-identical.
-    const bool pass = calls_first_run == 3 && cos > 0.99;
-    printf("\n%s\n", pass ? "PASS - real ternary MLP runs on LiteRT"
+    const bool pass = calls_first_run > 0 && cos > 0.99;
+    printf("\n%s\n", pass ? "PASS - real ternary block runs on LiteRT"
                           : "FAIL");
     return pass ? 0 : 1;
 }
