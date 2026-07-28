@@ -124,6 +124,10 @@ def main():
     ap.add_argument("--layers", type=int, default=2)
     ap.add_argument("--ctx", type=int, default=64)
     ap.add_argument("--out", default=None)
+    # A REAL embedding, not noise. Real rows have rms ~0.02-0.05; torch.randn*0.5
+    # is ~20x larger, and with residual connections that compounds through the
+    # stack (rms 21.7 by layer 8) and wrecks the int8 activation quantization.
+    ap.add_argument("--token", type=int, default=9707)
     args = ap.parse_args()
     out = args.out or f"decoder_{args.layers}L_{args.ctx}.tflite"
 
@@ -147,7 +151,8 @@ def main():
     print(f"loaded {args.layers} layers ({len(weights)} weight tensors)      ")
 
     dim = 1536
-    x = torch.randn(1, dim) * 0.5
+    x = torch.from_numpy(G.token_embedding(g, args.token, dim)).reshape(1, dim)
+    print(f"input: token {args.token}, rms={x.pow(2).mean().sqrt():.5f}")
     pos = torch.tensor([3])
     caches = []
     for _ in range(args.layers):

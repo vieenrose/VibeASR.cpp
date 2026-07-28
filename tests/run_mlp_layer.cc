@@ -206,6 +206,30 @@ int main(int argc, char** argv) {
         LiteRtCreateManagedTensorBuffer(env, kLiteRtTensorBufferTypeHostMemory, &tt, bytes, &outs[i]);
     }
     printf("model has %llu outputs\n", (unsigned long long)n_out_sig);
+
+    // ALIAS each KV cache in/out pair to ONE buffer. Without this the runtime
+    // treats cache_out as a separate tensor and copies the whole cache every
+    // layer every token — 28 MB per token at ctx=512 — instead of updating one
+    // row in place. This is the trick MossLiteEngine's KvStore uses.
+    //
+    // Layout comes from export_decoder.py: outputs are (hidden, k0..k[L-1],
+    // v0..v[L-1]) and the cache inputs are the trailing 2L, interleaved k,v per
+    // layer. A graph shaped that way is recognised; anything else is left alone.
+    int aliased = 0;
+    if (n_out_sig >= 3 && (n_out_sig - 1) % 2 == 0) {
+        const LiteRtParamIndex L = (n_out_sig - 1) / 2;
+        if (n_in >= 2 * L) {
+            const LiteRtParamIndex base = n_in - 2 * L;
+            for (LiteRtParamIndex i = 0; i < L; i++) {
+                LiteRtDestroyTensorBuffer(outs[1 + i]);
+                outs[1 + i] = ins[base + 2 * i];            // k_out[i] <- k_in[i]
+                LiteRtDestroyTensorBuffer(outs[1 + L + i]);
+                outs[1 + L + i] = ins[base + 2 * i + 1];    // v_out[i] <- v_in[i]
+                aliased += 2;
+            }
+        }
+    }
+    if (aliased) printf("aliased %d KV buffers in place\n", aliased);
     LiteRtTensorBuffer out = outs[0];
 
     if (LiteRtRunCompiledModel(cm, 0, (LiteRtParamIndex)ins.size(), ins.data(),

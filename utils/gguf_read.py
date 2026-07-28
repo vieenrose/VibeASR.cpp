@@ -156,3 +156,55 @@ def i2s_scale(raw: np.ndarray, k: int, n: int) -> float:
     """Per-tensor scale: first float of the 32-byte tail."""
     tail = raw[k * n // 4:].tobytes()[:4]
     return float(np.frombuffer(tail, dtype=np.float32)[0])
+
+
+def dequant_q6_k(raw: np.ndarray, n_elements: int) -> np.ndarray:
+    """Q6_K -> float32 [n_elements].
+
+    Needed to get a REAL token embedding as decoder input. Feeding torch.randn
+    instead made the reference activations grow to rms 21.7 by layer 8 and the
+    28-layer cosine collapse to 0.816 — an artifact of unrealistic input rather
+    than of the port, which is exactly the sort of thing a synthetic probe hides.
+
+    Block of 256 weights, 210 bytes: ql[128] low nibbles, qh[64] high 2-bit pairs,
+    scales[16] int8, d fp16. Mirrors llama.cpp's dequantize_row_q6_K.
+    """
+    BLOCK, NBYTES = 256, 210
+    nb = n_elements // BLOCK
+    b = raw[: nb * NBYTES].reshape(nb, NBYTES)
+    ql = b[:, :128].astype(np.int16)
+    qh = b[:, 128:192].astype(np.int16)
+    sc = b[:, 192:208].view(np.int8).astype(np.float32)
+    d = b[:, 208:210].copy().view(np.float16).astype(np.float32)     # [nb,1]
+
+    out = np.empty((nb, BLOCK), dtype=np.float32)
+    for half in range(2):                       # two 128-weight halves per block
+        qlo = ql[:, half * 64:(half + 1) * 64]
+        qho = qh[:, half * 32:(half + 1) * 32]
+        sco = sc[:, half * 8:(half + 1) * 8]
+        l = np.arange(32)
+        is_ = l // 16
+        q = [
+            ((qlo[:, l] & 0xF) | (((qho[:, l] >> 0) & 3) << 4)) - 32,
+            ((qlo[:, l + 32] & 0xF) | (((qho[:, l] >> 2) & 3) << 4)) - 32,
+            ((qlo[:, l] >> 4) | (((qho[:, l] >> 4) & 3) << 4)) - 32,
+            ((qlo[:, l + 32] >> 4) | (((qho[:, l] >> 6) & 3) << 4)) - 32,
+        ]
+        for j, off in enumerate((0, 32, 64, 96)):
+            s = sco[:, is_ + 2 * j]
+            out[:, half * 128 + off:half * 128 + off + 32] = d * s * q[j].astype(np.float32)
+    return out.reshape(-1)[:n_elements]
+
+
+def token_embedding(g: "Gguf", token_id: int, dim: int) -> np.ndarray:
+    """One row of token_embd.weight. GGUF stores it [dim, vocab] with dim
+    contiguous, so row `token_id` is a contiguous run of `dim` weights."""
+    t = g.tensors["token_embd.weight"]
+    raw = g.raw("token_embd.weight")
+    BLOCK, NBYTES = 256, 210
+    start = token_id * dim
+    first_blk, last_blk = start // BLOCK, (start + dim - 1) // BLOCK
+    span = raw[first_blk * NBYTES:(last_blk + 1) * NBYTES]
+    vals = dequant_q6_k(span, (last_blk - first_blk + 1) * BLOCK)
+    off = start - first_blk * BLOCK
+    return vals[off:off + dim]
