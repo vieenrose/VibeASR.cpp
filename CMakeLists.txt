@@ -13,6 +13,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # option list
 option(BITNET_ARM_TL1    "bitnet.cpp: use tl1 on arm platform"    OFF)
+
+# LiteRT/XNNPACK audio front end alongside the ggml one (src/vae_litert.cpp).
+# On ARM it encodes ~1.5x faster with better feature fidelity, at the cost of more
+# anonymous memory; the LM stays on ggml either way. Needs the prebuilt libLiteRt.so
+# for the target ABI — headers are vendored in third_party/litert.
+option(VIBEASR_LITERT "build the LiteRT audio front end" OFF)
+set(LITERT_LIB "" CACHE FILEPATH "path to the prebuilt libLiteRt.so for this ABI")
 option(BITNET_X86_TL2    "bitnet.cpp: use tl2 on x86 platform"    OFF)
 
 
@@ -45,11 +52,21 @@ add_subdirectory(src)
 add_subdirectory(3rdparty/llama.cpp)
 
 # Add standalone ASR inference executable
-add_executable(asr_infer
-    demo/asr_infer.cpp
-    src/vae.cpp
-    src/vae.h
-)
+set(ASR_INFER_SRC demo/asr_infer.cpp src/vae.cpp src/vae.h)
+if (VIBEASR_LITERT)
+    if (NOT LITERT_LIB)
+        message(FATAL_ERROR "VIBEASR_LITERT=ON needs -DLITERT_LIB=/path/to/libLiteRt.so")
+    endif()
+    list(APPEND ASR_INFER_SRC src/vae_litert.cpp src/vae_litert.h)
+endif()
+
+add_executable(asr_infer ${ASR_INFER_SRC})
+
+if (VIBEASR_LITERT)
+    target_compile_definitions(asr_infer PRIVATE VIBEASR_LITERT)
+    target_include_directories(asr_infer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
+    target_link_libraries(asr_infer PRIVATE ${LITERT_LIB})
+endif()
 
 target_include_directories(asr_infer PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src

@@ -9,6 +9,9 @@
  */
 
 #include "vae.h"
+#ifdef VIBEASR_LITERT
+#include "vae_litert.h"
+#endif
 #include "llama.h"
 #include "ggml.h"
 
@@ -214,27 +217,57 @@ int main(int argc, char ** argv) {
     mem_trace("enter step 2");
     t0 = get_time_ms();
 
+    // A .tflite front end is the LiteRT/XNNPACK one, which on ARM encodes ~1.5x
+    // faster than ggml's and with better feature fidelity, at the cost of more
+    // anonymous memory (see vae_litert.cpp). The LM stays on ggml either way —
+    // ggml beats LiteRT on autoregressive decode by roughly an order of magnitude.
+    const bool use_litert =
+        params.vae_model_path.size() > 7 &&
+        params.vae_model_path.compare(params.vae_model_path.size() - 7, 7, ".tflite") == 0;
+#ifndef VIBEASR_LITERT
+    if (use_litert) {
+        fprintf(stderr, "Error: %s is a LiteRT model but this build has "
+                        "VIBEASR_LITERT=OFF\n", params.vae_model_path.c_str());
+        return 1;
+    }
+#endif
+
     struct vae_model_params vae_mparams = vae_model_default_params();
     vae_mparams.n_threads = params.n_threads;
 
-    vae_model_t * vae_model = vae_load_model_from_file(params.vae_model_path.c_str(), vae_mparams);
-    if (!vae_model) {
-        fprintf(stderr, "Error: Failed to load VAE model\n");
-        return 1;
+    vae_model_t * vae_model = nullptr;
+#ifdef VIBEASR_LITERT
+    vae_litert_model * lite = nullptr;
+    if (use_litert) {
+        lite = vae_litert_load(params.vae_model_path.c_str(), params.n_threads, 1536);
+        if (!lite) { fprintf(stderr, "Error: Failed to load LiteRT VAE model\n"); return 1; }
+    } else
+#endif
+    {
+        vae_model = vae_load_model_from_file(params.vae_model_path.c_str(), vae_mparams);
+        if (!vae_model) {
+            fprintf(stderr, "Error: Failed to load VAE model\n");
+            return 1;
+        }
     }
 
     struct vae_context_params vae_cparams = vae_context_default_params();
     vae_cparams.n_threads = params.n_threads;
 
-    vae_context_t * vae_ctx = vae_new_context_with_model(vae_model, vae_cparams);
-    if (!vae_ctx) {
-        fprintf(stderr, "Error: Failed to create VAE context\n");
-        vae_free_model(vae_model);
-        return 1;
+    vae_context_t * vae_ctx = nullptr;
+    if (vae_model) {
+        vae_ctx = vae_new_context_with_model(vae_model, vae_cparams);
+        if (!vae_ctx) {
+            fprintf(stderr, "Error: Failed to create VAE context\n");
+            vae_free_model(vae_model);
+            return 1;
+        }
     }
 
-    int acoustic_dim = vae_model_acoustic_dim(vae_model);
-    int semantic_dim = vae_model_semantic_dim(vae_model);
+    // The LiteRT export already sums the two planes, so it reports one 1536-wide
+    // result and the semantic plane below is left as zeros.
+    int acoustic_dim = vae_model ? vae_model_acoustic_dim(vae_model) : 1536;
+    int semantic_dim = vae_model ? vae_model_semantic_dim(vae_model) : 1536;
     fprintf(stderr, "  VAE loaded: acoustic_dim=%d, semantic_dim=%d\n\n",
             acoustic_dim, semantic_dim);
 
@@ -298,9 +331,18 @@ int main(int argc, char ** argv) {
     std::vector<float> acoustic_features(expected_frames * acoustic_dim);
     float acoustic_time_ms = 0.0f;
 
-    int32_t acoustic_frames = vae_encode_acoustic_with_timing(
-        vae_ctx, audio.samples.data(), n_samples,
-        acoustic_features.data(), &acoustic_time_ms);
+    int32_t acoustic_frames;
+#ifdef VIBEASR_LITERT
+    if (lite) {
+        acoustic_frames = vae_litert_encode(lite, audio.samples.data(), n_samples,
+                                            acoustic_features.data(), &acoustic_time_ms);
+    } else
+#endif
+    {
+        acoustic_frames = vae_encode_acoustic_with_timing(
+            vae_ctx, audio.samples.data(), n_samples,
+            acoustic_features.data(), &acoustic_time_ms);
+    }
 
     if (acoustic_frames < 0) {
         fprintf(stderr, "Error: VAE acoustic encoding failed\n");
@@ -321,9 +363,18 @@ int main(int argc, char ** argv) {
         std::vector<float> semantic_features(expected_frames * semantic_dim);
         float semantic_time_ms = 0.0f;
 
-        int32_t semantic_frames = vae_encode_semantic_with_timing(
-            vae_ctx, audio.samples.data(), n_samples,
-            semantic_features.data(), &semantic_time_ms);
+        int32_t semantic_frames;
+#ifdef VIBEASR_LITERT
+        if (lite) {
+            // Already folded into the acoustic result; zeros keep the sum right.
+            semantic_frames = acoustic_frames;
+        } else
+#endif
+        {
+            semantic_frames = vae_encode_semantic_with_timing(
+                vae_ctx, audio.samples.data(), n_samples,
+                semantic_features.data(), &semantic_time_ms);
+        }
 
         if (semantic_frames < 0) {
             fprintf(stderr, "Error: VAE semantic encoding failed\n");
