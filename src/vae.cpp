@@ -724,6 +724,47 @@ static int32_t vae_encode_impl(
                 n_samples, n_samples / 24000.0, ggml_graph_n_nodes(gf),
                 ggml_gallocr_get_buffer_size(ctx->galloc, 0) / (1024.0 * 1024.0),
                 plan.work_size / (1024.0 * 1024.0));
+        // work_size is a MAX over ops, so ONE worst node sets it. Find that node by
+        // re-planning each node alone: exact by construction, no duplication of
+        // ggml's per-op sizing rules (which differ per op and per quant type).
+        // Planning the subgraph ENDING at node i covers nodes 0..i, so work_size is
+        // monotonic in i and steps up exactly at the culprit. Bisect for the first
+        // index that already reaches the full figure. (ggml_cgraph is opaque, so a
+        // one-node view is not available; this needs only the public API.)
+        auto work_through = [&](int i) -> size_t {
+            const size_t sz = ggml_tensor_overhead() * max_nodes
+                            + ggml_graph_overhead_custom(max_nodes, false);
+            struct ggml_init_params ip = { sz, nullptr, true };
+            struct ggml_context * tmp = ggml_init(ip);
+            if (!tmp) return 0;
+            struct ggml_cgraph * g = ggml_new_graph_custom(tmp, max_nodes, false);
+            ggml_build_forward_expand(g, ggml_graph_node(gf, i));
+            const size_t w = ggml_graph_plan(g, ctx->n_threads, nullptr).work_size;
+            ggml_free(tmp);
+            return w;
+        };
+        int lo = 0, hi = ggml_graph_n_nodes(gf) - 1;
+        while (lo < hi) {
+            const int mid = lo + (hi - lo) / 2;
+            if (work_through(mid) >= plan.work_size) hi = mid; else lo = mid + 1;
+        }
+        const int worst_i = lo;
+        const size_t worst = plan.work_size;
+        {
+            struct ggml_tensor * nd = ggml_graph_node(gf, worst_i);
+            fprintf(stderr,
+                    "[VAE]   work ceiling: node #%d %s out=[%lld,%lld,%lld] type=%s -> %.1f MB\n",
+                    worst_i, ggml_op_name(nd->op), (long long)nd->ne[0],
+                    (long long)nd->ne[1], (long long)nd->ne[2],
+                    ggml_type_name(nd->type), worst / (1024.0 * 1024.0));
+            for (int s = 0; s < 2; s++) {
+                if (struct ggml_tensor * src = nd->src[s]) {
+                    fprintf(stderr, "[VAE]     src%d [%lld,%lld,%lld] %s\n", s,
+                            (long long)src->ne[0], (long long)src->ne[1],
+                            (long long)src->ne[2], ggml_type_name(src->type));
+                }
+            }
+        }
     }
 
     // Tensor data pointers only become valid once the graph is allocated, so
