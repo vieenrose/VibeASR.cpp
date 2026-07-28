@@ -5,7 +5,9 @@
 #include <string.h>
 
 #include <algorithm>
+#include <condition_variable>
 #include <functional>
+#include <mutex>
 #include <thread>
 #include <vector>
 
@@ -33,18 +35,95 @@ static int ternary_threads() {
     return n;
 }
 
-static void ternary_parallel_for(int n, const std::function<void(int, int)>& body) {
-    const int nt = std::min(ternary_threads(), n);
-    if (nt <= 1) { body(0, n); return; }
-    std::vector<std::thread> pool;
-    pool.reserve(nt - 1);
-    const int chunk = (n + nt - 1) / nt;
-    for (int t = 1; t < nt; t++) {
-        const int lo = std::min(n, t * chunk), hi = std::min(n, lo + chunk);
-        if (lo < hi) pool.emplace_back([&body, lo, hi] { body(lo, hi); });
+// PERSISTENT workers. The first version spawned std::threads per call, which is
+// catastrophic at this granularity: a decoder does 7 GEMMs per layer x 28 layers
+// = 196 calls per token, so ~600 thread creations per token. Measured on a Boox
+// for one attention block, where the GEMMs are small:
+//
+//   1 thread 2.003 ms   2 threads 3.121 ms   4 threads 3.524 ms
+//
+// i.e. "parallelism" made it 1.8x SLOWER. With a pool the threads are created
+// once and parked on a condition variable between calls.
+class TernaryPool {
+ public:
+    explicit TernaryPool(int n) : n_(n) {
+        for (int i = 1; i < n_; i++) workers_.emplace_back([this, i] { worker(i); });
     }
-    body(0, std::min(n, chunk));
-    for (auto& th : pool) th.join();
+    ~TernaryPool() {
+        { std::lock_guard<std::mutex> lk(m_); stop_ = true; }
+        cv_.notify_all();
+        for (auto& t : workers_) t.join();
+    }
+
+    void run(int n, const std::function<void(int, int)>& body) {
+        const int nt = std::min(n_, n);
+        if (nt <= 1) { body(0, n); return; }
+        {
+            std::lock_guard<std::mutex> lk(m_);
+            body_ = &body;
+            n_items_ = n;
+            nt_ = nt;
+            remaining_ = nt - 1;
+            ++epoch_;
+        }
+        cv_.notify_all();
+        run_range(0);                       // this thread takes the first chunk
+        std::unique_lock<std::mutex> lk(m_);
+        done_.wait(lk, [this] { return remaining_ == 0; });
+        body_ = nullptr;
+    }
+
+ private:
+    void run_range(int idx) {
+        const int chunk = (n_items_ + nt_ - 1) / nt_;
+        const int lo = std::min(n_items_, idx * chunk);
+        const int hi = std::min(n_items_, lo + chunk);
+        if (lo < hi) (*body_)(lo, hi);
+    }
+
+    void worker(int idx) {
+        uint64_t seen = 0;
+        for (;;) {
+            std::unique_lock<std::mutex> lk(m_);
+            cv_.wait(lk, [this, &seen] { return stop_ || epoch_ != seen; });
+            if (stop_) return;
+            seen = epoch_;
+            const bool active = idx < nt_;
+            lk.unlock();
+            if (active) run_range(idx);
+            lk.lock();
+            if (--remaining_ == 0) done_.notify_one();
+        }
+    }
+
+    const int n_;
+    std::vector<std::thread> workers_;
+    std::mutex m_;
+    std::condition_variable cv_, done_;
+    const std::function<void(int, int)>* body_ = nullptr;
+    int n_items_ = 0, nt_ = 1, remaining_ = 0;
+    uint64_t epoch_ = 0;
+    bool stop_ = false;
+};
+
+// Parallelise only when there is enough work to pay for the handoff. Measured per
+// block on a Boox, with the pool in place:
+//
+//            1 thread   2 threads   4 threads
+//   MLP       6.514 ms   3.897 ms    3.232 ms   <- wants all threads
+//   attention 1.958 ms   2.136 ms    2.428 ms   <- wants ONE
+//
+// The MLP's projections are 8960 rows; attention's k/v are 256. Below roughly a
+// megabyte of packed weights the barrier costs more than the split saves (q/o at
+// 590 KB still lost: 1.958 ms serial vs 2.234 ms split), so a fixed thread count
+// is wrong for a decoder that contains both.
+static const size_t kParallelMinBytes = 1024 * 1024;
+
+static void ternary_parallel_for(int n, size_t work_bytes,
+                                 const std::function<void(int, int)>& body) {
+    if (work_bytes < kParallelMinBytes) { body(0, n); return; }
+    static TernaryPool pool(ternary_threads());
+    pool.run(n, body);
 }
 
 // Four 2-bit codes per byte; element j sits at shift 2*(j%4).
@@ -256,7 +335,7 @@ void ternary_gemm(const uint8_t* packed_w, int n_rows, int k,
         const float xsc = x_scale[i];
         float* yi = y + (size_t)i * n_rows;
 
-        ternary_parallel_for(n_rows, [&](int r0, int r1) {
+        ternary_parallel_for(n_rows, (size_t)n_rows * stride, [&](int r0, int r1) {
             for (int r = r0; r < r1; r++) {
                 const int32_t acc =
                     ternary_dot_neon_planes(packed_w + (size_t)r * stride, pl, quads, k, qi);
