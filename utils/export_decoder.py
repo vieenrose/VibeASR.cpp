@@ -27,10 +27,13 @@ N_HEAD, N_KV, HEAD_DIM, ROPE_THETA, EPS = 12, 2, 128, 1_000_000.0, 1e-6
 
 
 def load_proj(g, name):
+    """-> (packed int8 [n, k/4], scale). Stays int8 throughout: a float32 detour
+    would cost 55 MB per FFN tensor and there are 196 of them."""
     t = g.tensors[name]
     k, n = int(t.dims[0]), int(t.dims[1])
     raw = g.raw(name)
-    return G.unpack_i2s(raw, k, n).astype(np.float32), G.i2s_scale(raw, k, n)
+    dense = G.unpack_i2s(raw, k, n)                      # int8 {-1,0,1}
+    return T.pack_ternary(torch.from_numpy(dense)), G.i2s_scale(raw, k, n), n
 
 
 def f32(g, name):
@@ -137,9 +140,9 @@ def main():
         for tag, gname in (("q", "attn_q"), ("k", "attn_k"), ("v", "attn_v"),
                            ("o", "attn_output"), ("g", "ffn_gate"),
                            ("u", "ffn_up"), ("d", "ffn_down")):
-            dense, sc = load_proj(g, p + gname + ".weight")
-            weights.append(T.pack_ternary(torch.from_numpy(dense).to(torch.int8)))
-            weights.append(torch.full((dense.shape[0],), float(sc)))
+            packed, sc, rows = load_proj(g, p + gname + ".weight")
+            weights.append(packed)
+            weights.append(torch.full((rows,), float(sc)))
         print(f"  layer {i} loaded", end="\r")
     print(f"loaded {args.layers} layers ({len(weights)} weight tensors)      ")
 
