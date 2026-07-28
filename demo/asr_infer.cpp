@@ -34,17 +34,21 @@
 static void mem_trace(const char * stage) {
 #ifdef __linux__
     if (!getenv("VIBEASR_MEM_TRACE")) return;
-    long rss = 0, hwm = 0;
+    long rss = 0, hwm = 0, anon = 0, file = 0;
     if (FILE * f = fopen("/proc/self/status", "r")) {
         char line[256];
         while (fgets(line, sizeof(line), f)) {
             if (!strncmp(line, "VmRSS:", 6)) rss = atol(line + 6);
             else if (!strncmp(line, "VmHWM:", 6)) hwm = atol(line + 6);
+            else if (!strncmp(line, "RssAnon:", 8)) anon = atol(line + 8);
+            else if (!strncmp(line, "RssFile:", 8)) file = atol(line + 8);
         }
         fclose(f);
     }
-    fprintf(stderr, "[mem] %-22s rss=%7.1f MB  peak=%7.1f MB\n",
-            stage, rss / 1024.0, hwm / 1024.0);
+    // anon is the number that matters under memory pressure: file-backed pages
+    // are clean and evictable, anonymous pages must be kept or swapped.
+    fprintf(stderr, "[mem] %-22s rss=%7.1f  anon=%7.1f  file=%7.1f  peak=%7.1f MB\n",
+            stage, rss / 1024.0, anon / 1024.0, file / 1024.0, hwm / 1024.0);
 #else
     (void)stage;
 #endif

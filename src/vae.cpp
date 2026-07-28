@@ -17,6 +17,13 @@
 #include <string>
 #include <vector>
 
+#ifndef _WIN32
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
+
 
 static struct ggml_tensor* ggml_nn_rms_norm(
     struct ggml_context* ctx,
@@ -317,7 +324,12 @@ struct vae_model {
     struct ggml_context* params_ctx = nullptr;
     ggml_backend_t backend = nullptr;
     ggml_backend_buffer_t params_buffer = nullptr;
-    
+
+    // Read-only mapping of the GGUF backing the weights, when mmap succeeded.
+    // Tensor data points into it, so it must outlive every tensor.
+    void*  mapping = nullptr;
+    size_t mapping_size = 0;
+
     AudioVAEEncoder acoustic_encoder;
     AudioVAEEncoder semantic_encoder;
     
@@ -333,6 +345,12 @@ struct vae_model {
         if (params_ctx) {
             ggml_free(params_ctx);
         }
+#ifndef _WIN32
+        // After the buffer, which only borrowed this memory when mapped.
+        if (mapping) {
+            munmap(mapping, mapping_size);
+        }
+#endif
         if (backend) {
             ggml_backend_free(backend);
         }
@@ -555,34 +573,75 @@ vae_model_t* vae_load_model_from_file(
         model->tensors[name] = tensor;
     }
     
-    // Allocate backend buffer
-    model->params_buffer = ggml_backend_alloc_ctx_tensors(model->params_ctx, model->backend);
-    
-    // Load tensor data from file
-    FILE* f = fopen(model_path, "rb");
-    if (!f) {
-        fprintf(stderr, "[VAE] Error: Failed to open file for reading\n");
-        gguf_free(gguf_ctx);
-        delete model;
-        return nullptr;
+    const size_t data_offset = gguf_get_data_offset(gguf_ctx);
+
+    // Point the tensors straight at a read-only MAPPING of the file rather than
+    // copying every weight into a freshly allocated backend buffer.
+    //
+    // The copy cost 0.65 GB of ANONYMOUS memory — memory the kernel can neither
+    // drop nor share, and which counts in full against an Android app's budget.
+    // Mapped weights are clean, file-backed pages: evictable under pressure,
+    // reloaded from storage on demand, and shared between processes opening the
+    // same model. The bytes at each tensor's offset are exactly what the copy
+    // used to move (ggml_nbytes of them), so the tensors see identical data.
+    //
+    // This is what llama.cpp already does for the LM half of this pipeline,
+    // which is why the LM shows up as file-backed and the VAE did not.
+    bool mapped = false;
+#ifndef _WIN32
+    const int fd = open(model_path, O_RDONLY);
+    if (fd >= 0) {
+        struct stat st;
+        if (fstat(fd, &st) == 0 && st.st_size > 0) {
+            void * base = mmap(nullptr, (size_t)st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+            if (base != MAP_FAILED) {
+                model->mapping      = base;
+                model->mapping_size = (size_t)st.st_size;
+                model->params_buffer = ggml_backend_cpu_buffer_from_ptr(base, (size_t)st.st_size);
+
+                for (int i = 0; i < n_tensors; i++) {
+                    const char* name = gguf_get_tensor_name(gguf_ctx, i);
+                    struct ggml_tensor* tensor = model->tensors[name];
+                    tensor->buffer = model->params_buffer;
+                    tensor->data   = (char *)base + data_offset + gguf_get_tensor_offset(gguf_ctx, i);
+                }
+                mapped = true;
+            }
+        }
+        close(fd);
     }
-    
-    size_t data_offset = gguf_get_data_offset(gguf_ctx);
-    for (int i = 0; i < n_tensors; i++) {
-        const char* name = gguf_get_tensor_name(gguf_ctx, i);
-        struct ggml_tensor* tensor = model->tensors[name];
-        size_t offset = data_offset + gguf_get_tensor_offset(gguf_ctx, i);
-        
-        fseek(f, offset, SEEK_SET);
-        
-        size_t tensor_size = ggml_nbytes(tensor);
-        std::vector<char> buf(tensor_size);
-        fread(buf.data(), 1, tensor_size, f);
-        
-        ggml_backend_tensor_set(tensor, buf.data(), 0, tensor_size);
+#endif
+
+    if (!mapped) {
+        // Fallback: copy into an owned buffer. Windows takes this path, as does
+        // any filesystem that will not hand out a mapping.
+        model->params_buffer = ggml_backend_alloc_ctx_tensors(model->params_ctx, model->backend);
+
+        FILE* f = fopen(model_path, "rb");
+        if (!f) {
+            fprintf(stderr, "[VAE] Error: Failed to open file for reading\n");
+            gguf_free(gguf_ctx);
+            delete model;
+            return nullptr;
+        }
+
+        for (int i = 0; i < n_tensors; i++) {
+            const char* name = gguf_get_tensor_name(gguf_ctx, i);
+            struct ggml_tensor* tensor = model->tensors[name];
+            size_t offset = data_offset + gguf_get_tensor_offset(gguf_ctx, i);
+
+            fseek(f, offset, SEEK_SET);
+
+            size_t tensor_size = ggml_nbytes(tensor);
+            std::vector<char> buf(tensor_size);
+            fread(buf.data(), 1, tensor_size, f);
+
+            ggml_backend_tensor_set(tensor, buf.data(), 0, tensor_size);
+        }
+
+        fclose(f);
     }
-    
-    fclose(f);
+
     gguf_free(gguf_ctx);
     
     // Load encoder weights
