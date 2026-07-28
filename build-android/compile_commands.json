@@ -90,6 +90,30 @@
   "output": "CMakeFiles/run_mlp_layer.dir/src/ternary_gemm.cc.o"
 },
 {
+  "directory": "/home/luigi/VibeASR.cpp/build-android",
+  "command": "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot  -I/home/luigi/VibeASR.cpp/src -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -O3 -DNDEBUG  -std=gnu11 -fPIC -o CMakeFiles/voxsum-q6k.dir/src/q6k.c.o -c /home/luigi/VibeASR.cpp/src/q6k.c",
+  "file": "/home/luigi/VibeASR.cpp/src/q6k.c",
+  "output": "CMakeFiles/voxsum-q6k.dir/src/q6k.c.o"
+},
+{
+  "directory": "/home/luigi/VibeASR.cpp/build-android",
+  "command": "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot  -I/home/luigi/VibeASR.cpp/src -I/home/luigi/VibeASR.cpp/third_party -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -O3 -DNDEBUG  -fPIE -o CMakeFiles/generate.dir/tests/generate.cc.o -c /home/luigi/VibeASR.cpp/tests/generate.cc",
+  "file": "/home/luigi/VibeASR.cpp/tests/generate.cc",
+  "output": "CMakeFiles/generate.dir/tests/generate.cc.o"
+},
+{
+  "directory": "/home/luigi/VibeASR.cpp/build-android",
+  "command": "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot  -I/home/luigi/VibeASR.cpp/src -I/home/luigi/VibeASR.cpp/third_party -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -O3 -DNDEBUG  -fPIE -o CMakeFiles/generate.dir/src/ternary_gemm.cc.o -c /home/luigi/VibeASR.cpp/src/ternary_gemm.cc",
+  "file": "/home/luigi/VibeASR.cpp/src/ternary_gemm.cc",
+  "output": "CMakeFiles/generate.dir/src/ternary_gemm.cc.o"
+},
+{
+  "directory": "/home/luigi/VibeASR.cpp/build-android",
+  "command": "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot  -I/home/luigi/VibeASR.cpp/src -I/home/luigi/VibeASR.cpp/third_party -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -O3 -DNDEBUG  -std=gnu11 -fPIE -o CMakeFiles/generate.dir/src/q6k.c.o -c /home/luigi/VibeASR.cpp/src/q6k.c",
+  "file": "/home/luigi/VibeASR.cpp/src/q6k.c",
+  "output": "CMakeFiles/generate.dir/src/q6k.c.o"
+},
+{
   "directory": "/home/luigi/VibeASR.cpp/build-android/3rdparty/llama.cpp/ggml/src",
   "command": "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -DGGML_BUILD -DGGML_SCHED_MAX_COPIES=4 -DGGML_SHARED -DGGML_USE_LLAMAFILE -DGGML_USE_OPENMP -D_GNU_SOURCE -D_XOPEN_SOURCE=600 -Dggml_EXPORTS -I/home/luigi/VibeASR.cpp/3rdparty/llama.cpp/ggml/src/../include -I/home/luigi/VibeASR.cpp/3rdparty/llama.cpp/ggml/src/../../../../include -I/home/luigi/VibeASR.cpp/3rdparty/llama.cpp/ggml/src/. -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -O3 -DNDEBUG  -std=gnu11 -fPIC -Wshadow -Wstrict-prototypes -Wpointer-arith -Wmissing-prototypes -Werror=implicit-int -Werror=implicit-function-declaration -Wall -Wextra -Wpedantic -Wcast-qual -Wno-unused-function -Wunreachable-code-break -Wunreachable-code-return -Wdouble-promotion -fopenmp=libomp -pthread -o CMakeFiles/ggml.dir/ggml.c.o -c /home/luigi/VibeASR.cpp/3rdparty/llama.cpp/ggml/src/ggml.c",
   "file": "/home/luigi/VibeASR.cpp/3rdparty/llama.cpp/ggml/src/ggml.c",

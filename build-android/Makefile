@@ -253,6 +253,32 @@ run_mlp_layer/fast:
 .PHONY : run_mlp_layer/fast
 
 #=============================================================================
+# Target rules for targets named voxsum-q6k
+
+# Build rule for target.
+voxsum-q6k: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 voxsum-q6k
+.PHONY : voxsum-q6k
+
+# fast build rule for target.
+voxsum-q6k/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/voxsum-q6k.dir/build.make CMakeFiles/voxsum-q6k.dir/build
+.PHONY : voxsum-q6k/fast
+
+#=============================================================================
+# Target rules for targets named generate
+
+# Build rule for target.
+generate: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 generate
+.PHONY : generate
+
+# fast build rule for target.
+generate/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/generate.dir/build.make CMakeFiles/generate.dir/build
+.PHONY : generate/fast
+
+#=============================================================================
 # Target rules for targets named ggml
 
 # Build rule for target.
@@ -872,6 +898,33 @@ src/asr_server.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/asr_stream_server.dir/build.make CMakeFiles/asr_stream_server.dir/src/asr_server.cpp.s
 .PHONY : src/asr_server.cpp.s
 
+src/q6k.o: src/q6k.c.o
+.PHONY : src/q6k.o
+
+# target to build an object file
+src/q6k.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/voxsum-q6k.dir/build.make CMakeFiles/voxsum-q6k.dir/src/q6k.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/generate.dir/build.make CMakeFiles/generate.dir/src/q6k.c.o
+.PHONY : src/q6k.c.o
+
+src/q6k.i: src/q6k.c.i
+.PHONY : src/q6k.i
+
+# target to preprocess a source file
+src/q6k.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/voxsum-q6k.dir/build.make CMakeFiles/voxsum-q6k.dir/src/q6k.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/generate.dir/build.make CMakeFiles/generate.dir/src/q6k.c.i
+.PHONY : src/q6k.c.i
+
+src/q6k.s: src/q6k.c.s
+.PHONY : src/q6k.s
+
+# target to generate assembly for a file
+src/q6k.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/voxsum-q6k.dir/build.make CMakeFiles/voxsum-q6k.dir/src/q6k.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/generate.dir/build.make CMakeFiles/generate.dir/src/q6k.c.s
+.PHONY : src/q6k.c.s
+
 src/ternary_gemm.o: src/ternary_gemm.cc.o
 .PHONY : src/ternary_gemm.o
 
@@ -882,6 +935,7 @@ src/ternary_gemm.cc.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/bench_partition.dir/build.make CMakeFiles/bench_partition.dir/src/ternary_gemm.cc.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_i2s_layout.dir/build.make CMakeFiles/test_i2s_layout.dir/src/ternary_gemm.cc.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/run_mlp_layer.dir/build.make CMakeFiles/run_mlp_layer.dir/src/ternary_gemm.cc.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/generate.dir/build.make CMakeFiles/generate.dir/src/ternary_gemm.cc.o
 .PHONY : src/ternary_gemm.cc.o
 
 src/ternary_gemm.i: src/ternary_gemm.cc.i
@@ -894,6 +948,7 @@ src/ternary_gemm.cc.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/bench_partition.dir/build.make CMakeFiles/bench_partition.dir/src/ternary_gemm.cc.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_i2s_layout.dir/build.make CMakeFiles/test_i2s_layout.dir/src/ternary_gemm.cc.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/run_mlp_layer.dir/build.make CMakeFiles/run_mlp_layer.dir/src/ternary_gemm.cc.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/generate.dir/build.make CMakeFiles/generate.dir/src/ternary_gemm.cc.i
 .PHONY : src/ternary_gemm.cc.i
 
 src/ternary_gemm.s: src/ternary_gemm.cc.s
@@ -906,6 +961,7 @@ src/ternary_gemm.cc.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/bench_partition.dir/build.make CMakeFiles/bench_partition.dir/src/ternary_gemm.cc.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_i2s_layout.dir/build.make CMakeFiles/test_i2s_layout.dir/src/ternary_gemm.cc.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/run_mlp_layer.dir/build.make CMakeFiles/run_mlp_layer.dir/src/ternary_gemm.cc.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/generate.dir/build.make CMakeFiles/generate.dir/src/ternary_gemm.cc.s
 .PHONY : src/ternary_gemm.cc.s
 
 src/vae.o: src/vae.cpp.o
@@ -982,6 +1038,30 @@ tests/bench_partition.s: tests/bench_partition.cc.s
 tests/bench_partition.cc.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/bench_partition.dir/build.make CMakeFiles/bench_partition.dir/tests/bench_partition.cc.s
 .PHONY : tests/bench_partition.cc.s
+
+tests/generate.o: tests/generate.cc.o
+.PHONY : tests/generate.o
+
+# target to build an object file
+tests/generate.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/generate.dir/build.make CMakeFiles/generate.dir/tests/generate.cc.o
+.PHONY : tests/generate.cc.o
+
+tests/generate.i: tests/generate.cc.i
+.PHONY : tests/generate.i
+
+# target to preprocess a source file
+tests/generate.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/generate.dir/build.make CMakeFiles/generate.dir/tests/generate.cc.i
+.PHONY : tests/generate.cc.i
+
+tests/generate.s: tests/generate.cc.s
+.PHONY : tests/generate.s
+
+# target to generate assembly for a file
+tests/generate.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/generate.dir/build.make CMakeFiles/generate.dir/tests/generate.cc.s
+.PHONY : tests/generate.cc.s
 
 tests/run_mlp_layer.o: tests/run_mlp_layer.cc.o
 .PHONY : tests/run_mlp_layer.o
@@ -1096,6 +1176,7 @@ help:
 	@echo "... bench_partition"
 	@echo "... build_info"
 	@echo "... common"
+	@echo "... generate"
 	@echo "... ggml"
 	@echo "... llama"
 	@echo "... llama-baby-llama"
@@ -1141,6 +1222,7 @@ help:
 	@echo "... test_i2s_layout"
 	@echo "... test_ternary_custom_op"
 	@echo "... test_ternary_gemm"
+	@echo "... voxsum-q6k"
 	@echo "... xxhash"
 	@echo "... demo/asr_infer.o"
 	@echo "... demo/asr_infer.i"
@@ -1148,6 +1230,9 @@ help:
 	@echo "... src/asr_server.o"
 	@echo "... src/asr_server.i"
 	@echo "... src/asr_server.s"
+	@echo "... src/q6k.o"
+	@echo "... src/q6k.i"
+	@echo "... src/q6k.s"
 	@echo "... src/ternary_gemm.o"
 	@echo "... src/ternary_gemm.i"
 	@echo "... src/ternary_gemm.s"
@@ -1160,6 +1245,9 @@ help:
 	@echo "... tests/bench_partition.o"
 	@echo "... tests/bench_partition.i"
 	@echo "... tests/bench_partition.s"
+	@echo "... tests/generate.o"
+	@echo "... tests/generate.i"
+	@echo "... tests/generate.s"
 	@echo "... tests/run_mlp_layer.o"
 	@echo "... tests/run_mlp_layer.i"
 	@echo "... tests/run_mlp_layer.s"

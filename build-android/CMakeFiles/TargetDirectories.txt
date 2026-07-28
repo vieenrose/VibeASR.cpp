@@ -5,6 +5,8 @@
 /home/luigi/VibeASR.cpp/build-android/CMakeFiles/bench_partition.dir
 /home/luigi/VibeASR.cpp/build-android/CMakeFiles/test_i2s_layout.dir
 /home/luigi/VibeASR.cpp/build-android/CMakeFiles/run_mlp_layer.dir
+/home/luigi/VibeASR.cpp/build-android/CMakeFiles/voxsum-q6k.dir
+/home/luigi/VibeASR.cpp/build-android/CMakeFiles/generate.dir
 /home/luigi/VibeASR.cpp/build-android/CMakeFiles/edit_cache.dir
 /home/luigi/VibeASR.cpp/build-android/CMakeFiles/rebuild_cache.dir
 /home/luigi/VibeASR.cpp/build-android/CMakeFiles/list_install_components.dir

@@ -185,3 +185,14 @@ if (VIBEASR_LITERT)
         ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
     target_link_libraries(run_mlp_layer PRIVATE ${LITERT_LIB})
 endif()
+
+# Q6_K row dequantization for host-side embedding lookup.
+add_library(voxsum-q6k STATIC src/q6k.c)
+target_include_directories(voxsum-q6k PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+if (VIBEASR_LITERT)
+    add_executable(generate tests/generate.cc src/ternary_gemm.cc src/q6k.c)
+    target_include_directories(generate PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
+    target_link_libraries(generate PRIVATE ${LITERT_LIB})
+endif()

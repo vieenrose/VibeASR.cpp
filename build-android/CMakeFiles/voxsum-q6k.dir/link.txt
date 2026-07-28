@@ -1,0 +1,2 @@
+/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar qc libvoxsum-q6k.a "CMakeFiles/voxsum-q6k.dir/src/q6k.c.o"
+/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ranlib libvoxsum-q6k.a

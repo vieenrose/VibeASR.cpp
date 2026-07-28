@@ -163,6 +163,8 @@ set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/bench_partition.dir/DependInfo.cmake"
   "CMakeFiles/test_i2s_layout.dir/DependInfo.cmake"
   "CMakeFiles/run_mlp_layer.dir/DependInfo.cmake"
+  "CMakeFiles/voxsum-q6k.dir/DependInfo.cmake"
+  "CMakeFiles/generate.dir/DependInfo.cmake"
   "3rdparty/llama.cpp/ggml/src/CMakeFiles/ggml.dir/DependInfo.cmake"
   "3rdparty/llama.cpp/src/CMakeFiles/llama.dir/DependInfo.cmake"
   "3rdparty/llama.cpp/common/CMakeFiles/build_info.dir/DependInfo.cmake"

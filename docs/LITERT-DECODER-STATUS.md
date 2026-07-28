@@ -57,6 +57,35 @@ Total now ~153-168 ms against ggml's 141: about **1.1x**. The remaining gap is t
 small projections (fused qkv 786 KB, o 590 KB) which sit at ~1.9 GB/s and gain
 nothing from threading.
 
+## End-to-end generation works — and the whole is 2.3x the sum of its parts
+
+`tests/generate.cc` runs the full pipeline: host Q6_K embedding lookup -> 28-layer
+graph -> int8 head -> argmax -> next token, with the KV cache aliased so state
+carries across steps. It generates real tokens: different prompts give different,
+evolving outputs (785 -> 198 -> 151643 -> 198 alternates; 9707 -> 151645 settles on
+EOS, which is expected for a model whose prompt format wants audio embeddings).
+
+**2.7 tok/s, ~366 ms/token.** But benchmarked separately the same graphs cost
+~125-140 ms (layers) + ~28 ms (head) = ~155-170 ms. Inside the loop they cost
+312 ms and 53 ms.
+
+Six hypotheses tested and rejected:
+
+| hypothesis | test | result |
+|---|---|---|
+| staging copies double the weights | free blobs after upload | no change (410 ms) |
+| denormals from the softmax mask | set FPCR FZ | no change (378 ms) |
+| advancing `pos` costs more than fixed | VIBEASR_FIXED_POS=3 | no change (322 vs 335) |
+| thermal throttling | 2 min cooldowns | no change |
+| page-cache eviction | (implied by the first two) | no change |
+| memory pressure from the embedding table | table is only 191 MB | no change |
+
+What remains, untested: the two graphs ALTERNATE, so each token streams 344 MB of
+layer weights and then 233 MB of head weights. 577 MB cycling per token gives an
+effective ~1.5 GB/s against the ~2.5 GB/s the layer graph achieves alone. That
+smells like TLB/page-walk pressure at this working-set size, which would also
+explain why it is insensitive to everything above. Not yet demonstrated.
+
 ## What is already settled
 
 * Ternary custom op runs on the **stock** LiteRT runtime — `LiteRtAddCustomOpKernelOption`
