@@ -15,9 +15,9 @@ for a long time I mistook my own kernel's 2.64 GB/s for the hardware limit.
 
 | stage | bytes/token | measured | GB/s |
 |---|---|---|---|
-| 28 decoder layers | 328 MB | ~158 ms | 2.1 |
+| 28 decoder layers | 328 MB | ~125-140 ms | 2.3-2.6 |
 | LM head (F16, projected from a 1/8 f32 slice) | 467 MB | ~109 ms | 4.3 |
-| **total** | **795 MB** | **~267 ms** | |
+| **total** | **795 MB** | **~235-250 ms** | |
 | ggml, same work | 795 MB | **141 ms** | 5.6 |
 
 **~1.9x slower than ggml.** Earlier notes in this repo claimed 1.12x; that compared
@@ -29,7 +29,8 @@ graph stopped before it.
 
 | kernel | GB/s | share of the 5.6 GB/s this device sustains |
 |---|---|---|
-| `ternary_gemm` (ours) | 2.64 | 47% |
+| `ternary_gemm` (ours), small shapes | 1.9 | 34% |
+| `ternary_gemm` (ours), MLP shapes, 4 threads | 4.6-5.8 | 82-100% |
 | XNNPACK f32 matmul | 4.29 | 77% |
 | ggml I2_S | ~5.6 | ~100% |
 
@@ -38,10 +39,12 @@ bandwidth" was wrong — it is at *our kernel's* bandwidth.
 
 ## Route to parity
 
-1. **Kernel efficiency 2.64 -> ~5 GB/s.** Would take the layers from ~158 to ~90 ms.
-   ggml's I2_S kernel is the reference implementation to study; likely gaps are
-   prefetching, wider unrolling, and its interleaved activation layout (I2S_Y_BASE)
-   which avoids a separate de-interleave pass.
+1. ~~Kernel efficiency~~ **DONE for the large shapes.** Four-row blocking took the
+   MLP projections from 1.43 to 5.84 GB/s (bit-exact), and the 28 layers from ~158
+   to ~125-140 ms. What remains slow is the SMALL shapes: the fused qkv (786 KB) and
+   o (590 KB) sit at ~1.9 GB/s and do not benefit from threads at all — verified by
+   lowering the parallelism gate, which made the whole decoder *slower*
+   (124.8 -> 141.5 -> 160.6 ms at gates of 1024 / 256 / 64 KB).
 2. **Quantize the LM head to int8** (467 -> 233 MB), worth ~55 ms. Changes numerics
    where ggml keeps F16, so it needs an accuracy gate.
 

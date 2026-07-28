@@ -117,7 +117,14 @@ class TernaryPool {
 // megabyte of packed weights the barrier costs more than the split saves (q/o at
 // 590 KB still lost: 1.958 ms serial vs 2.234 ms split), so a fixed thread count
 // is wrong for a decoder that contains both.
-static const size_t kParallelMinBytes = 1024 * 1024;
+static size_t kParallelMinBytes = 1024 * 1024;
+static const size_t kParallelMinBytesInit = [] {
+    if (const char* e = getenv("TERNARY_GEMM_MIN_KB")) {
+        const long v = atol(e);
+        if (v >= 0) kParallelMinBytes = (size_t)v * 1024;
+    }
+    return kParallelMinBytes;
+}();
 
 static void ternary_parallel_for(int n, size_t work_bytes,
                                  const std::function<void(int, int)>& body) {
@@ -313,6 +320,67 @@ static inline int32_t ternary_dot_neon(const uint8_t* wr, const int8_t* q, int k
     return sum;
 }
 
+// FOUR rows at once against the same activation planes.
+//
+// One row at a time re-loads the four activation planes for every row and keeps a
+// single accumulator chain, so the NEON pipeline stalls on the dependency. Four
+// independent chains hide that latency, and the plane loads are paid once per four
+// rows instead of once per row.
+//
+// This matters because the ARMv8.0 path is COMPUTE-bound, not bandwidth-bound:
+// without dotprod, 16 bytes of packed weights (64 weights) need 8 unpack ops
+// (shift+and) plus 8 vmlal_s8, so ~16 SIMD ops per 16 bytes loaded. At ~2 GHz that
+// caps a single chain near 2.6 GB/s, which is exactly what was measured.
+static inline void ternary_dot4_neon(const uint8_t* w0, const uint8_t* w1,
+                                     const uint8_t* w2, const uint8_t* w3,
+                                     const int8_t* planes, int quads,
+                                     int k, const int8_t* q, int32_t out[4]) {
+    const uint8x16_t mask = vdupq_n_u8(0x3);
+    int32x4_t a0 = vdupq_n_s32(0), a1 = vdupq_n_s32(0);
+    int32x4_t a2 = vdupq_n_s32(0), a3 = vdupq_n_s32(0);
+    int i = 0;
+    for (; i + 16 <= quads; i += 16) {
+        const int8x16_t x0 = vld1q_s8(planes + 0 * quads + i);
+        const int8x16_t x1 = vld1q_s8(planes + 1 * quads + i);
+        const int8x16_t x2 = vld1q_s8(planes + 2 * quads + i);
+        const int8x16_t x3 = vld1q_s8(planes + 3 * quads + i);
+
+#define TG_ROW(ACC, WP)                                                            \
+        {                                                                          \
+            const uint8x16_t p = vld1q_u8((WP) + i);                                \
+            const int8x16_t c0 = vreinterpretq_s8_u8(vandq_u8(p, mask));            \
+            const int8x16_t c1 = vreinterpretq_s8_u8(vandq_u8(vshrq_n_u8(p, 2), mask)); \
+            const int8x16_t c2 = vreinterpretq_s8_u8(vandq_u8(vshrq_n_u8(p, 4), mask)); \
+            const int8x16_t c3 = vreinterpretq_s8_u8(vandq_u8(vshrq_n_u8(p, 6), mask)); \
+            int16x8_t s01 = vmull_s8(vget_low_s8(c0), vget_low_s8(x0));             \
+            s01 = vmlal_s8(s01, vget_high_s8(c0), vget_high_s8(x0));                \
+            s01 = vmlal_s8(s01, vget_low_s8(c1), vget_low_s8(x1));                  \
+            s01 = vmlal_s8(s01, vget_high_s8(c1), vget_high_s8(x1));                \
+            int16x8_t s23 = vmull_s8(vget_low_s8(c2), vget_low_s8(x2));             \
+            s23 = vmlal_s8(s23, vget_high_s8(c2), vget_high_s8(x2));                \
+            s23 = vmlal_s8(s23, vget_low_s8(c3), vget_low_s8(x3));                  \
+            s23 = vmlal_s8(s23, vget_high_s8(c3), vget_high_s8(x3));                \
+            (ACC) = vaddq_s32((ACC), vpaddlq_s16(s01));                             \
+            (ACC) = vaddq_s32((ACC), vpaddlq_s16(s23));                             \
+        }
+        TG_ROW(a0, w0)
+        TG_ROW(a1, w1)
+        TG_ROW(a2, w2)
+        TG_ROW(a3, w3)
+#undef TG_ROW
+    }
+    out[0] = vaddvq_s32(a0);
+    out[1] = vaddvq_s32(a1);
+    out[2] = vaddvq_s32(a2);
+    out[3] = vaddvq_s32(a3);
+    // Tail: elements the 16-quad step could not cover, scalar, from the ORIGINAL
+    // contiguous activations rather than the de-interleaved planes.
+    const uint8_t* wp[4] = {w0, w1, w2, w3};
+    for (int r = 0; r < 4; r++)
+        for (int j = i * 4; j < k; j++)
+            out[r] += code_at(wp[r], j) * (int32_t)q[j];
+}
+
 void ternary_gemm(const uint8_t* packed_w, int n_rows, int k,
                   const int8_t* q, const float* x_scale, int m,
                   const float* w_scale, int w_scale_is_per_row,
@@ -336,14 +404,24 @@ void ternary_gemm(const uint8_t* packed_w, int n_rows, int k,
         float* yi = y + (size_t)i * n_rows;
 
         ternary_parallel_for(n_rows, (size_t)n_rows * stride, [&](int r0, int r1) {
-            for (int r = r0; r < r1; r++) {
-                const int32_t acc =
-                    ternary_dot_neon_planes(packed_w + (size_t)r * stride, pl, quads, k, qi);
+            const auto emit = [&](int r, int32_t acc) {
                 const float ws = w_scale_is_per_row ? w_scale[r] : w_scale[0];
                 float v = (float)(acc - xsum) * ws * xsc;
                 if (bias) v += bias[r];
                 yi[r] = v;
+            };
+            int r = r0;
+            for (; r + 4 <= r1; r += 4) {
+                int32_t acc[4];
+                ternary_dot4_neon(packed_w + (size_t)(r + 0) * stride,
+                                  packed_w + (size_t)(r + 1) * stride,
+                                  packed_w + (size_t)(r + 2) * stride,
+                                  packed_w + (size_t)(r + 3) * stride,
+                                  pl, quads, k, qi, acc);
+                for (int t = 0; t < 4; t++) emit(r + t, acc[t]);
             }
+            for (; r < r1; r++)
+                emit(r, ternary_dot_neon_planes(packed_w + (size_t)r * stride, pl, quads, k, qi));
         });
     }
 }
