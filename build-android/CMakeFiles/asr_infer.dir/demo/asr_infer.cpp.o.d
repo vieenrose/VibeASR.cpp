@@ -23,6 +23,7 @@ CMakeFiles/asr_infer.dir/demo/asr_infer.cpp.o: \
   /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/include/stdint.h \
   /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/stdint.h \
   /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/bits/wchar_limits.h \
+  /home/luigi/VibeASR.cpp/src/vae_litert.h \
   /home/luigi/VibeASR.cpp/3rdparty/llama.cpp/include/llama.h \
   /home/luigi/VibeASR.cpp/3rdparty/llama.cpp/ggml/include/ggml.h \
   /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/c++/v1/stdio.h \

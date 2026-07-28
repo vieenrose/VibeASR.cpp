@@ -3,6 +3,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/asr_infer.dir/demo/asr_infer.cpp.o.d"
   "CMakeFiles/asr_infer.dir/src/vae.cpp.o"
   "CMakeFiles/asr_infer.dir/src/vae.cpp.o.d"
+  "CMakeFiles/asr_infer.dir/src/vae_litert.cpp.o"
+  "CMakeFiles/asr_infer.dir/src/vae_litert.cpp.o.d"
   "bin/asr_infer"
   "bin/asr_infer.pdb"
 )

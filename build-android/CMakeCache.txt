@@ -281,8 +281,8 @@ CMAKE_STRIP:FILEPATH=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/p
 //Path to a program.
 CMAKE_TAPI:FILEPATH=CMAKE_TAPI-NOTFOUND
 
-//The CMake toolchain file
-CMAKE_TOOLCHAIN_FILE:FILEPATH=/home/luigi/Android/Sdk/ndk/27.2.12479018/build/cmake/android.toolchain.cmake
+//No help, variable specified on the command line.
+CMAKE_TOOLCHAIN_FILE:UNINITIALIZED=/home/luigi/Android/Sdk/ndk/27.2.12479018/build/cmake/android.toolchain.cmake
 
 //If this value is on, makefiles will be generated without the
 // .SILENT directive, and all commands will be echoed to the console
@@ -482,6 +482,9 @@ GGML_VULKAN_VALIDATE:BOOL=OFF
 //Git command line client
 GIT_EXECUTABLE:FILEPATH=/usr/bin/git
 
+//path to the prebuilt libLiteRt.so for this ABI
+LITERT_LIB:FILEPATH=/home/luigi/VoxSumDroid/app/src/main/jniLibs/arm64-v8a/libLiteRt.so
+
 //llama: enable all compiler warnings
 LLAMA_ALL_WARNINGS:BOOL=ON
 
@@ -541,6 +544,9 @@ OpenMP_C_LIB_NAMES:STRING=omp
 
 //Path to the omp library for OpenMP
 OpenMP_omp_LIBRARY:FILEPATH=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64/libomp.so
+
+//build the LiteRT audio front end
+VIBEASR_LITERT:BOOL=ON
 
 //Value Computed by CMake
 ggml_BINARY_DIR:STATIC=/home/luigi/VibeASR.cpp/build-android/3rdparty/llama.cpp/ggml

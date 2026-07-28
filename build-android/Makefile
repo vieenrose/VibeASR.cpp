@@ -188,6 +188,19 @@ asr_stream_server/fast:
 .PHONY : asr_stream_server/fast
 
 #=============================================================================
+# Target rules for targets named test_ternary_gemm
+
+# Build rule for target.
+test_ternary_gemm: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_ternary_gemm
+.PHONY : test_ternary_gemm
+
+# fast build rule for target.
+test_ternary_gemm/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_ternary_gemm.dir/build.make CMakeFiles/test_ternary_gemm.dir/build
+.PHONY : test_ternary_gemm/fast
+
+#=============================================================================
 # Target rules for targets named ggml
 
 # Build rule for target.
@@ -807,6 +820,30 @@ src/asr_server.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/asr_stream_server.dir/build.make CMakeFiles/asr_stream_server.dir/src/asr_server.cpp.s
 .PHONY : src/asr_server.cpp.s
 
+src/ternary_gemm.o: src/ternary_gemm.cc.o
+.PHONY : src/ternary_gemm.o
+
+# target to build an object file
+src/ternary_gemm.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_ternary_gemm.dir/build.make CMakeFiles/test_ternary_gemm.dir/src/ternary_gemm.cc.o
+.PHONY : src/ternary_gemm.cc.o
+
+src/ternary_gemm.i: src/ternary_gemm.cc.i
+.PHONY : src/ternary_gemm.i
+
+# target to preprocess a source file
+src/ternary_gemm.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_ternary_gemm.dir/build.make CMakeFiles/test_ternary_gemm.dir/src/ternary_gemm.cc.i
+.PHONY : src/ternary_gemm.cc.i
+
+src/ternary_gemm.s: src/ternary_gemm.cc.s
+.PHONY : src/ternary_gemm.s
+
+# target to generate assembly for a file
+src/ternary_gemm.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_ternary_gemm.dir/build.make CMakeFiles/test_ternary_gemm.dir/src/ternary_gemm.cc.s
+.PHONY : src/ternary_gemm.cc.s
+
 src/vae.o: src/vae.cpp.o
 .PHONY : src/vae.o
 
@@ -833,6 +870,54 @@ src/vae.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/asr_infer.dir/build.make CMakeFiles/asr_infer.dir/src/vae.cpp.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/asr_stream_server.dir/build.make CMakeFiles/asr_stream_server.dir/src/vae.cpp.s
 .PHONY : src/vae.cpp.s
+
+src/vae_litert.o: src/vae_litert.cpp.o
+.PHONY : src/vae_litert.o
+
+# target to build an object file
+src/vae_litert.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/asr_infer.dir/build.make CMakeFiles/asr_infer.dir/src/vae_litert.cpp.o
+.PHONY : src/vae_litert.cpp.o
+
+src/vae_litert.i: src/vae_litert.cpp.i
+.PHONY : src/vae_litert.i
+
+# target to preprocess a source file
+src/vae_litert.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/asr_infer.dir/build.make CMakeFiles/asr_infer.dir/src/vae_litert.cpp.i
+.PHONY : src/vae_litert.cpp.i
+
+src/vae_litert.s: src/vae_litert.cpp.s
+.PHONY : src/vae_litert.s
+
+# target to generate assembly for a file
+src/vae_litert.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/asr_infer.dir/build.make CMakeFiles/asr_infer.dir/src/vae_litert.cpp.s
+.PHONY : src/vae_litert.cpp.s
+
+tests/test_ternary_gemm.o: tests/test_ternary_gemm.cc.o
+.PHONY : tests/test_ternary_gemm.o
+
+# target to build an object file
+tests/test_ternary_gemm.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_ternary_gemm.dir/build.make CMakeFiles/test_ternary_gemm.dir/tests/test_ternary_gemm.cc.o
+.PHONY : tests/test_ternary_gemm.cc.o
+
+tests/test_ternary_gemm.i: tests/test_ternary_gemm.cc.i
+.PHONY : tests/test_ternary_gemm.i
+
+# target to preprocess a source file
+tests/test_ternary_gemm.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_ternary_gemm.dir/build.make CMakeFiles/test_ternary_gemm.dir/tests/test_ternary_gemm.cc.i
+.PHONY : tests/test_ternary_gemm.cc.i
+
+tests/test_ternary_gemm.s: tests/test_ternary_gemm.cc.s
+.PHONY : tests/test_ternary_gemm.s
+
+# target to generate assembly for a file
+tests/test_ternary_gemm.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_ternary_gemm.dir/build.make CMakeFiles/test_ternary_gemm.dir/tests/test_ternary_gemm.cc.s
+.PHONY : tests/test_ternary_gemm.cc.s
 
 # Help Target
 help:
@@ -891,6 +976,7 @@ help:
 	@echo "... llava_static"
 	@echo "... sha1"
 	@echo "... sha256"
+	@echo "... test_ternary_gemm"
 	@echo "... xxhash"
 	@echo "... demo/asr_infer.o"
 	@echo "... demo/asr_infer.i"
@@ -898,9 +984,18 @@ help:
 	@echo "... src/asr_server.o"
 	@echo "... src/asr_server.i"
 	@echo "... src/asr_server.s"
+	@echo "... src/ternary_gemm.o"
+	@echo "... src/ternary_gemm.i"
+	@echo "... src/ternary_gemm.s"
 	@echo "... src/vae.o"
 	@echo "... src/vae.i"
 	@echo "... src/vae.s"
+	@echo "... src/vae_litert.o"
+	@echo "... src/vae_litert.i"
+	@echo "... src/vae_litert.s"
+	@echo "... tests/test_ternary_gemm.o"
+	@echo "... tests/test_ternary_gemm.i"
+	@echo "... tests/test_ternary_gemm.s"
 .PHONY : help
 
 

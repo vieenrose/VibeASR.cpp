@@ -151,3 +151,8 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/LlamaConfig.cmake
 
 set_target_properties(llama PROPERTIES PUBLIC_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/llama.h)
 install(TARGETS llama LIBRARY PUBLIC_HEADER)
+
+# Standalone ternary GEMM + its test. Runtime-agnostic on purpose: it is the
+# kernel a LiteRT custom op would call (LiteRT/XNNPACK has no ternary path).
+add_executable(test_ternary_gemm tests/test_ternary_gemm.cc src/ternary_gemm.cc)
+target_include_directories(test_ternary_gemm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)

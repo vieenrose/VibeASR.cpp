@@ -10,6 +10,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/luigi/VibeASR.cpp/demo/asr_infer.cpp" "CMakeFiles/asr_infer.dir/demo/asr_infer.cpp.o" "gcc" "CMakeFiles/asr_infer.dir/demo/asr_infer.cpp.o.d"
   "/home/luigi/VibeASR.cpp/src/vae.cpp" "CMakeFiles/asr_infer.dir/src/vae.cpp.o" "gcc" "CMakeFiles/asr_infer.dir/src/vae.cpp.o.d"
+  "/home/luigi/VibeASR.cpp/src/vae_litert.cpp" "CMakeFiles/asr_infer.dir/src/vae_litert.cpp.o" "gcc" "CMakeFiles/asr_infer.dir/src/vae_litert.cpp.o.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

@@ -1,5 +1,6 @@
 /home/luigi/VibeASR.cpp/build-android/CMakeFiles/asr_infer.dir
 /home/luigi/VibeASR.cpp/build-android/CMakeFiles/asr_stream_server.dir
+/home/luigi/VibeASR.cpp/build-android/CMakeFiles/test_ternary_gemm.dir
 /home/luigi/VibeASR.cpp/build-android/CMakeFiles/edit_cache.dir
 /home/luigi/VibeASR.cpp/build-android/CMakeFiles/rebuild_cache.dir
 /home/luigi/VibeASR.cpp/build-android/CMakeFiles/list_install_components.dir
