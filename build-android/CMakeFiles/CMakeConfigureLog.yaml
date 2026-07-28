@@ -62,8 +62,8 @@ events:
     checks:
       - "Detecting C compiler ABI info"
     directories:
-      source: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-l7J7FO"
-      binary: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-l7J7FO"
+      source: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-dYgwn5"
+      binary: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-dYgwn5"
     cmakeVariables:
       ANDROID_ABI: "arm64-v8a"
       ANDROID_ARM_MODE: "thumb"
@@ -83,19 +83,19 @@ events:
       variable: "CMAKE_C_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-l7J7FO'
+        Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-dYgwn5'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_d8fc3/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_d8fc3.dir/build.make CMakeFiles/cmTC_d8fc3.dir/build
-        gmake[1]: Entering directory '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-l7J7FO'
-        Building C object CMakeFiles/cmTC_d8fc3.dir/CMakeCCompilerABI.c.o
-        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot   -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat   -fPIE   -v -MD -MT CMakeFiles/cmTC_d8fc3.dir/CMakeCCompilerABI.c.o -MF CMakeFiles/cmTC_d8fc3.dir/CMakeCCompilerABI.c.o.d -o CMakeFiles/cmTC_d8fc3.dir/CMakeCCompilerABI.c.o -c /usr/share/cmake-3.28/Modules/CMakeCCompilerABI.c
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_cbff6/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_cbff6.dir/build.make CMakeFiles/cmTC_cbff6.dir/build
+        gmake[1]: Entering directory '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-dYgwn5'
+        Building C object CMakeFiles/cmTC_cbff6.dir/CMakeCCompilerABI.c.o
+        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot   -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat   -fPIE   -v -MD -MT CMakeFiles/cmTC_cbff6.dir/CMakeCCompilerABI.c.o -MF CMakeFiles/cmTC_cbff6.dir/CMakeCCompilerABI.c.o.d -o CMakeFiles/cmTC_cbff6.dir/CMakeCCompilerABI.c.o -c /usr/share/cmake-3.28/Modules/CMakeCCompilerABI.c
         Android (12470979, +pgo, +bolt, +lto, +mlgo, based on r522817c) clang version 18.0.3 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)
         Target: aarch64-none-linux-android30
         Thread model: posix
         InstalledDir: /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin
          (in-process)
-         "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" -cc1 -triple aarch64-none-linux-android30 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCCompilerABI.c -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-l7J7FO -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-l7J7FO -resource-dir /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_d8fc3.dir/CMakeCCompilerABI.c.o.d -MT CMakeFiles/cmTC_d8fc3.dir/CMakeCCompilerABI.c.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/include -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include -Wformat -ferror-limit 19 -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_d8fc3.dir/CMakeCCompilerABI.c.o -x c /usr/share/cmake-3.28/Modules/CMakeCCompilerABI.c
+         "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" -cc1 -triple aarch64-none-linux-android30 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCCompilerABI.c -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-dYgwn5 -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-dYgwn5 -resource-dir /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_cbff6.dir/CMakeCCompilerABI.c.o.d -MT CMakeFiles/cmTC_cbff6.dir/CMakeCCompilerABI.c.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/include -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include -Wformat -ferror-limit 19 -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_cbff6.dir/CMakeCCompilerABI.c.o -x c /usr/share/cmake-3.28/Modules/CMakeCCompilerABI.c
         clang -cc1 version 18.0.3 based upon LLVM 18.0.3 default target x86_64-unknown-linux-gnu
         ignoring nonexistent directory "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include"
         ignoring nonexistent directory "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include"
@@ -105,15 +105,15 @@ events:
          /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android
          /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include
         End of search list.
-        Linking C executable cmTC_d8fc3
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d8fc3.dir/link.txt --verbose=1
-        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat   -static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments   -v CMakeFiles/cmTC_d8fc3.dir/CMakeCCompilerABI.c.o -o cmTC_d8fc3 
+        Linking C executable cmTC_cbff6
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_cbff6.dir/link.txt --verbose=1
+        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat   -static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments   -v CMakeFiles/cmTC_cbff6.dir/CMakeCCompilerABI.c.o -o cmTC_cbff6 
         Android (12470979, +pgo, +bolt, +lto, +mlgo, based on r522817c) clang version 18.0.3 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)
         Target: aarch64-none-linux-android30
         Thread model: posix
         InstalledDir: /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin
-         "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/ld.lld" --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_d8fc3 /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtbegin_dynamic.o -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib --build-id=sha1 --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_d8fc3.dir/CMakeCCompilerABI.c.o /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtend_android.o
-        gmake[1]: Leaving directory '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-l7J7FO'
+         "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/ld.lld" --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_cbff6 /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtbegin_dynamic.o -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib --build-id=sha1 --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_cbff6.dir/CMakeCCompilerABI.c.o /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtend_android.o
+        gmake[1]: Leaving directory '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-dYgwn5'
         
       exitCode: 0
   -
@@ -145,19 +145,19 @@ events:
     message: |
       Parsed C implicit link information:
         link line regex: [^( *|.*[/\\])(ld\\.lld|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
-        ignore line: [Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-l7J7FO']
+        ignore line: [Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-dYgwn5']
         ignore line: []
-        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_d8fc3/fast]
-        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_d8fc3.dir/build.make CMakeFiles/cmTC_d8fc3.dir/build]
-        ignore line: [gmake[1]: Entering directory '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-l7J7FO']
-        ignore line: [Building C object CMakeFiles/cmTC_d8fc3.dir/CMakeCCompilerABI.c.o]
-        ignore line: [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot   -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat   -fPIE   -v -MD -MT CMakeFiles/cmTC_d8fc3.dir/CMakeCCompilerABI.c.o -MF CMakeFiles/cmTC_d8fc3.dir/CMakeCCompilerABI.c.o.d -o CMakeFiles/cmTC_d8fc3.dir/CMakeCCompilerABI.c.o -c /usr/share/cmake-3.28/Modules/CMakeCCompilerABI.c]
+        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_cbff6/fast]
+        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_cbff6.dir/build.make CMakeFiles/cmTC_cbff6.dir/build]
+        ignore line: [gmake[1]: Entering directory '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-dYgwn5']
+        ignore line: [Building C object CMakeFiles/cmTC_cbff6.dir/CMakeCCompilerABI.c.o]
+        ignore line: [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot   -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat   -fPIE   -v -MD -MT CMakeFiles/cmTC_cbff6.dir/CMakeCCompilerABI.c.o -MF CMakeFiles/cmTC_cbff6.dir/CMakeCCompilerABI.c.o.d -o CMakeFiles/cmTC_cbff6.dir/CMakeCCompilerABI.c.o -c /usr/share/cmake-3.28/Modules/CMakeCCompilerABI.c]
         ignore line: [Android (12470979  +pgo  +bolt  +lto  +mlgo  based on r522817c) clang version 18.0.3 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)]
         ignore line: [Target: aarch64-none-linux-android30]
         ignore line: [Thread model: posix]
         ignore line: [InstalledDir: /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin]
         ignore line: [ (in-process)]
-        ignore line: [ "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" -cc1 -triple aarch64-none-linux-android30 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCCompilerABI.c -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-l7J7FO -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-l7J7FO -resource-dir /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_d8fc3.dir/CMakeCCompilerABI.c.o.d -MT CMakeFiles/cmTC_d8fc3.dir/CMakeCCompilerABI.c.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/include -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include -Wformat -ferror-limit 19 -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_d8fc3.dir/CMakeCCompilerABI.c.o -x c /usr/share/cmake-3.28/Modules/CMakeCCompilerABI.c]
+        ignore line: [ "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" -cc1 -triple aarch64-none-linux-android30 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCCompilerABI.c -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-dYgwn5 -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-dYgwn5 -resource-dir /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_cbff6.dir/CMakeCCompilerABI.c.o.d -MT CMakeFiles/cmTC_cbff6.dir/CMakeCCompilerABI.c.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/include -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include -Wformat -ferror-limit 19 -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_cbff6.dir/CMakeCCompilerABI.c.o -x c /usr/share/cmake-3.28/Modules/CMakeCCompilerABI.c]
         ignore line: [clang -cc1 version 18.0.3 based upon LLVM 18.0.3 default target x86_64-unknown-linux-gnu]
         ignore line: [ignoring nonexistent directory "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include"]
         ignore line: [ignoring nonexistent directory "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include"]
@@ -167,14 +167,14 @@ events:
         ignore line: [ /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android]
         ignore line: [ /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include]
         ignore line: [End of search list.]
-        ignore line: [Linking C executable cmTC_d8fc3]
-        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d8fc3.dir/link.txt --verbose=1]
-        ignore line: [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat   -static-libstdc++ -Wl --build-id=sha1 -Wl --no-undefined-version -Wl --fatal-warnings -Wl --no-undefined -Qunused-arguments   -v CMakeFiles/cmTC_d8fc3.dir/CMakeCCompilerABI.c.o -o cmTC_d8fc3 ]
+        ignore line: [Linking C executable cmTC_cbff6]
+        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_cbff6.dir/link.txt --verbose=1]
+        ignore line: [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat   -static-libstdc++ -Wl --build-id=sha1 -Wl --no-undefined-version -Wl --fatal-warnings -Wl --no-undefined -Qunused-arguments   -v CMakeFiles/cmTC_cbff6.dir/CMakeCCompilerABI.c.o -o cmTC_cbff6 ]
         ignore line: [Android (12470979  +pgo  +bolt  +lto  +mlgo  based on r522817c) clang version 18.0.3 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)]
         ignore line: [Target: aarch64-none-linux-android30]
         ignore line: [Thread model: posix]
         ignore line: [InstalledDir: /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin]
-        link line: [ "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/ld.lld" --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_d8fc3 /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtbegin_dynamic.o -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib --build-id=sha1 --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_d8fc3.dir/CMakeCCompilerABI.c.o /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtend_android.o]
+        link line: [ "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/ld.lld" --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_cbff6 /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtbegin_dynamic.o -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib --build-id=sha1 --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_cbff6.dir/CMakeCCompilerABI.c.o /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtend_android.o]
           arg [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/ld.lld] ==> ignore
           arg [--sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot] ==> ignore
           arg [-EL] ==> ignore
@@ -190,7 +190,7 @@ events:
           arg [-dynamic-linker] ==> ignore
           arg [/system/bin/linker64] ==> ignore
           arg [-o] ==> ignore
-          arg [cmTC_d8fc3] ==> ignore
+          arg [cmTC_cbff6] ==> ignore
           arg [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtbegin_dynamic.o] ==> obj [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtbegin_dynamic.o]
           arg [-L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64] ==> dir [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64]
           arg [-L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30] ==> dir [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30]
@@ -200,7 +200,7 @@ events:
           arg [--no-undefined-version] ==> ignore
           arg [--fatal-warnings] ==> ignore
           arg [--no-undefined] ==> ignore
-          arg [CMakeFiles/cmTC_d8fc3.dir/CMakeCCompilerABI.c.o] ==> ignore
+          arg [CMakeFiles/cmTC_cbff6.dir/CMakeCCompilerABI.c.o] ==> ignore
           arg [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a] ==> lib [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a]
           arg [-l:libunwind.a] ==> lib [-l:libunwind.a]
           arg [-ldl] ==> lib [dl]
@@ -230,8 +230,8 @@ events:
     checks:
       - "Detecting CXX compiler ABI info"
     directories:
-      source: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-54UOG0"
-      binary: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-54UOG0"
+      source: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-kyVcBQ"
+      binary: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-kyVcBQ"
     cmakeVariables:
       ANDROID_ABI: "arm64-v8a"
       ANDROID_ARM_MODE: "thumb"
@@ -251,19 +251,19 @@ events:
       variable: "CMAKE_CXX_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-54UOG0'
+        Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-kyVcBQ'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_92a19/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_92a19.dir/build.make CMakeFiles/cmTC_92a19.dir/build
-        gmake[1]: Entering directory '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-54UOG0'
-        Building CXX object CMakeFiles/cmTC_92a19.dir/CMakeCXXCompilerABI.cpp.o
-        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot   -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat    -fPIE   -v -MD -MT CMakeFiles/cmTC_92a19.dir/CMakeCXXCompilerABI.cpp.o -MF CMakeFiles/cmTC_92a19.dir/CMakeCXXCompilerABI.cpp.o.d -o CMakeFiles/cmTC_92a19.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake-3.28/Modules/CMakeCXXCompilerABI.cpp
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_268d5/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_268d5.dir/build.make CMakeFiles/cmTC_268d5.dir/build
+        gmake[1]: Entering directory '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-kyVcBQ'
+        Building CXX object CMakeFiles/cmTC_268d5.dir/CMakeCXXCompilerABI.cpp.o
+        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot   -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat    -fPIE   -v -MD -MT CMakeFiles/cmTC_268d5.dir/CMakeCXXCompilerABI.cpp.o -MF CMakeFiles/cmTC_268d5.dir/CMakeCXXCompilerABI.cpp.o.d -o CMakeFiles/cmTC_268d5.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake-3.28/Modules/CMakeCXXCompilerABI.cpp
         Android (12470979, +pgo, +bolt, +lto, +mlgo, based on r522817c) clang version 18.0.3 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)
         Target: aarch64-none-linux-android30
         Thread model: posix
         InstalledDir: /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin
          (in-process)
-         "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++" -cc1 -triple aarch64-none-linux-android30 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCXXCompilerABI.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-54UOG0 -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-54UOG0 -resource-dir /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_92a19.dir/CMakeCXXCompilerABI.cpp.o.d -MT CMakeFiles/cmTC_92a19.dir/CMakeCXXCompilerABI.cpp.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/c++/v1 -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/include -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include -Wformat -fdeprecated-macro -ferror-limit 19 -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -fcxx-exceptions -fexceptions -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_92a19.dir/CMakeCXXCompilerABI.cpp.o -x c++ /usr/share/cmake-3.28/Modules/CMakeCXXCompilerABI.cpp
+         "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++" -cc1 -triple aarch64-none-linux-android30 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCXXCompilerABI.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-kyVcBQ -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-kyVcBQ -resource-dir /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_268d5.dir/CMakeCXXCompilerABI.cpp.o.d -MT CMakeFiles/cmTC_268d5.dir/CMakeCXXCompilerABI.cpp.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/c++/v1 -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/include -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include -Wformat -fdeprecated-macro -ferror-limit 19 -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -fcxx-exceptions -fexceptions -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_268d5.dir/CMakeCXXCompilerABI.cpp.o -x c++ /usr/share/cmake-3.28/Modules/CMakeCXXCompilerABI.cpp
         clang -cc1 version 18.0.3 based upon LLVM 18.0.3 default target x86_64-unknown-linux-gnu
         ignoring nonexistent directory "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include"
         ignoring nonexistent directory "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include"
@@ -274,15 +274,15 @@ events:
          /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android
          /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include
         End of search list.
-        Linking CXX executable cmTC_92a19
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_92a19.dir/link.txt --verbose=1
-        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat    -static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments   -v CMakeFiles/cmTC_92a19.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_92a19 
+        Linking CXX executable cmTC_268d5
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_268d5.dir/link.txt --verbose=1
+        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat    -static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments   -v CMakeFiles/cmTC_268d5.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_268d5 
         Android (12470979, +pgo, +bolt, +lto, +mlgo, based on r522817c) clang version 18.0.3 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)
         Target: aarch64-none-linux-android30
         Thread model: posix
         InstalledDir: /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin
-         "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/ld.lld" --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_92a19 /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtbegin_dynamic.o -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib --build-id=sha1 --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_92a19.dir/CMakeCXXCompilerABI.cpp.o -Bstatic -lc++ -Bdynamic -lm /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtend_android.o
-        gmake[1]: Leaving directory '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-54UOG0'
+         "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/ld.lld" --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_268d5 /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtbegin_dynamic.o -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib --build-id=sha1 --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_268d5.dir/CMakeCXXCompilerABI.cpp.o -Bstatic -lc++ -Bdynamic -lm /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtend_android.o
+        gmake[1]: Leaving directory '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-kyVcBQ'
         
       exitCode: 0
   -
@@ -316,19 +316,19 @@ events:
     message: |
       Parsed CXX implicit link information:
         link line regex: [^( *|.*[/\\])(ld\\.lld|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
-        ignore line: [Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-54UOG0']
+        ignore line: [Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-kyVcBQ']
         ignore line: []
-        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_92a19/fast]
-        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_92a19.dir/build.make CMakeFiles/cmTC_92a19.dir/build]
-        ignore line: [gmake[1]: Entering directory '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-54UOG0']
-        ignore line: [Building CXX object CMakeFiles/cmTC_92a19.dir/CMakeCXXCompilerABI.cpp.o]
-        ignore line: [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot   -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat    -fPIE   -v -MD -MT CMakeFiles/cmTC_92a19.dir/CMakeCXXCompilerABI.cpp.o -MF CMakeFiles/cmTC_92a19.dir/CMakeCXXCompilerABI.cpp.o.d -o CMakeFiles/cmTC_92a19.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake-3.28/Modules/CMakeCXXCompilerABI.cpp]
+        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_268d5/fast]
+        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_268d5.dir/build.make CMakeFiles/cmTC_268d5.dir/build]
+        ignore line: [gmake[1]: Entering directory '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-kyVcBQ']
+        ignore line: [Building CXX object CMakeFiles/cmTC_268d5.dir/CMakeCXXCompilerABI.cpp.o]
+        ignore line: [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot   -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat    -fPIE   -v -MD -MT CMakeFiles/cmTC_268d5.dir/CMakeCXXCompilerABI.cpp.o -MF CMakeFiles/cmTC_268d5.dir/CMakeCXXCompilerABI.cpp.o.d -o CMakeFiles/cmTC_268d5.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake-3.28/Modules/CMakeCXXCompilerABI.cpp]
         ignore line: [Android (12470979  +pgo  +bolt  +lto  +mlgo  based on r522817c) clang version 18.0.3 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)]
         ignore line: [Target: aarch64-none-linux-android30]
         ignore line: [Thread model: posix]
         ignore line: [InstalledDir: /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin]
         ignore line: [ (in-process)]
-        ignore line: [ "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++" -cc1 -triple aarch64-none-linux-android30 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCXXCompilerABI.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-54UOG0 -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-54UOG0 -resource-dir /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_92a19.dir/CMakeCXXCompilerABI.cpp.o.d -MT CMakeFiles/cmTC_92a19.dir/CMakeCXXCompilerABI.cpp.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/c++/v1 -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/include -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include -Wformat -fdeprecated-macro -ferror-limit 19 -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -fcxx-exceptions -fexceptions -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_92a19.dir/CMakeCXXCompilerABI.cpp.o -x c++ /usr/share/cmake-3.28/Modules/CMakeCXXCompilerABI.cpp]
+        ignore line: [ "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++" -cc1 -triple aarch64-none-linux-android30 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCXXCompilerABI.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-kyVcBQ -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-kyVcBQ -resource-dir /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_268d5.dir/CMakeCXXCompilerABI.cpp.o.d -MT CMakeFiles/cmTC_268d5.dir/CMakeCXXCompilerABI.cpp.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/c++/v1 -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/include -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include -Wformat -fdeprecated-macro -ferror-limit 19 -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -fcxx-exceptions -fexceptions -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_268d5.dir/CMakeCXXCompilerABI.cpp.o -x c++ /usr/share/cmake-3.28/Modules/CMakeCXXCompilerABI.cpp]
         ignore line: [clang -cc1 version 18.0.3 based upon LLVM 18.0.3 default target x86_64-unknown-linux-gnu]
         ignore line: [ignoring nonexistent directory "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include"]
         ignore line: [ignoring nonexistent directory "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include"]
@@ -339,14 +339,14 @@ events:
         ignore line: [ /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android]
         ignore line: [ /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include]
         ignore line: [End of search list.]
-        ignore line: [Linking CXX executable cmTC_92a19]
-        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_92a19.dir/link.txt --verbose=1]
-        ignore line: [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat    -static-libstdc++ -Wl --build-id=sha1 -Wl --no-undefined-version -Wl --fatal-warnings -Wl --no-undefined -Qunused-arguments   -v CMakeFiles/cmTC_92a19.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_92a19 ]
+        ignore line: [Linking CXX executable cmTC_268d5]
+        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_268d5.dir/link.txt --verbose=1]
+        ignore line: [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat    -static-libstdc++ -Wl --build-id=sha1 -Wl --no-undefined-version -Wl --fatal-warnings -Wl --no-undefined -Qunused-arguments   -v CMakeFiles/cmTC_268d5.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_268d5 ]
         ignore line: [Android (12470979  +pgo  +bolt  +lto  +mlgo  based on r522817c) clang version 18.0.3 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)]
         ignore line: [Target: aarch64-none-linux-android30]
         ignore line: [Thread model: posix]
         ignore line: [InstalledDir: /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin]
-        link line: [ "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/ld.lld" --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_92a19 /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtbegin_dynamic.o -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib --build-id=sha1 --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_92a19.dir/CMakeCXXCompilerABI.cpp.o -Bstatic -lc++ -Bdynamic -lm /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtend_android.o]
+        link line: [ "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/ld.lld" --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_268d5 /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtbegin_dynamic.o -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib --build-id=sha1 --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_268d5.dir/CMakeCXXCompilerABI.cpp.o -Bstatic -lc++ -Bdynamic -lm /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtend_android.o]
           arg [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/ld.lld] ==> ignore
           arg [--sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot] ==> ignore
           arg [-EL] ==> ignore
@@ -362,7 +362,7 @@ events:
           arg [-dynamic-linker] ==> ignore
           arg [/system/bin/linker64] ==> ignore
           arg [-o] ==> ignore
-          arg [cmTC_92a19] ==> ignore
+          arg [cmTC_268d5] ==> ignore
           arg [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtbegin_dynamic.o] ==> obj [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtbegin_dynamic.o]
           arg [-L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64] ==> dir [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64]
           arg [-L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30] ==> dir [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30]
@@ -372,7 +372,7 @@ events:
           arg [--no-undefined-version] ==> ignore
           arg [--fatal-warnings] ==> ignore
           arg [--no-undefined] ==> ignore
-          arg [CMakeFiles/cmTC_92a19.dir/CMakeCXXCompilerABI.cpp.o] ==> ignore
+          arg [CMakeFiles/cmTC_268d5.dir/CMakeCXXCompilerABI.cpp.o] ==> ignore
           arg [-Bstatic] ==> search static
           arg [-lc++] ==> lib [c++]
           arg [-Bdynamic] ==> search dynamic
@@ -408,8 +408,8 @@ events:
     checks:
       - "Performing Test CMAKE_HAVE_LIBC_PTHREAD"
     directories:
-      source: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-AWKSGn"
-      binary: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-AWKSGn"
+      source: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-bJ1zZJ"
+      binary: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-bJ1zZJ"
     cmakeVariables:
       ANDROID_ABI: "arm64-v8a"
       ANDROID_ARM_MODE: "thumb"
@@ -429,24 +429,24 @@ events:
       variable: "CMAKE_HAVE_LIBC_PTHREAD"
       cached: true
       stdout: |
-        Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-AWKSGn'
+        Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-bJ1zZJ'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_82a05/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_82a05.dir/build.make CMakeFiles/cmTC_82a05.dir/build
-        gmake[1] : on entre dans le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-AWKSGn »
-        Building C object CMakeFiles/cmTC_82a05.dir/src.c.o
-        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -DCMAKE_HAVE_LIBC_PTHREAD  -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -std=gnu11 -fPIE -MD -MT CMakeFiles/cmTC_82a05.dir/src.c.o -MF CMakeFiles/cmTC_82a05.dir/src.c.o.d -o CMakeFiles/cmTC_82a05.dir/src.c.o -c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-AWKSGn/src.c
-        /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-AWKSGn/src.c:13:3: error: call to undeclared function 'pthread_cancel'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_8b7e8/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_8b7e8.dir/build.make CMakeFiles/cmTC_8b7e8.dir/build
+        gmake[1] : on entre dans le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-bJ1zZJ »
+        Building C object CMakeFiles/cmTC_8b7e8.dir/src.c.o
+        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -DCMAKE_HAVE_LIBC_PTHREAD  -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -std=gnu11 -fPIE -MD -MT CMakeFiles/cmTC_8b7e8.dir/src.c.o -MF CMakeFiles/cmTC_8b7e8.dir/src.c.o.d -o CMakeFiles/cmTC_8b7e8.dir/src.c.o -c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-bJ1zZJ/src.c
+        /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-bJ1zZJ/src.c:13:3: error: call to undeclared function 'pthread_cancel'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
            13 |   pthread_cancel(thread);
               |   ^
-        /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-AWKSGn/src.c:13:3: note: did you mean 'pthread_once'?
+        /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-bJ1zZJ/src.c:13:3: note: did you mean 'pthread_once'?
         /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/pthread.h:264:5: note: 'pthread_once' declared here
           264 | int pthread_once(pthread_once_t* _Nonnull __once, void (* _Nonnull __init_routine)(void));
               |     ^
         1 error generated.
-        gmake[1]: *** [CMakeFiles/cmTC_82a05.dir/build.make:79 : CMakeFiles/cmTC_82a05.dir/src.c.o] Erreur 1
-        gmake[1] : on quitte le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-AWKSGn »
-        gmake: *** [Makefile:127 : cmTC_82a05/fast] Erreur 2
+        gmake[1]: *** [CMakeFiles/cmTC_8b7e8.dir/build.make:79 : CMakeFiles/cmTC_8b7e8.dir/src.c.o] Erreur 1
+        gmake[1] : on quitte le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-bJ1zZJ »
+        gmake: *** [Makefile:127 : cmTC_8b7e8/fast] Erreur 2
         
       exitCode: 2
   -
@@ -458,8 +458,8 @@ events:
     checks:
       - "Check if compiler accepts -pthread"
     directories:
-      source: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-ZImvYt"
-      binary: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-ZImvYt"
+      source: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-uFxo0U"
+      binary: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-uFxo0U"
     cmakeVariables:
       ANDROID_ABI: "arm64-v8a"
       ANDROID_ARM_MODE: "thumb"
@@ -479,17 +479,17 @@ events:
       variable: "THREADS_HAVE_PTHREAD_ARG"
       cached: true
       stdout: |
-        Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-ZImvYt'
+        Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-uFxo0U'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_2333f/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_2333f.dir/build.make CMakeFiles/cmTC_2333f.dir/build
-        gmake[1] : on entre dans le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-ZImvYt »
-        Building C object CMakeFiles/cmTC_2333f.dir/CheckForPthreads.c.o
-        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot   -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -std=gnu11 -fPIE -MD -MT CMakeFiles/cmTC_2333f.dir/CheckForPthreads.c.o -MF CMakeFiles/cmTC_2333f.dir/CheckForPthreads.c.o.d -o CMakeFiles/cmTC_2333f.dir/CheckForPthreads.c.o -c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-ZImvYt/CheckForPthreads.c
-        Linking C executable cmTC_2333f
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_2333f.dir/link.txt --verbose=1
-        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments    CMakeFiles/cmTC_2333f.dir/CheckForPthreads.c.o -o cmTC_2333f  -pthread -latomic -lm 
-        gmake[1] : on quitte le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-ZImvYt »
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_7c64a/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_7c64a.dir/build.make CMakeFiles/cmTC_7c64a.dir/build
+        gmake[1] : on entre dans le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-uFxo0U »
+        Building C object CMakeFiles/cmTC_7c64a.dir/CheckForPthreads.c.o
+        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot   -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -std=gnu11 -fPIE -MD -MT CMakeFiles/cmTC_7c64a.dir/CheckForPthreads.c.o -MF CMakeFiles/cmTC_7c64a.dir/CheckForPthreads.c.o.d -o CMakeFiles/cmTC_7c64a.dir/CheckForPthreads.c.o -c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-uFxo0U/CheckForPthreads.c
+        Linking C executable cmTC_7c64a
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_7c64a.dir/link.txt --verbose=1
+        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments    CMakeFiles/cmTC_7c64a.dir/CheckForPthreads.c.o -o cmTC_7c64a  -pthread -latomic -lm 
+        gmake[1] : on quitte le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-uFxo0U »
         
       exitCode: 0
   -
@@ -500,8 +500,8 @@ events:
       - "3rdparty/llama.cpp/ggml/src/CMakeLists.txt:157 (find_package)"
     description: "Detecting C OpenMP compiler info"
     directories:
-      source: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-b70vt6"
-      binary: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-b70vt6"
+      source: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-Q47ghY"
+      binary: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-Q47ghY"
     cmakeVariables:
       ANDROID_ABI: "arm64-v8a"
       ANDROID_ARM_MODE: "thumb"
@@ -522,19 +522,19 @@ events:
       variable: "OpenMP_COMPILE_RESULT_C_fopenmplibomp"
       cached: true
       stdout: |
-        Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-b70vt6'
+        Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-Q47ghY'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_8544d/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_8544d.dir/build.make CMakeFiles/cmTC_8544d.dir/build
-        gmake[1] : on entre dans le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-b70vt6 »
-        Building C object CMakeFiles/cmTC_8544d.dir/OpenMPTryFlag.c.o
-        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot   -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fopenmp=libomp -v -std=gnu11 -fPIE -MD -MT CMakeFiles/cmTC_8544d.dir/OpenMPTryFlag.c.o -MF CMakeFiles/cmTC_8544d.dir/OpenMPTryFlag.c.o.d -o CMakeFiles/cmTC_8544d.dir/OpenMPTryFlag.c.o -c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-b70vt6/OpenMPTryFlag.c
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_47e1b/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_47e1b.dir/build.make CMakeFiles/cmTC_47e1b.dir/build
+        gmake[1] : on entre dans le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-Q47ghY »
+        Building C object CMakeFiles/cmTC_47e1b.dir/OpenMPTryFlag.c.o
+        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot   -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fopenmp=libomp -v -std=gnu11 -fPIE -MD -MT CMakeFiles/cmTC_47e1b.dir/OpenMPTryFlag.c.o -MF CMakeFiles/cmTC_47e1b.dir/OpenMPTryFlag.c.o.d -o CMakeFiles/cmTC_47e1b.dir/OpenMPTryFlag.c.o -c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-Q47ghY/OpenMPTryFlag.c
         Android (12470979, +pgo, +bolt, +lto, +mlgo, based on r522817c) clang version 18.0.3 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)
         Target: aarch64-none-linux-android30
         Thread model: posix
         InstalledDir: /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin
          (in-process)
-         "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" -cc1 -triple aarch64-none-linux-android30 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name OpenMPTryFlag.c -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-b70vt6 -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-b70vt6 -resource-dir /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_8544d.dir/OpenMPTryFlag.c.o.d -MT CMakeFiles/cmTC_8544d.dir/OpenMPTryFlag.c.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/include -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include -Wformat -Werror=format-security -std=gnu11 -ferror-limit 19 -fopenmp -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_8544d.dir/OpenMPTryFlag.c.o -x c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-b70vt6/OpenMPTryFlag.c
+         "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" -cc1 -triple aarch64-none-linux-android30 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name OpenMPTryFlag.c -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-Q47ghY -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-Q47ghY -resource-dir /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_47e1b.dir/OpenMPTryFlag.c.o.d -MT CMakeFiles/cmTC_47e1b.dir/OpenMPTryFlag.c.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/include -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include -Wformat -Werror=format-security -std=gnu11 -ferror-limit 19 -fopenmp -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_47e1b.dir/OpenMPTryFlag.c.o -x c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-Q47ghY/OpenMPTryFlag.c
         clang -cc1 version 18.0.3 based upon LLVM 18.0.3 default target x86_64-unknown-linux-gnu
         ignoring nonexistent directory "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include"
         ignoring nonexistent directory "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include"
@@ -544,15 +544,15 @@ events:
          /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android
          /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include
         End of search list.
-        Linking C executable cmTC_8544d
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_8544d.dir/link.txt --verbose=1
-        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fopenmp=libomp -v -static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments    CMakeFiles/cmTC_8544d.dir/OpenMPTryFlag.c.o -o cmTC_8544d  -v -latomic -lm 
+        Linking C executable cmTC_47e1b
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_47e1b.dir/link.txt --verbose=1
+        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fopenmp=libomp -v -static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments    CMakeFiles/cmTC_47e1b.dir/OpenMPTryFlag.c.o -o cmTC_47e1b  -v -latomic -lm 
         Android (12470979, +pgo, +bolt, +lto, +mlgo, based on r522817c) clang version 18.0.3 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)
         Target: aarch64-none-linux-android30
         Thread model: posix
         InstalledDir: /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin
-         "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/ld.lld" --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_8544d /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtbegin_dynamic.o -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib --build-id=sha1 --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_8544d.dir/OpenMPTryFlag.c.o -latomic -lm -lomp -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtend_android.o
-        gmake[1] : on quitte le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-b70vt6 »
+         "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/ld.lld" --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_47e1b /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtbegin_dynamic.o -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib --build-id=sha1 --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_47e1b.dir/OpenMPTryFlag.c.o -latomic -lm -lomp -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtend_android.o
+        gmake[1] : on quitte le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-Q47ghY »
         
       exitCode: 0
   -
@@ -564,19 +564,19 @@ events:
     message: |
       Parsed C OpenMP implicit link information from above output:
         link line regex: [^( *|.*[/\\])(ld\\.lld|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
-        ignore line: [Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-b70vt6']
+        ignore line: [Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-Q47ghY']
         ignore line: []
-        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_8544d/fast]
-        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_8544d.dir/build.make CMakeFiles/cmTC_8544d.dir/build]
-        ignore line: [gmake[1] : on entre dans le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-b70vt6 »]
-        ignore line: [Building C object CMakeFiles/cmTC_8544d.dir/OpenMPTryFlag.c.o]
-        ignore line: [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot   -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fopenmp=libomp -v -std=gnu11 -fPIE -MD -MT CMakeFiles/cmTC_8544d.dir/OpenMPTryFlag.c.o -MF CMakeFiles/cmTC_8544d.dir/OpenMPTryFlag.c.o.d -o CMakeFiles/cmTC_8544d.dir/OpenMPTryFlag.c.o -c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-b70vt6/OpenMPTryFlag.c]
+        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_47e1b/fast]
+        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_47e1b.dir/build.make CMakeFiles/cmTC_47e1b.dir/build]
+        ignore line: [gmake[1] : on entre dans le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-Q47ghY »]
+        ignore line: [Building C object CMakeFiles/cmTC_47e1b.dir/OpenMPTryFlag.c.o]
+        ignore line: [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot   -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fopenmp=libomp -v -std=gnu11 -fPIE -MD -MT CMakeFiles/cmTC_47e1b.dir/OpenMPTryFlag.c.o -MF CMakeFiles/cmTC_47e1b.dir/OpenMPTryFlag.c.o.d -o CMakeFiles/cmTC_47e1b.dir/OpenMPTryFlag.c.o -c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-Q47ghY/OpenMPTryFlag.c]
         ignore line: [Android (12470979  +pgo  +bolt  +lto  +mlgo  based on r522817c) clang version 18.0.3 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)]
         ignore line: [Target: aarch64-none-linux-android30]
         ignore line: [Thread model: posix]
         ignore line: [InstalledDir: /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin]
         ignore line: [ (in-process)]
-        ignore line: [ "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" -cc1 -triple aarch64-none-linux-android30 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name OpenMPTryFlag.c -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-b70vt6 -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-b70vt6 -resource-dir /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_8544d.dir/OpenMPTryFlag.c.o.d -MT CMakeFiles/cmTC_8544d.dir/OpenMPTryFlag.c.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/include -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include -Wformat -Werror=format-security -std=gnu11 -ferror-limit 19 -fopenmp -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_8544d.dir/OpenMPTryFlag.c.o -x c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-b70vt6/OpenMPTryFlag.c]
+        ignore line: [ "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" -cc1 -triple aarch64-none-linux-android30 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name OpenMPTryFlag.c -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-Q47ghY -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-Q47ghY -resource-dir /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_47e1b.dir/OpenMPTryFlag.c.o.d -MT CMakeFiles/cmTC_47e1b.dir/OpenMPTryFlag.c.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/include -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include -Wformat -Werror=format-security -std=gnu11 -ferror-limit 19 -fopenmp -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_47e1b.dir/OpenMPTryFlag.c.o -x c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-Q47ghY/OpenMPTryFlag.c]
         ignore line: [clang -cc1 version 18.0.3 based upon LLVM 18.0.3 default target x86_64-unknown-linux-gnu]
         ignore line: [ignoring nonexistent directory "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include"]
         ignore line: [ignoring nonexistent directory "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include"]
@@ -586,14 +586,14 @@ events:
         ignore line: [ /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android]
         ignore line: [ /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include]
         ignore line: [End of search list.]
-        ignore line: [Linking C executable cmTC_8544d]
-        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_8544d.dir/link.txt --verbose=1]
-        ignore line: [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fopenmp=libomp -v -static-libstdc++ -Wl --build-id=sha1 -Wl --no-undefined-version -Wl --fatal-warnings -Wl --no-undefined -Qunused-arguments    CMakeFiles/cmTC_8544d.dir/OpenMPTryFlag.c.o -o cmTC_8544d  -v -latomic -lm ]
+        ignore line: [Linking C executable cmTC_47e1b]
+        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_47e1b.dir/link.txt --verbose=1]
+        ignore line: [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fopenmp=libomp -v -static-libstdc++ -Wl --build-id=sha1 -Wl --no-undefined-version -Wl --fatal-warnings -Wl --no-undefined -Qunused-arguments    CMakeFiles/cmTC_47e1b.dir/OpenMPTryFlag.c.o -o cmTC_47e1b  -v -latomic -lm ]
         ignore line: [Android (12470979  +pgo  +bolt  +lto  +mlgo  based on r522817c) clang version 18.0.3 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)]
         ignore line: [Target: aarch64-none-linux-android30]
         ignore line: [Thread model: posix]
         ignore line: [InstalledDir: /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin]
-        link line: [ "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/ld.lld" --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_8544d /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtbegin_dynamic.o -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib --build-id=sha1 --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_8544d.dir/OpenMPTryFlag.c.o -latomic -lm -lomp -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtend_android.o]
+        link line: [ "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/ld.lld" --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_47e1b /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtbegin_dynamic.o -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib --build-id=sha1 --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_47e1b.dir/OpenMPTryFlag.c.o -latomic -lm -lomp -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtend_android.o]
           arg [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/ld.lld] ==> ignore
           arg [--sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot] ==> ignore
           arg [-EL] ==> ignore
@@ -609,7 +609,7 @@ events:
           arg [-dynamic-linker] ==> ignore
           arg [/system/bin/linker64] ==> ignore
           arg [-o] ==> ignore
-          arg [cmTC_8544d] ==> ignore
+          arg [cmTC_47e1b] ==> ignore
           arg [-L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64] ==> dir [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64]
           arg [-L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30] ==> dir [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30]
           arg [-L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android] ==> dir [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android]
@@ -618,7 +618,7 @@ events:
           arg [--no-undefined-version] ==> ignore
           arg [--fatal-warnings] ==> ignore
           arg [--no-undefined] ==> ignore
-          arg [CMakeFiles/cmTC_8544d.dir/OpenMPTryFlag.c.o] ==> ignore
+          arg [CMakeFiles/cmTC_47e1b.dir/OpenMPTryFlag.c.o] ==> ignore
           arg [-latomic] ==> lib [atomic]
           arg [-lm] ==> lib [m]
           arg [-lomp] ==> lib [omp]
@@ -651,8 +651,8 @@ events:
       - "3rdparty/llama.cpp/ggml/src/CMakeLists.txt:157 (find_package)"
     description: "Detecting CXX OpenMP compiler info"
     directories:
-      source: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-invoQ2"
-      binary: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-invoQ2"
+      source: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-ffJfM4"
+      binary: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-ffJfM4"
     cmakeVariables:
       ANDROID_ABI: "arm64-v8a"
       ANDROID_ARM_MODE: "thumb"
@@ -673,19 +673,19 @@ events:
       variable: "OpenMP_COMPILE_RESULT_CXX_fopenmplibomp"
       cached: true
       stdout: |
-        Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-invoQ2'
+        Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-ffJfM4'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_f5400/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_f5400.dir/build.make CMakeFiles/cmTC_f5400.dir/build
-        gmake[1] : on entre dans le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-invoQ2 »
-        Building CXX object CMakeFiles/cmTC_f5400.dir/OpenMPTryFlag.cpp.o
-        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot   -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fopenmp=libomp -v -std=gnu++11 -fPIE -MD -MT CMakeFiles/cmTC_f5400.dir/OpenMPTryFlag.cpp.o -MF CMakeFiles/cmTC_f5400.dir/OpenMPTryFlag.cpp.o.d -o CMakeFiles/cmTC_f5400.dir/OpenMPTryFlag.cpp.o -c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-invoQ2/OpenMPTryFlag.cpp
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_d2423/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_d2423.dir/build.make CMakeFiles/cmTC_d2423.dir/build
+        gmake[1] : on entre dans le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-ffJfM4 »
+        Building CXX object CMakeFiles/cmTC_d2423.dir/OpenMPTryFlag.cpp.o
+        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot   -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fopenmp=libomp -v -std=gnu++11 -fPIE -MD -MT CMakeFiles/cmTC_d2423.dir/OpenMPTryFlag.cpp.o -MF CMakeFiles/cmTC_d2423.dir/OpenMPTryFlag.cpp.o.d -o CMakeFiles/cmTC_d2423.dir/OpenMPTryFlag.cpp.o -c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-ffJfM4/OpenMPTryFlag.cpp
         Android (12470979, +pgo, +bolt, +lto, +mlgo, based on r522817c) clang version 18.0.3 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)
         Target: aarch64-none-linux-android30
         Thread model: posix
         InstalledDir: /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin
          (in-process)
-         "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++" -cc1 -triple aarch64-none-linux-android30 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name OpenMPTryFlag.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-invoQ2 -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-invoQ2 -resource-dir /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_f5400.dir/OpenMPTryFlag.cpp.o.d -MT CMakeFiles/cmTC_f5400.dir/OpenMPTryFlag.cpp.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/c++/v1 -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/include -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include -Wformat -Werror=format-security -std=gnu++11 -fdeprecated-macro -ferror-limit 19 -fopenmp -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -fcxx-exceptions -fexceptions -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_f5400.dir/OpenMPTryFlag.cpp.o -x c++ /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-invoQ2/OpenMPTryFlag.cpp
+         "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++" -cc1 -triple aarch64-none-linux-android30 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name OpenMPTryFlag.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-ffJfM4 -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-ffJfM4 -resource-dir /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_d2423.dir/OpenMPTryFlag.cpp.o.d -MT CMakeFiles/cmTC_d2423.dir/OpenMPTryFlag.cpp.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/c++/v1 -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/include -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include -Wformat -Werror=format-security -std=gnu++11 -fdeprecated-macro -ferror-limit 19 -fopenmp -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -fcxx-exceptions -fexceptions -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_d2423.dir/OpenMPTryFlag.cpp.o -x c++ /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-ffJfM4/OpenMPTryFlag.cpp
         clang -cc1 version 18.0.3 based upon LLVM 18.0.3 default target x86_64-unknown-linux-gnu
         ignoring nonexistent directory "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include"
         ignoring nonexistent directory "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include"
@@ -696,15 +696,15 @@ events:
          /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android
          /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include
         End of search list.
-        Linking CXX executable cmTC_f5400
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_f5400.dir/link.txt --verbose=1
-        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fopenmp=libomp -v -static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments    CMakeFiles/cmTC_f5400.dir/OpenMPTryFlag.cpp.o -o cmTC_f5400  -v -latomic -lm 
+        Linking CXX executable cmTC_d2423
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d2423.dir/link.txt --verbose=1
+        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fopenmp=libomp -v -static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments    CMakeFiles/cmTC_d2423.dir/OpenMPTryFlag.cpp.o -o cmTC_d2423  -v -latomic -lm 
         Android (12470979, +pgo, +bolt, +lto, +mlgo, based on r522817c) clang version 18.0.3 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)
         Target: aarch64-none-linux-android30
         Thread model: posix
         InstalledDir: /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin
-         "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/ld.lld" --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_f5400 /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtbegin_dynamic.o -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib --build-id=sha1 --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_f5400.dir/OpenMPTryFlag.cpp.o -latomic -lm -Bstatic -lc++ -Bdynamic -lm -lomp -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtend_android.o
-        gmake[1] : on quitte le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-invoQ2 »
+         "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/ld.lld" --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_d2423 /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtbegin_dynamic.o -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib --build-id=sha1 --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_d2423.dir/OpenMPTryFlag.cpp.o -latomic -lm -Bstatic -lc++ -Bdynamic -lm -lomp -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtend_android.o
+        gmake[1] : on quitte le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-ffJfM4 »
         
       exitCode: 0
   -
@@ -716,19 +716,19 @@ events:
     message: |
       Parsed CXX OpenMP implicit link information from above output:
         link line regex: [^( *|.*[/\\])(ld\\.lld|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
-        ignore line: [Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-invoQ2']
+        ignore line: [Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-ffJfM4']
         ignore line: []
-        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_f5400/fast]
-        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_f5400.dir/build.make CMakeFiles/cmTC_f5400.dir/build]
-        ignore line: [gmake[1] : on entre dans le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-invoQ2 »]
-        ignore line: [Building CXX object CMakeFiles/cmTC_f5400.dir/OpenMPTryFlag.cpp.o]
-        ignore line: [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot   -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fopenmp=libomp -v -std=gnu++11 -fPIE -MD -MT CMakeFiles/cmTC_f5400.dir/OpenMPTryFlag.cpp.o -MF CMakeFiles/cmTC_f5400.dir/OpenMPTryFlag.cpp.o.d -o CMakeFiles/cmTC_f5400.dir/OpenMPTryFlag.cpp.o -c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-invoQ2/OpenMPTryFlag.cpp]
+        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_d2423/fast]
+        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_d2423.dir/build.make CMakeFiles/cmTC_d2423.dir/build]
+        ignore line: [gmake[1] : on entre dans le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-ffJfM4 »]
+        ignore line: [Building CXX object CMakeFiles/cmTC_d2423.dir/OpenMPTryFlag.cpp.o]
+        ignore line: [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot   -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fopenmp=libomp -v -std=gnu++11 -fPIE -MD -MT CMakeFiles/cmTC_d2423.dir/OpenMPTryFlag.cpp.o -MF CMakeFiles/cmTC_d2423.dir/OpenMPTryFlag.cpp.o.d -o CMakeFiles/cmTC_d2423.dir/OpenMPTryFlag.cpp.o -c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-ffJfM4/OpenMPTryFlag.cpp]
         ignore line: [Android (12470979  +pgo  +bolt  +lto  +mlgo  based on r522817c) clang version 18.0.3 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)]
         ignore line: [Target: aarch64-none-linux-android30]
         ignore line: [Thread model: posix]
         ignore line: [InstalledDir: /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin]
         ignore line: [ (in-process)]
-        ignore line: [ "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++" -cc1 -triple aarch64-none-linux-android30 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name OpenMPTryFlag.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-invoQ2 -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-invoQ2 -resource-dir /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_f5400.dir/OpenMPTryFlag.cpp.o.d -MT CMakeFiles/cmTC_f5400.dir/OpenMPTryFlag.cpp.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/c++/v1 -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/include -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include -Wformat -Werror=format-security -std=gnu++11 -fdeprecated-macro -ferror-limit 19 -fopenmp -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -fcxx-exceptions -fexceptions -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_f5400.dir/OpenMPTryFlag.cpp.o -x c++ /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-invoQ2/OpenMPTryFlag.cpp]
+        ignore line: [ "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++" -cc1 -triple aarch64-none-linux-android30 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name OpenMPTryFlag.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-ffJfM4 -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-ffJfM4 -resource-dir /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_d2423.dir/OpenMPTryFlag.cpp.o.d -MT CMakeFiles/cmTC_d2423.dir/OpenMPTryFlag.cpp.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/c++/v1 -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/include -internal-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include -internal-externc-isystem /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include -Wformat -Werror=format-security -std=gnu++11 -fdeprecated-macro -ferror-limit 19 -fopenmp -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -fcxx-exceptions -fexceptions -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_d2423.dir/OpenMPTryFlag.cpp.o -x c++ /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-ffJfM4/OpenMPTryFlag.cpp]
         ignore line: [clang -cc1 version 18.0.3 based upon LLVM 18.0.3 default target x86_64-unknown-linux-gnu]
         ignore line: [ignoring nonexistent directory "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/local/include"]
         ignore line: [ignoring nonexistent directory "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/include"]
@@ -739,14 +739,14 @@ events:
         ignore line: [ /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android]
         ignore line: [ /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include]
         ignore line: [End of search list.]
-        ignore line: [Linking CXX executable cmTC_f5400]
-        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_f5400.dir/link.txt --verbose=1]
-        ignore line: [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fopenmp=libomp -v -static-libstdc++ -Wl --build-id=sha1 -Wl --no-undefined-version -Wl --fatal-warnings -Wl --no-undefined -Qunused-arguments    CMakeFiles/cmTC_f5400.dir/OpenMPTryFlag.cpp.o -o cmTC_f5400  -v -latomic -lm ]
+        ignore line: [Linking CXX executable cmTC_d2423]
+        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d2423.dir/link.txt --verbose=1]
+        ignore line: [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fopenmp=libomp -v -static-libstdc++ -Wl --build-id=sha1 -Wl --no-undefined-version -Wl --fatal-warnings -Wl --no-undefined -Qunused-arguments    CMakeFiles/cmTC_d2423.dir/OpenMPTryFlag.cpp.o -o cmTC_d2423  -v -latomic -lm ]
         ignore line: [Android (12470979  +pgo  +bolt  +lto  +mlgo  based on r522817c) clang version 18.0.3 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)]
         ignore line: [Target: aarch64-none-linux-android30]
         ignore line: [Thread model: posix]
         ignore line: [InstalledDir: /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin]
-        link line: [ "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/ld.lld" --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_f5400 /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtbegin_dynamic.o -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib --build-id=sha1 --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_f5400.dir/OpenMPTryFlag.cpp.o -latomic -lm -Bstatic -lc++ -Bdynamic -lm -lomp -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtend_android.o]
+        link line: [ "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/ld.lld" --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_d2423 /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtbegin_dynamic.o -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30 -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib --build-id=sha1 --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_d2423.dir/OpenMPTryFlag.cpp.o -latomic -lm -Bstatic -lc++ -Bdynamic -lm -lomp -L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30/crtend_android.o]
           arg [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/ld.lld] ==> ignore
           arg [--sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot] ==> ignore
           arg [-EL] ==> ignore
@@ -762,7 +762,7 @@ events:
           arg [-dynamic-linker] ==> ignore
           arg [/system/bin/linker64] ==> ignore
           arg [-o] ==> ignore
-          arg [cmTC_f5400] ==> ignore
+          arg [cmTC_d2423] ==> ignore
           arg [-L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64] ==> dir [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/18/lib/linux/aarch64]
           arg [-L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30] ==> dir [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/30]
           arg [-L/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android] ==> dir [/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android]
@@ -771,7 +771,7 @@ events:
           arg [--no-undefined-version] ==> ignore
           arg [--fatal-warnings] ==> ignore
           arg [--no-undefined] ==> ignore
-          arg [CMakeFiles/cmTC_f5400.dir/OpenMPTryFlag.cpp.o] ==> ignore
+          arg [CMakeFiles/cmTC_d2423.dir/OpenMPTryFlag.cpp.o] ==> ignore
           arg [-latomic] ==> lib [atomic]
           arg [-lm] ==> lib [m]
           arg [-Bstatic] ==> search static
@@ -808,8 +808,8 @@ events:
       - "3rdparty/llama.cpp/ggml/src/CMakeLists.txt:157 (find_package)"
     description: "Detecting C OpenMP version"
     directories:
-      source: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-4VVVLb"
-      binary: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-4VVVLb"
+      source: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-MyqxDM"
+      binary: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-MyqxDM"
     cmakeVariables:
       ANDROID_ABI: "arm64-v8a"
       ANDROID_ARM_MODE: "thumb"
@@ -830,17 +830,17 @@ events:
       variable: "OpenMP_SPECTEST_C_"
       cached: true
       stdout: |
-        Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-4VVVLb'
+        Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-MyqxDM'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_55bec/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_55bec.dir/build.make CMakeFiles/cmTC_55bec.dir/build
-        gmake[1] : on entre dans le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-4VVVLb »
-        Building C object CMakeFiles/cmTC_55bec.dir/OpenMPCheckVersion.c.o
-        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot   -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fopenmp=libomp -std=gnu11 -fPIE -MD -MT CMakeFiles/cmTC_55bec.dir/OpenMPCheckVersion.c.o -MF CMakeFiles/cmTC_55bec.dir/OpenMPCheckVersion.c.o.d -o CMakeFiles/cmTC_55bec.dir/OpenMPCheckVersion.c.o -c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-4VVVLb/OpenMPCheckVersion.c
-        Linking C executable cmTC_55bec
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_55bec.dir/link.txt --verbose=1
-        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fopenmp=libomp -static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments    CMakeFiles/cmTC_55bec.dir/OpenMPCheckVersion.c.o -o cmTC_55bec  -latomic -lm 
-        gmake[1] : on quitte le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-4VVVLb »
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_7f777/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_7f777.dir/build.make CMakeFiles/cmTC_7f777.dir/build
+        gmake[1] : on entre dans le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-MyqxDM »
+        Building C object CMakeFiles/cmTC_7f777.dir/OpenMPCheckVersion.c.o
+        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot   -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fopenmp=libomp -std=gnu11 -fPIE -MD -MT CMakeFiles/cmTC_7f777.dir/OpenMPCheckVersion.c.o -MF CMakeFiles/cmTC_7f777.dir/OpenMPCheckVersion.c.o.d -o CMakeFiles/cmTC_7f777.dir/OpenMPCheckVersion.c.o -c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-MyqxDM/OpenMPCheckVersion.c
+        Linking C executable cmTC_7f777
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_7f777.dir/link.txt --verbose=1
+        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fopenmp=libomp -static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments    CMakeFiles/cmTC_7f777.dir/OpenMPCheckVersion.c.o -o cmTC_7f777  -latomic -lm 
+        gmake[1] : on quitte le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-MyqxDM »
         
       exitCode: 0
   -
@@ -851,8 +851,8 @@ events:
       - "3rdparty/llama.cpp/ggml/src/CMakeLists.txt:157 (find_package)"
     description: "Detecting CXX OpenMP version"
     directories:
-      source: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-DeprVM"
-      binary: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-DeprVM"
+      source: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-6Zk9pU"
+      binary: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-6Zk9pU"
     cmakeVariables:
       ANDROID_ABI: "arm64-v8a"
       ANDROID_ARM_MODE: "thumb"
@@ -873,17 +873,17 @@ events:
       variable: "OpenMP_SPECTEST_CXX_"
       cached: true
       stdout: |
-        Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-DeprVM'
+        Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-6Zk9pU'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_8f180/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_8f180.dir/build.make CMakeFiles/cmTC_8f180.dir/build
-        gmake[1] : on entre dans le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-DeprVM »
-        Building CXX object CMakeFiles/cmTC_8f180.dir/OpenMPCheckVersion.cpp.o
-        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot   -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fopenmp=libomp -std=gnu++11 -fPIE -MD -MT CMakeFiles/cmTC_8f180.dir/OpenMPCheckVersion.cpp.o -MF CMakeFiles/cmTC_8f180.dir/OpenMPCheckVersion.cpp.o.d -o CMakeFiles/cmTC_8f180.dir/OpenMPCheckVersion.cpp.o -c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-DeprVM/OpenMPCheckVersion.cpp
-        Linking CXX executable cmTC_8f180
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_8f180.dir/link.txt --verbose=1
-        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fopenmp=libomp -static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments    CMakeFiles/cmTC_8f180.dir/OpenMPCheckVersion.cpp.o -o cmTC_8f180  -latomic -lm 
-        gmake[1] : on quitte le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-DeprVM »
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_26e9d/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_26e9d.dir/build.make CMakeFiles/cmTC_26e9d.dir/build
+        gmake[1] : on entre dans le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-6Zk9pU »
+        Building CXX object CMakeFiles/cmTC_26e9d.dir/OpenMPCheckVersion.cpp.o
+        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot   -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fopenmp=libomp -std=gnu++11 -fPIE -MD -MT CMakeFiles/cmTC_26e9d.dir/OpenMPCheckVersion.cpp.o -MF CMakeFiles/cmTC_26e9d.dir/OpenMPCheckVersion.cpp.o.d -o CMakeFiles/cmTC_26e9d.dir/OpenMPCheckVersion.cpp.o -c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-6Zk9pU/OpenMPCheckVersion.cpp
+        Linking CXX executable cmTC_26e9d
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_26e9d.dir/link.txt --verbose=1
+        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fopenmp=libomp -static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments    CMakeFiles/cmTC_26e9d.dir/OpenMPCheckVersion.cpp.o -o cmTC_26e9d  -latomic -lm 
+        gmake[1] : on quitte le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-6Zk9pU »
         
       exitCode: 0
   -
@@ -896,8 +896,8 @@ events:
     checks:
       - "Performing Test COMPILER_SUPPORTS_FP16_FORMAT_I3E"
     directories:
-      source: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-2gauHp"
-      binary: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-2gauHp"
+      source: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-fGb9og"
+      binary: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-fGb9og"
     cmakeVariables:
       ANDROID_ABI: "arm64-v8a"
       ANDROID_ARM_MODE: "thumb"
@@ -918,109 +918,17 @@ events:
       variable: "COMPILER_SUPPORTS_FP16_FORMAT_I3E"
       cached: true
       stdout: |
-        Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-2gauHp'
+        Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-fGb9og'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_eb166/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_eb166.dir/build.make CMakeFiles/cmTC_eb166.dir/build
-        gmake[1]: Entering directory '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-2gauHp'
-        Building CXX object CMakeFiles/cmTC_eb166.dir/src.cxx.o
-        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -DCOMPILER_SUPPORTS_FP16_FORMAT_I3E  -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security    -std=gnu++11 -fPIE   -mfp16-format=ieee -MD -MT CMakeFiles/cmTC_eb166.dir/src.cxx.o -MF CMakeFiles/cmTC_eb166.dir/src.cxx.o.d -o CMakeFiles/cmTC_eb166.dir/src.cxx.o -c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-2gauHp/src.cxx
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_6314b/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_6314b.dir/build.make CMakeFiles/cmTC_6314b.dir/build
+        gmake[1]: Entering directory '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-fGb9og'
+        Building CXX object CMakeFiles/cmTC_6314b.dir/src.cxx.o
+        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -DCOMPILER_SUPPORTS_FP16_FORMAT_I3E  -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security    -std=gnu++11 -fPIE   -mfp16-format=ieee -MD -MT CMakeFiles/cmTC_6314b.dir/src.cxx.o -MF CMakeFiles/cmTC_6314b.dir/src.cxx.o.d -o CMakeFiles/cmTC_6314b.dir/src.cxx.o -c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-fGb9og/src.cxx
         clang++: error: unknown argument: '-mfp16-format=ieee'
-        gmake[1]: *** [CMakeFiles/cmTC_eb166.dir/build.make:79: CMakeFiles/cmTC_eb166.dir/src.cxx.o] Error 1
-        gmake[1]: Leaving directory '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-2gauHp'
-        gmake: *** [Makefile:127: cmTC_eb166/fast] Error 2
+        gmake[1]: *** [CMakeFiles/cmTC_6314b.dir/build.make:79: CMakeFiles/cmTC_6314b.dir/src.cxx.o] Error 1
+        gmake[1]: Leaving directory '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-fGb9og'
+        gmake: *** [Makefile:127: cmTC_6314b/fast] Error 2
         
       exitCode: 2
-  -
-    kind: "try_compile-v1"
-    backtrace:
-      - "/usr/share/cmake-3.28/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
-      - "/usr/share/cmake-3.28/Modules/CheckCXXSourceCompiles.cmake:52 (cmake_check_source_compiles)"
-      - "3rdparty/llama.cpp/ggml/src/CMakeLists.txt:1155 (check_cxx_source_compiles)"
-    checks:
-      - "Performing Test GGML_COMPILER_SUPPORT_DOTPROD"
-    directories:
-      source: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-V9iG8T"
-      binary: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-V9iG8T"
-    cmakeVariables:
-      ANDROID_ABI: "arm64-v8a"
-      ANDROID_ARM_MODE: "thumb"
-      ANDROID_PIE: "TRUE"
-      ANDROID_PLATFORM: "android-30"
-      ANDROID_STL: "c++_static"
-      ANDROID_TOOLCHAIN: "clang"
-      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "/usr/bin/clang-scan-deps-18"
-      CMAKE_CXX_COMPILER_TARGET: "aarch64-none-linux-android30"
-      CMAKE_CXX_FLAGS: "-g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  "
-      CMAKE_CXX_FLAGS_DEBUG: "-fno-limit-debug-info "
-      CMAKE_C_COMPILER_TARGET: "aarch64-none-linux-android30"
-      CMAKE_EXE_LINKER_FLAGS: "-static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments  "
-      CMAKE_MODULE_PATH: "/home/luigi/VibeASR.cpp/3rdparty/llama.cpp/cmake/"
-      CMAKE_POSITION_INDEPENDENT_CODE: "TRUE"
-      CMAKE_SYSROOT: "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
-    buildResult:
-      variable: "GGML_COMPILER_SUPPORT_DOTPROD"
-      cached: true
-      stdout: |
-        Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-V9iG8T'
-        
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_700ba/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_700ba.dir/build.make CMakeFiles/cmTC_700ba.dir/build
-        gmake[1] : on entre dans le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-V9iG8T »
-        Building CXX object CMakeFiles/cmTC_700ba.dir/src.cxx.o
-        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -DGGML_COMPILER_SUPPORT_DOTPROD  -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security    -std=gnu++11 -fPIE -MD -MT CMakeFiles/cmTC_700ba.dir/src.cxx.o -MF CMakeFiles/cmTC_700ba.dir/src.cxx.o.d -o CMakeFiles/cmTC_700ba.dir/src.cxx.o -c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-V9iG8T/src.cxx
-        /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-V9iG8T/src.cxx:2:67: error: always_inline function 'vdotq_s32' requires target feature 'dotprod', but would be inlined into function 'main' that is compiled without support for 'dotprod'
-            2 | int main(){ int8x16_t a{}, b{}; int32x4_t s = vdupq_n_s32(0); s = vdotq_s32(s,a,b); (void)s; return 0; }
-              |                                                                   ^
-        1 error generated.
-        gmake[1]: *** [CMakeFiles/cmTC_700ba.dir/build.make:79 : CMakeFiles/cmTC_700ba.dir/src.cxx.o] Erreur 1
-        gmake[1] : on quitte le répertoire « /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-V9iG8T »
-        gmake: *** [Makefile:127 : cmTC_700ba/fast] Erreur 2
-        
-      exitCode: 2
-  -
-    kind: "try_compile-v1"
-    backtrace:
-      - "/usr/share/cmake-3.28/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
-      - "/usr/share/cmake-3.28/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
-      - "/usr/share/cmake-3.28/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
-      - "3rdparty/llama.cpp/ggml/src/CMakeLists.txt:1159 (check_cxx_compiler_flag)"
-    checks:
-      - "Performing Test COMPILER_SUPPORTS_ARMV82_DOTPROD"
-    directories:
-      source: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-WizvMs"
-      binary: "/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-WizvMs"
-    cmakeVariables:
-      ANDROID_ABI: "arm64-v8a"
-      ANDROID_ARM_MODE: "thumb"
-      ANDROID_PIE: "TRUE"
-      ANDROID_PLATFORM: "android-30"
-      ANDROID_STL: "c++_static"
-      ANDROID_TOOLCHAIN: "clang"
-      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "/usr/bin/clang-scan-deps-18"
-      CMAKE_CXX_COMPILER_TARGET: "aarch64-none-linux-android30"
-      CMAKE_CXX_FLAGS: "-g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  "
-      CMAKE_CXX_FLAGS_DEBUG: "-fno-limit-debug-info "
-      CMAKE_C_COMPILER_TARGET: "aarch64-none-linux-android30"
-      CMAKE_EXE_LINKER_FLAGS: "-static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments  "
-      CMAKE_MODULE_PATH: "/home/luigi/VibeASR.cpp/3rdparty/llama.cpp/cmake/"
-      CMAKE_POSITION_INDEPENDENT_CODE: "TRUE"
-      CMAKE_SYSROOT: "/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
-    buildResult:
-      variable: "COMPILER_SUPPORTS_ARMV82_DOTPROD"
-      cached: true
-      stdout: |
-        Change Dir: '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-WizvMs'
-        
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_b8ffc/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_b8ffc.dir/build.make CMakeFiles/cmTC_b8ffc.dir/build
-        gmake[1]: Entering directory '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-WizvMs'
-        Building CXX object CMakeFiles/cmTC_b8ffc.dir/src.cxx.o
-        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -DCOMPILER_SUPPORTS_ARMV82_DOTPROD  -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security    -std=gnu++11 -fPIE   -march=armv8.2-a+dotprod -MD -MT CMakeFiles/cmTC_b8ffc.dir/src.cxx.o -MF CMakeFiles/cmTC_b8ffc.dir/src.cxx.o.d -o CMakeFiles/cmTC_b8ffc.dir/src.cxx.o -c /home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-WizvMs/src.cxx
-        Linking CXX executable cmTC_b8ffc
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_b8ffc.dir/link.txt --verbose=1
-        /home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android30 --sysroot=/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/sysroot -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security    -static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments    CMakeFiles/cmTC_b8ffc.dir/src.cxx.o -o cmTC_b8ffc  -latomic -lm 
-        gmake[1]: Leaving directory '/home/luigi/VibeASR.cpp/build-android/CMakeFiles/CMakeScratch/TryCompile-WizvMs'
-        
-      exitCode: 0
 ...
