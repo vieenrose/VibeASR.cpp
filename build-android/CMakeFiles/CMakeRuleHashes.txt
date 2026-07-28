@@ -1,0 +1,2 @@
+# Hashes of file build rules.
+fc69caadc832117820e4d1cdddb33426 /home/luigi/VibeASR.cpp/3rdparty/llama.cpp/common/build-info.cpp

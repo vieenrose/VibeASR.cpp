@@ -1,0 +1,2 @@
+/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar qc libllava_static.a CMakeFiles/llava.dir/llava.cpp.o CMakeFiles/llava.dir/clip.cpp.o
+/home/luigi/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ranlib libllava_static.a

@@ -712,6 +712,11 @@ static int32_t vae_encode_impl(
         fprintf(stderr, "[VAE] Error: could not allocate the compute buffer\n");
         return -1;
     }
+    if (getenv("VIBEASR_VAE_DEBUG_MEM")) {
+        fprintf(stderr, "[VAE] %d samples (%.1fs) -> %d graph nodes, compute buffer %.1f MB\n",
+                n_samples, n_samples / 24000.0, ggml_graph_n_nodes(gf),
+                ggml_gallocr_get_buffer_size(ctx->galloc, 0) / (1024.0 * 1024.0));
+    }
 
     // Tensor data pointers only become valid once the graph is allocated, so
     // the input is filled HERE rather than at construction time.
