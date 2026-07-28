@@ -277,35 +277,47 @@ int main(int argc, char** argv) {
     const double t0 = now_s();
     for (int step = 0; step < n_tokens; step++) {
         double a = now_s();
+        // VIBEASR_NO_INPUT_WRITE: run with stale inputs, to test whether locking an
+        // input buffer for write makes the runtime re-process every bound buffer
+        // (there are 282, holding 344 MB) rather than just the one written.
+        static const bool no_write = getenv("VIBEASR_NO_INPUT_WRITE") != nullptr;
         q6k_embedding_row(embd.data(), token, DIM, scratch.data(), emb.data());
-        write_buf(L.ins[0], emb.data(), (size_t)DIM * sizeof(float));
+        if (!no_write) write_buf(L.ins[0], emb.data(), (size_t)DIM * sizeof(float));
         // VIBEASR_FIXED_POS pins the position, to separate "work that depends on
         // pos" from "work that depends on the cache having real values in it".
         static const char* fixed = getenv("VIBEASR_FIXED_POS");
         const int64_t pos = fixed ? atoll(fixed) : step;
-        write_buf(L.ins[1], &pos, sizeof(pos));
+        if (!no_write) write_buf(L.ins[1], &pos, sizeof(pos));
         t_embed += now_s() - a;
 
         a = now_s();
         L.run();
         t_layers += now_s() - a;
 
+        // VIBEASR_NO_HEAD isolates the layer graph inside this same process, to
+        // separate "two graphs alternating" from "something about this loop".
+        static const bool no_head = getenv("VIBEASR_NO_HEAD") != nullptr;
         a = now_s();
         void* p = nullptr;
-        LiteRtLockTensorBuffer(L.outs[0], &p, kLiteRtTensorBufferLockModeRead);
-        write_buf(H.ins[0], p, (size_t)DIM * sizeof(float));
-        LiteRtUnlockTensorBuffer(L.outs[0]);
-        H.run();
+        if (!no_head) {
+            LiteRtLockTensorBuffer(L.outs[0], &p, kLiteRtTensorBufferLockModeRead);
+            write_buf(H.ins[0], p, (size_t)DIM * sizeof(float));
+            LiteRtUnlockTensorBuffer(L.outs[0]);
+            H.run();
+        }
         t_head += now_s() - a;
 
         a = now_s();
-        LiteRtLockTensorBuffer(H.outs[0], &p, kLiteRtTensorBufferLockModeRead);
-        const float* logits = (const float*)p;
         int best = 0;
-        float bv = logits[0];
-        for (int i = 1; i < vocab; i++)
-            if (logits[i] > bv) { bv = logits[i]; best = i; }
-        LiteRtUnlockTensorBuffer(H.outs[0]);
+        float bv = 0;
+        if (!no_head) {
+            LiteRtLockTensorBuffer(H.outs[0], &p, kLiteRtTensorBufferLockModeRead);
+            const float* logits = (const float*)p;
+            bv = logits[0];
+            for (int i = 1; i < vocab; i++)
+                if (logits[i] > bv) { bv = logits[i]; best = i; }
+            LiteRtUnlockTensorBuffer(H.outs[0]);
+        }
 
         t_argmax += now_s() - a;
         produced.push_back(best);

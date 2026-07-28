@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include <algorithm>
+#include <atomic>
 #include <condition_variable>
 #include <functional>
 #include <mutex>
@@ -50,26 +51,35 @@ class TernaryPool {
         for (int i = 1; i < n_; i++) workers_.emplace_back([this, i] { worker(i); });
     }
     ~TernaryPool() {
-        { std::lock_guard<std::mutex> lk(m_); stop_ = true; }
-        cv_.notify_all();
+        stop_.store(true, std::memory_order_relaxed);
+        epoch_.fetch_add(1, std::memory_order_release);   // wake the spinners
         for (auto& t : workers_) t.join();
     }
 
     void run(int n, const std::function<void(int, int)>& body) {
         const int nt = std::min(n_, n);
         if (nt <= 1) { body(0, n); return; }
-        {
-            std::lock_guard<std::mutex> lk(m_);
-            body_ = &body;
-            n_items_ = n;
-            nt_ = nt;
-            remaining_ = nt - 1;
-            ++epoch_;
-        }
-        cv_.notify_all();
+        body_ = &body;
+        n_items_ = n;
+        nt_ = nt;
+        remaining_.store(nt - 1, std::memory_order_relaxed);
+        epoch_.fetch_add(1, std::memory_order_release);
         run_range(0);                       // this thread takes the first chunk
-        std::unique_lock<std::mutex> lk(m_);
-        done_.wait(lk, [this] { return remaining_ == 0; });
+        // SPIN, then yield. A decoder dispatches the pool ~84 times per token (3
+        // MLP projections x 28 layers), and each dispatch is a few milliseconds of
+        // work — far too short for a condition-variable handoff, which measured
+        // 341 ms/step at 4 threads against 188 ms single-threaded, i.e. the
+        // "parallelism" cost 1.8x. ggml's threadpool spins for the same reason.
+        int spins = 0;
+        while (remaining_.load(std::memory_order_acquire) != 0) {
+            if (++spins < 8192) {
+#if defined(__aarch64__) || defined(__arm__)
+                __asm__ __volatile__("yield");
+#endif
+            } else {
+                std::this_thread::yield();
+            }
+        }
         body_ = nullptr;
     }
 
@@ -84,26 +94,31 @@ class TernaryPool {
     void worker(int idx) {
         uint64_t seen = 0;
         for (;;) {
-            std::unique_lock<std::mutex> lk(m_);
-            cv_.wait(lk, [this, &seen] { return stop_ || epoch_ != seen; });
-            if (stop_) return;
-            seen = epoch_;
-            const bool active = idx < nt_;
-            lk.unlock();
-            if (active) run_range(idx);
-            lk.lock();
-            if (--remaining_ == 0) done_.notify_one();
+            int spins = 0;
+            while (epoch_.load(std::memory_order_acquire) == seen) {
+                if (stop_.load(std::memory_order_relaxed)) return;
+                if (++spins < 8192) {
+#if defined(__aarch64__) || defined(__arm__)
+                    __asm__ __volatile__("yield");
+#endif
+                } else {
+                    std::this_thread::yield();
+                }
+            }
+            seen = epoch_.load(std::memory_order_acquire);
+            if (stop_.load(std::memory_order_relaxed)) return;
+            if (idx < nt_) run_range(idx);
+            remaining_.fetch_sub(1, std::memory_order_release);
         }
     }
 
     const int n_;
     std::vector<std::thread> workers_;
-    std::mutex m_;
-    std::condition_variable cv_, done_;
     const std::function<void(int, int)>* body_ = nullptr;
-    int n_items_ = 0, nt_ = 1, remaining_ = 0;
-    uint64_t epoch_ = 0;
-    bool stop_ = false;
+    int n_items_ = 0, nt_ = 1;
+    std::atomic<int> remaining_{0};
+    std::atomic<uint64_t> epoch_{0};
+    std::atomic<bool> stop_{false};
 };
 
 // Parallelise only when there is enough work to pay for the handoff. Measured per

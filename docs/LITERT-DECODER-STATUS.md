@@ -57,34 +57,51 @@ Total now ~153-168 ms against ggml's 141: about **1.1x**. The remaining gap is t
 small projections (fused qkv 786 KB, o 590 KB) which sit at ~1.9 GB/s and gain
 nothing from threading.
 
-## End-to-end generation works — and the whole is 2.3x the sum of its parts
+## End-to-end generation, measured back to back against ggml
 
-`tests/generate.cc` runs the full pipeline: host Q6_K embedding lookup -> 28-layer
-graph -> int8 head -> argmax -> next token, with the KV cache aliased so state
-carries across steps. It generates real tokens: different prompts give different,
-evolving outputs (785 -> 198 -> 151643 -> 198 alternates; 9707 -> 151645 settles on
-EOS, which is expected for a model whose prompt format wants audio embeddings).
+Both run on the same device minutes apart, so neither benefits from a cooler or
+faster-clocked machine than the other:
 
-**2.7 tok/s, ~366 ms/token.** But benchmarked separately the same graphs cost
-~125-140 ms (layers) + ~28 ms (head) = ~155-170 ms. Inside the loop they cost
-312 ms and 53 ms.
-
-Six hypotheses tested and rejected:
-
-| hypothesis | test | result |
+| | ms/token | tok/s |
 |---|---|---|
-| staging copies double the weights | free blobs after upload | no change (410 ms) |
-| denormals from the softmax mask | set FPCR FZ | no change (378 ms) |
-| advancing `pos` costs more than fixed | VIBEASR_FIXED_POS=3 | no change (322 vs 335) |
-| thermal throttling | 2 min cooldowns | no change |
-| page-cache eviction | (implied by the first two) | no change |
-| memory pressure from the embedding table | table is only 191 MB | no change |
+| **LiteRT (this port)** | **115.0** | **8.70** |
+| ggml (`asr_infer`) | 122.5 | 8.16 |
 
-What remains, untested: the two graphs ALTERNATE, so each token streams 344 MB of
-layer weights and then 233 MB of head weights. 577 MB cycling per token gives an
-effective ~1.5 GB/s against the ~2.5 GB/s the layer graph achieves alone. That
-smells like TLB/page-walk pressure at this working-set size, which would also
-explain why it is insensitive to everything above. Not yet demonstrated.
+Phase split: embed 0.1, layers 84.2, head 30.1, argmax 0.5 ms.
+Peak RSS 972 MB, RssAnon 739 MB. Accuracy unchanged: cosine 0.994938 against a
+dense reference, and the ternary kernel stays bit-exact.
+
+### The measurement trap that cost hours
+
+Absolute timings on this device are **not comparable across time**. The governor is
+`schedutil`, and a memory-bound workload stalls often enough to read as low
+utilization, so the big cores sit at ~1050 MHz of 2016 (52%). No root, so the
+governor cannot be pinned.
+
+Chasing a 2.5x "regression" between two binaries, I tested and rejected eight
+hypotheses — duplicate staging buffers, denormals, advancing `pos`, thermal, page
+cache, embedding-table pressure, input-write invalidation, two-graph alternation.
+All wrong. The control I should have run first was the OLD binary again: it had
+also gone from 124.8 to 326.8 ms on the identical graph. There was no regression
+between binaries at all.
+
+**Rule for this device: only trust A/B measurements taken back to back.**
+
+### What actually fixed the speed
+
+The thread pool. `TernaryPool` handed work off through a condition variable, and a
+decoder dispatches it ~84 times per token (3 MLP projections x 28 layers) for a few
+milliseconds of work each. That is far too fine-grained for a futex round trip:
+
+| threads | condvar | spin-then-yield |
+|---|---|---|
+| 1 | 188 ms | 187 ms |
+| 2 | 468 ms | 115 ms |
+| 4 | 341 ms | **79.5 ms** |
+
+With the condvar, "parallelism" made the decoder 1.8x SLOWER than single-threaded.
+Spinning (8192 `yield` instructions before falling back to `sched_yield`) makes 4
+threads 2.4x faster than 1. ggml's threadpool spins for exactly this reason.
 
 ## What is already settled
 
