@@ -638,24 +638,19 @@ static size_t vae_model_max_nodes(const vae_model_t* model) {
     return std::max<size_t>(1024, n_tensors * 3);
 }
 
-static int32_t vae_encode_impl(
+// Encode ONE window in a single graph. Callers go through vae_encode_impl,
+// which slices long audio into windows of this and stitches the results.
+static int32_t vae_encode_window(
     vae_context_t* ctx,
     AudioVAEEncoder& encoder,
     const float* audio,
     int32_t n_samples,
-    float* output,
-    float* inference_time_ms = nullptr) {
-    
+    float* output) {
+
     if (!ctx || !audio || !output) {
         return -1;
     }
-    
-    // Start timing if requested
-    struct timespec start_time, end_time;
-    if (inference_time_ms) {
-        clock_gettime(CLOCK_MONOTONIC, &start_time);
-    }
-    
+
     // Build the graph in a METADATA-ONLY context (no_alloc), then let
     // ggml_gallocr size and pack the compute buffer.
     //
@@ -820,15 +815,103 @@ static int32_t vae_encode_impl(
         memcpy(output, result->data, n_frames * out_dim * batch * sizeof(float));
     }
     
-    // Calculate inference time if requested
+    return (int32_t)n_frames;
+}
+
+// Total stride of the encoder: one output frame per this many input samples.
+// Matches the demo's --compress-ratio default and the config's encoder ratios
+// (1 * 8 * 5 * 5 * 4 * 2 * 2).
+static const int32_t VAE_HOP = 3200;
+
+// Window and left-context defaults, in whole frames so sample counts stay
+// aligned to VAE_HOP. 10 s of window and 2 s of context at 24 kHz.
+static const int32_t VAE_WINDOW_FRAMES_DEFAULT = 75;   // 240000 samples
+static const int32_t VAE_CONTEXT_FRAMES_DEFAULT = 15;  //  48000 samples
+
+static int32_t vae_env_frames(const char* name, int32_t fallback) {
+    if (const char* v = getenv(name)) {
+        const long long n = atoll(v);
+        if (n >= 0) return (int32_t)n;
+    }
+    return fallback;
+}
+
+static int32_t vae_encode_impl(
+    vae_context_t* ctx,
+    AudioVAEEncoder& encoder,
+    const float* audio,
+    int32_t n_samples,
+    float* output,
+    float* inference_time_ms = nullptr) {
+
+    if (!ctx || !audio || !output) {
+        return -1;
+    }
+
+    struct timespec start_time, end_time;
+    if (inference_time_ms) {
+        clock_gettime(CLOCK_MONOTONIC, &start_time);
+    }
+
+    // Peak memory is set by the single largest op in the graph, and that op runs
+    // at FULL input resolution (stage 0 is stride 1), so it scales with the length
+    // of whatever we hand to one graph: ~31.7 MB per second of audio, of which
+    // ~23.4 MB is the CPU backend's work buffer for one MUL_MAT_ADD_RELU.
+    //
+    // Slicing the audio into fixed windows caps that cost regardless of clip
+    // length. The convolutions are CAUSAL (ggml_im2col_asym pads left only), so a
+    // window needs preceding samples for its receptive field and NO lookahead:
+    // encode [start - context, start + window), then keep only the frames from
+    // `start` onward. Set VAE_WINDOW_FRAMES=0 to disable and encode in one pass.
+    const int32_t win_frames = vae_env_frames("VAE_WINDOW_FRAMES", VAE_WINDOW_FRAMES_DEFAULT);
+    const int32_t ctx_frames = vae_env_frames("VAE_CONTEXT_FRAMES", VAE_CONTEXT_FRAMES_DEFAULT);
+    const int32_t total_frames = n_samples / VAE_HOP;
+
+    int32_t n_frames = 0;
+    if (win_frames <= 0 || total_frames <= win_frames) {
+        n_frames = vae_encode_window(ctx, encoder, audio, n_samples, output);
+    } else {
+        // Dimension of one output frame — needed to place each window's frames in
+        // the caller's buffer. Taken from the encoder rather than assumed.
+        const int32_t out_dim = encoder.connector_output_dim;
+        std::vector<float> win_out;
+
+        for (int32_t f0 = 0; f0 < total_frames; f0 += win_frames) {
+            const int32_t lead = std::min(ctx_frames, f0);          // frames of left context
+            const int32_t take = std::min(win_frames, total_frames - f0);
+            const int32_t fed  = lead + take;
+
+            win_out.resize((size_t)fed * out_dim);
+            const int32_t got = vae_encode_window(
+                ctx, encoder, audio + (size_t)(f0 - lead) * VAE_HOP,
+                fed * VAE_HOP, win_out.data());
+            if (got < 0) return -1;
+
+            // Drop the context frames; they only existed to prime the receptive
+            // field. A short return means the encoder produced fewer frames than
+            // the hop predicts, so trust `got` over the arithmetic.
+            if (getenv("VIBEASR_VAE_DEBUG_MEM")) {
+                fprintf(stderr,
+                        "[VAE]   window f0=%d lead=%d take=%d fed=%d -> got=%d%s\n",
+                        f0, lead, take, fed, got, got == fed ? "" : "  <-- MISALIGNED");
+            }
+            const int32_t keep = std::min(take, got - lead);
+            if (keep <= 0) return -1;
+            memcpy(output + (size_t)f0 * out_dim,
+                   win_out.data() + (size_t)lead * out_dim,
+                   (size_t)keep * out_dim * sizeof(float));
+            n_frames = f0 + keep;
+        }
+    }
+
     if (inference_time_ms) {
         clock_gettime(CLOCK_MONOTONIC, &end_time);
-        double elapsed = (end_time.tv_sec - start_time.tv_sec) * 1000.0 + 
+        double elapsed = (end_time.tv_sec - start_time.tv_sec) * 1000.0 +
                         (end_time.tv_nsec - start_time.tv_nsec) / 1e6;
         *inference_time_ms = (float)elapsed;
     }
-    
-    return (int32_t)n_frames;
+
+    return n_frames;
 }
 
 int32_t vae_encode_acoustic(
