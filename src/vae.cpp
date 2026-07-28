@@ -713,9 +713,17 @@ static int32_t vae_encode_impl(
         return -1;
     }
     if (getenv("VIBEASR_VAE_DEBUG_MEM")) {
-        fprintf(stderr, "[VAE] %d samples (%.1fs) -> %d graph nodes, compute buffer %.1f MB\n",
+        // The CPU backend allocates a per-compute "work" buffer OUTSIDE the graph
+        // allocator, sized by the most demanding single op in the graph (im2col +
+        // quantized mul_mat scratch). It does not show up in the gallocr total, so
+        // report it separately or the accounting silently loses the larger half.
+        struct ggml_cplan plan = ggml_graph_plan(gf, ctx->n_threads, nullptr);
+        fprintf(stderr,
+                "[VAE] %d samples (%.1fs) -> %d nodes, compute buffer %.1f MB, "
+                "cpu work buffer %.1f MB\n",
                 n_samples, n_samples / 24000.0, ggml_graph_n_nodes(gf),
-                ggml_gallocr_get_buffer_size(ctx->galloc, 0) / (1024.0 * 1024.0));
+                ggml_gallocr_get_buffer_size(ctx->galloc, 0) / (1024.0 * 1024.0),
+                plan.work_size / (1024.0 * 1024.0));
     }
 
     // Tensor data pointers only become valid once the graph is allocated, so

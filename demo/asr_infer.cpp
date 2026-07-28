@@ -26,6 +26,30 @@
 #include <string>
 #include <vector>
 
+// Current and peak RSS from /proc, printed at each pipeline stage when
+// VIBEASR_MEM_TRACE is set. Peak (VmHWM) is what a device memory budget
+// actually has to survive; current (VmRSS) shows what a stage still holds
+// after finishing, which is how retained memory is told apart from
+// transient memory.
+static void mem_trace(const char * stage) {
+#ifdef __linux__
+    if (!getenv("VIBEASR_MEM_TRACE")) return;
+    long rss = 0, hwm = 0;
+    if (FILE * f = fopen("/proc/self/status", "r")) {
+        char line[256];
+        while (fgets(line, sizeof(line), f)) {
+            if (!strncmp(line, "VmRSS:", 6)) rss = atol(line + 6);
+            else if (!strncmp(line, "VmHWM:", 6)) hwm = atol(line + 6);
+        }
+        fclose(f);
+    }
+    fprintf(stderr, "[mem] %-22s rss=%7.1f MB  peak=%7.1f MB\n",
+            stage, rss / 1024.0, hwm / 1024.0);
+#else
+    (void)stage;
+#endif
+}
+
 //
 // Configuration
 //
@@ -166,6 +190,7 @@ int main(int argc, char ** argv) {
     // Step 1: Load audio
     // ========================================
     fprintf(stderr, "[Step 1] Loading audio...\n");
+    mem_trace("enter step 1");
     double t0 = get_time_ms();
 
     audio_io::AudioData audio;
@@ -182,6 +207,7 @@ int main(int argc, char ** argv) {
     // Step 2: Load VAE model
     // ========================================
     fprintf(stderr, "[Step 2] Loading VAE model...\n");
+    mem_trace("enter step 2");
     t0 = get_time_ms();
 
     struct vae_model_params vae_mparams = vae_model_default_params();
@@ -214,6 +240,7 @@ int main(int argc, char ** argv) {
     // Step 3: Load LM model
     // ========================================
     fprintf(stderr, "[Step 3] Loading LM model...\n");
+    mem_trace("enter step 3");
     t0 = get_time_ms();
 
     llama_backend_init();
@@ -259,6 +286,7 @@ int main(int argc, char ** argv) {
     // Step 4: VAE Acoustic Encode
     // ========================================
     fprintf(stderr, "[Step 4] VAE acoustic encoding...\n");
+    mem_trace("enter step 4");
 
     int32_t n_samples = (int32_t)audio.samples.size();
     int32_t expected_frames = (n_samples + params.compress_ratio - 1) / params.compress_ratio;
@@ -284,6 +312,7 @@ int main(int argc, char ** argv) {
     // ========================================
     {
         fprintf(stderr, "[Step 5] VAE semantic encoding...\n");
+    mem_trace("enter step 5");
 
         std::vector<float> semantic_features(expected_frames * semantic_dim);
         float semantic_time_ms = 0.0f;
@@ -308,6 +337,7 @@ int main(int argc, char ** argv) {
         // Step 6: Build prompt tokens
         // ========================================
         fprintf(stderr, "[Step 6] Building prompt...\n");
+    mem_trace("enter step 6");
         t0 = get_time_ms();
 
         prompt_builder::PromptTokens prompt = prompt_builder::build_prompt(
@@ -325,6 +355,7 @@ int main(int argc, char ** argv) {
         // Step 7: LM Prefill (segmented: token ID + embedding + token ID)
         // ========================================
         fprintf(stderr, "[Step 7] LM prefill (segmented)...\n");
+    mem_trace("enter step 7");
         t0 = get_time_ms();
 
         int n_prompt_tokens = (int)prompt.tokens.size();
@@ -356,6 +387,7 @@ int main(int argc, char ** argv) {
         // Step 8: Autoregressive decode
         // ========================================
         fprintf(stderr, "[Step 8] Decoding...\n");
+    mem_trace("enter step 8");
         t0 = get_time_ms();
 
         // Set up sampler
@@ -419,6 +451,7 @@ int main(int argc, char ** argv) {
         // Step 9: Detokenize and output
         // ========================================
         fprintf(stderr, "[Step 9] Post-processing output...\n\n");
+    mem_trace("enter step 9");
 
         // Skip the assistant header tokens that the model generates itself
         // (since we don't include generation prompt, model generates <|im_start|>assistant\n first)
@@ -562,5 +595,6 @@ cleanup:
     if (vae_ctx) vae_free(vae_ctx);
     if (vae_model) vae_free_model(vae_model);
 
+    mem_trace("at exit");
     return 0;
 }
