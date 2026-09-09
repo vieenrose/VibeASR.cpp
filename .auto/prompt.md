@@ -271,6 +271,8 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   Host disk stable. Health 6.54. 87 runs.
 - Exp88 (KEEP, robustness): 4x consecutive 6.56/6.55/6.53/6.54 - flat, no
   thermal stacking. Batch-safe. 88 runs.
+- Exp89 (KEEP, robustness): 3x transcripts bit-identical (-t2 deterministic;
+  token variance is config-driven). Repeat runs stable. 89 runs.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
