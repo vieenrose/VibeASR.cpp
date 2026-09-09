@@ -164,6 +164,11 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp40 (discard): -t 3 collapses (+78%: VAE 133, LM 40.5). Bandwidth needs >=4
   outstanding workers (or fixed 4-way partitioning). Thread dimension fully
   closed: {3 worse, 4 optimal, 6/8 wash-or-worse} + pools + affinity + OMP.
+- Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
+  1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
+  S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
+  C0 forces 2.4GHz primes + zero migration. NEW LOOP PROTOCOL (harness-level;
+  binary defaults stay portable). Device-topology-specific by nature.
 - Exp2 (killed pre-implementation): persistent VAE graph to skip 104 rebuilds/run.
   Measured graph build at 0.2-1ms (<1% of VAE time) via temp VAE_PROFILE
   instrumentation (since reverted). Would have saved ~100ms of 12,000ms.
