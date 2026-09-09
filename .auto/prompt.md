@@ -168,6 +168,9 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   (launch overhead still dominates). pieces=2: 6.45 (-1% noise) but RAM 4.2GB
   (+73% catastrophic) - direction flipped vs -t4 (real thread-x-size
   interaction) but not adoptable. Protocol stays 13.
+- Exp44 (KEEP, re-bracket): xwin-vs-legacy under -t2/C0, same session.
+  legacy 6.52 vs xwin 5.97 (-8.5% shorts, was -4.5% under -t4). Protocol
+  unchanged (legacy default, xwin shorts opt-in). Anchor 6.52 confirmed.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
