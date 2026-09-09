@@ -216,6 +216,9 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp60 (KEEP, roofline): health 6.55. VAE at ~50% of DRAM roofline (im2col
   expansion reconciles traffic model). Parked fusion ceiling (~1.3-2x)
   independently validated. Cross-piece batching dead by carry dependency.
+- Exp61 (KEEP, 4th tier): Q4-FFN + pieces=26: 1.97GB sub-2GB at 7.08.
+  Ultra-lean tier for 4GB devices. Table: F16 12.2/3.3/4.13% | Q8 6.5/2.44/4.41%
+  rec | Q4FFN 6.8/2.15/5.23% | Q4FFN+p26 7.1/1.97/5.23% ultra-lean.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
