@@ -211,6 +211,8 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   Clean binary reproduces 6.54 exactly. Shippable state proven, no drift.
 - Exp58 (KEEP): health 6.53. Per-encoder mixed precision skipped on ROI (~2%
   for hours of quant+gate). 58 runs.
+- Exp59 (KEEP): health 6.59 in band. Tensor-level micro-fusion scoped: ~0.1%
+  traffic saved - rejected with numbers (real fusion = custom kernels project).
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
