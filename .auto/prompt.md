@@ -57,6 +57,8 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   Accuracy cost unacceptable; LM stays Q4_K_M. Revisit only imatrix-guided.
 - Exp6 (KEEP, min-size tier): VAE Q4_0-FFN (104 tensors). Loop RTF 10.12 (-17%),
   RSS 2.42GB, 40-utt WER 5.23% (+1.1pp), 69s WER 3.67%. Opt-in; Q8 stays default.
+- Exp7 (KEEP): default `n_ctx` 16384->4096. RSS -336MB (2982 vs 3318MB),
+  RTF equal. Caveat: >15min files need `-c 16384`. Stacks with VAE-Q8.
 - Exp2 (killed pre-implementation): persistent VAE graph to skip 104 rebuilds/run.
   Measured graph build at 0.2-1ms (<1% of VAE time) via temp VAE_PROFILE
   instrumentation (since reverted). Would have saved ~100ms of 12,000ms.
