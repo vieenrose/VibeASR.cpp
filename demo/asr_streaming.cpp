@@ -48,7 +48,7 @@ struct stream_params {
     std::string audio_path;
     std::string context_info;
     int n_threads = 4;
-    int n_ctx = 16384;
+    int n_ctx = 4096;  // covers ~15 min audio; KV 112MB vs 450MB at 16384
     int n_batch = 512;
     int max_tokens_per_chunk = 256;
     int vae_pieces = 13;  // window split count; must divide 26 (frames). 13x6400 or 26x3200.
