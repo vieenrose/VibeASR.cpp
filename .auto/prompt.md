@@ -429,6 +429,8 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Audit (no run): persistent-VAE-arena probe dead by inspection - vae_encode_impl
   already grows-never-shrinks a reused compute arena (first-touch once). No
   per-piece page-zeroing exists to eliminate. Last structural CPU idea closed.
+- Exp200 (KEEP, rotation): F16 10.50 x18 identical, best of band. 200 runs:
+  12.24 -> 6.52 (-47%). All tiers metronomic, all gaps closed, ship proven.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
