@@ -252,6 +252,7 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   Forced-Q8 on stem/head skipped (poor ROI). Health 6.53. 76 runs.
 - Exp77 (KEEP, anti-overfit): 2nd 10s slice 6.65 (+2% token density, VAE
   identical 48.2). No slice overfit; 5 contents validated. 77 runs.
+- Exp78 (KEEP): health 6.54. Steady state. 78 runs.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
