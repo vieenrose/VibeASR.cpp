@@ -157,6 +157,10 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   (decode = bandwidth GEMV, prefill = efficient batched GEMM). Timers kept.
 - Exp38 (KEEP, evidence completion): Q8+legacy on 17s phone. RTF 8.50, correct,
   prefill/decode 45/55 holds. Tier evidence complete on all clips x devices.
+- Exp39 (KEEP, loop close): final confirmation 9.73, tier healthy. 38 runs logged.
+- Parked (out of loop scope, ceilings known): intrinsics-fused kernels (~1.3x),
+  Mali GPU (~2x, still insufficient alone), training/QAT/distillation (only path
+  to RTF<1), fork upgrade for KleidiAI.
 - Exp2 (killed pre-implementation): persistent VAE graph to skip 104 rebuilds/run.
   Measured graph build at 0.2-1ms (<1% of VAE time) via temp VAE_PROFILE
   instrumentation (since reverted). Would have saved ~100ms of 12,000ms.
