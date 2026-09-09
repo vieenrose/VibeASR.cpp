@@ -176,6 +176,11 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   (2.15GB/5.23%). Table: Q8 6.5/2.44/4.41% rec | Q4FFN 6.8/2.15/5.23% min-size.
 - Exp46 (KEEP, sustained): 69s under -t2/C0. RTF 6.26 (-34% vs -t4 sustained),
   444 tokens, RSS 2.39GB flat, x-device WER 0.7%. Ladder: 10s 6.5 / 69s 6.3.
+- Exp47 (discard number, KEEP knowledge): cpuinfo reveals 6xA55 (0-5) + 2xA78
+  (6-7). F0 was NEVER 4 big cores - it was 2 little + 2 big! -t2/C0 wins via
+  straggler-avoidance (not clocks). -t3 collapse, -t6/8 wash all re-explained.
+  STRUCTURAL close: only 2 big cores exist, -t2 is the max. Product note:
+  portable -t4 touches littles on 6+2 SoCs.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
