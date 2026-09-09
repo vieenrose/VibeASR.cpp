@@ -56,3 +56,4 @@ eval_data/
 stats/
 data/
 build-android/
+.auto/last_*
