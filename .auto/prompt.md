@@ -148,6 +148,10 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp35 (discard): pieces=26 on phone (smaller arenas fit phone caches?).
   9.88 vs 8.90 band, VAE 75.1 (launch overhead dominates both hosts).
   Leanest RAM reading 2.21GB (noted for min-RAM tier). Granularity closed: 13.
+- Exp36 (KEEP, tier completion): Q4-FFN + legacy on loop protocol. 9.78, RSS
+  2.15GB leanest-validated. Final tiers: F16 12.2/3.3GB/4.13% | Q8 9.7/2.44GB/
+  4.41% (recommended) | Q4FFN 9.8/2.15GB/5.23% (min-size). Q4-vs-Q8 speed
+  parity confirmed twice; choice is accuracy-vs-RAM, not speed.
 - Exp2 (killed pre-implementation): persistent VAE graph to skip 104 rebuilds/run.
   Measured graph build at 0.2-1ms (<1% of VAE time) via temp VAE_PROFILE
   instrumentation (since reverted). Would have saved ~100ms of 12,000ms.
