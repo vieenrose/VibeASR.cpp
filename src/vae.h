@@ -47,6 +47,34 @@ vae_context_t* vae_new_context_with_model(
 // Free context
 void vae_free(vae_context_t* ctx);
 
+// Opaque streaming conv cache (per-window state for piece-wise encode).
+// Carries each causal conv's left-history across pieces so that encoding a
+// window in 3200-sample-multiple pieces reproduces the full-window cold run.
+// Histories are tiny (~0.65 MB per encoder). Reset per window for upstream
+// parity (upstream encodes every window cold).
+typedef struct vae_cache_t vae_cache_t;
+
+vae_cache_t* vae_cache_new(void);
+void vae_cache_free(vae_cache_t* cache);
+void vae_cache_reset(vae_cache_t* cache);  // clear all histories (call per window)
+
+// Piece-wise encode with carried conv state. n_samples should be a multiple
+// of 3200 (grid alignment at every strided layer). First piece after reset
+// behaves exactly like the uncached call. Returns frames, or -1 on error.
+int32_t vae_encode_acoustic_cached(
+    vae_context_t* ctx,
+    vae_cache_t* cache,
+    const float* audio,
+    int32_t n_samples,
+    float* output);
+
+int32_t vae_encode_semantic_cached(
+    vae_context_t* ctx,
+    vae_cache_t* cache,
+    const float* audio,
+    int32_t n_samples,
+    float* output);
+
 // Get model info
 int32_t vae_model_acoustic_dim(const vae_model_t* model);
 int32_t vae_model_semantic_dim(const vae_model_t* model);

@@ -72,6 +72,34 @@ set_target_properties(asr_infer PROPERTIES
 )
 
 
+# Add chunked streaming ASR executable (VibeVoice-ASR-Streaming: per-window chunks)
+add_executable(asr_streaming
+    demo/asr_streaming.cpp
+    src/vae.cpp
+    src/vae.h
+)
+
+target_include_directories(asr_streaming PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/utils
+    ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/llama.cpp/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/llama.cpp/ggml/include
+)
+
+target_link_libraries(asr_streaming PRIVATE
+    common
+    llama
+    ${CMAKE_THREAD_LIBS_INIT}
+)
+
+target_compile_features(asr_streaming PRIVATE cxx_std_11)
+
+set_target_properties(asr_streaming PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+)
+
+
 # Add streaming ASR server executable (persistent process with token-level streaming)
 add_executable(asr_stream_server
     src/asr_server.cpp
