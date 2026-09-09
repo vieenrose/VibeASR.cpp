@@ -99,6 +99,9 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   broadcast-mirrored). Bit-exact frames (0.00e+00) but 7-9% SLOWER both hosts:
   scalar loop loses to ggml SIMD vec kernels. Fully reverted. Lesson: fusion
   needs NEON+AVX2 intrinsics to even tie; parked with fused-blocks project.
+- Exp20 (discard): own-VAE I8_S PTQ (was BitNet's foreign weights the cause?).
+  Collapsed identically (7 vs 44 tokens). Converter verified correct (F32
+  intermediate). Cause = per-tensor global scale precision. Dead twice over.
 - Exp2 (killed pre-implementation): persistent VAE graph to skip 104 rebuilds/run.
   Measured graph build at 0.2-1ms (<1% of VAE time) via temp VAE_PROFILE
   instrumentation (since reverted). Would have saved ~100ms of 12,000ms.
