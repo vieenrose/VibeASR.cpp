@@ -28,6 +28,7 @@ DEC=$(grep -oE 'decode [0-9.]+s' .auto/last_err.txt | head -n 1 | awk '{print $2
 PEAKKB=$(grep -oE 'peak_kb=[0-9]+' .auto/last_run.txt | cut -d= -f2)
 HWMKB=$(grep -oE 'hwm_kb=[0-9]+' .auto/last_run.txt | cut -d= -f2)
 MAJFLT=$(grep -oE 'majflt_delta=-?[0-9]+' .auto/last_run.txt | cut -d= -f2)
+BATTT=$(adb -s $DEV shell "dumpsys battery 2>/dev/null | grep 'temperature:'" 2>/dev/null | grep -oE '[0-9]+' | head -n 1)
 [ -z "${RTF:-}" ] && { echo "FAILED: no RTF parsed"; tail -n 5 .auto/last_err.txt; exit 1; }
 
 echo "METRIC rtf=$RTF"
@@ -40,3 +41,4 @@ echo "METRIC majflt=${MAJFLT:-0}"
 [ -n "${SES:-}" ] && echo "METRIC sem_s=$SES"
 [ -n "${PRE:-}" ] && echo "METRIC prefill_s=$PRE"
 [ -n "${DEC:-}" ] && echo "METRIC decode_s=$DEC"
+[ -n "${BATTT:-}" ] && echo "METRIC batt_temp_c=$(python3 -c "print(round(${BATTT}/10,1))")"
