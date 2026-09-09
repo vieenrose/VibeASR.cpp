@@ -360,18 +360,20 @@ def convert_to_gguf(
                 print(f"  • {name}: {tensor.dtype} -> F32 (bias/norm stability)")
             gguf_writer.add_tensor(name, tensor_out)
         else:
-            # F32, F16, or mixed Q8_0 output. Q8_0 needs last-dim %% 32 == 0
-            # (ggml block size); small kernels (depthwise convs) stay F16.
-            if outtype == 'q8_0_mixed' and tensor.shape[-1] % 32 == 0 and tensor.size >= 1024:
+            # Mixed-quant output. Q8_0/Q4_0 need last-dim %% 32 == 0 (ggml block
+            # size); small kernels (depthwise convs) stay F16.
+            use_q4 = (outtype == 'q4_0_ffn' and 'ffn.linear' in name)
+            if outtype in ('q8_0_mixed', 'q4_0_ffn') and tensor.shape[-1] % 32 == 0 and tensor.size >= 1024:
+                qt = gguf.GGMLQuantizationType.Q4_0 if use_q4 else gguf.GGMLQuantizationType.Q8_0
                 try:
-                    tensor_q = gguf.quants.quantize(
-                        tensor.astype(np.float32), gguf.GGMLQuantizationType.Q8_0)
-                    gguf_writer.add_tensor(name, tensor_q, raw_shape=tensor.shape,
-                                           raw_dtype=gguf.GGMLQuantizationType.Q8_0)
-                    print(f"  • {name}: {tensor.shape} -> Q8_0")
+                    tensor_out = gguf.quants.quantize(tensor.astype(np.float32), qt)
+                    gguf_writer.add_tensor(name, tensor_out, raw_shape=tensor.shape,
+                                           raw_dtype=qt)
+                    print(f"  • {name}: {tensor.shape} -> {qt.name}")
                 except Exception as e:
-                    print(f"  • {name}: Q8_0 failed ({e}), keeping F16")
-                    gguf_writer.add_tensor(name, tensor.astype(np.float16))
+                    print(f"  • {name}: {qt.name} failed ({e}), keeping F16")
+                    tensor_out = tensor.astype(np.float16)
+                    gguf_writer.add_tensor(name, tensor_out)
             elif outtype == 'f32':
                 tensor_out = tensor.astype(np.float32)
                 gguf_writer.add_tensor(name, tensor_out)
@@ -428,9 +430,10 @@ def main():
         "--outtype",
         type=str,
         default="f32",
-        choices=["f32", "f16", "q8_0_mixed"],
+        choices=["f32", "f16", "q8_0_mixed", "q4_0_ffn"],
         help="Output tensor data type (default: f32). q8_0_mixed: Q8_0 for large "
-             "weights (last dim %% 32 == 0), F16/F32 elsewhere (bias/norm stay F32)"
+             "weights (last dim %% 32 == 0), F16/F32 elsewhere (bias/norm stay F32). "
+             "q4_0_ffn: Q4_0 for FFN linears on top of q8_0_mixed (experimental)"
     )
 
     args = parser.parse_args()

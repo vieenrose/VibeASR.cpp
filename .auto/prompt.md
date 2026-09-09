@@ -50,6 +50,16 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   suspicious improvements. Confidence score < 1.0x = noise.
 
 ## What's Been Tried
+- Exp4 (KEEP, recommended tier): VAE selective Q8_0-mixed (large weights only,
+  convs stay F16). Loop RTF 10.34 (-15%), RSS 2.71GB, 40-utt WER 4.41% (+0.28pp),
+  69s WER 3.67%. Phone Q8 FASTER though desktop Q8 slower (ARM dotprod).
+- Exp5 (discard): LM Q3_K_M (6.20%, +2.1pp) / Q2_K (7.58%, +3.5pp) full-40.
+  Accuracy cost unacceptable; LM stays Q4_K_M. Revisit only imatrix-guided.
+- Exp6 (KEEP, min-size tier): VAE Q4_0-FFN (104 tensors). Loop RTF 10.12 (-17%),
+  RSS 2.42GB, 40-utt WER 5.23% (+1.1pp), 69s WER 3.67%. Opt-in; Q8 stays default.
+- Exp2 (killed pre-implementation): persistent VAE graph to skip 104 rebuilds/run.
+  Measured graph build at 0.2-1ms (<1% of VAE time) via temp VAE_PROFILE
+  instrumentation (since reverted). Would have saved ~100ms of 12,000ms.
 - Exp1 (discarded): `-mcpu=cortex-a78` + `GGML_ARM_DOTPROD` in CMakeLists —
   RTF 12.33 vs 12.24 (+0.7%, noise). Compiler tuning exhausted. NOTE: tool
   auto-revert/auto-commit cannot reach this nested repo (operates in parent
