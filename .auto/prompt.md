@@ -225,6 +225,8 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   1.98GB flat. 4th tier complete at all lengths.
 - Exp64 (KEEP, matrix complete): 17s ultra-lean 6.15. 4 tiers x 3 clips x
   regimes + 40-utt + x-device WER - no empty cells remain.
+- Exp65 (KEEP, matrix final): F16 69s: 9.73, WER 3.3% (best longs). Every
+  precision x length x 40-utt covered. Gaps: none. 65 runs.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
