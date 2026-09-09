@@ -185,6 +185,10 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   1-thread-per-big is the structural optimum (fewer starves, more thrashes).
 - Exp49 (KEEP, ladder complete): 17s under -t2/C0: 5.71. New-regime ladder:
   10s 6.5 / 17s 5.7 / 69s 6.3. No evidence gaps remain anywhere.
+- Exp50 (discard, protocol evidence): xwin on 69s/-t2: 5.66 BUT 11.5% drift
+  (carry-context compounds over 24 chunks). Demotion UPHELD with fresh data.
+  Side finding: A78s 98% busy at 1.3GHz (vs 2.4 max) after full-day benching -
+  sustained thermal cap suspected; cool-state test queued.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
