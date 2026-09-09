@@ -12,7 +12,7 @@
   linked; thread placement may beat taskset granularity.
 - Fused per-block kernels (norm+conv+scale+res+GELU+FFN): the big kernel project.
   Only after exhausting the above; needs WER gating (fusion changes FP order).
-- FP16 VAE compute: needs accuracy validation; moderate refactor.
+- FP16 VAE compute: KILLED (Exp13) - no F16-out matmul in this ggml; per-GEMM casts cost more than they save.
 - imatrix-guided Q3/Q2 LM (needs importance matrix collection first).
 - Eliminate 1.18x window overlap via lookahead-delayed emission (protocol change;
   affects streaming latency semantics — needs care, small gain).
