@@ -18,3 +18,10 @@
   affects streaming latency semantics — needs care, small gain).
 - Mali GPU offload: measured ceiling ~RTF 2 best case + weeks + thermal risk.
   Parked unless CPU track stalls above RTF ~6.
+
+## Status 2026-09-09: bounded space exhausted (30 experiments)
+Kept: Q8+legacy tier (RTF ~9.7, RSS 2.44GB, WER 4.4%/3.7%), n_ctx 4096,
+telemetry, xwin-bracket knowledge. All items above are measured ~0, killed
+with evidence, accuracy-rejected, or project-scale (intrinsics fusion,
+Mali GPU, training/QAT). Do NOT retry anything above without a changed
+assumption (new hardware, new ggml base with KleidiAI, or training budget).
