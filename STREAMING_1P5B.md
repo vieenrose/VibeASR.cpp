@@ -99,4 +99,24 @@ selective FFN-Q8 unbuilt (~1.2x est.). Even adding the broken I8_S VAE (3.4x,
 wrong transcripts without QAT) the ceiling is ~RTF 3-4. **RTF < 1 on this phone
 class requires retraining** (QAT INT8 VAE and/or a smaller encoder+LM), not
 more porting. Default Android build stays on the portable baseline; dotprod is
-opt-in (`-DGGML_ARM_DOTPROD=ON`) for known-dotprod fleets.
+opt-in (`-DGGML_ARM_DOTPROD=ON`) for known-dotprod fleets.\n
+## Deeper quantization (measured)
+
+40-utt LibriSpeech `test-clean` subset, same normalization (LM candidates are
+requants from Q4_K_M, i.e. slightly pessimistic; VAE-Q8 also checked on the 69 s
+multi-window clip to exercise cache carries):
+
+| LM \ VAE | F16 (1.4 GB) | Q8-mixed (0.8 GB) | I8_S (0.67 GB) |
+|---|---|---|---|
+| Q4_K_M (1.1 GB) | **4.13%** ✅ shipped | **4.41%** ✅ (+0.3pp) | collapsed (loops) |
+| Q4_0 (1.0 GB) | 5.6% on 5-file screen | — | — |
+| Q3_K_M (0.9 GB) | 6.20% (+2.1pp) | — | — |
+| Q2_K (0.7 GB) | 7.58% (+3.5pp) | — | — |
+
+Recommended max-quant combo: **VAE Q8-mixed + LM Q4_K_M** (files 1.9 GB,
+desktop RSS 2.72 GB, RTF ~1.1; phone 17 s: RTF 8.97 vs 11.60, RSS 2.71 GB —
+Q8 GEMM likes ARM dotprod). 69 s WER 3.67%, identical parity class.
+`--outtype q8_0_mixed` in `convert_vae_to_gguf.py` quantizes large weights
+(last dim % 32 == 0) to Q8_0, keeps conv kernels/bias/norms in F16/F32
+(Q8_0 blocks need 32-wide rows; depthwise kernels can't quantize).
+Below Q4 the LM falls off a cliff (+2pp at Q3, +3.5pp at Q2) — rejected.
