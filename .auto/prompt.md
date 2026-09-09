@@ -95,6 +95,10 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   (max 4e-3) but 15% SLOWER on desktop (power-of-2 kernels beat fewer MACs).
   Reverted converter to always-pad; kept dynamic head_kernel_size (robust to
   both variants). Lesson: MACs != speed; authors padded for a reason.
+- Exp19 (discard): fused residual mul+add via custom map_custom3 op (strided-safe,
+  broadcast-mirrored). Bit-exact frames (0.00e+00) but 7-9% SLOWER both hosts:
+  scalar loop loses to ggml SIMD vec kernels. Fully reverted. Lesson: fusion
+  needs NEON+AVX2 intrinsics to even tie; parked with fused-blocks project.
 - Exp2 (killed pre-implementation): persistent VAE graph to skip 104 rebuilds/run.
   Measured graph build at 0.2-1ms (<1% of VAE time) via temp VAE_PROFILE
   instrumentation (since reverted). Would have saved ~100ms of 12,000ms.
