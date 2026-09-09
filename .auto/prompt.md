@@ -286,6 +286,7 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp99 (KEEP, rotation): F16 10.52 x3 identical. 99 runs.
 - Exp100 (KEEP, century): Q4 6.84 in band. 100 experiments: 12.24 -> 6.52
   (-47%). 4 tiers gated, matrix complete, ship proven, docs current.
+- Exp101 (KEEP): health 6.54. 101 runs.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
