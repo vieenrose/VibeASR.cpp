@@ -59,6 +59,15 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   RSS 2.42GB, 40-utt WER 5.23% (+1.1pp), 69s WER 3.67%. Opt-in; Q8 stays default.
 - Exp7 (KEEP): default `n_ctx` 16384->4096. RSS -336MB (2982 vs 3318MB),
   RTF equal. Caveat: >15min files need `-c 16384`. Stacks with VAE-Q8.
+- Probe (groundwork for Exp8): upstream `encode_then_split` (whole-file encode =
+  full-context features, proxy for cross-window carry) on 40-utt: WER 3.72%
+  vs 4.82% cold windows. Full context is BETTER and removes 1.18x overlap
+  recompute. Exp8 implements this via never-reset cache + delayed emission.
+- Exp8 (KEEP, new loop protocol): `--xwin` cross-window carry + immediate emission.
+  Desktop 69s VAE 41.3 vs 49.6s (-17%, theory-matched); phone 10s RTF 12.03
+  (edge-heavy short file, within noise of legacy 12.24); 40-utt WER 3.99% vs
+  4.13% cold (proxy predicted 3.72%). Fixed own double-emission bug + cold-tail
+  rule along the way. Loop protocol switched to --xwin; re-baselining below.
 - Exp2 (killed pre-implementation): persistent VAE graph to skip 104 rebuilds/run.
   Measured graph build at 0.2-1ms (<1% of VAE time) via temp VAE_PROFILE
   instrumentation (since reverted). Would have saved ~100ms of 12,000ms.

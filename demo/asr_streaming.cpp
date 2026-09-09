@@ -52,6 +52,8 @@ struct stream_params {
     int n_batch = 512;
     int max_tokens_per_chunk = 256;
     int vae_pieces = 13;  // window split count; must divide 26 (frames). 13x6400 or 26x3200.
+    bool xwin = false;    // cross-window carry: never reset VAE cache, emit with
+                          // 1-chunk delay (full-context features, no overlap recompute)
     bool use_mmap = true;
 };
 
@@ -66,6 +68,8 @@ static void print_usage(const char * prog) {
     fprintf(stderr, "  --max-tokens <n>       Max new tokens per chunk (default: 256)\n");
     fprintf(stderr, "  --vae-pieces <n>       Window split count, must divide 26 (default: 13)\n");
     fprintf(stderr, "                         1 = legacy full-window encode; 13/26 = cached pieces\n");
+    fprintf(stderr, "  --xwin                   Cross-window VAE carry + delayed emission\n");
+    fprintf(stderr, "                         (full-context features, skips overlap recompute)\n");
     fprintf(stderr, "  --context <text>       Hotwords, e.g. \"VibeVoice,diarization\"\n");
     fprintf(stderr, "  --no-mmap              Do not mmap LM weights\n");
 }
@@ -81,6 +85,7 @@ static bool parse_args(int argc, char ** argv, stream_params & p) {
         else if (a == "-c" && i + 1 < argc) p.n_ctx = std::stoi(argv[++i]);
         else if (a == "--max-tokens" && i + 1 < argc) p.max_tokens_per_chunk = std::stoi(argv[++i]);
         else if (a == "--vae-pieces" && i + 1 < argc) p.vae_pieces = std::stoi(argv[++i]);
+        else if (a == "--xwin") p.xwin = true;
         else if (a == "--no-mmap") p.use_mmap = false;
         else if (a == "-h" || a == "--help") { print_usage(argv[0]); exit(0); }
         else { fprintf(stderr, "Unknown arg: %s\n", a.c_str()); return false; }
@@ -151,6 +156,66 @@ static int feed_embeds(llama_context * ctx, const float * emb, int n_rows, int n
     }
     return pos;
 }
+
+// Emit one chunk (26 frames at [frames, frames+26)) through the LM. Mirrors the
+// legacy per-window loop exactly (speech markers, greedy-to-chunk-end, tce feed).
+// Returns 0 on success, -1 on error. Updates pos_ms/lm_ms/total_tokens/full_text.
+static int emit_chunk(llama_context * lctx, llama_sampler * smpl, llama_model * model,
+                      const float * frames, int n_embd, int n_batch, int max_tokens,
+                      const char ** strip_list, int n_strip,
+                      int & pos, double & lm_ms, int & total_tokens, std::string & full_text,
+                      int show_idx, int show_total) {
+    double t0 = now_ms();
+    llama_token t_start = TOK_SPEECH_START, t_end = TOK_SPEECH_END, t_tce = TOK_TEXT_CHUNK_END;
+    if ((pos = feed_token(lctx, t_start, pos)) < 0) return -1;
+    if ((pos = feed_embeds(lctx, frames, FRAMES_PER_WINDOW, n_embd, pos, n_batch)) < 0) return -1;
+    if ((pos = feed_token(lctx, t_end, pos)) < 0) return -1;
+    llama_token tok = llama_sampler_sample(smpl, lctx, -1);
+    llama_sampler_accept(smpl, tok);
+    std::vector<llama_token> chunk_ids;
+    for (int i = 0; i < max_tokens; i++) {
+        if (tok == TOK_TEXT_CHUNK_END || tok == TOK_EOS) break;
+        chunk_ids.push_back(tok);
+        if ((pos = feed_token(lctx, tok, pos)) < 0) return -1;
+        tok = llama_sampler_sample(smpl, lctx, -1);
+        llama_sampler_accept(smpl, tok);
+    }
+    if ((pos = feed_token(lctx, t_tce, pos)) < 0) return -1;
+    lm_ms += now_ms() - t0;
+    std::string text = detokenize(model, chunk_ids);
+    for (int s = 0; s < n_strip; s++) {
+        size_t p;
+        while ((p = text.find(strip_list[s])) != std::string::npos) text.erase(p, strlen(strip_list[s]));
+    }
+    full_text += text;
+    total_tokens += (int)chunk_ids.size();
+    printf("[%d/%d] %s\n", show_idx, show_total, text.c_str());
+    fflush(stdout);
+    return 0;
+}
+
+// Encode nsamp samples (3200-multiple) into summed 1536-dim frames via the
+// carried cache. Returns frames written, or -1 on error.
+static int encode_frames(vae_context_t * vae_ctx, vae_cache_t * vcache,
+                         const float * samples, int nsamp,
+                         float * afe, float * sfe, int acoustic_dim, int semantic_dim,
+                         int want_frames, double & vae_ms) {
+    static const int SUB_SAMPLES = 6400;  // 2 frames; divides window/hop/tail
+    if (nsamp % SUB_SAMPLES != 0) return -1;
+    double t0 = now_ms();
+    int got = 0;
+    for (int off = 0; off < nsamp; off += SUB_SAMPLES) {
+        float * af = afe + (got * acoustic_dim);
+        float * sf = sfe + (got * semantic_dim);
+        int na = vae_encode_acoustic_cached(vae_ctx, vcache, samples + off, SUB_SAMPLES, af);
+        int ns = vae_encode_semantic_cached(vae_ctx, vcache, samples + off, SUB_SAMPLES, sf);
+        if (na != 2 || ns != 2) return -1;
+        got += 2;
+    }
+    vae_ms += now_ms() - t0;
+    return (got == want_frames) ? got : -1;
+}
+
 
 int main(int argc, char ** argv) {
     stream_params params;
@@ -261,6 +326,57 @@ int main(int argc, char ** argv) {
     const char * strip_list[] = {"<|text_chunk_end|>", "<|object_ref_start|>", "<|object_ref_end>",
                                  "<|box_start|>", "<|speech_start|>", "<|speech_end|>", "<|speech_pad|>"};
 
+    // ---- cross-window carry mode (full-context features) ----
+    // Hops tile the audio contiguously (83200, then 70400s, last zero-padded);
+    // the VAE cache is reset once, so every hop after the first sees full left
+    // context (like upstream encode_then_split, but bounded memory). Chunk h is
+    // complete at step h (hop h covers through frame 22h+25), so emission is
+    // immediate, exactly like the legacy loop.
+    if (params.xwin && n_samples > WINDOW_SAMPLES) {
+        int n_hops = 1 + (n_samples - WINDOW_SAMPLES + HOP_SAMPLES - 1) / HOP_SAMPLES;
+        // frames after all hops: 26 + 22*(n_hops-1); chunks while 22k+25 < F
+        int total_frames = FRAMES_PER_WINDOW + (n_hops - 1) * (HOP_SAMPLES / 3200);
+        int n_chunks = 0;
+        while (22 * n_chunks + 25 < total_frames) n_chunks++;
+        fprintf(stderr, "XWIN: %d hops, %d frames, %d chunks (carry, immediate emission)\n\n",
+                n_hops, total_frames, n_chunks);
+        vae_cache_t * xvc = vcache;
+        bool own_cache = false;
+        if (xvc == nullptr) { xvc = vae_cache_new(); own_cache = true; }
+        vae_cache_reset(xvc);
+        std::vector<float> wafe(FRAMES_PER_WINDOW * acoustic_dim);
+        std::vector<float> wsfe(FRAMES_PER_WINDOW * semantic_dim);
+        std::vector<float> frames;
+        frames.reserve((size_t)total_frames * n_embd);
+        std::vector<float> hop(std::max(WINDOW_SAMPLES, HOP_SAMPLES), 0.0f);
+        for (int h = 0; h < n_hops; h++) {
+            int start = (h == 0) ? 0 : WINDOW_SAMPLES + (h - 1) * HOP_SAMPLES;
+            int want = (h == 0) ? WINDOW_SAMPLES : HOP_SAMPLES;
+            int avail = std::min(want, n_samples - start);
+            if (avail <= 0) break;
+            memcpy(hop.data(), audio.samples.data() + start, avail * sizeof(float));
+            if (avail < want) memset(hop.data() + avail, 0, (want - avail) * sizeof(float));
+            int gotf = (want == WINDOW_SAMPLES) ? FRAMES_PER_WINDOW : want / 3200;
+            if (encode_frames(vae_ctx, xvc, hop.data(), want, wafe.data(), wsfe.data(),
+                              acoustic_dim, semantic_dim, gotf, vae_ms) < 0) {
+                fprintf(stderr, "xwin hop %d: encode failed\n", h);
+                return 1;
+            }
+            for (int f = 0; f < gotf; f++)
+                for (int d = 0; d < n_embd; d++)
+                    frames.push_back(wafe[f * acoustic_dim + d] + wsfe[f * semantic_dim + d]);
+            if (h >= n_chunks) {
+                fprintf(stderr, "xwin: more hops than chunks, stopping\n");
+                break;
+            }
+            if (emit_chunk(lctx, smpl, model, frames.data() + (size_t)h * 22 * n_embd,
+                           n_embd, params.n_batch, params.max_tokens_per_chunk,
+                           strip_list, 7, pos, lm_ms, total_tokens, full_text,
+                           h + 1, n_chunks) < 0) return 1;
+        }
+        if (own_cache) vae_cache_free(xvc);
+        n_windows = n_chunks;  // for the summary line below
+    } else
     for (int w = 0; w < n_windows; w++) {
         int start = w * HOP_SAMPLES;
         int avail = std::min(WINDOW_SAMPLES, n_samples - start);
