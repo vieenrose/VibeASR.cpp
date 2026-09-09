@@ -72,4 +72,31 @@ vs 12.5 GB for PyTorch CPU fp32 and 5.5 -> 15.5 GB for offline BitNet on long fi
   (`asr_infer` behavior unchanged); the streaming VAE stays F16 because naive
   PTQ I8_S collapses output (repetition loops) — that VAE was never QAT-trained.
 - Env-gated diagnostics: `VAE_CACHE_TRACE=1` (per-site checksums),
-  `VAE_DUMP_FRAMES=<prefix>` (output frames), `VAE_DUMP_SITE=<sN|all>` (site inputs).
+  `VAE_DUMP_FRAMES=<prefix>` (output frames), `VAE_DUMP_SITE=<sN|all>` (site inputs).\n
+## Phone evaluation (OPPO CPH2371, Dimensity 1300, 8 GB RAM, Android 13)
+
+Cross-built with NDK r26d (`arm64-v8a`, `android-33`, `GGML_ARM_DOTPROD=ON`;
+baseline kernels — the ggml dotprod probe can't run under cross-compilation).
+Binaries + 2.5 GB GGUFs pushed to `/data/local/tmp/vibeasr`
+(`libomp.so` from the NDK must sit beside them for `LD_LIBRARY_PATH=.`).
+
+| clip | phone RTF | desktop RTF | phone peak RSS |
+|---|---|---|---|
+| 10 s, `-t 4` | 13.33 (VAE 109 s + LM 24 s) | 1.13 | 3.09 GB |
+| 10 s, `-t 4` + dotprod build | 13.21 (no gain: LM decode is bandwidth-bound) | — | — |
+| 10 s, `-t 4` pinned to big cores (`taskset F0`) | 12.37 | — | — |
+| 10 s, `-t 8` | 12.43 | — | 3.32 GB |
+| 17 s, `-t 4` | 11.60, transcript correct | 0.94 | 3.12 GB |
+| 69 s, `-t 4` | 12.50, cross-device WER 2.65% vs desktop | 1.03 | 3.21 GB |
+
+Correctness and flat memory hold on-device. Speed does not: consistently ~12x
+off real-time (VAE convs 12.8x slower than desktop: NEON-128 vs AVX2+clocks;
+Q4 LM 9.4x: bandwidth-bound, SDOT can't help GEMV decode; `-t 8` gains 7% —
+little cores add nothing, the load is bandwidth-bound).
+
+Lever tally toward RTF < 1 (needs ~12x): dotprod ~0%, pinning 7%, `-t 8` 7%,
+selective FFN-Q8 unbuilt (~1.2x est.). Even adding the broken I8_S VAE (3.4x,
+wrong transcripts without QAT) the ceiling is ~RTF 3-4. **RTF < 1 on this phone
+class requires retraining** (QAT INT8 VAE and/or a smaller encoder+LM), not
+more porting. Default Android build stays on the portable baseline; dotprod is
+opt-in (`-DGGML_ARM_DOTPROD=ON`) for known-dotprod fleets.
