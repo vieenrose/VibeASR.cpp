@@ -233,6 +233,8 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   stats). Battery +0.2C/run (thermally light). Health 6.58. 67 runs.
 - Exp68 (KEEP, tier rotation): Q4 health 6.81 (was 6.80). ~4% tax stable.
   All tiers current. 68 runs.
+- Exp69 (KEEP, rotation): F16 10.54 identical. Full rotation complete, all
+  tiers current. 69 runs.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
