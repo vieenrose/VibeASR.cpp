@@ -189,6 +189,9 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   (carry-context compounds over 24 chunks). Demotion UPHELD with fresh data.
   Side finding: A78s 98% busy at 1.3GHz (vs 2.4 max) after full-day benching -
   sustained thermal cap suspected; cool-state test queued.
+- Exp51 (KEEP, methodology closure): cool-state (15min idle) 6.58 vs warm 6.52.
+  No thermal tax; A78 1.3GHz-under-load is sustained equilibrium (mobile norm),
+  not throttling. All numbers are fair sustained-state. Thermal lead closed.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
