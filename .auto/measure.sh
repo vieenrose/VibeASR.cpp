@@ -22,10 +22,13 @@ VAE=$(grep -oE 'VAE: [0-9.]+s' .auto/last_err.txt | head -n 1 | sed 's/VAE: //;s
 LMS=$(grep -oE 'LM: [0-9.]+s' .auto/last_err.txt | head -n 1 | sed 's/LM: //;s/s//')
 TOK=$(grep -oE 'tokens: [0-9]+' .auto/last_err.txt | head -n 1 | awk '{print $2}')
 PEAKKB=$(grep -oE 'peak_kb=[0-9]+' .auto/last_run.txt | cut -d= -f2)
+HWMKB=$(grep -oE 'hwm_kb=[0-9]+' .auto/last_run.txt | cut -d= -f2)
+MAJFLT=$(grep -oE 'majflt_delta=[0-9]+' .auto/last_run.txt | cut -d= -f2)
 [ -z "${RTF:-}" ] && { echo "FAILED: no RTF parsed"; tail -n 5 .auto/last_err.txt; exit 1; }
 
 echo "METRIC rtf=$RTF"
 echo "METRIC vae_s=$VAE"
 echo "METRIC lm_s=$LMS"
 echo "METRIC tokens=$TOK"
-echo "METRIC peak_rss_mb=$(python3 -c "print(round($PEAKKB/1024,1))")"
+echo "METRIC peak_rss_mb=$(python3 -c "print(round(${HWMKB:-$PEAKKB}/1024,1))")"
+echo "METRIC majflt=${MAJFLT:-0}"

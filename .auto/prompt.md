@@ -68,6 +68,8 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   (edge-heavy short file, within noise of legacy 12.24); 40-utt WER 3.99% vs
   4.13% cold (proxy predicted 3.72%). Fixed own double-emission bug + cold-tail
   rule along the way. Loop protocol switched to --xwin; re-baselining below.
+- Exp12 (KEEP, infra): swap-tax probe (VmHWM + majflt telemetry). majflt=0:
+  NOT swap-bound, gap is pure compute. Q8+xwin re-run 9.01, reproducible.
 - Exp2 (killed pre-implementation): persistent VAE graph to skip 104 rebuilds/run.
   Measured graph build at 0.2-1ms (<1% of VAE time) via temp VAE_PROFILE
   instrumentation (since reverted). Would have saved ~100ms of 12,000ms.
