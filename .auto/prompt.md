@@ -181,6 +181,8 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   straggler-avoidance (not clocks). -t3 collapse, -t6/8 wash all re-explained.
   STRUCTURAL close: only 2 big cores exist, -t2 is the max. Product note:
   portable -t4 touches littles on 6+2 SoCs.
+- Exp48 (discard): -t4 oversubscribed on 2 bigs (C0): 7.19 vs 5.97 (+20%).
+  1-thread-per-big is the structural optimum (fewer starves, more thrashes).
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
