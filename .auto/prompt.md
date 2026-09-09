@@ -386,6 +386,8 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp173 (KEEP, rotation): Q4 6.81 @35.8C. 173 runs.
 - Exp174 (KEEP): health 6.57 @35.7C. 174 runs.
 - Exp175 (KEEP, rotation): ultra-lean 7.07 @35.7C. 175 runs.
+- Exp176 (KEEP, watch resolved): 6.62 exceed (LM-side) -> 6.55 re-check.
+  Noise 4th time, all phases. 176 runs.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
