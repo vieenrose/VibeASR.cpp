@@ -108,6 +108,8 @@ static bool parse_args(int argc, char ** argv, stream_params & p) {
 // Phase timers (LM prefill vs decode split). Zero per run in main.
 static double g_prefill_ms = 0.0;
 static double g_decode_ms = 0.0;
+static double g_ac_ms = 0.0;
+static double g_sem_ms = 0.0;
 
 static double now_ms() {
     struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -220,8 +222,12 @@ static int encode_frames(vae_context_t * vae_ctx, vae_cache_t * vcache,
     for (int off = 0; off < nsamp; off += SUB_SAMPLES) {
         float * af = afe + (got * acoustic_dim);
         float * sf = sfe + (got * semantic_dim);
+        double ta = now_ms();
         int na = vae_encode_acoustic_cached(vae_ctx, vcache, samples + off, SUB_SAMPLES, af);
+        g_ac_ms += now_ms() - ta;
+        double ts = now_ms();
         int ns = vae_encode_semantic_cached(vae_ctx, vcache, samples + off, SUB_SAMPLES, sf);
+        g_sem_ms += now_ms() - ts;
         if (na != 2 || ns != 2) return -1;
         got += 2;
     }
@@ -339,6 +345,8 @@ int main(int argc, char ** argv) {
     int total_tokens = 0;
     g_prefill_ms = 0.0;
     g_decode_ms = 0.0;
+    g_ac_ms = 0.0;
+    g_sem_ms = 0.0;
 
     const char * strip_list[] = {"<|text_chunk_end|>", "<|object_ref_start|>", "<|object_ref_end>",
                                  "<|box_start|>", "<|speech_start|>", "<|speech_end|>", "<|speech_pad|>"};
@@ -422,8 +430,12 @@ int main(int argc, char ** argv) {
                 const float * piece = window.data() + p * piece_samples;
                 float * af = afe.data() + p * piece_frames * acoustic_dim;
                 float * sf = sfe.data() + p * piece_frames * semantic_dim;
+                double ta2 = now_ms();
                 int na = vae_encode_acoustic_cached(vae_ctx, vcache, piece, piece_samples, af);
+                g_ac_ms += now_ms() - ta2;
+                double ts2 = now_ms();
                 int ns = vae_encode_semantic_cached(vae_ctx, vcache, piece, piece_samples, sf);
+                g_sem_ms += now_ms() - ts2;
                 if (na != piece_frames || ns != piece_frames) {
                     fprintf(stderr, "window %d piece %d: unexpected frames a=%d s=%d (want %d)\n",
                             w, p, na, ns, piece_frames);
@@ -488,8 +500,8 @@ int main(int argc, char ** argv) {
     fprintf(stderr, "\n========================================\n");
     fprintf(stderr, " Audio: %.2fs | chunks: %d | tokens: %d | RTF: %.4f\n",
             audio.duration_sec, n_windows, total_tokens, rtf);
-    fprintf(stderr, " load: %.1fs | VAE: %.1fs | LM: %.1fs (prefill %.1fs, decode %.1fs) | total: %.1fs\n",
-            load_s, vae_ms / 1000.0, lm_ms / 1000.0, g_prefill_ms / 1000.0, g_decode_ms / 1000.0, total_s);
+    fprintf(stderr, " load: %.1fs | VAE: %.1fs (ac %.1fs, sem %.1fs) | LM: %.1fs (prefill %.1fs, decode %.1fs) | total: %.1fs\n",
+            load_s, vae_ms / 1000.0, g_ac_ms / 1000.0, g_sem_ms / 1000.0, lm_ms / 1000.0, g_prefill_ms / 1000.0, g_decode_ms / 1000.0, total_s);
     fprintf(stderr, "========================================\n");
     printf("\n--- Transcription ---\n%s\n", full_text.c_str());
 
