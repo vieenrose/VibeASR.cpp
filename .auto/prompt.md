@@ -240,6 +240,8 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp71 (KEEP, ship proof): clean binary 69s = 6.26, identical to incremental.
   Shipped artifact proven at all lengths. 71 runs.
 - Exp72 (KEEP): health 6.54. Steady state, monitoring mode. 72 runs.
+- Exp73 (KEEP, mechanism): LM bound = 90% bandwidth + 10% dequant (Q4_0 A/B
+  both hosts: -7% LM). Q4_0 EV -1.8% overall, rejected with numbers. Health 6.53.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
