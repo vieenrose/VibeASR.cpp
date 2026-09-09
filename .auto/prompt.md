@@ -136,6 +136,9 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   VAE 69.1 vs 65.3. GEMM efficiency already saturated at 6400; granularity
   settled for good (13 default).
 - Exp31 (KEEP, health confirmation): Q8+legacy re-run 9.84, in band. Tier healthy.
+- Exp32 (KEEP, generalization): Q8+legacy on 17s Mandarin/English clip. RTF 8.52,
+  correct/complete transcript, RSS 2.44GB. Per-second rates BETTER than 10s loop
+  (steady-state) — no overfit; loop numbers pessimistic if anything.
 - Exp2 (killed pre-implementation): persistent VAE graph to skip 104 rebuilds/run.
   Measured graph build at 0.2-1ms (<1% of VAE time) via temp VAE_PROFILE
   instrumentation (since reverted). Would have saved ~100ms of 12,000ms.
