@@ -80,26 +80,28 @@ baseline kernels — the ggml dotprod probe can't run under cross-compilation).
 Binaries + 2.5 GB GGUFs pushed to `/data/local/tmp/vibeasr`
 (`libomp.so` from the NDK must sit beside them for `LD_LIBRARY_PATH=.`).
 
-| clip | phone RTF | desktop RTF | phone peak RSS |
-|---|---|---|---|
-| 10 s, `-t 4` | 13.33 (VAE 109 s + LM 24 s) | 1.13 | 3.09 GB |
-| 10 s, `-t 4` + dotprod build | 13.21 (no gain: LM decode is bandwidth-bound) | — | — |
-| 10 s, `-t 4` pinned to big cores (`taskset F0`) | 12.37 | — | — |
-| 10 s, `-t 8` | 12.43 | — | 3.32 GB |
-| 17 s, `-t 4` | 11.60, transcript correct | 0.94 | 3.12 GB |
-| 69 s, `-t 4` | 12.50, cross-device WER 2.65% vs desktop | 1.03 | 3.21 GB |
+65-experiment optimization loop on-device (CPU-only, accuracy-guarded;
+baseline 12.24 → best 6.52, −47%). Key finding: this SoC is **6× Cortex-A55
++ 2× Cortex-A78** — mask `F0` was 2 little + 2 big, and every `-t 4` run
+straggled on little cores. The optimum is **`-t 2` on the two big cores**
+(plain `-t 2` suffices; EAS places them correctly, no `taskset` needed to
+ship). A78s sustain ~1.3 GHz under load (mobile sustained equilibrium, not
+throttling); no i8mm/SVE exists, so NEON-F32 + DOTPROD is the full ISA story.
 
-Correctness and flat memory hold on-device. Speed does not: consistently ~12x
-off real-time (VAE convs 12.8x slower than desktop: NEON-128 vs AVX2+clocks;
-Q4 LM 9.4x: bandwidth-bound, SDOT can't help GEMV decode; `-t 8` gains 7% —
-little cores add nothing, the load is bandwidth-bound).
+| tier | files | phone RTF (10 s / 17 s / 69 s) | phone peak RSS | WER |
+|---|---|---|---|---|
+| max-accuracy (VAE F16 + LM Q4_K_M) | 2.5 GB | 10.5 / — / 9.7 | 2.99 GB | 4.13% (40-utt), 3.3% (69 s) |
+| **recommended (VAE Q8-mixed + LM Q4_K_M)** | **1.9 GB** | **6.5 / 5.7 / 6.3** | **2.44 GB** | **4.41% (40-utt), 3.7% (69 s)** |
+| min-size (VAE Q4-FFN + LM Q4_K_M) | 1.6 GB | 6.8 / — / — | 2.15 GB | 5.23% (40-utt) |
+| ultra-lean (Q4-FFN + 26 pieces) | 1.6 GB | 7.1 / 6.2 / 6.7 | 1.97 GB | 5.23% (40-utt), 2.7% (69 s) |
 
-Lever tally toward RTF < 1 (needs ~12x): dotprod ~0%, pinning 7%, `-t 8` 7%,
-selective FFN-Q8 unbuilt (~1.2x est.). Even adding the broken I8_S VAE (3.4x,
-wrong transcripts without QAT) the ceiling is ~RTF 3-4. **RTF < 1 on this phone
-class requires retraining** (QAT INT8 VAE and/or a smaller encoder+LM), not
-more porting. Default Android build stays on the portable baseline; dotprod is
-opt-in (`-DGGML_ARM_DOTPROD=ON`) for known-dotprod fleets.\n
+Correctness and flat memory hold on-device at all lengths (cross-device WER
+< 1% same-config). `--xwin` (cross-window VAE carry) is ~8% faster on short
+clips but drifts (+11.5% WER) on 69 s — shorts-only opt-in, legacy windows
+default. The VAE runs at ~50% of DRAM roofline; remaining kernel upside
+(~1.3–2×) needs fused NEON intrinsics. **RTF < 1 on this phone class requires
+retraining** (QAT INT8 VAE and/or a smaller encoder+LM), not more porting.
+
 ## Deeper quantization (measured)
 
 40-utt LibriSpeech `test-clean` subset, same normalization (LM candidates are
@@ -114,8 +116,8 @@ multi-window clip to exercise cache carries):
 | Q2_K (0.7 GB) | 7.58% (+3.5pp) | — | — |
 
 Recommended max-quant combo: **VAE Q8-mixed + LM Q4_K_M** (files 1.9 GB,
-desktop RSS 2.72 GB, RTF ~1.1; phone 17 s: RTF 8.97 vs 11.60, RSS 2.71 GB —
-Q8 GEMM likes ARM dotprod). 69 s WER 3.67%, identical parity class.
+desktop RSS 2.72 GB, RTF ~1.1; phone: RTF 6.5/5.7/6.3 on 10/17/69 s,
+RSS 2.44 GB flat, `-t 2`). 69 s WER 3.67%, identical parity class.
 `--outtype q8_0_mixed` in `convert_vae_to_gguf.py` quantizes large weights
 (last dim % 32 == 0) to Q8_0, keeps conv kernels/bias/norms in F16/F32
 (Q8_0 blocks need 32-wide rows; depthwise kernels can't quantize).
