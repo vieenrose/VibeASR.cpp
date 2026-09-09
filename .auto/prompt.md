@@ -155,6 +155,8 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp37 (KEEP, telemetry): LM prefill/decode split timers. Phone 10.8/12.8s
   (46/54%, 66 vs 284ms/token) - healthy, no pathology. LM side exhausted
   (decode = bandwidth GEMV, prefill = efficient batched GEMM). Timers kept.
+- Exp38 (KEEP, evidence completion): Q8+legacy on 17s phone. RTF 8.50, correct,
+  prefill/decode 45/55 holds. Tier evidence complete on all clips x devices.
 - Exp2 (killed pre-implementation): persistent VAE graph to skip 104 rebuilds/run.
   Measured graph build at 0.2-1ms (<1% of VAE time) via temp VAE_PROFILE
   instrumentation (since reverted). Would have saved ~100ms of 12,000ms.
