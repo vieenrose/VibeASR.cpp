@@ -199,6 +199,9 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   FINAL: 12.24 -> 6.52 (-47%). All dimensions closed both regimes; tiers gated;
   thermals/ISA/topology shut. No positive-EV bounded iteration remains - parked
   items need new hardware, new ggml base, or training budget.
+- Exp54 (KEEP, ship guidance): unpinned -t2 = pinned (6.54/6.55 vs 6.52 x2).
+  EAS reliably parks 2 busy threads on 2 bigs. Plain -t 2 ships (no taskset);
+  pinning stays in harness for determinism only.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
