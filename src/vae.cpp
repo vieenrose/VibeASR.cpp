@@ -424,6 +424,7 @@ struct AudioVAEEncoder {
     // Head (just conv)
     struct ggml_tensor* head_conv_weight;
     struct ggml_tensor* head_conv_bias;
+    int head_kernel_size = 0;  // read from weights (8 padded / 7 trimmed)
     
     // Connector (fc1 -> norm -> fc2)
     struct ggml_tensor* connector_fc1_weight;
@@ -459,7 +460,7 @@ struct AudioVAEEncoder {
         }
 
         // Head
-        x = ggml_nn_conv_1d(ctx, x, head_conv_weight, head_conv_bias, 1, 8-1, 1, cache);
+        x = ggml_nn_conv_1d(ctx, x, head_conv_weight, head_conv_bias, 1, head_kernel_size - 1, 1, cache);
         
         // Connector: fc1 -> norm -> fc2
         x = ggml_nn_linear(ctx, x, connector_fc1_weight, connector_fc1_bias);
@@ -630,6 +631,7 @@ static bool load_encoder_weights(
     
     // Get output dim from head conv weight [kernel, in_dim, out_dim]
     encoder.output_dim = encoder.head_conv_weight->ne[2];
+    encoder.head_kernel_size = (int)encoder.head_conv_weight->ne[0];
     
     // Load connector weights (fc1 -> norm -> fc2)
     std::string connector_fc1_w = prefix + "_connector.fc1.weight";
