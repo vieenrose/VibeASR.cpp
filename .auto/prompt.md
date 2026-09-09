@@ -50,6 +50,10 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   suspicious improvements. Confidence score < 1.0x = noise.
 
 ## What's Been Tried
+- Exp1 (discarded): `-mcpu=cortex-a78` + `GGML_ARM_DOTPROD` in CMakeLists —
+  RTF 12.33 vs 12.24 (+0.7%, noise). Compiler tuning exhausted. NOTE: tool
+  auto-revert/auto-commit cannot reach this nested repo (operates in parent
+  cwd) — ALL reverts and keep-commits must be done manually in VibeASR.cpp.
 - ggml CPU-backend executor vs legacy reference path: 1.06x desktop / 0.98x
   phone, bit-exact. REMOVED (dead code). Do not revisit without new evidence.
 - `GGML_ARM_DOTPROD=ON` rebuild: 0% (LM decode is bandwidth-bound). Kept out of

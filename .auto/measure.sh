@@ -6,12 +6,13 @@ cd "$(dirname "$0")/.."
 
 DEV=AYBY6HQCMBF6B6KZ
 RDIR=/data/local/tmp/vibeasr
+LM_FILE=${LM_FILE:-streaming-lm-q4_k_m.gguf}
 
 cmake --build build-android --target asr_streaming -j20 > .auto/last_build.log 2>&1 || { tail -n 20 .auto/last_build.log; exit 1; }
 adb -s $DEV push build-android/bin/asr_streaming $RDIR/ > /dev/null 2>&1 || exit 1
 adb -s $DEV push .auto/bench_device.sh $RDIR/ > /dev/null 2>&1 || exit 1
 
-adb -s $DEV shell "sh $RDIR/bench_device.sh stream_10s_24k.wav 4 13 loop" > .auto/last_run.txt 2>&1 || exit 1
+adb -s $DEV shell "LM_FILE=$LM_FILE sh $RDIR/bench_device.sh stream_10s_24k.wav 4 13 loop" > .auto/last_run.txt 2>&1 || exit 1
 cat .auto/last_run.txt | tail -n 2
 adb -s $DEV pull $RDIR/out-loop.log .auto/last_out.txt > /dev/null 2>&1
 adb -s $DEV pull $RDIR/err-loop.log .auto/last_err.txt > /dev/null 2>&1
