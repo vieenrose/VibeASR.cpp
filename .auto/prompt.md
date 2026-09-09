@@ -406,6 +406,22 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp190 (KEEP, rotation): ultra-lean 7.08 @35.9C. 190 runs.
 - Exp191 (KEEP): health 6.58 @35.8C. 191 runs.
 - Exp192 (KEEP, rotation): F16 10.54 x16 identical. 192 runs.
+- Exp193 (KEEP, rotation): F16 10.52 x17 identical (3.4h-idle warmup, no cold-cache effect). 193 runs.
+- Exp194 (discard, infra): VAE q6_k_mixed via python gguf converter. Dead: this gguf-py
+  implements K-quant DEQUANTIZE only; quantize_blocks raises bare NotImplementedError
+  and the converter's except-branch silently kept F16 (byte-identical size). Mode
+  reverted, mislabeled file deleted. Lesson: verify quantized file SIZE before
+  any phone run. 194 runs.
+- Exp195 (KEEP, bracket): Q8 anchor 6.57, band center, for Q6_K A/B. 195 runs.
+- Exp196 (discard): VAE Q6_K via desktop llama-quantize (499MB Q6_K + 184MB F16
+  fallback = 686MB, -18% weight traffic vs Q8). RTF 8.46 (+29%!), VAE 67.8 vs 48.6
+  (+40%, symmetric ac/sem). Refines traffic-bound model: VAE time follows bytes
+  ONLY while dequant is trivial (Q8_0); Q6_K NEON dequant (super-block scales +
+  bit-shuffle) costs more than its traffic saves. Generalizes Exp6 (Q4_0-FFN
+  slower): ALL K-quants dead for this VAE on A78 - Q8_0-mixed is the SPEED-OPTIMAL
+  precision, not a compromise. Q5_K/Q4_K killed by interpolation (less traffic
+  saved, same-cost dequant). Precision dimension CLOSED. Side: RSS 2.30GB
+  leanest-ever, noted. Files purged both sides, tree clean. 196 runs.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
