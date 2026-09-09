@@ -114,6 +114,9 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   without split-pool contention. LM -29% real, but VAE +8% little-core
   stragglers cancel it exactly (9.68 vs 9.71, noise). Default stays -t4/F0.
   Lesson: thread scaling is zero-sum here.
+- Exp24 (discard): OMP passive-wait (OMP_WAIT_POLICY=PASSIVE, KMP_BLOCKTIME=0).
+  VAE -3% but LM +28% wake latency on single-token decodes; net +5.6% worse.
+  Spinning is correct here. No code changes.
 - Exp2 (killed pre-implementation): persistent VAE graph to skip 104 rebuilds/run.
   Measured graph build at 0.2-1ms (<1% of VAE time) via temp VAE_PROFILE
   instrumentation (since reverted). Would have saved ~100ms of 12,000ms.
