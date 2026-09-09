@@ -46,8 +46,12 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Do NOT overfit to the 10 s slice: ideas must be justified by mechanism
   (profiling data in secondary metrics), not by the clip's content. When in
   doubt, cross-check on the 17 s clip before keeping.
-- Thermal noise is real on phones: distrust single-run deltas < ~5%; re-run
-  suspicious improvements. Confidence score < 1.0x = noise.
+- THERMAL DISCIPLINE (learned Exp15/16): back-to-back runs drift up to +60%
+  (heat soak + platform throttling; NOT code). Protocol: 5-min idle cooldown
+  before any keep-decision run; bracket keeps as A/B/A (candidate between two
+  baseline-config runs in one session); distrust single-run deltas < ~10%.
+  Confidence score < 1.0x = noise. Majflt telemetry distinguishes swap pain
+  (has been 0 throughout).
 
 ## What's Been Tried
 - Exp4 (KEEP, recommended tier): VAE selective Q8_0-mixed (large weights only,
