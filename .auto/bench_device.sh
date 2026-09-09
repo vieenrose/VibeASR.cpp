@@ -4,7 +4,7 @@ cd /data/local/tmp/vibeasr
 export LD_LIBRARY_PATH=.
 LM_FILE=${LM_FILE:-streaming-lm-q4_k_m.gguf}
 VAE_FILE=${VAE_FILE:-vae-encoder-f16.gguf}
-taskset ${MASK:-F0} ./asr_streaming --vae-model ./$VAE_FILE --lm-model ./$LM_FILE --audio "$1" -t "$2" --vae-pieces "$3" ${LM_THREADS:+--lm-threads $LM_THREADS} > "out-$4.log" 2> "err-$4.log" &
+taskset ${MASK:-F0} ./asr_streaming --vae-model ./$VAE_FILE --lm-model ./$LM_FILE --audio "$1" -t "$2" --vae-pieces "$3" > "out-$4.log" 2> "err-$4.log" &
 PID=$!
 echo $PID > "pid-$4.txt"
 MAJ0=$(awk '{print $12}' /proc/$PID/stat 2>/dev/null)

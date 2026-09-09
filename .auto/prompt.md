@@ -67,11 +67,19 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   full-context features, proxy for cross-window carry) on 40-utt: WER 3.72%
   vs 4.82% cold windows. Full context is BETTER and removes 1.18x overlap
   recompute. Exp8 implements this via never-reset cache + delayed emission.
-- Exp8 (KEEP, new loop protocol): `--xwin` cross-window carry + immediate emission.
-  Desktop 69s VAE 41.3 vs 49.6s (-17%, theory-matched); phone 10s RTF 12.03
-  (edge-heavy short file, within noise of legacy 12.24); 40-utt WER 3.99% vs
-  4.13% cold (proxy predicted 3.72%). Fixed own double-emission bug + cold-tail
-  rule along the way. Loop protocol switched to --xwin; re-baselining below.
+- Exp8 (DEMOTED to opt-in --xwin flag): cross-window carry is FAITHFUL (matches
+  upstream full-context incl. its weakness) but full-context DEGRADES long files:
+  69s WER 12% both precisions (S~30 spread, elaborative drift via KV history),
+  while cold windows hold 3.7%. Upstream PyTorch fullctx on 69s also 12.67% -
+  inherent, not a port bug. Shorts: xwin 3.99% vs cold 4.13% (fine).
+  Bounded-reset hybrid (reset every 8 hops) was WORSE (14%, discontinuity
+  deletions). Loop protocol REVERTED to legacy cold windows; --xwin kept as
+  flag for short-file use. Lesson: shorts-only WER gates miss length effects;
+  69s gate mandatory for protocol changes.
+- Exp15/16 (discarded, fully reverted): split thread pools (VAE 4 big + LM 6 all)
+  + in-code phase affinity. LM 23.7->17.7 real, but 6-thread llama pool
+  spins/steals during VAE phases: VAE 65->91s. Net negative. Recovery run after
+  revert: VAE 74 and falling. Revisit only with idle-sleeping pools.
 - Exp12 (KEEP, infra): swap-tax probe (VmHWM + majflt telemetry). majflt=0:
   NOT swap-bound, gap is pure compute. Q8+xwin re-run 9.01, reproducible.
 - Exp13 (killed at design): FP16 VAE compute. mul_mat hardcodes F32 output;

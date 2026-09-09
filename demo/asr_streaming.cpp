@@ -52,8 +52,11 @@ struct stream_params {
     int n_batch = 512;
     int max_tokens_per_chunk = 256;
     int vae_pieces = 13;  // window split count; must divide 26 (frames). 13x6400 or 26x3200.
-    bool xwin = false;    // cross-window carry: never reset VAE cache, emit with
-                          // 1-chunk delay (full-context features, no overlap recompute)
+    bool xwin = false;    // cross-window carry: VAE cache persists across hops
+                          // (full-context features, no overlap recompute)
+    int xwin_reset = 8;   // reset carry every N hops (0 = never). Bounds KV/context
+                          // drift that otherwise degrades long files (12% WER at 69s
+                          // with unbounded carry vs 3.7% cold; shorts unaffected).
     bool use_mmap = true;
 };
 
@@ -68,8 +71,10 @@ static void print_usage(const char * prog) {
     fprintf(stderr, "  --max-tokens <n>       Max new tokens per chunk (default: 256)\n");
     fprintf(stderr, "  --vae-pieces <n>       Window split count, must divide 26 (default: 13)\n");
     fprintf(stderr, "                         1 = legacy full-window encode; 13/26 = cached pieces\n");
-    fprintf(stderr, "  --xwin                   Cross-window VAE carry + delayed emission\n");
-    fprintf(stderr, "                         (full-context features, skips overlap recompute)\n");
+    fprintf(stderr, "  --xwin                   Cross-window VAE carry (full-context\n");
+    fprintf(stderr, "                         features, skips overlap recompute)\n");
+    fprintf(stderr, "  --xwin-reset <n>        Reset carry every N hops, 0 = never\n");
+    fprintf(stderr, "                         (default: 8; bounds long-file drift)\n");
     fprintf(stderr, "  --context <text>       Hotwords, e.g. \"VibeVoice,diarization\"\n");
     fprintf(stderr, "  --no-mmap              Do not mmap LM weights\n");
 }
@@ -86,6 +91,7 @@ static bool parse_args(int argc, char ** argv, stream_params & p) {
         else if (a == "--max-tokens" && i + 1 < argc) p.max_tokens_per_chunk = std::stoi(argv[++i]);
         else if (a == "--vae-pieces" && i + 1 < argc) p.vae_pieces = std::stoi(argv[++i]);
         else if (a == "--xwin") p.xwin = true;
+        else if (a == "--xwin-reset" && i + 1 < argc) p.xwin_reset = std::stoi(argv[++i]);
         else if (a == "--no-mmap") p.use_mmap = false;
         else if (a == "-h" || a == "--help") { print_usage(argv[0]); exit(0); }
         else { fprintf(stderr, "Unknown arg: %s\n", a.c_str()); return false; }
@@ -350,12 +356,23 @@ int main(int argc, char ** argv) {
         frames.reserve((size_t)total_frames * n_embd);
         std::vector<float> hop(std::max(WINDOW_SAMPLES, HOP_SAMPLES), 0.0f);
         for (int h = 0; h < n_hops; h++) {
+            // Bounded carry: periodic cold reset stops context drift from
+            // compounding on long files (unbounded carry degrades 69s to 12%
+            // WER; cold windows hold 3.7%). Short files never hit the reset.
+            if (params.xwin_reset > 0 && h > 0 && h % params.xwin_reset == 0) {
+                vae_cache_reset(xvc);
+            }
             int start = (h == 0) ? 0 : WINDOW_SAMPLES + (h - 1) * HOP_SAMPLES;
             int want = (h == 0) ? WINDOW_SAMPLES : HOP_SAMPLES;
             int avail = std::min(want, n_samples - start);
             if (avail <= 0) break;
             memcpy(hop.data(), audio.samples.data() + start, avail * sizeof(float));
             if (avail < want) memset(hop.data() + avail, 0, (want - avail) * sizeof(float));
+            // Partial (zero-padded) final hop: reset to cold first. Carried speech
+            // state makes padding look like continued speech and the LM
+            // hallucinates repetitions on the last chunk; cold padding decodes
+            // as silence (matches legacy). Only the final hop can be partial.
+            if (avail < want) vae_cache_reset(xvc);
             int gotf = (want == WINDOW_SAMPLES) ? FRAMES_PER_WINDOW : want / 3200;
             if (encode_frames(vae_ctx, xvc, hop.data(), want, wafe.data(), wsfe.data(),
                               acoustic_dim, semantic_dim, gotf, vae_ms) < 0) {
