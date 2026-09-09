@@ -273,6 +273,8 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   thermal stacking. Batch-safe. 88 runs.
 - Exp89 (KEEP, robustness): 3x transcripts bit-identical (-t2 deterministic;
   token variance is config-driven). Repeat runs stable. 89 runs.
+- Exp90 (KEEP, robustness): Q4 2x bit-identical (6.820/6.818). Determinism
+  universal across precisions. 90 runs.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
