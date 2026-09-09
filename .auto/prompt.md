@@ -317,6 +317,7 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   from 37.0 during idle - cadence confirmed). All runs thermally annotated.
 - Exp125 (KEEP, rotation): F16 10.53 @35.5C, 8th identical. 125 runs.
 - Exp126 (KEEP, rotation): Q4 6.83 @35.6C. 126 runs.
+- Exp127 (KEEP): health 6.58 @35.6C. 127 runs.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
