@@ -117,6 +117,9 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp24 (discard): OMP passive-wait (OMP_WAIT_POLICY=PASSIVE, KMP_BLOCKTIME=0).
   VAE -3% but LM +28% wake latency on single-token decodes; net +5.6% worse.
   Spinning is correct here. No code changes.
+- Exp25 (discard): explicit OMP placement (CLOSE/cores, no-spin). +80% worse
+  (119s VAE!) — fights taskset. Threading space fully mapped: -t4/F0 default
+  stands; -t6/8, split pools, OMP all neutral-or-worse. Do not revisit.
 - Exp2 (killed pre-implementation): persistent VAE graph to skip 104 rebuilds/run.
   Measured graph build at 0.2-1ms (<1% of VAE time) via temp VAE_PROFILE
   instrumentation (since reverted). Would have saved ~100ms of 12,000ms.
