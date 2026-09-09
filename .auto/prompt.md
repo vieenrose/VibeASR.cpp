@@ -161,6 +161,9 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Parked (out of loop scope, ceilings known): intrinsics-fused kernels (~1.3x),
   Mali GPU (~2x, still insufficient alone), training/QAT/distillation (only path
   to RTF<1), fork upgrade for KleidiAI.
+- Exp40 (discard): -t 3 collapses (+78%: VAE 133, LM 40.5). Bandwidth needs >=4
+  outstanding workers (or fixed 4-way partitioning). Thread dimension fully
+  closed: {3 worse, 4 optimal, 6/8 wash-or-worse} + pools + affinity + OMP.
 - Exp2 (killed pre-implementation): persistent VAE graph to skip 104 rebuilds/run.
   Measured graph build at 0.2-1ms (<1% of VAE time) via temp VAE_PROFILE
   instrumentation (since reverted). Would have saved ~100ms of 12,000ms.
