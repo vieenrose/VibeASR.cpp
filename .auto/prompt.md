@@ -102,6 +102,11 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp20 (discard): own-VAE I8_S PTQ (was BitNet's foreign weights the cause?).
   Collapsed identically (7 vs 44 tokens). Converter verified correct (F32
   intermediate). Cause = per-tensor global scale precision. Dead twice over.
+- Exp21 (killed pre-implementation): direct depthwise-conv kernel (avoid Kx im2col
+  expansion, zero channel reuse). Killed on semantic evidence: this fork's ggml
+  breaks documented semantics (concat scrambles, cont verbatim-copies, dw output
+  transposed — all unit-proven), so custom ops are quicksand; unused helper
+  removed with zero residue. Parity-validated paths only from here on.
 - Exp2 (killed pre-implementation): persistent VAE graph to skip 104 rebuilds/run.
   Measured graph build at 0.2-1ms (<1% of VAE time) via temp VAE_PROFILE
   instrumentation (since reverted). Would have saved ~100ms of 12,000ms.
