@@ -132,6 +132,9 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   (xwin regresses longs); xwin opt-in. No code changes.
 - Exp29 (discard): -ffast-math (finite-math-safe subset; full fails ggml #error
   by upstream design). 9.76 vs 9.71, no gain. Compiler avenue fully closed.
+- Exp30 (discard): pieces=2 (20800-sample, bigger GEMMs) on phone. 9.25 vs 8.90,
+  VAE 69.1 vs 65.3. GEMM efficiency already saturated at 6400; granularity
+  settled for good (13 default).
 - Exp2 (killed pre-implementation): persistent VAE graph to skip 104 rebuilds/run.
   Measured graph build at 0.2-1ms (<1% of VAE time) via temp VAE_PROFILE
   instrumentation (since reverted). Would have saved ~100ms of 12,000ms.
