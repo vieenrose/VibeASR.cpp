@@ -221,6 +221,8 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   rec | Q4FFN 6.8/2.15/5.23% | Q4FFN+p26 7.1/1.97/5.23% ultra-lean.
 - Exp62 (KEEP, table refresh): F16 under -t2: 10.53/2.98GB (was stale 12.24).
   F16/Q8 VAE ratio 1.83x = traffic ratio (textbook). Table all current-regime.
+- Exp63 (KEEP, tier validated): ultra-lean 69s: 6.70, WER 2.7% vs PyTorch,
+  1.98GB flat. 4th tier complete at all lengths.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
