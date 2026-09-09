@@ -142,6 +142,9 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp33 (KEEP, sustained): 69s Q8+legacy ON PHONE. RTF 9.47, RSS 2.39GB flat,
   x-device WER 0.7%. Length ladder phone: 10s 9.7 / 17s 8.5 / 69s 9.5.
   Recommended tier validated on 10s/17s/69s/40-utt x host/phone.
+- Exp34 (discard): BOLT layout opt. simpleperf: 0 samples (production denies
+  perf_event). Instrumentation blocked: no DT_FINI, .so lack relocs, AArch64
+  non-reloc explicitly unsupported. Killed on toolchain friction. No repo diff.
 - Exp2 (killed pre-implementation): persistent VAE graph to skip 104 rebuilds/run.
   Measured graph build at 0.2-1ms (<1% of VAE time) via temp VAE_PROFILE
   instrumentation (since reverted). Would have saved ~100ms of 12,000ms.
