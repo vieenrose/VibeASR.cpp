@@ -292,6 +292,7 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp104 (KEEP, rotation): F16 10.51 x4 identical. 104 runs.
 - Exp105 (KEEP, rotation): Q4 6.80 exact. 105 runs.
 - Exp106 (KEEP): health 6.54. 106 runs.
+- Exp107 (KEEP, rotation): ultra-lean 7.07 x6 identical. 107 runs.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
