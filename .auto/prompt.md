@@ -424,6 +424,11 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   leanest-ever, noted. Files purged both sides, tree clean. 196 runs.
 - Exp197 (KEEP, rotation): Q4 6.79 @33.0C, in band. 197 runs.
 - Exp198 (KEEP, rotation): ultra-lean 7.06 @33.2C, in band. 198 runs.
+- Exp199 (KEEP): health 6.59 @33.4C, upper-mid band, temp-consistent. Post-Q6_K
+  instrument stable. 199 runs.
+- Audit (no run): persistent-VAE-arena probe dead by inspection - vae_encode_impl
+  already grows-never-shrinks a reused compute arena (first-touch once). No
+  per-piece page-zeroing exists to eliminate. Last structural CPU idea closed.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
