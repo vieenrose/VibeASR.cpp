@@ -130,6 +130,8 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp28 (KEEP, bracket): xwin-vs-legacy A/B/A same session: 9.35 / 9.83 / 9.40.
   xwin -4.5% real on shorts (not thermal luck). Loop protocol STAYS legacy
   (xwin regresses longs); xwin opt-in. No code changes.
+- Exp29 (discard): -ffast-math (finite-math-safe subset; full fails ggml #error
+  by upstream design). 9.76 vs 9.71, no gain. Compiler avenue fully closed.
 - Exp2 (killed pre-implementation): persistent VAE graph to skip 104 rebuilds/run.
   Measured graph build at 0.2-1ms (<1% of VAE time) via temp VAE_PROFILE
   instrumentation (since reverted). Would have saved ~100ms of 12,000ms.
