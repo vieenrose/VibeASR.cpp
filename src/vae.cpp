@@ -154,8 +154,8 @@ static void vae_cache_update(vae_stream_cache * cache) {
             }
             int src0op = xh->src[0] ? (int)xh->src[0]->op : -1;
             int src1op = xh->src[1] ? (int)xh->src[1]->op : -1;
-            fprintf(stderr, "[CACHE_STORED] %s P=%lld n0=%lld stored_sum=%.6f fullsum=%.3f xtail=%.3f op=%d src=(%d,%d) ne=[%lld,%lld,%lld,%lld] nbxh=[%lld,%lld] nbx=[%lld,%lld]\n",
-                    tap.key.c_str(), (long long)tap.P, (long long)n0, s, full, xtail, (int)xh->op,
+            fprintf(stderr, "[CACHE_STORED] %s ptr=%p P=%lld n0=%lld stored_sum=%.6f fullsum=%.3f xtail=%.3f op=%d src=(%d,%d) ne=[%lld,%lld,%lld,%lld] nbxh=[%lld,%lld] nbx=[%lld,%lld]\n",
+                    tap.key.c_str(), xh->data, (long long)tap.P, (long long)n0, s, full, xtail, (int)xh->op,
                     src0op, src1op,
                     (long long)xh->ne[0], (long long)xh->ne[1],
                     (long long)xh->ne[2], (long long)xh->ne[3],
@@ -508,7 +508,7 @@ struct vae_model {
 struct vae_context {
     vae_model_t* model = nullptr;
     int n_threads = 4;
-    
+
     struct ggml_context* compute_ctx = nullptr;
 
     // Compute arena, owned by us and reused across encode calls. A fresh
@@ -852,7 +852,7 @@ static int32_t vae_encode_impl(
         ggml_free(ctx->compute_ctx);
     }
     ctx->compute_ctx = ggml_init(ctx_params);
-    
+
     struct ggml_tensor* input;
     if (use_i8_s) {
         // Quantize F32 audio to I8_S
