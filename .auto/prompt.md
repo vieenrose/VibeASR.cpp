@@ -229,6 +229,8 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   precision x length x 40-utt covered. Gaps: none. 65 runs.
 - Exp66 (KEEP, docs): STREAMING_1P5B.md phone section rewritten to final
   numbers (was 13.x-era). Health 6.58. 66 runs.
+- Exp67 (KEEP): energy probe unattributable (perpetual charging, coarse
+  stats). Battery +0.2C/run (thermally light). Health 6.58. 67 runs.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
