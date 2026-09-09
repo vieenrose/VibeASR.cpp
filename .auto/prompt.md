@@ -354,6 +354,8 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp152 (KEEP): health 6.54 @35.5C. 152 runs.
 - Exp153 (KEEP, rotation): ultra-lean 7.10 top edge; scatter +/-0.5% understood
   (launches + ALU heat). Band honestly 7.04-7.12. 153 runs.
+- Exp154 (KEEP, metrology): soak 36->33C, cool run 6.54 reproduces anchor -
+  NO drift. Warmth ~0.4%, residual jitter ~0.5% intrinsic. Bands +/-1% stand.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
