@@ -152,6 +152,9 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   2.15GB leanest-validated. Final tiers: F16 12.2/3.3GB/4.13% | Q8 9.7/2.44GB/
   4.41% (recommended) | Q4FFN 9.8/2.15GB/5.23% (min-size). Q4-vs-Q8 speed
   parity confirmed twice; choice is accuracy-vs-RAM, not speed.
+- Exp37 (KEEP, telemetry): LM prefill/decode split timers. Phone 10.8/12.8s
+  (46/54%, 66 vs 284ms/token) - healthy, no pathology. LM side exhausted
+  (decode = bandwidth GEMV, prefill = efficient batched GEMM). Timers kept.
 - Exp2 (killed pre-implementation): persistent VAE graph to skip 104 rebuilds/run.
   Measured graph build at 0.2-1ms (<1% of VAE time) via temp VAE_PROFILE
   instrumentation (since reverted). Would have saved ~100ms of 12,000ms.

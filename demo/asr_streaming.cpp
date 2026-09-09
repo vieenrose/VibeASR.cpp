@@ -105,6 +105,10 @@ static bool parse_args(int argc, char ** argv, stream_params & p) {
     return true;
 }
 
+// Phase timers (LM prefill vs decode split). Zero per run in main.
+static double g_prefill_ms = 0.0;
+static double g_decode_ms = 0.0;
+
 static double now_ms() {
     struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
     return ts.tv_sec * 1000.0 + ts.tv_nsec / 1e6;
@@ -176,8 +180,10 @@ static int emit_chunk(llama_context * lctx, llama_sampler * smpl, llama_model * 
     if ((pos = feed_token(lctx, t_start, pos)) < 0) return -1;
     if ((pos = feed_embeds(lctx, frames, FRAMES_PER_WINDOW, n_embd, pos, n_batch)) < 0) return -1;
     if ((pos = feed_token(lctx, t_end, pos)) < 0) return -1;
+    g_prefill_ms += now_ms() - t0;
     llama_token tok = llama_sampler_sample(smpl, lctx, -1);
     llama_sampler_accept(smpl, tok);
+    double tdec = now_ms();
     std::vector<llama_token> chunk_ids;
     for (int i = 0; i < max_tokens; i++) {
         if (tok == TOK_TEXT_CHUNK_END || tok == TOK_EOS) break;
@@ -187,6 +193,7 @@ static int emit_chunk(llama_context * lctx, llama_sampler * smpl, llama_model * 
         llama_sampler_accept(smpl, tok);
     }
     if ((pos = feed_token(lctx, t_tce, pos)) < 0) return -1;
+    g_decode_ms += now_ms() - tdec;
     lm_ms += now_ms() - t0;
     std::string text = detokenize(model, chunk_ids);
     for (int s = 0; s < n_strip; s++) {
@@ -290,6 +297,7 @@ int main(int argc, char ** argv) {
     // ---- prefill prompt ----
     llama_kv_cache_clear(lctx);
     int pos = 0;
+    double tpre = now_ms();
     {
         int done = 0, n = (int)prompt_ids.size();
         while (done < n) {
@@ -307,6 +315,7 @@ int main(int argc, char ** argv) {
             done += bl; pos += bl;
         }
     }
+    g_prefill_ms += now_ms() - tpre;
 
     // ---- windows ----
     int n_samples = (int)audio.samples.size();
@@ -328,6 +337,8 @@ int main(int argc, char ** argv) {
     double gen_start = now_ms();
     double vae_ms = 0, lm_ms = 0;
     int total_tokens = 0;
+    g_prefill_ms = 0.0;
+    g_decode_ms = 0.0;
 
     const char * strip_list[] = {"<|text_chunk_end|>", "<|object_ref_start|>", "<|object_ref_end>",
                                  "<|box_start|>", "<|speech_start|>", "<|speech_end|>", "<|speech_pad|>"};
@@ -440,7 +451,8 @@ int main(int argc, char ** argv) {
             fprintf(stderr, "frames failed\n"); return 1;
         }
         if ((pos = feed_token(lctx, t_end, pos)) < 0) { fprintf(stderr, "sp_end failed\n"); return 1; }
-
+        g_prefill_ms += now_ms() - t0;
+        double tdec = now_ms();
         llama_token tok = llama_sampler_sample(smpl, lctx, -1);
         llama_sampler_accept(smpl, tok);
 
@@ -454,6 +466,7 @@ int main(int argc, char ** argv) {
         }
         // always end the cache on text_chunk_end (upstream invariant)
         if ((pos = feed_token(lctx, t_tce, pos)) < 0) { fprintf(stderr, "tce failed\n"); return 1; }
+        g_decode_ms += now_ms() - tdec;
         lm_ms += now_ms() - t0;
 
         std::string text = detokenize(model, chunk_ids);
@@ -475,8 +488,8 @@ int main(int argc, char ** argv) {
     fprintf(stderr, "\n========================================\n");
     fprintf(stderr, " Audio: %.2fs | chunks: %d | tokens: %d | RTF: %.4f\n",
             audio.duration_sec, n_windows, total_tokens, rtf);
-    fprintf(stderr, " load: %.1fs | VAE: %.1fs | LM: %.1fs | total: %.1fs\n",
-            load_s, vae_ms / 1000.0, lm_ms / 1000.0, total_s);
+    fprintf(stderr, " load: %.1fs | VAE: %.1fs | LM: %.1fs (prefill %.1fs, decode %.1fs) | total: %.1fs\n",
+            load_s, vae_ms / 1000.0, lm_ms / 1000.0, g_prefill_ms / 1000.0, g_decode_ms / 1000.0, total_s);
     fprintf(stderr, "========================================\n");
     printf("\n--- Transcription ---\n%s\n", full_text.c_str());
 
