@@ -88,6 +88,9 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp14 (discard): proper ThinLTO (global IPO + clean rebuild; first attempt only
   set ggml-scope flag so link lacked -flto — invalid, redone correctly).
   RTF 8.94 vs 8.90 (noise). ggml.c already single-TU. Compiler avenue closed.
+- Exp17/log#16 (KEEP, honest best tier): Q8 + legacy-cold on loop protocol.
+  RTF 9.71 (VAE 73.5), RSS 2.44GB. Fully validated: 40-utt 4.41%, 69s 3.67%.
+  xwin numbers (8.90) stand for shorts only; xwin demoted to opt-in flag.
 - Exp2 (killed pre-implementation): persistent VAE graph to skip 104 rebuilds/run.
   Measured graph build at 0.2-1ms (<1% of VAE time) via temp VAE_PROFILE
   instrumentation (since reverted). Would have saved ~100ms of 12,000ms.
