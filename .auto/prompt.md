@@ -269,6 +269,8 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp86 (KEEP): health 6.57, phases nominal. 86 runs.
 - Exp87 (KEEP, hygiene): device pruned 4.7->3.7GB (logs + dead Q4_0 LM).
   Host disk stable. Health 6.54. 87 runs.
+- Exp88 (KEEP, robustness): 4x consecutive 6.56/6.55/6.53/6.54 - flat, no
+  thermal stacking. Batch-safe. 88 runs.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
