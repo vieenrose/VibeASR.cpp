@@ -204,6 +204,9 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   pinning stays in harness for determinism only.
 - Exp55 (discard): -t1 floor 11.49 (VAE 1.70x, LM 1.95x scaling 1->2). ALL
   thread counts now measured {1:11.5, 2:6.5, 3:17.4, 4:7-10, 6/8:wash}.
+- Exp56 (KEEP, audit): health 6.54. Interaction audit kills the rest without
+  runs (OMP/-t2 arithmetic +3.5s, PGO thread-independent, Q4_0 -1.8%+gate,
+  pieces2 RAM, n_batch tautology). Convergent at 56.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
