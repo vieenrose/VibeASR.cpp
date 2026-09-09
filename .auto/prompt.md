@@ -110,6 +110,10 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp22 (KEEP, tier re-validation): Q8+legacy on current tree after all churn
   (LTO round-trip, affinity add/revert, dynamic head): 40-utt 4.41%, 69s 3.67%,
   phone 9.87 — all identical to pre-churn. Shippable tier confirmed current.
+- Exp23 (discard): single-pool -t6 pinned (4big+2little) to capture LM scaling
+  without split-pool contention. LM -29% real, but VAE +8% little-core
+  stragglers cancel it exactly (9.68 vs 9.71, noise). Default stays -t4/F0.
+  Lesson: thread scaling is zero-sum here.
 - Exp2 (killed pre-implementation): persistent VAE graph to skip 104 rebuilds/run.
   Measured graph build at 0.2-1ms (<1% of VAE time) via temp VAE_PROFILE
   instrumentation (since reverted). Would have saved ~100ms of 12,000ms.
