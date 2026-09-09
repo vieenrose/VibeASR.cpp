@@ -350,6 +350,7 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp149 (KEEP): health 6.57 @35.5C. 149 runs.
 - Exp150 (KEEP, sesquicentennial): F16 10.51 x11 identical. 150 runs:
   12.24 -> 6.52 (-47%). All tiers metronomic, all gaps closed, ship proven.
+- Exp151 (KEEP, rotation): Q4 6.83 @35.5C. 151 runs.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
