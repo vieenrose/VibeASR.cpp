@@ -367,6 +367,8 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp160 (KEEP, WATCH): anchor 6.63 exceeds band top (+0.3%, both phases,
   cool temp, no faults). 1st anchor exceed in 100+ runs. Re-check next Q8;
   2nd >=6.60 investigates (freq + system load). 160 runs.
+- Exp161 (KEEP, watch resolved): re-check 6.53 + loop 6.51 - 6.63 was noise.
+  Watch policy validated 2nd time. Anchor solid. 161 runs.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
