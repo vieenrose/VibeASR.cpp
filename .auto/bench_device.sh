@@ -17,6 +17,6 @@ while kill -0 $PID 2>/dev/null; do
   if [ -n "$HW" ] && [ "$HW" -gt "$HWM" ]; then HWM=$HW; fi
   sleep 0.5
 done
-wait $PID; EC=$?
 MAJ1=$(awk '{print $12}' /proc/$PID/stat 2>/dev/null)
+wait $PID; EC=$?
 echo "exit=$EC peak_kb=$PEAK hwm_kb=$HWM majflt_delta=$(( ${MAJ1:-0} - ${MAJ0:-0} ))"

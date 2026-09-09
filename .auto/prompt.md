@@ -356,6 +356,11 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   (launches + ALU heat). Band honestly 7.04-7.12. 153 runs.
 - Exp154 (KEEP, metrology): soak 36->33C, cool run 6.54 reproduces anchor -
   NO drift. Warmth ~0.4%, residual jitter ~0.5% intrinsic. Bands +/-1% stand.
+- Exp155/156 (KEEP, saga): F16 10.85 anomaly caught live, diagnosed as cold
+  page cache (soak evicted weights), confirmed by immediate 10.51 re-run.
+  Policy: warmup run after >30min idle. minflt detector attempted, reverted
+  (read race + non-discriminating by mechanism); pre-wait majflt sampling kept
+  as the valid fix. Health 6.51. 156 runs.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
