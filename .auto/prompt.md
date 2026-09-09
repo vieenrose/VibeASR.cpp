@@ -434,6 +434,7 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp201 (KEEP): health 6.53 @33.6C, band center-low. Steady. 201 runs.
 - Exp202 (KEEP, rotation): Q4 6.84 @33.7C, top edge, temp-consistent. 202 runs.
 - Exp203 (KEEP, rotation): ultra-lean 7.11 @33.7C, top edge of 7.04-7.12 band. 203 runs.
+- Exp204 (KEEP): health 6.54 @33.8C, mid-band despite warmth. Steady. 204 runs.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
