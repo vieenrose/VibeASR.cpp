@@ -183,6 +183,8 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   portable -t4 touches littles on 6+2 SoCs.
 - Exp48 (discard): -t4 oversubscribed on 2 bigs (C0): 7.19 vs 5.97 (+20%).
   1-thread-per-big is the structural optimum (fewer starves, more thrashes).
+- Exp49 (KEEP, ladder complete): 17s under -t2/C0: 5.71. New-regime ladder:
+  10s 6.5 / 17s 5.7 / 69s 6.3. No evidence gaps remain anywhere.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
