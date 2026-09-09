@@ -192,6 +192,9 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp51 (KEEP, methodology closure): cool-state (15min idle) 6.58 vs warm 6.52.
   No thermal tax; A78 1.3GHz-under-load is sustained equilibrium (mobile norm),
   not throttling. All numbers are fair sustained-state. Thermal lead closed.
+- Exp52 (KEEP, ISA closure): A78 has DOTPROD (used) but NO i8mm/SVE/BF16.
+  Fast-INT8 dead at hardware level (double-confirmed with I8_S collapse).
+  NEON-F32 + DOTPROD only; both exploited. Confirmation run 6.52, anchor holds.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
