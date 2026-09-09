@@ -219,6 +219,8 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp61 (KEEP, 4th tier): Q4-FFN + pieces=26: 1.97GB sub-2GB at 7.08.
   Ultra-lean tier for 4GB devices. Table: F16 12.2/3.3/4.13% | Q8 6.5/2.44/4.41%
   rec | Q4FFN 6.8/2.15/5.23% | Q4FFN+p26 7.1/1.97/5.23% ultra-lean.
+- Exp62 (KEEP, table refresh): F16 under -t2: 10.53/2.98GB (was stale 12.24).
+  F16/Q8 VAE ratio 1.83x = traffic ratio (textbook). Table all current-regime.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
