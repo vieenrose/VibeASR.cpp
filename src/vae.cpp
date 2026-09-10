@@ -982,6 +982,32 @@ static int32_t vae_encode_impl(
     }
     
     // Compute
+    static bool graph_stats_dumped = false;
+    if (getenv("VAE_GRAPH_STATS") != nullptr && !graph_stats_dumped) {
+        graph_stats_dumped = true;
+        // Static traffic profile: sum of input+output bytes per op type. Bytes are
+        // a device-independent proxy for where the graph spends its bandwidth
+        // (weights are read once per mul_mat; src1 re-reads are counted per use).
+        std::map<std::string, std::pair<size_t, size_t>> by_op;   // name -> (bytes, count)
+        size_t total = 0;
+        const int n_nodes = ggml_graph_n_nodes(gf);
+        for (int i = 0; i < n_nodes; i++) {
+            struct ggml_tensor* node = ggml_graph_node(gf, i);
+            size_t b = ggml_nbytes(node);
+            for (int s = 0; s < GGML_MAX_SRC; s++) {
+                if (node->src[s]) b += ggml_nbytes(node->src[s]);
+            }
+            auto& e = by_op[std::string(ggml_op_name(node->op))];
+            e.first += b; e.second += 1;
+            total += b;
+        }
+        fprintf(stderr, "[VAE_STATS] nodes=%d total=%.1f MB\n", n_nodes, total / 1e6);
+        for (auto& kv : by_op) {
+            fprintf(stderr, "[VAE_STATS] %-16s n=%4zu bytes=%9.1f MB  %5.1f%%\n",
+                    kv.first.c_str(), kv.second.second, kv.second.first / 1e6,
+                    100.0 * kv.second.first / total);
+        }
+    }
     if (ggml_graph_compute_with_ctx(ctx->compute_ctx, gf, ctx->n_threads) != GGML_STATUS_SUCCESS) {
         fprintf(stderr, "[VAE] Error: Graph computation failed\n");
         return -1;
