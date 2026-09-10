@@ -1194,14 +1194,21 @@ int32_t vae_encode_parallel_cached(
     float* semantic_ms) {
 
     if (!ctx || !cache) return -1;
+    // 1 thread per chain is the measured optimum (2 chains saturate the two
+    // prime cores); VAE_PAR_THREADS lets an experiment try more per chain.
+    int nthreads_per_chain = 1;
+    if (const char* e = getenv("VAE_PAR_THREADS")) {
+        int v = atoi(e);
+        if (v > 0) nthreads_per_chain = v;
+    }
     int32_t ra = -1, rs = -1;
     std::thread ta([&]() {
         ra = vae_encode_impl(ctx, ctx->model->acoustic_encoder, audio, n_samples,
-                             output_acoustic, acoustic_ms, &cache->acoustic, 0, 1);
+                             output_acoustic, acoustic_ms, &cache->acoustic, 0, nthreads_per_chain);
     });
     std::thread tb([&]() {
         rs = vae_encode_impl(ctx, ctx->model->semantic_encoder, audio, n_samples,
-                             output_semantic, semantic_ms, &cache->semantic, 1, 1);
+                             output_semantic, semantic_ms, &cache->semantic, 1, nthreads_per_chain);
     });
     ta.join();
     tb.join();

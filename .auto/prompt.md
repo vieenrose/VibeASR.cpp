@@ -815,6 +815,12 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp528 (discard, closed): 2 threads per encoder chain = VAE +44% worse
+  (38.6 vs 26.8 s) => the concurrent win came from avoiding intra-chain
+  coupling, not stall-filling. Optimum = 2 chains x 1 thread. (Knob
+  VAE_PAR_THREADS, default 1.) Thread-configuration axis closed.
+- Exp527 (KEEP, sweep): all tiers re-measured in the concurrent regime:
+  balanced 4.4378 (-9.6%), accuracy-first 5.3516 (-7.7%).
 - Exp526 (KEEP, soak): 138 s at the shipped config: RTF 3.5205 (-9.8% vs
   pre-concurrency 3.9046), halves-match WER 4.25% identical, RSS flat 2.09 GB.
   Side analysis: F16 conv matmuls are on ggml's non-blocked path (blck_1 = 16
