@@ -252,6 +252,41 @@ static struct ggml_tensor* ggml_nn_linear_relu(
     return result;
 }
 
+// F16-im2col variants of ggml_conv_1d / ggml_conv_1d_dw. The stock ops hardcode
+// a F32 im2col: that doubles the im2col write+read traffic AND forces
+// mul_mat's src1 conversion (vec_dot_type is F16 for F16 weights) to
+// materialise another full F16 copy. Building the im2col directly in F16
+// halves the traffic and removes that pass; the F32->F16 rounding is identical
+// (same values, same rounding), so results are bit-identical.
+static struct ggml_tensor* vae_conv_1d_f16(
+    struct ggml_context* ctx, struct ggml_tensor* a, struct ggml_tensor* b,
+    int s0, int p0, int d0) {
+    // NOTE: use ggml_im2col (op IM2COL), NOT ggml_im2col_asym - the asym op is
+    // hardwired to ggml_compute_forward_im2col_i8_s (BitNet I8_S output), so an
+    // F16 dst_type there silently produces garbage.
+    struct ggml_tensor* im2col = ggml_im2col(ctx, a, b, s0, 0, p0, 0, d0, 0, false, GGML_TYPE_F16); // [IC*KW, OL, N, 1]
+    return ggml_mul_mat(ctx,
+            ggml_reshape_2d(ctx, a, (a->ne[0] * a->ne[1]), a->ne[2]),
+            ggml_reshape_2d(ctx, im2col, im2col->ne[0], (im2col->ne[2] * im2col->ne[1])));
+}
+
+static struct ggml_tensor* vae_conv_1d_dw_f16(
+    struct ggml_context* ctx, struct ggml_tensor* a, struct ggml_tensor* b,
+    int s0, int p0, int d0) {
+    const int64_t C = a->ne[2];
+    const int64_t L = b->ne[0];
+    const int64_t N = b->ne[2];
+    struct ggml_tensor* b4d = ggml_reshape_4d(ctx, b, L, 1, C, N);
+    struct ggml_tensor* im2col = ggml_im2col(ctx, a, b4d, s0, 0, p0, 0, d0, 0, false, GGML_TYPE_F16);
+    struct ggml_tensor* im2d = ggml_reshape_3d(ctx, im2col,
+            im2col->ne[0], im2col->ne[1] * im2col->ne[3], im2col->ne[2]);
+    struct ggml_tensor* a3d = ggml_reshape_3d(ctx, a, a->ne[0], 1, C);
+    struct ggml_tensor* result = ggml_mul_mat(ctx, a3d, im2d);
+    const int64_t OL = im2col->ne[1];
+    result = ggml_cont(ctx, ggml_permute(ctx, result, 0, 2, 1, 3));
+    return ggml_reshape_3d(ctx, result, C, OL, N);
+}
+
 static struct ggml_tensor* ggml_nn_conv_1d(
     struct ggml_context* ctx,
     struct ggml_tensor* x,
@@ -281,7 +316,7 @@ static struct ggml_tensor* ggml_nn_conv_1d(
             x = ggml_pad_ext(ctx, x, padding, 0, 0, 0, 0, 0, 0, 0);
             padding = 0;
         }
-        result = ggml_conv_1d(ctx, w, x, stride, padding, dilation);
+        result = vae_conv_1d_f16(ctx, w, x, stride, padding, dilation);
         if (b != NULL) {
             result = ggml_add(ctx, result, b);
         }
@@ -317,7 +352,7 @@ static struct ggml_tensor* ggml_nn_conv_1d_dw(
             x = ggml_pad_ext(ctx, x, padding, 0, 0, 0, 0, 0, 0, 0);
             padding = 0;
         }
-        result = ggml_conv_1d_dw(ctx, w, x, stride, padding, dilation);
+        result = vae_conv_1d_dw_f16(ctx, w, x, stride, padding, dilation);
         if (b != NULL) {
             result = ggml_add(ctx, result, b);
         }
