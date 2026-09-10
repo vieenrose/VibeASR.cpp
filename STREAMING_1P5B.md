@@ -273,6 +273,10 @@ everything else stays F16.
 (S=28 D=1 I=3, H=697) with **byte-identical transcripts** to both the 13-piece
 gate and the pre-F16-im2col gate - every protocol and kernel change since then
 is numerically inert on this gate.
+\*\*\* Full 40-utt gate re-run again after the concurrent-encoder change
+(Exp525): WER 4.41% with the same error counts and **all 40 transcripts
+byte-identical** to the sequential gate - numerical identity proven over the
+whole gate set. Mean 40-utt phone RTF 3.9113 (was 4.4745 sequential, -12.6%).
 
 With the corrected embedding the **max-speed tier Pareto-dominates the
 accuracy-first tier**: 28% faster on the 40-utt mean and 27.5% on the 69 s clip,
