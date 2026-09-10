@@ -818,6 +818,14 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp550 (analysis + health): the last unexplained observation is now scoped and
+  parked - the VAE FFN runs at ~22 GMAC/s aggregate (26% of the two-core int8
+  peak at 1.3 GHz) vs the LM prefill's ~88% on the same kernels; the batching
+  and weight-traffic hypotheses are REJECTED by the p13 tests, and activation
+  quantization cannot explain it. Remaining suspect: the 4x4 gemm at the VAE's
+  shape mix (3rdparty; worth ~15-20% RTF IF a kernel issue). Full entry in
+  ideas.md; resolving needs a device profiler or an on-device ggml microbench.
+  Health 3.4799 (9th in-band reading).
 - Exp549 (diagnostic, closed honestly): disabling the NDK hardening flags
   (-fno-stack-protector -U_FORTIFY_SOURCE, verified to take effect) gives NO
   gain (3.5028, in-band) => the shipped build keeps the security flags.
