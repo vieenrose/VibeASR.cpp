@@ -670,6 +670,8 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   Re-check next Q8; 2nd >=6.60 investigates. 419 runs.
 - Exp420 (KEEP, rotation): F16 10.50 x61, best of band. F16 nominal => Exp419
   read as jitter; formal re-check still queued. 420 runs.
+- Exp421 (KEEP, watch resolved): 6.61 exceed -> immediate 6.52 re-check.
+  Noise 9th time. Watch retired. 421 runs.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
