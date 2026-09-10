@@ -818,6 +818,16 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp551 (KEEP, decisive diagnostic): on-device microbenchmark of ggml_mul_mat at
+  the VAE's/LM's exact shapes (built against the same libggml.so). RESULT: the
+  4x4 kernel is at hardware peak (single-thread 32-46 GMAC/s; streaming weights
+  costs 5-10%; two concurrent 1-thread instances on the same 2 cores each still
+  hit 44 GMAC/s => no interference, ~86 GMAC/s aggregate ceiling). The LM prefill
+  (74) is ~86% of that ceiling; the VAE's FFN (~27 aggregate) is 3.2x below it.
+  => the VAE's limiter is the GRAPH (serialized 860-op chain waiting on F32
+  activations through DRAM), not the kernels. CORRECTS the Exp550 park: the
+  remaining prize is op-fusion/scheduling in 3rdparty ggml, not faster kernels.
+  Health 3.4708.
 - Exp550 (analysis + health): the last unexplained observation is now scoped and
   parked - the VAE FFN runs at ~22 GMAC/s aggregate (26% of the two-core int8
   peak at 1.3 GHz) vs the LM prefill's ~88% on the same kernels; the batching
