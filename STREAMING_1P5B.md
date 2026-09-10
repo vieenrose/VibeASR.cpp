@@ -295,7 +295,11 @@ substitution (4.55% both) while against the PyTorch reference F16 is closer
 (2.06% vs 2.61%).
 
 Correctness and flat memory hold on-device at all lengths (cross-device WER
-< 1% same-config). `--xwin` (cross-window VAE carry) is ~8% faster on short
+< 1% same-config). **Sustained long-form check (Exp515):** a 138 s clip (the
+69 s chat concatenated with itself) runs at RTF **3.90** with RSS flat at
+1.92 GB (+14 MB over 9 minutes, majflt 0) and the two halves of the transcript
+matching at 4.25% WER - i.e. no thermal cliff, no memory growth, and no context
+drift over 18 chunks with a growing LM history. `--xwin` (cross-window VAE carry) is ~8% faster on short
 clips but drifts (+11.5% WER) on 69 s — shorts-only opt-in, legacy windows
 default. The VAE runs at ~50% of DRAM roofline (Exp75: 72% of time in GEMM
 kernels, fusion ceiling ≈1.2×); remaining kernel upside needs fused NEON

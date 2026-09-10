@@ -34,6 +34,9 @@ MODEL ARTIFACTS: models-streaming/vae-encoder-q4x4ffn.gguf (converter outtype
   Q4_0_4_4); both pushed to /data/local/tmp/vibeasr.
 
 ## Metrics
+- Sustained reference (Exp515, shipped tier, 138 s clip): RTF 3.9046, RSS
+  1923.9 MB flat, halves-match WER 4.25% (no drift over 18 chunks).
+
 - **Primary**: `rtf` (unitless, lower is better) — generation time (VAE+LM,
   `load:` EXCLUDED by harness construction) / audio duration on the phone,
   10 s slice, `-t 2` pinned to the 2 big cores (mask C0), pieces=13.
