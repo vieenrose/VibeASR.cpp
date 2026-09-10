@@ -247,6 +247,11 @@ everything else stays F16.
 | Q8-mixed VAE (history) | 1.9 GB | 6.14 | — | 6.71 | 5.76 | 4.55% | 2.44 GB |
 | _pre-A78 F16 (history)_ | 2.5 GB | _10.5_ | — | — | _9.73_ | 4.13% (desktop) | 2.99 GB |
 
+\*\* Gate re-run at the shipped 26-piece default (Exp514): WER 4.41%
+(S=28 D=1 I=3, H=697) with **byte-identical transcripts** to both the 13-piece
+gate and the pre-F16-im2col gate - every protocol and kernel change since then
+is numerically inert on this gate.
+
 With the corrected embedding the **max-speed tier Pareto-dominates the
 accuracy-first tier**: 28% faster on the 40-utt mean and 27.5% on the 69 s clip,
 equal-or-better WER (4.41 vs 4.55, one substitution apart), and 0.9 GB less RAM.
