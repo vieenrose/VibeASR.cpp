@@ -238,7 +238,7 @@ everything else stays F16.
 | tier | files | 10 s | 17 s | 40-utt mean | 69 s (equal tokens) | WER (40-utt) | RSS |
 |---|---|---|---|---|---|---|---|
 | **max-speed (default): VAE Q4_0_4x4-FFN + LM Q4_0_4x4 (q6_K emb) + F16 im2col, 26 pieces** | 2.0 GB | **3.98** | **3.52** | **4.47** | **3.83** | **4.41%** | **1.91 GB** |
-| balanced: VAE Q4_0_4x4-FFN + LM Q4_K_M | 1.9 GB | 4.91 | — | — | — | 4.82% | 2.12 GB |
+| balanced: VAE Q4_0_4x4-FFN + LM Q4_K_M | 1.9 GB | 4.91 | — | — | 4.64 | 4.82% | 1.84 GB |
 | fast-LM: VAE F16 + LM Q4_0_4x4 (q6_K emb) _(pre-im2col)_ | 2.5 GB | 5.21 | — | 5.73 | — | 4.41% | 2.94 GB |
 | balanced-lean: VAE Q4_0_4x4-FFN + 26 pieces (Q4_K_M LM) _(pre-im2col)_ | 1.9 GB | 5.21 | — | — | 4.94 | — | 1.98 GB |
 | _max-speed @13 pieces (history)_ | 2.0 GB | _3.99_ | — | — | _3.83_ | 4.41% | 2.07 GB |
@@ -295,7 +295,11 @@ substitution (4.55% both) while against the PyTorch reference F16 is closer
 (2.06% vs 2.61%).
 
 Correctness and flat memory hold on-device at all lengths (cross-device WER
-< 1% same-config). **Sustained long-form check (Exp515):** a 138 s clip (the
+< 1% same-config). **Determinism (Exp518):** two consecutive runs of the shipped config produce
+byte-identical transcripts, matching a reference saved several builds earlier
+(greedy decoding + fixed kernels => reproducible outputs).
+
+**Sustained long-form check (Exp515):** a 138 s clip (the
 69 s chat concatenated with itself) runs at RTF **3.90** with RSS flat at
 1.92 GB (+14 MB over 9 minutes, majflt 0) and the two halves of the transcript
 matching at 4.25% WER - i.e. no thermal cliff, no memory growth, and no context
