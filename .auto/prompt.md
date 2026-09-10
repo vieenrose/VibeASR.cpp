@@ -858,6 +858,11 @@ train/use cycle (tested, no gain; kept for reproducibility).
   this LM those rows drive the chunk-boundary control tokens and cost 0.7 pp
   WER. Verify every artifact's per-tensor types (grep 'converting to' / 'type ='
   in the quantize log) before gating.
+- Exp512 (diagnostic, hook kept): VAE_GRAPH_STATS=1 prints the per-piece byte
+  profile: MUL_MAT 340 MB (32%), IM2COL 119 MB (11%), ADD 110 MB (10%), MUL 38,
+  gelu 38, CONT 22, RMS_NORM 19, PAD 13; RESHAPE/PERMUTE are views (free).
+  Floor = F32 activations in/out of matmuls + I8_S-only fused ops => no
+  in-scope ADD/MUL reduction left; next gains need 3rdparty kernels/fusion.
 - Exp509-510 (KEEP, protocol): after the F16-im2col change removed the
   per-launch activation overhead, pieces=26 matches pieces=13 on ALL clips
   (10 s -0.7% same-session, 17 s +0.5%, 69 s -0.02%) with byte-identical
