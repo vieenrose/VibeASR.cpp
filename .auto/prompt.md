@@ -21,6 +21,7 @@ believed unreachable without retraining; do NOT chase it by cheating).
 | Q8 anchor | `VAE_FILE=vae-encoder-q8_0mixed.gguf` | 6.12-6.15 | 6.1204/6.1520/6.1659 |
 | Q4 | `VAE_FILE=vae-encoder-q4ffn.gguf` | ~6.48 | 6.4776 |
 | ultra-lean (superseded) | `VAE_FILE=vae-encoder-q4ffn.gguf PIECES=26` | ~6.61 | 6.6066 |
+| MAX-SPEED-LEAN | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q4_0_4_4.gguf PIECES=26` | ~4.39 | 4.3898 @ 1.93 GB (lowest RSS of any tier) |
 | BALANCED-LEAN | `VAE_FILE=vae-encoder-q4x4ffn.gguf PIECES=26` | ~5.21 | 5.208 (69 s 4.9374, identical tokens, RSS 1.98 GB) |
 Old-build bands (6.49-6.59 Q8, 10.5 F16, 6.81 Q4, 7.06 ultra-lean) are DEAD.
 69 s equal-token: accuracy-first 5.6089 / balanced 4.8228 / max-speed 4.046.
@@ -850,8 +851,10 @@ train/use cycle (tested, no gain; kept for reproducibility).
 - LADDER STATUS (post Exp495-496): the tier space collapsed - max-speed v2
   (VAE-4x4 + LM-4x4 q6_K-emb) Pareto-dominates the accuracy-first and balanced
   tiers (4.2436 / 4.7396 mean / 4.0678 on 69 s at WER 4.41% and RSS 2.11 GB);
-  the only remaining variant is balanced-lean (p26, 5.208 @ 1.98 GB) for
-  sub-2 GB devices. Keep the historical tiers documented but do not re-run them
+  the lean family covers sub-2 GB: balanced-lean (p26 + Q4_K_M LM, 5.208 @
+  1.98 GB) and max-speed-lean (p26 + 4x4 LM, 4.3898 @ 1.93 GB).
+  zh-clip caveat of the 4x4 LM: rare/proper tokens degrade ('Y-voice' -> 'YyY'),
+  content otherwise complete; Q4_K_M LM stays the clean-transcript option. Keep the historical tiers documented but do not re-run them
   as candidates.
 - Exp476-477 (KEEP, third wave): LM Q4_0_4x4 = blocked int8 kernel path.
   MEASURED: the fork's ggml dispatches gemv/gemm ONLY for types that carry

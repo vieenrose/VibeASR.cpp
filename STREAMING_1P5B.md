@@ -196,7 +196,8 @@ everything else stays F16.
 | max-speed: VAE Q4_0_4x4-FFN + LM Q4_0_4x4 (q6_K emb) | 2.0 GB | **4.24** | — | **4.74** | **4.07** | **4.41%** | 2.11 GB |
 | balanced: VAE Q4_0_4x4-FFN + LM Q4_K_M | 1.9 GB | 5.14 | 4.46 | 5.65 | 4.82 | 4.82% | 2.16 GB |
 | fast-LM: VAE F16 + LM Q4_0_4x4 (q6_K emb) | 2.5 GB | 5.21 | — | 5.73 | — | 4.41% | 2.94 GB |
-| **balanced-lean: VAE Q4_0_4x4-FFN + 26 pieces** | 1.9 GB | 5.21 | — | — | 4.94 | — | **1.98 GB** |
+| balanced-lean: VAE Q4_0_4x4-FFN + 26 pieces (Q4_K_M LM) | 1.9 GB | 5.21 | — | — | 4.94 | — | 1.98 GB |
+| **max-speed-lean: VAE-4x4 + LM-4x4 (q6_K emb) + 26 pieces** | 2.0 GB | **4.39** | — | — | — | — | **1.93 GB** |
 | accuracy-first: VAE F16 + LM Q4_K_M | 2.5 GB | 6.00 | 5.23 | 6.58 | 5.61 | 4.55% | 2.99 GB |
 | ultra-lean (plain Q4-FFN + 26 pieces, history) | 1.6 GB | 6.61 | — | — | — | 5.23% | 1.97 GB |
 | Q8-mixed VAE (history) | 1.9 GB | 6.14 | — | 6.71 | 5.76 | 4.55% | 2.44 GB |
@@ -206,8 +207,12 @@ With the corrected embedding the **max-speed tier Pareto-dominates the
 accuracy-first tier**: 28% faster on the 40-utt mean and 27.5% on the 69 s clip,
 equal-or-better WER (4.41 vs 4.55, one substitution apart), and 0.9 GB less RAM.
 The 69 s token count is 438 vs 442 (-0.9%), i.e. the old short-clip truncation
-(37/45) is mostly gone. `\*` = the 10 s zh clip still ends 3 tokens early
-(42/45) with the 4-bit LM; 69 s is the headline.
+(37/45) is mostly gone. Remaining zh-clip caveat, measured on both short clips:
+the 10 s protocol clip ends 3 tokens early (42/45) and the 17 s clip is
+content-complete but garbles the brand name ("YyY … YSR" vs "Y-voice … Y-voice
+ASR") — i.e. the 4-bit body's residual cost is rare/proper-token fidelity, not
+missing content. Use the balanced tier (Q4_K_M LM, clean zh transcripts) when
+proper nouns matter; the 69 s English WER story is unaffected (4.41%).
 
 \* The `Q4_0_4x4` LM shifts greedy end-of-chunk decisions on some short clips,
 so its 10 s / 17 s token counts are below baseline (40/45 and 64/68) and those
