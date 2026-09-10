@@ -415,7 +415,7 @@ struct ConvNeXtBlock {
         }
         
         residual = x;
-        
+
         x = ggml_nn_rms_norm(ctx, x, ffn_norm_weight);
         
         if (is_i8s) {
@@ -985,11 +985,15 @@ static int32_t vae_encode_impl(
     static bool graph_stats_dumped = false;
     if (getenv("VAE_GRAPH_STATS") != nullptr && !graph_stats_dumped) {
         graph_stats_dumped = true;
-        // Static traffic profile: sum of input+output bytes per op type. Bytes are
-        // a device-independent proxy for where the graph spends its bandwidth
-        // (weights are read once per mul_mat; src1 re-reads are counted per use).
-        std::map<std::string, std::pair<size_t, size_t>> by_op;   // name -> (bytes, count)
+        // Static traffic + compute profile: input+output bytes and MACs per op
+        // type. Bytes are a device-independent proxy for bandwidth (weights are
+        // read once per mul_mat; src1 re-reads counted per use); MACs are
+        // output-elements x contraction length for MUL_MAT, element counts for
+        // the elementwise ops, and are 0 for views.
+        struct Row { size_t bytes = 0; size_t count = 0; double macs = 0.0; };
+        std::map<std::string, Row> by_op;
         size_t total = 0;
+        double total_macs = 0.0;
         const int n_nodes = ggml_graph_n_nodes(gf);
         for (int i = 0; i < n_nodes; i++) {
             struct ggml_tensor* node = ggml_graph_node(gf, i);
@@ -997,15 +1001,26 @@ static int32_t vae_encode_impl(
             for (int s = 0; s < GGML_MAX_SRC; s++) {
                 if (node->src[s]) b += ggml_nbytes(node->src[s]);
             }
-            auto& e = by_op[std::string(ggml_op_name(node->op))];
-            e.first += b; e.second += 1;
-            total += b;
+            double macs = 0.0;
+            if (node->op == GGML_OP_MUL_MAT && node->src[0] && node->src[1]) {
+                macs = (double) ggml_nelements(node) * (double) node->src[0]->ne[0];
+            } else if (node->op != GGML_OP_RESHAPE && node->op != GGML_OP_PERMUTE &&
+                       node->op != GGML_OP_VIEW && node->op != GGML_OP_TRANSPOSE) {
+                macs = (double) ggml_nelements(node);
+            }
+            std::string key = ggml_op_name(node->op);
+            if (node->op == GGML_OP_MUL_MAT && node->src[0]) {
+                key += std::string("/") + ggml_type_name(node->src[0]->type);
+            }
+            auto& e = by_op[key];
+            e.bytes += b; e.count += 1; e.macs += macs;
+            total += b; total_macs += macs;
         }
-        fprintf(stderr, "[VAE_STATS] nodes=%d total=%.1f MB\n", n_nodes, total / 1e6);
+        fprintf(stderr, "[VAE_STATS] nodes=%d total=%.1f MB macs=%.2f G\n", n_nodes, total / 1e6, total_macs / 1e9);
         for (auto& kv : by_op) {
-            fprintf(stderr, "[VAE_STATS] %-16s n=%4zu bytes=%9.1f MB  %5.1f%%\n",
-                    kv.first.c_str(), kv.second.second, kv.second.first / 1e6,
-                    100.0 * kv.second.first / total);
+            fprintf(stderr, "[VAE_STATS] %-16s n=%4zu bytes=%9.1f MB %5.1f%%  macs=%9.3f G\n",
+                    kv.first.c_str(), kv.second.count, kv.second.bytes / 1e6,
+                    100.0 * kv.second.bytes / total, kv.second.macs / 1e9);
         }
     }
     if (ggml_graph_compute_with_ctx(ctx->compute_ctx, gf, ctx->n_threads) != GGML_STATUS_SUCCESS) {
