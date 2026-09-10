@@ -536,6 +536,7 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp299 (KEEP): health 6.55 @31.8C. Steady. 299 runs.
 - Exp300 (KEEP, rotation): F16 10.52 x38 identical. 300 runs: 12.24 -> 6.52
   (-47%). All tiers metronomic, all gaps closed, ship proven.
+- Exp301 (KEEP): health 6.53 @31.8C, best of band. 301 runs.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
