@@ -87,6 +87,56 @@ def bf16_to_fp32(bf16_arr: np.ndarray) -> np.ndarray:
     return fp32_arr.view(np.float32)
 
 
+def quantize_q4_0_4x4(tensor: np.ndarray) -> np.ndarray:
+    """Port of ggml's quantize_q4_0_nr_bl(nrows_interleaved=4, blck_size_interleave=4)
+    + make_block_q4_0x4(xor_mask=0x88) -> GGML_TYPE_Q4_0_4_4 (interleaved 4-row Q4_0).
+
+    This is the type whose hand-written dotprod gemv/gemm kernels (ggml-aarch64.c)
+    ggml dispatches to for matmuls; plain Q4_0/Q4_K_M only have vec_dot, which
+    re-reads the weight matrix once per activation row on this fork.
+
+    Input : (R, C) float tensor with R % 4 == 0 and C % 32 == 0.
+    Output: uint8 (n_blocks, 72) - 4 fp16 deltas + 64 interleaved nibble bytes,
+            which is block_q4_0x4 { ggml_half d[4]; uint8_t qs[64] }.
+    """
+    t = tensor.astype(np.float32, copy=False)
+    R, C = t.shape
+    assert R % 4 == 0 and C % 32 == 0, f"q4_0_4x4 needs R%4==0, C%32==0 (got {t.shape})"
+    nb = C // 32
+    x = t.reshape(R // 4, 4, nb, 32)
+
+    # per (group, row, block) block scale, exactly like quantize_row_q4_0_ref
+    a = np.abs(x)
+    amax_idx = np.argmax(a, axis=-1)                       # C keeps the FIRST max (strict <)
+    amax = np.take_along_axis(a, amax_idx[..., None], axis=-1)[..., 0]
+    maxv = np.take_along_axis(x, amax_idx[..., None], axis=-1)[..., 0]
+    d = np.where(amax > 0.0, maxv / -8.0, 0.0).astype(np.float32)
+    idv = np.where(d != 0.0, 1.0 / np.where(d != 0.0, d, 1.0), 0.0).astype(np.float32)
+
+    x0 = x[..., :16] * idv[..., None]
+    x1 = x[..., 16:] * idv[..., None]
+    xi0 = np.minimum(15, np.trunc(x0 + 8.5)).astype(np.uint8)
+    xi1 = np.minimum(15, np.trunc(x1 + 8.5)).astype(np.uint8)
+    qs = (xi0 | (xi1 << np.uint8(4))).astype(np.uint8)     # (G, 4, nb, 16)
+
+    # make_block_q4_0x4 interleave
+    i = np.arange(64)
+    src_offset = (i // 16) * 4 + (i % 4)
+    src_id = (i % 16) // 4
+    # NB: qs[:, src_id, :, src_offset] would broadcast the two index arrays to
+    # the FRONT (64, G, nb); do it index-by-index instead.
+    out_qs = np.empty((qs.shape[0], 64, nb), dtype=np.uint8)
+    for k in range(64):
+        out_qs[:, k, :] = qs[:, src_id[k], :, src_offset[k]] ^ np.uint8(0x88)
+    out_qs = np.transpose(out_qs, (0, 2, 1))                                   # (G, nb, 64)
+
+    d16 = d.astype(np.float16).view(np.uint8).reshape(d.shape[0], 4, nb, 2)
+    dbytes = np.transpose(d16, (0, 2, 1, 3)).reshape(d.shape[0], nb, 8)
+
+    blocks = np.concatenate([dbytes, out_qs], axis=-1)     # (G, nb, 72)
+    return np.ascontiguousarray(blocks.reshape(-1, 72))
+
+
 def pad_conv_weight_for_simd(tensor: np.ndarray, name: str) -> np.ndarray:
     """
     Pad convolution kernel for better SIMD utilization.
@@ -363,7 +413,19 @@ def convert_to_gguf(
             # Mixed-quant output. Q8_0/Q4_0 need last-dim %% 32 == 0 (ggml block
             # size); small kernels (depthwise convs) stay F16.
             use_q4 = (outtype == 'q4_0_ffn' and 'ffn.linear' in name)
-            if outtype in ('q8_0_mixed', 'q4_0_ffn') and tensor.shape[-1] % 32 == 0 and tensor.size >= 1024:
+            use_q4x4 = (outtype == 'q4_0_4x4_ffn' and 'ffn.linear' in name)
+            if use_q4x4 and tensor.shape[-1] % 32 == 0 and tensor.shape[0] % 4 == 0 and tensor.size >= 1024:
+                try:
+                    blocks = quantize_q4_0_4x4(tensor)
+                    gguf_writer.add_tensor(name, blocks, raw_shape=tensor.shape,
+                                           raw_dtype=gguf.GGMLQuantizationType.Q4_0_4_4)
+                    tensor_out = blocks
+                    print(f"  • {name}: {tensor.shape} -> Q4_0_4x4 ({blocks.shape[0]} blocks)")
+                except Exception as e:
+                    print(f"  • {name}: Q4_0_4x4 failed ({e}), keeping F16")
+                    tensor_out = tensor.astype(np.float16)
+                    gguf_writer.add_tensor(name, tensor_out)
+            elif outtype in ('q8_0_mixed', 'q4_0_ffn') and tensor.shape[-1] % 32 == 0 and tensor.size >= 1024:
                 qt = gguf.GGMLQuantizationType.Q4_0 if use_q4 else gguf.GGMLQuantizationType.Q8_0
                 try:
                     tensor_out = gguf.quants.quantize(tensor.astype(np.float32), qt)
@@ -430,7 +492,7 @@ def main():
         "--outtype",
         type=str,
         default="f32",
-        choices=["f32", "f16", "q8_0_mixed", "q4_0_ffn"],
+        choices=["f32", "f16", "q8_0_mixed", "q4_0_ffn", "q4_0_4x4_ffn"],
         help="Output tensor data type (default: f32). q8_0_mixed: Q8_0 for large "
              "weights (last dim %% 32 == 0), F16/F32 elsewhere (bias/norm stay F32). "
              "q4_0_ffn: Q4_0 for FFN linears on top of q8_0_mixed (experimental)"
