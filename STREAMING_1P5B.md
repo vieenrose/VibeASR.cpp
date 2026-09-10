@@ -218,8 +218,8 @@ everything else stays F16.
 |---|---|---|---|---|---|---|---|
 | max-speed: VAE Q4_0_4x4-FFN + LM Q4_0_4x4 (q6_K emb) + F16 im2col | 2.0 GB | **3.99** | **3.50** | **4.47** | **3.83** | **4.41%** | 2.07 GB |
 | balanced: VAE Q4_0_4x4-FFN + LM Q4_K_M | 1.9 GB | 4.91 | — | — | — | 4.82% | 2.12 GB |
-| fast-LM: VAE F16 + LM Q4_0_4x4 (q6_K emb) | 2.5 GB | 5.21 | — | 5.73 | — | 4.41% | 2.94 GB |
-| balanced-lean: VAE Q4_0_4x4-FFN + 26 pieces (Q4_K_M LM) | 1.9 GB | 5.21 | — | — | 4.94 | — | 1.98 GB |
+| fast-LM: VAE F16 + LM Q4_0_4x4 (q6_K emb) _(pre-im2col)_ | 2.5 GB | 5.21 | — | 5.73 | — | 4.41% | 2.94 GB |
+| balanced-lean: VAE Q4_0_4x4-FFN + 26 pieces (Q4_K_M LM) _(pre-im2col)_ | 1.9 GB | 5.21 | — | — | 4.94 | — | 1.98 GB |
 | **max-speed-lean: VAE-4x4 + LM-4x4 (q6_K emb) + 26 pieces** | 2.0 GB | **4.00** | — | — | — | — | **1.91 GB** |
 | accuracy-first: VAE F16 + LM Q4_K_M | 2.5 GB | 5.80 | — | — | — | 4.55% | 2.88 GB |
 | ultra-lean (plain Q4-FFN + 26 pieces, history) | 1.6 GB | 6.61 | — | — | — | 5.23% | 1.97 GB |
