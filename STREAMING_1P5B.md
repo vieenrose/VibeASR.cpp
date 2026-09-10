@@ -193,7 +193,7 @@ everything else stays F16.
 
 | tier | files | 10 s | 17 s | 40-utt mean | 69 s (equal tokens) | WER (40-utt) | RSS |
 |---|---|---|---|---|---|---|---|
-| max-speed: VAE Q4_0_4x4-FFN + LM Q4_0_4x4 (q6_K emb) | 2.0 GB | **4.24**\* | — | **4.74** | — | **4.41%** | 2.11 GB |
+| max-speed: VAE Q4_0_4x4-FFN + LM Q4_0_4x4 (q6_K emb) | 2.0 GB | **4.24** | — | **4.74** | **4.07** | **4.41%** | 2.11 GB |
 | balanced: VAE Q4_0_4x4-FFN + LM Q4_K_M | 1.9 GB | 5.14 | 4.46 | 5.65 | 4.82 | 4.82% | 2.16 GB |
 | fast-LM: VAE F16 + LM Q4_0_4x4 (q6_K emb) | 2.5 GB | 5.21 | — | 5.73 | — | 4.41% | 2.94 GB |
 | **balanced-lean: VAE Q4_0_4x4-FFN + 26 pieces** | 1.9 GB | 5.21 | — | — | 4.94 | — | **1.98 GB** |
@@ -203,9 +203,11 @@ everything else stays F16.
 | _pre-A78 F16 (history)_ | 2.5 GB | _10.5_ | — | — | _9.73_ | 4.13% (desktop) | 2.99 GB |
 
 With the corrected embedding the **max-speed tier Pareto-dominates the
-accuracy-first tier**: 28% faster on the 40-utt mean, equal-or-better WER
-(4.41 vs 4.55, one substitution apart), and 0.9 GB less RAM. The 69 s
-column for it is pending (re-measure with the corrected LM).
+accuracy-first tier**: 28% faster on the 40-utt mean and 27.5% on the 69 s clip,
+equal-or-better WER (4.41 vs 4.55, one substitution apart), and 0.9 GB less RAM.
+The 69 s token count is 438 vs 442 (-0.9%), i.e. the old short-clip truncation
+(37/45) is mostly gone. `\*` = the 10 s zh clip still ends 3 tokens early
+(42/45) with the 4-bit LM; 69 s is the headline.
 
 \* The `Q4_0_4x4` LM shifts greedy end-of-chunk decisions on some short clips,
 so its 10 s / 17 s token counts are below baseline (40/45 and 64/68) and those
