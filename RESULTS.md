@@ -63,6 +63,7 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
 | determinism | repeated runs byte-identical, matching references from earlier builds |
 | output stability | byte-identical transcripts vs pre-change references on **every** clip used (10 s, 17 s, 69 s, 138 s halves, and 40/40 gate utterances) |
 | out-of-domain (20 s music) | RTF 2.97, sane `[Music]`+lyrics output, no pathological loops |
+| speaker attribution (first diarization evidence, Exp548) | two-speaker synthetic clips: on a 0.5 s-gap concatenation **all tiers agree** (single speaker — a model behaviour, not a quantization effect); on an **overlapped** mix the quantized stack emits **Speaker 0 + Speaker 1** while the F16 control emits one — i.e. attribution is exercised and not collapsed by quantization. No multi-speaker reference exists in the loop's assets, so attribution *quality* is unscored (validation boundary) |
 | non-speech edge cases | 5 s digital silence → `[Silence][Silence]`; 5 s −50 dBFS white noise → `[Noise]` — correct model tags, short decodes, **no hallucinated text and no repetition loops** |
 | input formats / cold start | 48 kHz stereo handled (one word differs); after evicting the page cache the RTF is unchanged (3.4713) and only the load grows (1.4 → 3.0 s, excluded from RTF) |
 | CPU utilisation | 1.88 of 2 pinned cores (94 %) — the pipeline is saturated |
