@@ -42,7 +42,7 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
 |---|---|
 | 40-utt LibriSpeech gate (on-device, shipped config, re-run after each threading change) | WER **4.41 %** (S=28 D=1 I=3); all 40 transcripts **byte-identical** across all three gates |
 | 69 s equal-token comparison | 3.43 vs 5.62 accuracy-first (−39 %), tokens 438 vs 442 |
-| sustained 138 s | RTF 3.52, RSS flat 2.09 GB, no drift (halves-match 4.25 %), majflt 0 |
+| sustained 138 s (frozen build) | RTF **3.45**, VAE 313.5 s, RSS flat 2.09 GB, no drift (halves-match 4.25 %, identical to earlier runs), majflt 0 |
 | determinism | repeated runs byte-identical, matching references from earlier builds |
 | out-of-domain (20 s music) | RTF 2.97, sane `[Music]`+lyrics output, no pathological loops |
 | CPU utilisation | 1.88 of 2 pinned cores (94 %) — the pipeline is saturated |

@@ -273,7 +273,7 @@ everything else stays F16.
 
 | tier | files | 10 s | 17 s | 40-utt mean | 69 s (equal tokens) | WER (40-utt) | RSS |
 |---|---|---|---|---|---|---|---|
-| **max-speed (shipped default): 4x4 VAE + 4x4 LM (q6_K emb) + F16 im2col + concurrent encoders + OMP off, 26 pieces** | 2.0 GB | **3.47** | — | **3.86** | **3.38** | **4.41%**\*\*\* | 2.07 GB |
+| **max-speed (shipped default): 4x4 VAE + 4x4 LM (q6_K emb) + F16 im2col + concurrent encoders + OMP off, 26 pieces** | 2.0 GB | **3.47** | **3.05** | **3.86** | **3.38** | **4.41%**\*\*\* | 2.07 GB |
 | _max-speed, RAM-lean (`VAE_SEQ_ENCODERS=1`)_ | 2.0 GB | _4.01_ | — | — | — | 4.41% | **1.91 GB** |
 | balanced: VAE Q4_0_4x4-FFN + LM Q4_K_M (concurrent encoders) | 1.9 GB | **4.44** | — | — | — | 4.82% | 2.00 GB |
 | fast-LM: VAE F16 + LM Q4_0_4x4 (q6_K emb) _(pre-im2col)_ | 2.5 GB | 5.21 | — | 5.73 | — | 4.41% | 2.94 GB |
@@ -349,9 +349,9 @@ so that gate transfers unchanged; together with the shipped tier's 40/40
 byte-identical gate transcripts, every tier's accuracy number is valid for the
 current kernels without a fresh 40-minute gate per tier.
 
-**Sustained long-form check (Exp515 pre-, Exp526 post-concurrency):** a 138 s
-clip (the 69 s chat concatenated with itself) runs at RTF **3.52** (was 3.90
-sequentially) with RSS flat at 2.09 GB (+165 MB for the concurrent encoders'
+**Sustained long-form check (Exp515 pre-, Exp526 post-concurrency, Exp538 at
+the frozen build):** a 138 s clip (the 69 s chat concatenated with itself) runs
+at RTF **3.45** (3.90 sequential -> 3.52 concurrent -> 3.45 with OMP off) with RSS flat at 2.09 GB (+165 MB for the concurrent encoders'
 second arena, no growth over 8 minutes, majflt 0) and the two halves of the
 transcript matching at 4.25% WER - identical to the pre-concurrency run, i.e.
 no thermal cliff, no memory growth, no context drift, and no threading
