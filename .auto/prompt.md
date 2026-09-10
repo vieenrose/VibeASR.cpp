@@ -818,6 +818,11 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp530 (diagnostic + health): VAE attribution by ablation - elementwise ops
+  (bias adds + gelu + rms_norms) = 14% of the VAE; the conv path (~36%) is not
+  further ablatable (two attempts failed on shapes/path effects). Conv-int8
+  traffic bound: -230 MB/piece/encoder (~-15% of VAE traffic) => low single-digit
+  time ceiling; stays parked. Shipped health 3.4854 @ 2074 MB, tokens 39.
 - Exp529 (KEEP, ladder): shipped 17 s clip 3.0680 (was 3.4997 sequential,
   -12.3%); RAM-lean mode (VAE_SEQ_ENCODERS=1) 4.0089 @ 1910.3 MB. Harness fix:
   measure.sh now forwards EXTRA_ENV to the device (the env var had been silently
