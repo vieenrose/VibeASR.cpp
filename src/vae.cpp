@@ -16,6 +16,16 @@
 #include <string>
 #include <vector>
 
+#if defined(__unix__) || defined(__APPLE__)
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#define VAE_HAVE_MMAP 1
+#else
+#define VAE_HAVE_MMAP 0
+#endif
+
 // ============================================================================
 // Streaming conv cache (VibeVoiceTokenizerStreamingCache port).
 //
@@ -716,31 +726,62 @@ vae_model_t* vae_load_model_from_file(
     // Allocate backend buffer
     model->params_buffer = ggml_backend_alloc_ctx_tensors(model->params_ctx, model->backend);
     
-    // Load tensor data from file
-    FILE* f = fopen(model_path, "rb");
-    if (!f) {
-        fprintf(stderr, "[VAE] Error: Failed to open file for reading\n");
-        gguf_free(gguf_ctx);
-        delete model;
-        return nullptr;
-    }
-    
+    // Load tensor data from file. Fast path: mmap + one memcpy per tensor
+    // straight from the page cache into the backend buffer. The old per-tensor
+    // `std::vector<char> buf(n)` also value-initialised (zero-filled) every
+    // tensor and copied twice (file->buf->tensor), i.e. ~3x the file's bytes in
+    // memory traffic plus per-tensor allocation churn - measurable startup on
+    // the 0.8-1.4 GB VAE files (see load_s).
     size_t data_offset = gguf_get_data_offset(gguf_ctx);
-    for (int i = 0; i < n_tensors; i++) {
-        const char* name = gguf_get_tensor_name(gguf_ctx, i);
-        struct ggml_tensor* tensor = model->tensors[name];
-        size_t offset = data_offset + gguf_get_tensor_offset(gguf_ctx, i);
-        
-        fseek(f, offset, SEEK_SET);
-        
-        size_t tensor_size = ggml_nbytes(tensor);
-        std::vector<char> buf(tensor_size);
-        fread(buf.data(), 1, tensor_size, f);
-        
-        ggml_backend_tensor_set(tensor, buf.data(), 0, tensor_size);
+    bool loaded = false;
+#if VAE_HAVE_MMAP
+    {
+        int fd = open(model_path, O_RDONLY);
+        struct stat st;
+        if (fd >= 0 && fstat(fd, &st) == 0 && st.st_size > 0) {
+            void* base = mmap(nullptr, (size_t) st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+            if (base != MAP_FAILED) {
+                bool ok = true;
+                madvise(base, (size_t) st.st_size, MADV_WILLNEED);
+                for (int i = 0; i < n_tensors; i++) {
+                    const char* name = gguf_get_tensor_name(gguf_ctx, i);
+                    struct ggml_tensor* tensor = model->tensors[name];
+                    size_t offset = data_offset + gguf_get_tensor_offset(gguf_ctx, i);
+                    size_t tensor_size = ggml_nbytes(tensor);
+                    if (offset + tensor_size > (size_t) st.st_size) { ok = false; break; }
+                    ggml_backend_tensor_set(tensor, (const char*) base + offset, 0, tensor_size);
+                }
+                munmap(base, (size_t) st.st_size);
+                loaded = ok;
+            }
+            close(fd);
+        }
     }
-    
-    fclose(f);
+#endif
+    if (!loaded) {
+        FILE* f = fopen(model_path, "rb");
+        if (!f) {
+            fprintf(stderr, "[VAE] Error: Failed to open file for reading\n");
+            gguf_free(gguf_ctx);
+            delete model;
+            return nullptr;
+        }
+        for (int i = 0; i < n_tensors; i++) {
+            const char* name = gguf_get_tensor_name(gguf_ctx, i);
+            struct ggml_tensor* tensor = model->tensors[name];
+            size_t offset = data_offset + gguf_get_tensor_offset(gguf_ctx, i);
+
+            fseek(f, offset, SEEK_SET);
+
+            size_t tensor_size = ggml_nbytes(tensor);
+            std::vector<char> buf(tensor_size);
+            size_t got = fread(buf.data(), 1, tensor_size, f);
+            (void) got;
+
+            ggml_backend_tensor_set(tensor, buf.data(), 0, tensor_size);
+        }
+        fclose(f);
+    }
     gguf_free(gguf_ctx);
     
     // Load encoder weights

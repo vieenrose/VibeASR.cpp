@@ -34,6 +34,7 @@ ACS=$(grep -oE 'ac [0-9.]+s' .auto/last_err.txt | head -n 1 | awk '{print $2}' |
 SES=$(grep -oE 'sem [0-9.]+s' .auto/last_err.txt | head -n 1 | awk '{print $2}' | sed 's/s//')
 PRE=$(grep -oE 'prefill [0-9.]+s' .auto/last_err.txt | head -n 1 | awk '{print $2}' | sed 's/s//')
 DEC=$(grep -oE 'decode [0-9.]+s' .auto/last_err.txt | head -n 1 | awk '{print $2}' | sed 's/s//')
+LOAD=$(grep -oE 'load: [0-9.]+s' .auto/last_err.txt | head -n 1 | awk '{print $2}' | sed 's/s//')
 PEAKKB=$(grep -oE 'peak_kb=[0-9]+' .auto/last_run.txt | cut -d= -f2)
 HWMKB=$(grep -oE 'hwm_kb=[0-9]+' .auto/last_run.txt | cut -d= -f2)
 MAJFLT=$(grep -oE 'majflt_delta=-?[0-9]+' .auto/last_run.txt | cut -d= -f2)
@@ -50,4 +51,5 @@ echo "METRIC majflt=${MAJFLT:-0}"
 [ -n "${SES:-}" ] && echo "METRIC sem_s=$SES"
 [ -n "${PRE:-}" ] && echo "METRIC prefill_s=$PRE"
 [ -n "${DEC:-}" ] && echo "METRIC decode_s=$DEC"
+[ -n "${LOAD:-}" ] && echo "METRIC load_s=$LOAD"
 [ -n "${BATTT:-}" ] && echo "METRIC batt_temp_c=$(python3 -c "print(round(${BATTT}/10,1))")"
