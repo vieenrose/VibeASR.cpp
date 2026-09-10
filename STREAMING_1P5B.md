@@ -169,15 +169,23 @@ everything else stays F16.
 
 ### Final tier ladder (all on-device gated, 10 s protocol `-t 2`/C0, pieces 13)
 
-| tier | files | 10 s | 40-utt mean | 69 s (equal tokens) | WER (40-utt) | RSS |
-|---|---|---|---|---|---|---|
-| accuracy-first: VAE F16 + LM Q4_K_M | 2.5 GB | 6.00 | 6.58 | 5.61 | **4.55%** | 2.99 GB |
-| **balanced: VAE Q4_0_4x4-FFN + LM Q4_K_M** | 1.9 GB | **5.14** | **5.65** | 4.82 | 4.82% | 2.16 GB |
-| fast: VAE F16 + LM Q4_0_4x4 | 2.5 GB | 5.13 | 5.86 | 4.82 | 5.10% | 2.88 GB |
-| max-speed: VAE Q4_0_4x4-FFN + LM Q4_0_4x4 | 1.9 GB | **4.26** | **4.77** | **4.05** | 5.10% | **2.05 GB** |
-| ultra-lean (plain Q4-FFN + 26 pieces) | 1.6 GB | 6.61 | — | — | 5.23% | 1.97 GB |
-| Q8-mixed VAE (history) | 1.9 GB | 6.14 | 6.71 | 5.76 | 4.55% | 2.44 GB |
-| _pre-A78 F16 (history)_ | 2.5 GB | _10.5_ | — | _9.73_ | 4.13% (desktop) | 2.99 GB |
+| tier | files | 10 s | 17 s | 40-utt mean | 69 s (equal tokens) | WER (40-utt) | RSS |
+|---|---|---|---|---|---|---|---|
+| accuracy-first: VAE F16 + LM Q4_K_M | 2.5 GB | 6.00 | 5.23 | 6.58 | 5.61 | **4.55%** | 2.99 GB |
+| **balanced: VAE Q4_0_4x4-FFN + LM Q4_K_M** | 1.9 GB | **5.14** | **4.46** | **5.65** | 4.82 | 4.82% | 2.16 GB |
+| fast: VAE F16 + LM Q4_0_4x4 | 2.5 GB | 5.13 | 4.54 | 5.86 | 4.82 | 5.10% | 2.88 GB |
+| max-speed: VAE Q4_0_4x4-FFN + LM Q4_0_4x4 | 1.9 GB | **4.26**\* | **3.76**\* | **4.77** | **4.05** | 5.10% | **2.05 GB** |
+| ultra-lean (plain Q4-FFN + 26 pieces) | 1.6 GB | 6.61 | — | — | — | 5.23% | 1.97 GB |
+| Q8-mixed VAE (history) | 1.9 GB | 6.14 | — | 6.71 | 5.76 | 4.55% | 2.44 GB |
+| _pre-A78 F16 (history)_ | 2.5 GB | _10.5_ | — | — | _9.73_ | 4.13% (desktop) | 2.99 GB |
+
+\* The `Q4_0_4x4` LM shifts greedy end-of-chunk decisions on some short clips,
+so its 10 s / 17 s token counts are below baseline (40/45 and 64/68) and those
+RTF ratios are partly fewer-decode-tokens effects; the 69 s clip is the only
+one where its output length matches (444 vs 442-443), so **4.05 (−28%) is the
+headline speed claim** for the max-speed tier. The balanced tier (4x4 VAE +
+Q4_K_M LM) does not truncate (46/45, 69/68) and is the best all-round tier:
+−14% RTF for +0.27 pp WER.
 
 Against the original baseline (12.24) the max-speed tier is **−65%**; against
 the pre-A78 loop best (6.52) it is −35%. The balanced tier dominates the fast
