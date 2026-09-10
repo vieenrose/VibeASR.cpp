@@ -142,6 +142,28 @@ Q4_0_4_4`, 1.3 s on the host) gives, at **equal output length** (69 s clip,
   The `Q4_0_4x4` quantizer uses symmetric absmax (`d = amax/8`) instead of
   plain `Q4_0`'s asymmetric min/max, which is where the extra error comes from
   (`ggml-aarch64.c`, 3rdparty).
+
+**Follow-up (Exp494-495): almost all of that +0.55 pp was the embedding table,
+not the transformer body.** llama-quantize's default demotes `token_embd.weight`
+q6_K → q4_0; keeping it at the source precision with
+`--token-embedding-type q6_K` (no new rounding at all) costs +60 MB and recovers
+the accuracy:
+
+| LM file | 40-utt WER | protocol RTF | zh-clip tokens |
+|---|---|---|---|
+| Q4_K_M (accuracy-first) | 4.55% | 6.00 | 45 |
+| Q4_0_4x4, token_embd q4_0 | 5.10% | 5.13 | 37 |
+| **Q4_0_4x4, token_embd q6_K** | **4.41%** | **5.21** | **42** |
+
+Mechanism: the embedding rows for the control tokens (`[speech_start]`,
+`[speech_end]`, `<|text_chunk_end|>`) are what the LM uses to decide chunk
+boundaries, so their quantization error shifts end-of-chunk decisions. The
+recipe for this artifact is therefore
+`llama-quantize --allow-requantize --token-embedding-type q6_K \
+ <q4_k_m> <out> Q4_0_4_4`.
+
+An **imatrix** was also tested (Exp492) and is inert for this type:
+`quantize_q4_0_4x4()` does `UNUSED(quant_weights)`.
 * Caveat: on the 10 s zh protocol clip the fast LM emitted 37 tokens vs 45
   (content truncated) — the 10 s RTF ratio (5.13 vs 6.01) therefore flatters
   itself by generating fewer tokens; quote the 69 s equal-length number.
@@ -171,14 +193,19 @@ everything else stays F16.
 
 | tier | files | 10 s | 17 s | 40-utt mean | 69 s (equal tokens) | WER (40-utt) | RSS |
 |---|---|---|---|---|---|---|---|
-| accuracy-first: VAE F16 + LM Q4_K_M | 2.5 GB | 6.00 | 5.23 | 6.58 | 5.61 | **4.55%** | 2.99 GB |
-| **balanced: VAE Q4_0_4x4-FFN + LM Q4_K_M** | 1.9 GB | **5.14** | **4.46** | **5.65** | 4.82 | 4.82% | 2.16 GB |
-| fast: VAE F16 + LM Q4_0_4x4 | 2.5 GB | 5.13 | 4.54 | 5.86 | 4.82 | 5.10% | 2.88 GB |
-| max-speed: VAE Q4_0_4x4-FFN + LM Q4_0_4x4 | 1.9 GB | **4.26**\* | **3.76**\* | **4.77** | **4.05** | 5.10% | **2.05 GB** |
-| ultra-lean (plain Q4-FFN + 26 pieces) | 1.6 GB | 6.61 | — | — | — | 5.23% | 1.97 GB |
-| **balanced-lean (Q4_0_4x4-FFN + 26 pieces)** | 1.9 GB | 5.21 | — | — | 4.94 | — | **1.98 GB** |
+| max-speed: VAE Q4_0_4x4-FFN + LM Q4_0_4x4 (q6_K emb) | 2.0 GB | **4.24**\* | — | **4.74** | — | **4.41%** | 2.11 GB |
+| balanced: VAE Q4_0_4x4-FFN + LM Q4_K_M | 1.9 GB | 5.14 | 4.46 | 5.65 | 4.82 | 4.82% | 2.16 GB |
+| fast-LM: VAE F16 + LM Q4_0_4x4 (q6_K emb) | 2.5 GB | 5.21 | — | 5.73 | — | 4.41% | 2.94 GB |
+| **balanced-lean: VAE Q4_0_4x4-FFN + 26 pieces** | 1.9 GB | 5.21 | — | — | 4.94 | — | **1.98 GB** |
+| accuracy-first: VAE F16 + LM Q4_K_M | 2.5 GB | 6.00 | 5.23 | 6.58 | 5.61 | 4.55% | 2.99 GB |
+| ultra-lean (plain Q4-FFN + 26 pieces, history) | 1.6 GB | 6.61 | — | — | — | 5.23% | 1.97 GB |
 | Q8-mixed VAE (history) | 1.9 GB | 6.14 | — | 6.71 | 5.76 | 4.55% | 2.44 GB |
 | _pre-A78 F16 (history)_ | 2.5 GB | _10.5_ | — | — | _9.73_ | 4.13% (desktop) | 2.99 GB |
+
+With the corrected embedding the **max-speed tier Pareto-dominates the
+accuracy-first tier**: 28% faster on the 40-utt mean, equal-or-better WER
+(4.41 vs 4.55, one substitution apart), and 0.9 GB less RAM. The 69 s
+column for it is pending (re-measure with the corrected LM).
 
 \* The `Q4_0_4x4` LM shifts greedy end-of-chunk decisions on some short clips,
 so its 10 s / 17 s token counts are below baseline (40/45 and 64/68) and those

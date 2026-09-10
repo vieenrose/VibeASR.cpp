@@ -16,7 +16,7 @@ believed unreachable without retraining; do NOT chase it by cheating).
 |---|---|---|---|
 | F16 accuracy-first | `VAE_FILE=vae-encoder-f16.gguf` | 6.01-6.04 | 8 readings, mean 6.023 |
 | BALANCED | `VAE_FILE=vae-encoder-q4x4ffn.gguf` | ~5.14 | 5.1411 (Exp480) |
-| FAST-LM | `VAE_FILE=vae-encoder-f16.gguf LM_FILE=lm-q4_0_4x4.gguf` | ~5.13 | 5.1348 (tokens 37 on this clip - truncated) |
+| FAST-LM v2 | `VAE_FILE=vae-encoder-f16.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) | ~5.21 | 5.2138 (tokens 42), WER 4.41% |
 | MAX-SPEED | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q4_0_4x4.gguf` | ~4.26 | 4.2576 (tokens 40 on this clip) |
 | Q8 anchor | `VAE_FILE=vae-encoder-q8_0mixed.gguf` | 6.12-6.15 | 6.1204/6.1520/6.1659 |
 | Q4 | `VAE_FILE=vae-encoder-q4ffn.gguf` | ~6.48 | 6.4776 |
@@ -810,6 +810,20 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp494-495 (KEEP, accuracy fix): the blocked-int8 LM's +0.55 pp was almost
+  entirely the TOKEN EMBEDDING table - llama-quantize's default demotes
+  token_embd.weight q6_K -> q4_0, and those rows carry the control tokens that
+  decide chunk boundaries. Keeping the source precision
+  (`--token-embedding-type q6_K`, +60 MB, no new rounding) gives 40-utt WER
+  4.41% (S=28 D=1 I=3) vs 5.10% (S=31 D=2 I=4) at equal speed, zh-clip tokens
+  37 -> 42. Standard artifact: models-streaming/lm-q4_0_4_4.gguf (md5 db67eecb)
+  = 196x q4_0_4x4 + token_embd q6_K; the recipe MUST pass
+  --token-embedding-type q6_K. Combined with the VAE-4x4 the max-speed tier
+  Pareto-dominates accuracy-first: 4.2436 (10 s) / 4.7396 (40-utt mean) at
+  WER 4.41% and RSS 2.11 GB vs 6.00 / 6.58 at 4.55% and 2.99 GB.
+- Exp492 (discard, closed): imatrix is INERT for blocked types -
+  quantize_q4_0_4x4() does UNUSED(quant_weights). Built a 220-chunk bilingual
+  public-domain imatrix; WER bit-identical. Do not rebuild.
 - Exp492 (discard, closed): imatrix-guided LM quantization is INERT for the
   blocked-int8 types - quantize_q4_0_4x4() does UNUSED(quant_weights) and uses
   the unweighted ref quantizer. A 220-chunk bilingual public-domain imatrix was
