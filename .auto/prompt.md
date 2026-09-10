@@ -704,6 +704,11 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp451 (KEEP): health 6.51 @31.4C, anchor exact. 451 runs.
 - Exp452 (KEEP, rotation): Q4 6.94 @32.0C exceeds band, all LM-side (prefill
   13.1; VAE nominal-fast). Single-run preemption signature; re-check next Q4. 452 runs.
+- Exp453 (KEEP, rotation+watch): ultra-lean 7.26 @33.0C exceeds band (+2.9%,
+  both phases). 2nd consecutive exceed + device warm => DEVICE-LEVEL cause found
+  via cpuinfo: load 33.8 (!), system_server 156%, Play vending 83% background
+  storm. Framework/system noise, not drift. Watch: re-check next ultra-lean
+  after settle. 453 runs.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
