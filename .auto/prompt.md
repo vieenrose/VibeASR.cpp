@@ -20,7 +20,8 @@ believed unreachable without retraining; do NOT chase it by cheating).
 | MAX-SPEED | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q4_0_4x4.gguf` | ~4.26 | 4.2576 (tokens 40 on this clip) |
 | Q8 anchor | `VAE_FILE=vae-encoder-q8_0mixed.gguf` | 6.12-6.15 | 6.1204/6.1520/6.1659 |
 | Q4 | `VAE_FILE=vae-encoder-q4ffn.gguf` | ~6.48 | 6.4776 |
-| ultra-lean | `VAE_FILE=vae-encoder-q4ffn.gguf PIECES=26` | ~6.61 | 6.6066 |
+| ultra-lean (superseded) | `VAE_FILE=vae-encoder-q4ffn.gguf PIECES=26` | ~6.61 | 6.6066 |
+| BALANCED-LEAN | `VAE_FILE=vae-encoder-q4x4ffn.gguf PIECES=26` | ~5.21 | 5.208 (69 s 4.9374, identical tokens, RSS 1.98 GB) |
 Old-build bands (6.49-6.59 Q8, 10.5 F16, 6.81 Q4, 7.06 ultra-lean) are DEAD.
 69 s equal-token: accuracy-first 5.6089 / balanced 4.8228 / max-speed 4.046.
 40-utt mean RTF: 6.5823 / 5.6523 / 4.7689. WER: 4.55% / 4.82% / 5.10%.
