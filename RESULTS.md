@@ -36,6 +36,23 @@ Shipped recipe: VAE `Q4_0_4x4` ffn linears (converter outtype `q4_0_4x4_ffn`) +
 F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddings**
 + **concurrent acoustic/semantic encoders** (one thread each), 26 VAE pieces.
 
+
+## Progression on the 10 s protocol (each step validated)
+
+| step | RTF | mechanism |
+|---|---|---|
+| baseline | 12.24 | VAE F16 + LM Q4_K_M, `-t 4` unpinned |
+| 10.34 | −15 % | VAE selective Q8_0-mixed (large weights only) |
+| 10.12 | −17 % | VAE Q4_0-FFN variant (opt-in low-RAM tier) |
+| 9.71 | −21 % | legacy cold windows + Q8 (after the `--xwin` accuracy demotion) |
+| **6.52** | **−47 %** | **`-t 2` pinned to the two prime cores** (biggest single lever) |
+| 6.02 | −51 % | A78 codegen (`-mcpu=cortex-a78`, after fixing the stale-`.so` harness bug) → F16 VAE becomes the fastest tier |
+| 5.13 | −58 % | LM on blocked int8 kernels (`Q4_0_4x4`, q6_K embeddings) |
+| 4.26 | −65 % | VAE `ffn.linear` on the same blocked kernels (converter outtype `q4_0_4x4_ffn`) |
+| 3.99 | −67 % | F16 im2col for the convs (halves im2col traffic, drops a conversion pass) |
+| 3.53 | −71 % | concurrent acoustic/semantic encoder chains (1 thread each) |
+| **3.48** | **−72 %** | OpenMP off for the 1-thread chains |
+
 ## Evidence
 
 | check | result |

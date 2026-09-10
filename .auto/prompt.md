@@ -818,6 +818,13 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp541 (KEEP, modes recorded): RAM-lean mode (EXTRA_ENV="VAE_SEQ_ENCODERS=1")
+  re-measured at the OMP-off build: 3.9896 @ 1909.6 MB (SEQ 31.3 s) vs the
+  concurrent default 3.48 @ 2.07 GB -> the concurrency trades +164 MB for
+  -12.7% RTF. TRAP (hit twice): host-shell env vars are NOT forwarded to the
+  device - they must go through EXTRA_ENV; measure.sh now echoes EXTRA_ENV when
+  set. Also added a validated "Progression on the 10 s protocol" table to
+  RESULTS.md (12.24 -> 3.48 with the mechanism per step).
 - Exp540 (KEEP, statistics): 3 consecutive shipped-config runs: 3.4862/3.4853/
   3.4781 (36.1-36.3C) => within-run sd 0.004; over the 7 OMP-off readings
   (34.6-37.1C) mean 3.482, sd 0.010 => the shipped band is 3.47-3.50 and the
