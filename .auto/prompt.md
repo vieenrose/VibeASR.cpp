@@ -818,6 +818,13 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp545 (KEEP, integrity + health): shipped hashes refreshed after OMP-off
+  (asr_streaming 0371eb80, libggml.so 6ce4c983, libllama.so 92ad2456; device
+  verified identical). A55 option closed by arithmetic: A55 int8 ~16 GMAC/s at
+  2.0 GHz vs prime 41.6 GMAC/s at 1.3 GHz (ratio 0.38); 3 A55s/chain with
+  homogeneous barrier coupling (~1.57x) nets ~0.73 prime-equivalents => the VAE
+  on 2x3 A55s ~36 s vs 26 s on the primes (no win); the LM on A55s is worse
+  (bandwidth-bound). Little cores unusable for either phase. Health 3.4775.
 - Exp544 (diagnostic, hardware envelope): the pinned primes are HARD-CAPPED at
   1.3 GHz (54% of the 2.4 GHz rating) - constant under load, spin, and idle;
   the A55 cluster is not capped (0.5-2.0 GHz). Governor/max-freq nodes are

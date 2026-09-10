@@ -121,7 +121,8 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
 | `vae-encoder-q4x4ffn.gguf` | `b909b7901d5d318d81ce4cbaeac31437` |
 | `lm-q4_0_4_4.gguf` (q6_K embeddings) | `db67eecbd31bba707666414dd977902f` |
 | `streaming-lm-q4_k_m.gguf` (intermediate) | `046be3d4775e10f8b635b03ec1bc79cb` |
-| Android `asr_streaming` (A78 build) | `98b643ed2496cff89d9b8caec687c3c0` |
+| Android `asr_streaming` (A78 build, OMP off) | `0371eb80f6ce582f8d4cb91c07b3a539` |
+| `libggml.so` / `libllama.so` (shipped) | `6ce4c983ab2b310fb8dce8e75e402f7e` / `92ad2456979d99e2a1afee4a8cebad1d` |
 
 Full engineering log: 533 experiments in `.auto/log.jsonl`; per-wave detail and
 the implementation notes in `STREAMING_1P5B.md`; loop protocol in
