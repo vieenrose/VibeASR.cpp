@@ -275,11 +275,11 @@ everything else stays F16.
 |---|---|---|---|---|---|---|---|
 | **max-speed (shipped default): 4x4 VAE + 4x4 LM (q6_K emb) + F16 im2col + concurrent encoders + OMP off, 26 pieces** | 2.0 GB | **3.48** (3.47-3.50, n=7, sd 0.010) | **3.05** | **3.86** | **3.38** | **4.41%**\*\*\* | 2.07 GB |
 | _max-speed, RAM-lean (`VAE_SEQ_ENCODERS=1`)_ | 2.0 GB | _4.01_ | — | — | — | 4.41% | **1.91 GB** |
-| balanced: VAE Q4_0_4x4-FFN + LM Q4_K_M (concurrent encoders) | 1.9 GB | **4.44** | — | — | — | 4.82% | 2.00 GB |
+| balanced: VAE Q4_0_4x4-FFN + LM Q4_K_M (final build) | 1.9 GB | **4.40** | — | — | — | 4.82% | 2.07 GB |
 | fast-LM: VAE F16 + LM Q4_0_4x4 (q6_K emb) _(pre-im2col)_ | 2.5 GB | 5.21 | — | 5.73 | — | 4.41% | 2.94 GB |
 | balanced-lean: VAE Q4_0_4x4-FFN + 26 pieces (Q4_K_M LM) _(pre-im2col)_ | 1.9 GB | 5.21 | — | — | 4.94 | — | 1.98 GB |
 | _max-speed @13 pieces, pre-concurrency (history)_ | 2.0 GB | _3.99_ | — | — | _3.83_ | 4.41% | 2.07 GB |
-| accuracy-first: VAE F16 + LM Q4_K_M (concurrent encoders) | 2.5 GB | **5.35** | — | — | 5.62 | 4.55% | 2.95 GB |
+| accuracy-first: VAE F16 + LM Q4_K_M (final build) | 2.5 GB | **5.34** | — | — | 5.62 | 4.55% | 2.95 GB |
 | ultra-lean (plain Q4-FFN + 26 pieces, history) | 1.6 GB | 6.61 | — | — | — | 5.23% | 1.97 GB |
 | Q8-mixed VAE (history) | 1.9 GB | 6.14 | — | 6.71 | 5.76 | 4.55% | 2.44 GB |
 | _pre-A78 F16 (history)_ | 2.5 GB | _10.5_ | — | — | _9.73_ | 4.13% (desktop) | 2.99 GB |
@@ -294,6 +294,12 @@ error counts and **all 40 transcripts byte-identical** across all three gates -
 numerical identity proven over the whole gate set for every threading change.
 Mean 40-utt phone RTF: 4.4745 (sequential) -> 3.9113 (concurrent) -> **3.8597**
 (+OMP off).
+
+Note (Exp542): with concurrent encoders every tier carries the same two-arena
+footprint, so the balanced tier no longer has a RAM advantage over the shipped
+tier (both ~2.07 GB); its niche is now purely the clean zh transcript (the 4x4
+LM garbles rare/proper tokens, Exp499). RAM-constrained devices use the
+`VAE_SEQ_ENCODERS=1` variant instead (3.99 @ 1.91 GB).
 
 With the corrected embedding the **max-speed tier Pareto-dominates the
 accuracy-first tier**: 28% faster on the 40-utt mean and 27.5% on the 69 s clip,
