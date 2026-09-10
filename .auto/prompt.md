@@ -582,6 +582,7 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Exp344 (KEEP): health 6.58 @31.4C, upper-mid (+0.5s both phases). 344 runs.
 - Exp345 (KEEP, rotation): F16 10.49 x47, best of band. 345 runs.
 - Exp346 (KEEP): health 6.52 @31.4C, anchor exact (Exp344 resolved). 346 runs.
+- Exp347 (KEEP, rotation): Q4 6.79 @31.4C, in band. 347 runs.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
