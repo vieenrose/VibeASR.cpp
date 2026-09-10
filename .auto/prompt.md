@@ -14,8 +14,8 @@ believed unreachable without retraining; do NOT chase it by cheating).
 ## Current bands (A78 codegen build, 10 s protocol, -t2/C0, pieces 26 = new default)
 | tier | env | band | readings |
 |---|---|---|---|
-| F16 accuracy-first | `VAE_FILE=vae-encoder-f16.gguf` | ~5.80 (was 6.01-6.04 pre-im2col) | 5.7994 |
-| BALANCED | `VAE_FILE=vae-encoder-q4x4ffn.gguf` | ~5.14 | 5.1411 (Exp480) |
+| F16 accuracy-first | `VAE_FILE=vae-encoder-f16.gguf` | ~5.35 (concurrent; was 5.80) | 5.3516 |
+| BALANCED | `VAE_FILE=vae-encoder-q4x4ffn.gguf` | ~4.44 (concurrent; was 4.91-5.17) | 4.4378 (Exp527) |
 | FAST-LM v2 | `VAE_FILE=vae-encoder-f16.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) | ~5.21 | 5.2138 (tokens 42), WER 4.41% |
 | **MAX-SPEED v2 (DEFAULT, p26)** | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) + F16 im2col + **concurrent encoders** | **~3.53-3.56** | p26 3.9788, p13 4.0075 back-to-back (text identical); 17 s 3.5160, 69 s 3.8258, RSS 1.91 GB; 40-utt mean 4.4686, WER 4.41% |
 | Q8 anchor | `VAE_FILE=vae-encoder-q8_0mixed.gguf` | 6.12-6.15 | 6.1204/6.1520/6.1659 |

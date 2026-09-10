@@ -260,11 +260,11 @@ everything else stays F16.
 | tier | files | 10 s | 17 s | 40-utt mean | 69 s (equal tokens) | WER (40-utt) | RSS |
 |---|---|---|---|---|---|---|---|
 | **max-speed (default): VAE Q4_0_4x4-FFN + LM Q4_0_4x4 (q6_K emb) + F16 im2col, 26 pieces** | 2.0 GB | **3.98** | **3.52** | **4.47** | **3.83** | **4.41%** | **1.91 GB** |
-| balanced: VAE Q4_0_4x4-FFN + LM Q4_K_M | 1.9 GB | 4.91 | — | — | 4.64 | 4.82% | 1.84 GB |
+| balanced: VAE Q4_0_4x4-FFN + LM Q4_K_M (concurrent encoders) | 1.9 GB | **4.44** | — | — | — | 4.82% | 2.00 GB |
 | fast-LM: VAE F16 + LM Q4_0_4x4 (q6_K emb) _(pre-im2col)_ | 2.5 GB | 5.21 | — | 5.73 | — | 4.41% | 2.94 GB |
 | balanced-lean: VAE Q4_0_4x4-FFN + 26 pieces (Q4_K_M LM) _(pre-im2col)_ | 1.9 GB | 5.21 | — | — | 4.94 | — | 1.98 GB |
 | _max-speed @13 pieces (history)_ | 2.0 GB | _3.99_ | — | — | _3.83_ | 4.41% | 2.07 GB |
-| accuracy-first: VAE F16 + LM Q4_K_M | 2.5 GB | 5.80 | — | — | — | 4.55% | 2.88 GB |
+| accuracy-first: VAE F16 + LM Q4_K_M (concurrent encoders) | 2.5 GB | **5.35** | — | — | 5.62 | 4.55% | 2.95 GB |
 | ultra-lean (plain Q4-FFN + 26 pieces, history) | 1.6 GB | 6.61 | — | — | — | 5.23% | 1.97 GB |
 | Q8-mixed VAE (history) | 1.9 GB | 6.14 | — | 6.71 | 5.76 | 4.55% | 2.44 GB |
 | _pre-A78 F16 (history)_ | 2.5 GB | _10.5_ | — | — | _9.73_ | 4.13% (desktop) | 2.99 GB |
