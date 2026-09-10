@@ -189,6 +189,28 @@ An **imatrix** was also tested (Exp492) and is inert for this type:
   (content truncated) — the 10 s RTF ratio (5.13 vs 6.01) therefore flatters
   itself by generating fewer tokens; quote the 69 s equal-length number.
 
+### Sixth wave: concurrent encoders (Exp521, 3.99 → 3.53)
+
+The acoustic and semantic encoders are independent — separate weights, separate
+streaming caches, separate compute arenas. Thread-scaling data (Exp519: the VAE
+scales only 1.57× from 1→2 threads) showed the dependent chains do not saturate
+two cores, so the two encoders now run **concurrently, one thread each**
+(`vae_encode_parallel_cached`, a second `(ggml_context, arena)` pair; default
+on, `VAE_SEQ_ENCODERS=1` opts back out for RAM-critical runs).
+
+* VAE 31.4 → **26.7 s (−14.7 %)**, RTF 3.99 → **3.53 (−11.6 %)** on the 10 s
+  protocol; 69 s sustained 3.83 → **3.43 (−10.4 %)**; LM unchanged.
+* Cost: **+165 MB RSS** (2.07 GB) — exactly the second arena's *used* footprint
+  (`ggml_used_mem` = 169.3 MB). The former `+512 MB` arena slack constant was
+  dead weight and is now 64 MB; unused arena pages were never resident, so the
+  sequential path's RSS is unchanged. The `ac`/`sem` phase timers now *overlap*
+  and no longer sum to the VAE total.
+* Parity is byte-level, verified four ways: desktop transcript, phone 10 s
+  transcript, the first three LibriSpeech gate utterances vs the previous
+  sequential gate files, and the 69 s sustained transcript — all identical.
+  (Per-element work is split-invariant; the only reductions are per-row or
+  per-4-row-group, so 1-thread and 2-thread results agree exactly.)
+
 ### Fifth wave: F16 im2col for the convs (Exp503-508, 4.24 → 3.99)
 
 `ggml_conv_1d`/`ggml_conv_1d_dw` hardcode a **F32 im2col**: that doubles the

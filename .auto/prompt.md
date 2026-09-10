@@ -17,7 +17,7 @@ believed unreachable without retraining; do NOT chase it by cheating).
 | F16 accuracy-first | `VAE_FILE=vae-encoder-f16.gguf` | ~5.80 (was 6.01-6.04 pre-im2col) | 5.7994 |
 | BALANCED | `VAE_FILE=vae-encoder-q4x4ffn.gguf` | ~5.14 | 5.1411 (Exp480) |
 | FAST-LM v2 | `VAE_FILE=vae-encoder-f16.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) | ~5.21 | 5.2138 (tokens 42), WER 4.41% |
-| **MAX-SPEED v2 (DEFAULT, p26)** | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) + F16 im2col | **3.98-4.00** | p26 3.9788, p13 4.0075 back-to-back (text identical); 17 s 3.5160, 69 s 3.8258, RSS 1.91 GB; 40-utt mean 4.4686, WER 4.41% |
+| **MAX-SPEED v2 (DEFAULT, p26)** | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) + F16 im2col + **concurrent encoders** | **~3.53-3.56** | p26 3.9788, p13 4.0075 back-to-back (text identical); 17 s 3.5160, 69 s 3.8258, RSS 1.91 GB; 40-utt mean 4.4686, WER 4.41% |
 | Q8 anchor | `VAE_FILE=vae-encoder-q8_0mixed.gguf` | 6.12-6.15 | 6.1204/6.1520/6.1659 |
 | Q4 | `VAE_FILE=vae-encoder-q4ffn.gguf` | ~6.48 | 6.4776 |
 | ultra-lean (superseded) | `VAE_FILE=vae-encoder-q4ffn.gguf PIECES=26` | ~6.61 | 6.6066 |
@@ -814,6 +814,14 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp521 (KEEP, sixth wave, largest since the blocked kernels): CONCURRENT
+  ENCODERS. The acoustic and semantic encoders are independent, so they now run
+  concurrently with one thread each (second ggml_context+arena pair; default on,
+  VAE_SEQ_ENCODERS=1 opt-out for RAM-critical runs). VAE 31.4 -> 26.7 s
+  (-14.7%), RTF 3.99 -> 3.53 (-11.6%), 69 s 3.83 -> 3.43; +165 MB RSS
+  (2.07 GB) = the second arena's used footprint. Parity byte-identical on
+  desktop, phone, 3 gate utts and the 69 s transcript. ac/sem timers now
+  overlap (they no longer sum to the VAE total).
 - Exp503-508 (KEEP, fifth wave): F16 im2col for the convs. ggml_conv_1d and
   ggml_conv_1d_dw hardcode a F32 im2col -> 2x im2col traffic + a full extra
   F16 conversion of src1 inside mul_mat. src/vae.cpp now builds the convs with
