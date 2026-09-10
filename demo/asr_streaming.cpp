@@ -430,12 +430,24 @@ int main(int argc, char ** argv) {
                 const float * piece = window.data() + p * piece_samples;
                 float * af = afe.data() + p * piece_frames * acoustic_dim;
                 float * sf = sfe.data() + p * piece_frames * semantic_dim;
-                double ta2 = now_ms();
-                int na = vae_encode_acoustic_cached(vae_ctx, vcache, piece, piece_samples, af);
-                g_ac_ms += now_ms() - ta2;
-                double ts2 = now_ms();
-                int ns = vae_encode_semantic_cached(vae_ctx, vcache, piece, piece_samples, sf);
-                g_sem_ms += now_ms() - ts2;
+                int na, ns;
+                // Concurrent encoders are the DEFAULT (they are independent and
+                // the per-encoder math is split-invariant: transcripts are
+                // byte-identical to the sequential path). VAE_SEQ_ENCODERS=1
+                // restores the sequential pair for RAM-critical runs.
+                if (getenv("VAE_SEQ_ENCODERS") == nullptr) {
+                    float ac_ms = 0.0f, sem_ms = 0.0f;
+                    na = ns = vae_encode_parallel_cached(vae_ctx, vcache, piece, piece_samples,
+                                                         af, sf, &ac_ms, &sem_ms);
+                    g_ac_ms += ac_ms; g_sem_ms += sem_ms;
+                } else {
+                    double ta2 = now_ms();
+                    na = vae_encode_acoustic_cached(vae_ctx, vcache, piece, piece_samples, af);
+                    g_ac_ms += now_ms() - ta2;
+                    double ts2 = now_ms();
+                    ns = vae_encode_semantic_cached(vae_ctx, vcache, piece, piece_samples, sf);
+                    g_sem_ms += now_ms() - ts2;
+                }
                 if (na != piece_frames || ns != piece_frames) {
                     fprintf(stderr, "window %d piece %d: unexpected frames a=%d s=%d (want %d)\n",
                             w, p, na, ns, piece_frames);

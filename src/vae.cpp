@@ -15,6 +15,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <thread>
 
 #if defined(__unix__) || defined(__APPLE__)
 #include <fcntl.h>
@@ -563,11 +564,22 @@ struct vae_context {
     void*  compute_buf      = nullptr;
     size_t compute_buf_size = 0;
 
+    // Second (context, arena) pair: the acoustic and semantic encoders are
+    // independent (separate weights, separate streaming caches), so they can
+    // run concurrently, one thread each. slot 0 = acoustic, slot 1 = semantic.
+    struct ggml_context* compute_ctx2 = nullptr;
+    void*  compute_buf2      = nullptr;
+    size_t compute_buf_size2 = 0;
+
     ~vae_context() {
         if (compute_ctx) {
             ggml_free(compute_ctx);
         }
+        if (compute_ctx2) {
+            ggml_free(compute_ctx2);
+        }
         free(compute_buf);
+        free(compute_buf2);
     }
 };
 
@@ -877,11 +889,18 @@ static int32_t vae_encode_impl(
     int32_t n_samples,
     float* output,
     float* inference_time_ms = nullptr,
-    vae_stream_cache* cache = nullptr) {
-    
+    vae_stream_cache* cache = nullptr,
+    int slot = 0,
+    int n_threads_ovr = 0) {
+
     if (!ctx || !audio || !output || n_samples <= 0) {
         return -1;
     }
+    // Per-slot (thread-local) context/arena references: slot 0 = acoustic,
+    // slot 1 = semantic. With slot 0 this is exactly the historical behaviour.
+    struct ggml_context*& compute_ctx_ref = (slot == 0) ? ctx->compute_ctx  : ctx->compute_ctx2;
+    void*&                compute_buf_ref = (slot == 0) ? ctx->compute_buf  : ctx->compute_buf2;
+    size_t&               compute_buf_size_ref = (slot == 0) ? ctx->compute_buf_size : ctx->compute_buf_size2;
     
     // Start timing if requested
     struct timespec start_time, end_time;
@@ -905,36 +924,40 @@ static int32_t vae_encode_impl(
     // silently caps input length and then segfaults past it. Size the arena
     // from the actual sample count instead, with ~15% headroom.
     const size_t bytes_per_sample = use_i8_s ? 10240 : 65536;
+    // The coefficient above already carries ~15% headroom over the measured
+    // ggml_used_mem rate; the former +512 MB constant was pure slack and is
+    // wasteful now that two arenas can be live at once (concurrent encoders):
+    // two 0.7 GB arenas cost more RSS than the whole optional speed-up is worth.
     const size_t vae_ctx_mem_size =
-        (size_t)n_samples * bytes_per_sample + (size_t)512 * 1024 * 1024;
+        (size_t)n_samples * bytes_per_sample + (size_t)64 * 1024 * 1024;
     // Grow (never shrink) the reused arena. The pages are first-touched once, by
     // whichever request needs them; later requests find them already mapped.
-    if (ctx->compute_buf_size < vae_ctx_mem_size) {
-        void * grown = realloc(ctx->compute_buf, vae_ctx_mem_size);
+    if (compute_buf_size_ref < vae_ctx_mem_size) {
+        void * grown = realloc(compute_buf_ref, vae_ctx_mem_size);
         if (grown == NULL) {
             fprintf(stderr, "[VAE] Error: failed to allocate %.2f GB compute arena\n",
                     vae_ctx_mem_size / 1073741824.0);
             return -1;
         }
-        ctx->compute_buf      = grown;
-        ctx->compute_buf_size = vae_ctx_mem_size;
+        compute_buf_ref      = grown;
+        compute_buf_size_ref = vae_ctx_mem_size;
     }
 
     struct ggml_init_params ctx_params = {
-        /*.mem_size   =*/ ctx->compute_buf_size,
-        /*.mem_buffer =*/ ctx->compute_buf,
+        /*.mem_size   =*/ compute_buf_size_ref,
+        /*.mem_buffer =*/ compute_buf_ref,
         /*.no_alloc   =*/ false,  // Let ggml allocate tensors
     };
 
-    if (ctx->compute_ctx) {
-        ggml_free(ctx->compute_ctx);
+    if (compute_ctx_ref) {
+        ggml_free(compute_ctx_ref);
     }
-    ctx->compute_ctx = ggml_init(ctx_params);
+    compute_ctx_ref = ggml_init(ctx_params);
 
     struct ggml_tensor* input;
     if (use_i8_s) {
         // Quantize F32 audio to I8_S
-        input = ggml_new_tensor_3d(ctx->compute_ctx, GGML_TYPE_I8_S, n_samples, 1, 1);
+        input = ggml_new_tensor_3d(compute_ctx_ref, GGML_TYPE_I8_S, n_samples, 1, 1);
         ggml_set_name(input, "input_audio_i8s");
         
         // Find max abs value
@@ -959,17 +982,17 @@ static int32_t vae_encode_impl(
         *scale_ptr = scale;
     } else {
         // Use F32 input directly
-        input = ggml_new_tensor_3d(ctx->compute_ctx, GGML_TYPE_F32, n_samples, 1, 1);
+        input = ggml_new_tensor_3d(compute_ctx_ref, GGML_TYPE_F32, n_samples, 1, 1);
         ggml_set_name(input, "input_audio");
         memcpy(input->data, audio, n_samples * sizeof(float));
     }
     
     // Build computation graph
-    struct ggml_tensor* result = encoder.forward(ctx->compute_ctx, input, cache);
+    struct ggml_tensor* result = encoder.forward(compute_ctx_ref, input, cache);
     
     // Build graph with pre-allocated nodes (similar to llama_ref.cpp)
     size_t max_nodes = vae_model_max_nodes(ctx->model);
-    struct ggml_cgraph* gf = ggml_new_graph_custom(ctx->compute_ctx, max_nodes, false);
+    struct ggml_cgraph* gf = ggml_new_graph_custom(compute_ctx_ref, max_nodes, false);
     ggml_build_forward_expand(gf, result);
     // Pin streaming-cache concat nodes as graph outputs: otherwise ggml-alloc
     // reuses their buffers for later tensors and the post-compute history
@@ -981,6 +1004,14 @@ static int32_t vae_encode_impl(
         }
     }
     
+    if (getenv("VAE_MEM_STATS") != nullptr) {
+        static int mem_dumps = 0;
+        if (mem_dumps++ < 4) {
+            fprintf(stderr, "[VAE_MEM] slot=%d arena=%.1f MB used=%.1f MB nodes=%d\n",
+                    slot, compute_buf_size_ref / 1e6,
+                    ggml_used_mem(compute_ctx_ref) / 1e6, ggml_graph_n_nodes(gf));
+        }
+    }
     // Compute
     static bool graph_stats_dumped = false;
     if (getenv("VAE_GRAPH_STATS") != nullptr && !graph_stats_dumped) {
@@ -1023,7 +1054,7 @@ static int32_t vae_encode_impl(
                     100.0 * kv.second.bytes / total, kv.second.macs / 1e9);
         }
     }
-    if (ggml_graph_compute_with_ctx(ctx->compute_ctx, gf, ctx->n_threads) != GGML_STATUS_SUCCESS) {
+    if (ggml_graph_compute_with_ctx(compute_ctx_ref, gf, n_threads_ovr > 0 ? n_threads_ovr : ctx->n_threads) != GGML_STATUS_SUCCESS) {
         fprintf(stderr, "[VAE] Error: Graph computation failed\n");
         return -1;
     }
@@ -1147,6 +1178,38 @@ int32_t vae_encode_semantic_cached(
     if (!cache) return -1;
     return vae_encode_impl(ctx, ctx->model->semantic_encoder, audio, n_samples, output,
                             nullptr, &cache->semantic);
+}
+
+// Run the two encoders concurrently, one thread each. They are independent
+// (separate weights, separate streaming caches, separate arenas), so this is
+// semantically identical to the sequential pair - only the wall-clock overlaps.
+int32_t vae_encode_parallel_cached(
+    vae_context_t* ctx,
+    vae_cache_t* cache,
+    const float* audio,
+    int32_t n_samples,
+    float* output_acoustic,
+    float* output_semantic,
+    float* acoustic_ms,
+    float* semantic_ms) {
+
+    if (!ctx || !cache) return -1;
+    int32_t ra = -1, rs = -1;
+    std::thread ta([&]() {
+        ra = vae_encode_impl(ctx, ctx->model->acoustic_encoder, audio, n_samples,
+                             output_acoustic, acoustic_ms, &cache->acoustic, 0, 1);
+    });
+    std::thread tb([&]() {
+        rs = vae_encode_impl(ctx, ctx->model->semantic_encoder, audio, n_samples,
+                             output_semantic, semantic_ms, &cache->semantic, 1, 1);
+    });
+    ta.join();
+    tb.join();
+    if (ra != rs || ra < 0) {
+        fprintf(stderr, "[VAE] parallel encode mismatch: acoustic=%d semantic=%d\n", ra, rs);
+        return -1;
+    }
+    return ra;
 }
 
 int32_t vae_encode_acoustic_with_timing(

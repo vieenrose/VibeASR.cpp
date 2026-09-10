@@ -68,6 +68,18 @@ int32_t vae_encode_acoustic_cached(
     int32_t n_samples,
     float* output);
 
+// Concurrent acoustic+semantic encode (one thread each; independent weights and
+// caches). Returns the frame count, or -1 on failure.
+int32_t vae_encode_parallel_cached(
+    vae_context_t* ctx,
+    vae_cache_t* cache,
+    const float* audio,
+    int32_t n_samples,
+    float* output_acoustic,
+    float* output_semantic,
+    float* acoustic_ms,
+    float* semantic_ms);
+
 int32_t vae_encode_semantic_cached(
     vae_context_t* ctx,
     vae_cache_t* cache,
