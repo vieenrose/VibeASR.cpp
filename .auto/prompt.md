@@ -711,6 +711,8 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   after settle. 453 runs.
 - Exp454 (KEEP): health 6.52 @33.8C, anchor exact DESPITE load-30 storm (VAE
   fast 47.7, LM nicked 17.5 - pinned bigs shielded). 454 runs.
+- Exp455 (KEEP, rotation): F16 10.50 x68, best of band, nominal despite storm.
+  455 runs.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
