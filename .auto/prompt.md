@@ -814,6 +814,10 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp523-524 (discard, closed): LM oversubscription (4 threads on the 2 pinned
+  cores) = +12% worse; VAE granularity re-check in the concurrent regime: p13
+  ~1% faster for +319 MB => p26 stands. Thread-count and granularity axes are
+  now closed in the concurrent regime too.
 - Exp521 (KEEP, sixth wave, largest since the blocked kernels): CONCURRENT
   ENCODERS. The acoustic and semantic encoders are independent, so they now run
   concurrently with one thread each (second ggml_context+arena pair; default on,
