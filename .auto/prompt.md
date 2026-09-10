@@ -2,22 +2,35 @@
 
 ## Objective
 Minimize inference RTF of `./asr_streaming` (VibeVoice-ASR-Streaming-1.5B:
-VAE-F16 + LM-Q4_K_M, `--vae-pieces 13`) on the connected OPPO phone
+VAE + LM-Q4_K_M, `--vae-pieces 13`) on the connected OPPO phone
 (Dimensity 1300, 8 GB RAM, Android 13, arm64) via `adb`, CPU only.
-Current baseline (this protocol): RTF ~12.4-13.3 on the 10 s slice.
-Goal direction: as far below that as honest engineering goes (RTF < 1 is
+Baseline (original protocol): RTF ~12.4-13.3 on the 10 s slice.
+**Current best: 5.9593 (F16 leader tier, A78 codegen build) = -51%; Q8-mixed
+6.12-6.15; bands are for the -mcpu=cortex-a78 device build.** Old-build bands
+(6.49-6.59 Q8 anchor, 10.5 F16) and stale tier rows are kept only as history.
+Goal direction: as far below baseline as honest engineering goes (RTF < 1 is
 believed unreachable without retraining; do NOT chase it by cheating).
 
 ## Metrics
-- **Primary**: `rtf` (unitless, lower is better) — wall generation time / audio
-  duration on the phone, 10 s slice, `-t 4`, big-core pinned, pieces=13.
+- **Primary**: `rtf` (unitless, lower is better) — generation time (VAE+LM,
+  `load:` EXCLUDED by harness construction) / audio duration on the phone,
+  10 s slice, `-t 2` pinned to the 2 big cores (mask C0), pieces=13.
 - **Secondary**: `vae_s`, `lm_s` (phase split — attack the bigger), `peak_rss_mb`
-  (must stay phone-safe; alarm if > 3500), `tokens` (guard band), `load_s`.
+  (must stay phone-safe; alarm if > 3500), `tokens` (density guard band),
+  `load_s` (model load, wall-clock only).
 
 ## How to Run
-`./.auto/measure.sh` — builds Android target, pushes, runs phone bench,
-emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
+`./.auto/measure.sh` — builds Android target, pushes binary AND the shared
+libs (`libggml.so`/`libllama.so`, md5-diffed — pushing only the binary silently
+measures stale kernels, the bug that invalidated Exp1/14/26), runs the phone
+bench, emits `METRIC name=value` lines. Env: `VAE_FILE=`, `LM_FILE=`,
+`PIECES=`, `THREADS=`, `MASK=`, `AUDIO=` (default stream_10s_24k.wav; chat69.wav
+= 69 s, hotwords.wav = 17.28 s, slice10b_24k.wav = 2nd 10 s slice).
 `./.auto/checks.sh` — post-run transcript sanity (auto-runs on passing runs).
+`./.auto/eval40.sh <tag> <start> <count>` + `.auto/score_hyp.py <tag>` — the
+on-device 40-utt WER gate (chunkable/resumable; any codegen change invalidates
+the previous gate, re-run with a new tag). `./.auto/pgo.sh <vae>` — PGO
+train/use cycle (tested, no gain; kept for reproducibility).
 
 ## Files in Scope
 - `demo/asr_streaming.cpp` — chunk loop, threading, batch sizes, piece control.
@@ -765,6 +778,31 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   => -7.7% on longs CONFIRMED. Transcript NOT codegen-invariant (19 diff
   tokens/~700): wider vectors change partial-sum order, LM amplifies over
   24 chunks => WER gate mandatory for codegen changes (use eval40.sh).
+- Exp464-473 (re-baseline + second wave): Q4 6.48, ultra-lean 6.61, F16 6.01/6.04
+  (old bands 6.81/7.06/10.5 all dead - A78 build). F16 turned out the new leader
+  because the f16 path was instruction-bound pre-A78 (see Exp466). F16 69s 5.62
+  (-2.3% vs Q8-A78) and 17s 5.23 (old Q8 ref 5.71); 40-utt ON-DEVICE gate F16
+  4.55% (S=27 D=2 I=4) = Q8 parity, vs PT-ref 2.06% vs Q8 2.61%. Recommendation
+  flips Q8-mixed -> F16 for the loop leader (RSS 2.99GB, still < alarm).
+  Slice-B check: VAE identical, LM delta = token density. -t4/F0 re-tested
+  (9.82, +63%) - topology closed under new codegen too.
+- Exp471 (discard, PGO re-visited): new .auto/pgo.sh (instrumented train under
+  the PROTOCOL config, llvm-profdata merge, PGO-use rebuild) with the push fix
+  in place: 6.0022 vs band mean 6.0154 = NO GAIN, libggml.so 19% smaller but
+  same speed. Exp14 (ThinLTO) and Exp26 (PGO) nulls now stand on a valid basis:
+  codegen axis saturated after -mcpu.
+- Exp470 (KEEP, wall-clock): src/vae.cpp mmap loader - the old path value-init'd
+  a fresh vector per tensor (1.4GB zero-fill for F16) and copied twice.
+  load 5.4 -> 2.5-4.1s, total wall clock 68.5 -> 65.8s. RTF EXCLUDES load by
+  harness construction, so this is a startup/wall-clock keep (Exp7 precedent),
+  validated on F16 (3 runs), Q8 (1) and the x86 desktop build (0.6s load, RTF
+  1.05, correct transcript). load_s is now emitted by measure.sh.
+- VAE graph audit (offline): norms are ALREADY fused ops (ggml_rms_norm_scaled,
+  ggml_add_scaled in src/ggml-lm-mad.cpp - our own file, not 3rdparty), so the
+  brief's 'fold norm affine' lever is partly done; remaining fusible share per
+  Exp75 is ~19% and needs custom kernels (Exp19 showed scalar custom ops lose).
+  f16 weight precision is now second-order: F16 42.3s vs Q8 43.9s VAE on 10s =>
+  ACTIVATION traffic dominates (both use f32 activations, identical graphs).
 - Exp463 (KEEP, validated shippable): A78 anchor 6.1204 (VAE 43.9, best yet)
   + ON-DEVICE 40-utt WER 4.55% (S=28 D=1 I=4) vs 4.41% (S=27 D=1 I=4) =
   +0.14pp/one word => SHIPPABLE. Mean phone RTF over the 40 utts 6.714
