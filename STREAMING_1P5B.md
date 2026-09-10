@@ -299,6 +299,13 @@ Correctness and flat memory hold on-device at all lengths (cross-device WER
 byte-identical transcripts, matching a reference saved several builds earlier
 (greedy decoding + fixed kernels => reproducible outputs).
 
+**Gate-transfer verification (Exp520):** the F16-VAE tiers' 40-utt gate was
+measured before the F16-im2col change. Re-running the accuracy-first tier on
+the 69 s clip reproduced the pre-change transcript byte-for-byte (442 tokens),
+so that gate transfers unchanged; together with the shipped tier's 40/40
+byte-identical gate transcripts, every tier's accuracy number is valid for the
+current kernels without a fresh 40-minute gate per tier.
+
 **Sustained long-form check (Exp515):** a 138 s clip (the
 69 s chat concatenated with itself) runs at RTF **3.90** with RSS flat at
 1.92 GB (+14 MB over 9 minutes, majflt 0) and the two halves of the transcript
