@@ -646,6 +646,15 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
   jitter; formal re-check still queued. 405 runs.
 - Exp406 (KEEP, watch resolved): 6.65 LM-side exceed -> immediate 6.52 re-check.
   Noise 8th time. Watch retired. 406 runs.
+- Exp407 (KEEP, rotation+audit): Q4 6.83 @28.2C, in band. Audit of DeerFlow
+  brief-1 vs our tree: O1 VOID (no blocked-GEMM for Q8_0/F16/F32 in this fork -
+  row-wise vec_dot re-reads weights per row; only Q4_0/I8_S have gemm ptrs),
+  O2-bit-exact DEAD (R=219649/K9.15s >> hop=70400; explains xwin drift),
+  O3 DEAD/DONE (no k==s conv exists; history already per-site k-s),
+  premise#3 FALSE (stride is 3200, pieces aligned; dims misread),
+  O4 VOID (same root cause), O5 ALREADY RUNNING (sdot in vec_dot_q8_0).
+  NEW: VAE stages are pure ConvNeXt, zero attention in encoder.
+  5 proposals -> 0 runs. 407 runs.
 - Exp41 (KEEP, biggest win since Q8): -t 2 pinned C0 (2 fastest cores, Dimensity
   1300 cpus 6-7). RTF 6.52 (-33% vs -t4/F0 9.7!). Accuracy IDENTICAL (40-utt
   S/D/I, 69s S/D/I). Mechanism: EAS parked threads on capped 2.0GHz cores;
