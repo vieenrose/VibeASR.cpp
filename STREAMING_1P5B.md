@@ -76,6 +76,24 @@ vs 12.5 GB for PyTorch CPU fp32 and 5.5 -> 15.5 GB for offline BitNet on long fi
   ~700 MB/piece materialising-op total; RESHAPE/PERMUTE are views and cost
   nothing), `VAE_CACHE_TRACE=1` (per-site checksums),
   `VAE_DUMP_FRAMES=<prefix>` (output frames), `VAE_DUMP_SITE=<sN|all>` (site inputs).\n
+## Reproduce & verify (Exp513)
+
+Both deployed artifacts are **bit-exactly reproducible** from `models-pt` with
+the frozen recipes, and the copies on the phone match the host byte-for-byte:
+
+| artifact | recipe | md5 |
+|---|---|---|
+| `vae-encoder-q4x4ffn.gguf` | `python3 utils/convert_vae_to_gguf.py models-pt --outtype q4_0_4x4_ffn -o out.gguf` (33 s) | `b909b7901d5d318d81ce4cbaeac31437` |
+| `lm-q4_0_4_4.gguf` | `llama-quantize --allow-requantize --token-embedding-type q6_K streaming-lm-q4_k_m.gguf out.gguf Q4_0_4_4` (1.2 s) | `db67eecbd31bba707666414dd977902f` |
+| `streaming-lm-q4_k_m.gguf` (intermediate) | `utils/convert_streaming_lm_stage.py` + quantize | `046be3d4775e10f8b635b03ec1bc79cb` |
+| Android build (`asr_streaming`) | `cmake -B build-android ... -DCMAKE_C_FLAGS="-mcpu=cortex-a78"` (`.auto/setup.sh`) | `98b643ed2496cff89d9b8caec687c3c0` |
+
+Build fingerprint on the phone: `libggml.so 40a1f284e75dbc3c180215267068c12e`,
+`libllama.so 92ad2456979d99e2a1afee4a8cebad1d`. To re-run the full tier
+measurement: `LM_FILE=lm-q4_0_4_4.gguf VAE_FILE=vae-encoder-q4x4ffn.gguf ./.auto/measure.sh`
+(26 pieces is the harness default), WER gate: `./.auto/eval40.sh <tag> 0 40` +
+`venv-vibe/bin/python .auto/score_hyp.py <tag>`.
+
 ## Phone evaluation (OPPO CPH2371, Dimensity 1300, 8 GB RAM, Android 13)
 
 Cross-built with NDK r26d (`arm64-v8a`, `android-33`, `GGML_ARM_DOTPROD=ON`;

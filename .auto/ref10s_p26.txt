@@ -1,0 +1,9 @@
+[1/4]  
+ Speaker 0:YyY 发布了新模型，
+[2/4] YSR 可以端到端同时实现 
+[3/4] dilation 和 transcription 的功能。 YYY 
+[4/4] 之前推出了两个 T。
+
+--- Transcription ---
+ 
+ Speaker 0:YyY 发布了新模型，YSR 可以端到端同时实现 dilation 和 transcription 的功能。 YYY 之前推出了两个 T。
