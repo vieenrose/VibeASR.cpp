@@ -146,22 +146,43 @@ Q4_0_4_4`, 1.3 s on the host) gives, at **equal output length** (69 s clip,
   (content truncated) — the 10 s RTF ratio (5.13 vs 6.01) therefore flatters
   itself by generating fewer tokens; quote the 69 s equal-length number.
 
-**Two shipping tiers** (both on-device gated, both 10 s protocol at `-t 2`/C0):
+### Fourth wave: VAE blocked-int8 kernels (Exp480-483, 6.01 → 4.26)
 
-| tier | files | 10 s | 17 s | 69 s | peak RSS | 40-utt WER |
+The same trick applies to the VAE, and the VAE is the bigger prize (71% of
+time). Its 104 `ffn.linear` weight tensors are ~82% of the VAE file bytes and
+their matmuls also went through the `vec_dot` path (weights re-read per
+activation row). `utils/convert_vae_to_gguf.py` gained a `q4_0_4x4_ffn`
+outtype: the quantizer is ggml's own per-row Q4_0 (`quantize_row_q4_0_ref`),
+only the **byte packing** is the interleaved `block_q4_0x4` layout
+(`make_block_q4_0x4`, xor 0x88) ported to numpy (`quantize_q4_0_4x4()`);
+everything else stays F16.
+
+* VAE 42.7 s → **34.0 s (−20.4%)**, RTF 6.00 → 5.14, RSS 2.16 GB (from 2.99),
+  load 1.6 s. Versus the earlier plain-`Q4_0` VAE tier (VAE 47.4 s) this is
+  −28%: again the kernel path, not the bit width.
+* 40-utt on-device gate: **WER 4.82%** (S=29 D=2 I=4) vs 4.55% (S=27 D=2 I=4)
+  = **+0.27 pp** — the best accuracy-per-speed trade of the loop.
+* Combined with the fast LM (`Q4_0_4x4` on both) → the max-speed tier:
+  10 s **4.26**, 69 s equal-token **4.05** (−27.9% vs accuracy-first), 40-utt
+  mean **4.77**, WER 5.10% (S=31 D=3 I=3), RSS **2.05 GB**, 69 s transcript
+  diff vs accuracy-first 3.93%.
+
+### Final tier ladder (all on-device gated, 10 s protocol `-t 2`/C0, pieces 13)
+
+| tier | files | 10 s | 40-utt mean | 69 s (equal tokens) | WER (40-utt) | RSS |
 |---|---|---|---|---|---|---|
-| **accuracy-first (VAE F16 + LM Q4_K_M)** | 2.5 GB | **6.01** | 5.23 | 5.61 | 2.99 GB | **4.55%** |
-| **fast (VAE F16 + LM Q4_0_4x4)** | 2.5 GB | **5.13** | — | **4.82** | 2.88 GB | 5.10% |
-| low-RAM (VAE Q4-FFN) | 1.6 GB | 6.48 | — | — | 2.16 GB | 5.23% (pre-A78) |
-| ultra-lean (Q4-FFN + 26 pieces) | 1.6 GB | 6.61 | — | — | 1.97 GB | 5.23% (pre-A78) |
+| accuracy-first: VAE F16 + LM Q4_K_M | 2.5 GB | 6.00 | 6.58 | 5.61 | **4.55%** | 2.99 GB |
+| **balanced: VAE Q4_0_4x4-FFN + LM Q4_K_M** | 1.9 GB | **5.14** | **5.65** | 4.82 | 4.82% | 2.16 GB |
+| fast: VAE F16 + LM Q4_0_4x4 | 2.5 GB | 5.13 | 5.86 | 4.82 | 5.10% | 2.88 GB |
+| max-speed: VAE Q4_0_4x4-FFN + LM Q4_0_4x4 | 1.9 GB | **4.26** | **4.77** | **4.05** | 5.10% | **2.05 GB** |
+| ultra-lean (plain Q4-FFN + 26 pieces) | 1.6 GB | 6.61 | — | — | 5.23% | 1.97 GB |
+| Q8-mixed VAE (history) | 1.9 GB | 6.14 | 6.71 | 5.76 | 4.55% | 2.44 GB |
+| _pre-A78 F16 (history)_ | 2.5 GB | _10.5_ | — | _9.73_ | 4.13% (desktop) | 2.99 GB |
 
-| tier | files | phone RTF (10 s / 17 s / 69 s) | phone peak RSS | WER |
-|---|---|---|---|---|
-| accuracy-first (VAE F16 + LM Q4_K_M, A78 build) | 2.5 GB | 6.02 / 5.23 / 5.62 | 2.99 GB | 4.55% (40-utt on-device), 2.06% vs PT-ref |
-| Q8-mixed VAE (A78 build) | 1.9 GB | 6.14 / — / 5.76 | 2.44 GB | 4.55% (40-utt on-device) |
-| min-size (VAE Q4-FFN, A78 build) | 1.6 GB | 6.48 / — / — | 2.16 GB | 5.23% (40-utt, pre-A78) |
-| ultra-lean (Q4-FFN + 26 pieces, A78 build) | 1.6 GB | 6.61 / — / — | 1.97 GB | 5.23% (40-utt, pre-A78) |
-| _pre-A78 F16 (history)_ | 2.5 GB | _10.5 / — / 9.73_ | 2.99 GB | 4.13% (desktop 40-utt), 3.3% (69 s) |
+Against the original baseline (12.24) the max-speed tier is **−65%**; against
+the pre-A78 loop best (6.52) it is −35%. The balanced tier dominates the fast
+tier (same 10 s RTF, better WER, 0.7 GB less RAM) and the old ultra-lean tier
+(much faster, better WER, +0.19 GB).
 
 40-utt gates above are **on-device** (`.auto/eval40.sh` + `.auto/score_hyp.py`,
 hyp sets in `eval-librispeech/hyp-{a78,f16a78}/`) because a codegen gate must run
