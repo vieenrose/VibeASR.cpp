@@ -818,6 +818,10 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp533 (diagnostic, definitive): saturation test - two independent inference
+  streams on the same 2 cores each take ~2x the solo time (72.9/74.3 s vs
+  37.9 s). No idle capacity exists: pipelining/overlap is closed by direct
+  measurement. Under contention the LM degrades more (2.3x) than the VAE (1.84x).
 - Exp532 (KEEP, robustness): 20 s of MUSIC (out-of-domain) at RTF 2.9748 with
   sane output ([Music] tags + lyrics), tokens 39 in band, RSS flat - the shipped
   tier generalises beyond speech. Also recorded (ideas.md): the fixed-window
