@@ -88,18 +88,56 @@ straggled on little cores. The optimum is **`-t 2` on the two big cores**
 ship). A78s sustain ~1.3 GHz under load (mobile sustained equilibrium, not
 throttling); no i8mm/SVE exists, so NEON-F32 + DOTPROD is the full ISA story.
 
+### Second wave: A78 codegen + loader (Exp457-473, 12.24 → 5.96/6.02)
+
+Three findings re-opened the loop after it had converged at 6.52:
+
+1. **Harness bug**: `measure.sh` pushed only `bin/asr_streaming`, never the
+   `libggml.so`/`libllama.so` it links against (the binary contains no ggml
+   code — `llvm-objdump` shows 0 sdot there, all 646 in `libggml.so`). Every
+   *ggml-side* experiment had silently measured the old kernels, which
+   invalidated the early `-mcpu=cortex-a78` and ThinLTO discards. Fixed with an
+   md5-diff push (same guard added to `eval40.sh`).
+2. **`-mcpu=cortex-a78` for the whole build** is worth **−6.5% (10 s), −7.7%
+   (69 s)**, all of it VAE-side and A/B/A-bracketed. `GGML_ARM_DOTPROD=ON`
+   already sets `-march=armv8.2-a+dotprod`, so this only adds the arch features
+   + tuning the default `armv8-a` tune lacks: `sdot` 598→646, `fmla`
+   1284→1542 in the shipped `libggml.so`. Tune-only (`-mtune`) captures 41% of
+   it; portable in-tree defaults stay armv8.0-safe (device build only).
+   The F16 path benefits most (−51% VAE): it was **instruction-bound** on
+   software f16 handling, not bandwidth-bound. Consequence: the F16 VAE now
+   matches Q8-mixed (43.0 s vs 43.9 s on the 10 s clip) despite 2× the weight
+   bytes — **activation traffic dominates weight traffic** in the encoder.
+3. **mmap VAE loader** (`src/vae.cpp`): the old loader value-initialised a
+   fresh `std::vector<char>` per tensor (a full 1.4 GB zero-fill for F16) and
+   copied twice (file→buf→tensor). mmap + one memcpy: startup load
+   5.4 s → 2.5-4.1 s. RTF excludes load by construction (RTF = VAE+LM), so this
+   is wall-clock, not RTF, but it is free.
+
+PGO was re-tested properly after the push fix (Exp471: protocol-trained,
+instrumented train/use cycle) and gives **0%** — the codegen axis is saturated.
+
 | tier | files | phone RTF (10 s / 17 s / 69 s) | phone peak RSS | WER |
 |---|---|---|---|---|
-| max-accuracy (VAE F16 + LM Q4_K_M) | 2.5 GB | 10.5 / — / 9.7 | 2.99 GB | 4.13% (40-utt), 3.3% (69 s) |
-| **recommended (VAE Q8-mixed + LM Q4_K_M)** | **1.9 GB** | **6.5 / 5.7 / 6.3** | **2.44 GB** | **4.41% (40-utt), 3.7% (69 s)** |
-| min-size (VAE Q4-FFN + LM Q4_K_M) | 1.6 GB | 6.8 / — / — | 2.15 GB | 5.23% (40-utt) |
-| ultra-lean (Q4-FFN + 26 pieces) | 1.6 GB | 7.1 / 6.2 / 6.7 | 1.97 GB | 5.23% (40-utt), 2.7% (69 s) |
+| **leader (VAE F16 + LM Q4_K_M, A78 build)** | **2.5 GB** | **6.02 / 5.23 / 5.62** | **2.99 GB** | **4.55% (40-utt on-device), 2.06% vs PT-ref** |
+| recommended-old (VAE Q8-mixed, A78 build) | 1.9 GB | 6.14 / — / 5.76 | 2.44 GB | 4.55% (40-utt on-device) |
+| min-size (VAE Q4-FFN, A78 build) | 1.6 GB | 6.48 / — / — | 2.16 GB | 5.23% (40-utt, pre-A78) |
+| ultra-lean (Q4-FFN + 26 pieces, A78 build) | 1.6 GB | 6.61 / — / — | 1.97 GB | 5.23% (40-utt, pre-A78) |
+| _pre-A78 F16 (for reference)_ | 2.5 GB | _10.5 / — / 9.73_ | 2.99 GB | 4.13% (desktop 40-utt), 3.3% (69 s) |
+
+40-utt gates above are **on-device** (`.auto/eval40.sh` + `.auto/score_hyp.py`,
+hyp sets in `eval-librispeech/hyp-{a78,f16a78}/`) because a codegen gate must run
+on the target ISA; the desktop numbers (4.13%/4.41%) remain as history, with a
+cross-arch offset of the same class (<1 pp). F16 vs Q8 on-device differ by one
+substitution (4.55% both) while against the PyTorch reference F16 is closer
+(2.06% vs 2.61%).
 
 Correctness and flat memory hold on-device at all lengths (cross-device WER
 < 1% same-config). `--xwin` (cross-window VAE carry) is ~8% faster on short
 clips but drifts (+11.5% WER) on 69 s — shorts-only opt-in, legacy windows
-default. The VAE runs at ~50% of DRAM roofline; remaining kernel upside
-(~1.3–2×) needs fused NEON intrinsics. **RTF < 1 on this phone class requires
+default. The VAE runs at ~50% of DRAM roofline (Exp75: 72% of time in GEMM
+kernels, fusion ceiling ≈1.2×); remaining kernel upside needs fused NEON
+intrinsics, i.e. a 3rdparty change. **RTF < 1 on this phone class requires
 retraining** (QAT INT8 VAE and/or a smaller encoder+LM), not more porting.
 
 ## Deeper quantization (measured)
