@@ -191,6 +191,18 @@ An **imatrix** was also tested (Exp492) and is inert for this type:
   (content truncated) — the 10 s RTF ratio (5.13 vs 6.01) therefore flatters
   itself by generating fewer tokens; quote the 69 s equal-length number.
 
+### Seventh wave: OpenMP off for the 1-thread chains (Exp535, 3.53 → 3.47)
+
+The concurrent-encoder design runs each chain with **one** thread, but a
+OpenMP-enabled ggml still entered a parallel region per op (860 ops × 208
+launches per clip) for zero parallelism. Building ggml without OpenMP
+(`-DGGML_OPENMP=OFF`, now part of `.auto/setup.sh`) removes that bookkeeping;
+llama.cpp falls back to its own threadpool for the LM (unchanged at 8.7 s).
+
+A/B/A in one session at equal temperature (34.6-34.9 °C): OMP-off 3.4885 /
+3.4660 (VAE 26.0 s both) vs OMP-on 3.5070 (VAE 26.4 s) → **−1.1 % RTF, −1.5 %
+VAE**. New shipped band **3.47-3.49**.
+
 ### Sixth wave: concurrent encoders (Exp521, 3.99 → 3.53)
 
 The acoustic and semantic encoders are independent — separate weights, separate

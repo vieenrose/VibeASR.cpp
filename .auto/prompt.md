@@ -17,7 +17,7 @@ believed unreachable without retraining; do NOT chase it by cheating).
 | F16 accuracy-first | `VAE_FILE=vae-encoder-f16.gguf` | ~5.35 (concurrent; was 5.80) | 5.3516 |
 | BALANCED | `VAE_FILE=vae-encoder-q4x4ffn.gguf` | ~4.44 (concurrent; was 4.91-5.17) | 4.4378 (Exp527) |
 | FAST-LM v2 | `VAE_FILE=vae-encoder-f16.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) | ~5.21 | 5.2138 (tokens 42), WER 4.41% |
-| **MAX-SPEED v2 (DEFAULT, p26)** | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) + F16 im2col + **concurrent encoders** | **~3.53-3.56** | p26 3.9788, p13 4.0075 back-to-back (text identical); 17 s 3.5160, 69 s 3.8258, RSS 1.91 GB; 40-utt mean 4.4686, WER 4.41% |
+| **MAX-SPEED v2 (DEFAULT, p26)** | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) + F16 im2col + concurrent encoders + **GGML_OPENMP=OFF** | **~3.47-3.49** | p26 3.9788, p13 4.0075 back-to-back (text identical); 17 s 3.5160, 69 s 3.8258, RSS 1.91 GB; 40-utt mean 4.4686, WER 4.41% |
 | Q8 anchor | `VAE_FILE=vae-encoder-q8_0mixed.gguf` | 6.12-6.15 | 6.1204/6.1520/6.1659 |
 | Q4 | `VAE_FILE=vae-encoder-q4ffn.gguf` | ~6.48 | 6.4776 |
 | ultra-lean (superseded) | `VAE_FILE=vae-encoder-q4ffn.gguf PIECES=26` | ~6.61 | 6.6066 |
@@ -818,6 +818,10 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp535 (KEEP, seventh wave): GGML_OPENMP=OFF in the device build. With the
+  concurrent-1-thread chains, OpenMP entered a parallel region per op for no
+  parallelism; removing it gives -1.1% RTF / -1.5% VAE (A/B/A at equal temp),
+  LM unchanged. setup.sh updated. New shipped band ~3.47-3.49.
 - Exp533 (diagnostic, definitive): saturation test - two independent inference
   streams on the same 2 cores each take ~2x the solo time (72.9/74.3 s vs
   37.9 s). No idle capacity exists: pipelining/overlap is closed by direct

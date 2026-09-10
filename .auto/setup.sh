@@ -20,6 +20,7 @@ cmake -B build-android -S . \
   -DANDROID_PLATFORM=android-33 \
   -DCMAKE_BUILD_TYPE=Release \
   -DGGML_ARM_DOTPROD=ON \
+  -DGGML_OPENMP=OFF \
   -DCMAKE_C_FLAGS="$MACHINE_FLAGS" \
   -DCMAKE_CXX_FLAGS="$MACHINE_FLAGS"
 cmake --build build-android --target asr_streaming -j20
