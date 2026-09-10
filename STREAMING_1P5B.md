@@ -132,8 +132,10 @@ Three findings re-opened the loop after it had converged at 6.52:
 3. **mmap VAE loader** (`src/vae.cpp`): the old loader value-initialised a
    fresh `std::vector<char>` per tensor (a full 1.4 GB zero-fill for F16) and
    copied twice (file→buf→tensor). mmap + one memcpy: startup load
-   5.4 s → 2.5-4.1 s. RTF excludes load by construction (RTF = VAE+LM), so this
-   is wall-clock, not RTF, but it is free.
+   5.4 s → 2.5-4.1 s, and since Exp531 the copy itself runs on four workers
+   (load_s 1.6 → 1.4 s on the shipped tier, transcript byte-identical). RTF
+   excludes load by construction (RTF = VAE+LM), so this is wall-clock, not RTF,
+   but it is free. The rest of the load is the LM side (llama.cpp, off-limits).
 
 PGO was re-tested properly after the push fix (Exp471: protocol-trained,
 instrumented train/use cycle) and gives **0%** — the codegen axis is saturated.

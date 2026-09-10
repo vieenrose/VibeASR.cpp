@@ -818,6 +818,10 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp531 (KEEP, secondary): parallel VAE loader copy (4 workers, byte-split,
+  idempotent overlaps): load_s 1.6-1.7 -> 1.4 s, transcript byte-identical,
+  RTF unchanged (load is excluded from RTF by protocol). Remaining load is the
+  LM side (off-limits).
 - Exp530 (diagnostic + health): VAE attribution by ablation - elementwise ops
   (bias adds + gelu + rms_norms) = 14% of the VAE; the conv path (~36%) is not
   further ablatable (two attempts failed on shapes/path effects). Conv-int8
