@@ -40,7 +40,7 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
 
 | check | result |
 |---|---|
-| 40-utt LibriSpeech gate (on-device, shipped config) | WER **4.41 %** (S=28 D=1 I=3); all 40 transcripts **byte-identical** to the pre-concurrency gate |
+| 40-utt LibriSpeech gate (on-device, shipped config, re-run after each threading change) | WER **4.41 %** (S=28 D=1 I=3); all 40 transcripts **byte-identical** across all three gates |
 | 69 s equal-token comparison | 3.43 vs 5.62 accuracy-first (−39 %), tokens 438 vs 442 |
 | sustained 138 s | RTF 3.52, RSS flat 2.09 GB, no drift (halves-match 4.25 %), majflt 0 |
 | determinism | repeated runs byte-identical, matching references from earlier builds |
@@ -66,7 +66,7 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
    `token_embd` to `q4_0`; keeping the source precision (`--token-embedding-type
    q6_K`) recovered 5.10 % → 4.41 % WER at equal speed (the control-token rows
    drive end-of-chunk decisions).
-5. **F16 im2col (−6 %) and concurrent encoders (−12 %).** `ggml_conv_1d` hardcodes
+5. **F16 im2col (−6 %), concurrent encoders (−12 %), OpenMP off (−1 %).** `ggml_conv_1d` hardcodes
    a F32 im2col; building it in F16 halves the traffic and removes a conversion
    pass. And the acoustic/semantic encoders are independent chains, so they now
    run concurrently one thread each (intra-chain splitting scaled only 1.57×).
