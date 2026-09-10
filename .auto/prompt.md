@@ -818,6 +818,10 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp543 (KEEP, robustness): COLD-CACHE first run (page cache evicted by writing
+  and deleting a 4.2 GB file - no root needed): RTF 3.4713 (identical to the warm
+  band), VAE/LM unchanged, load_s 1.4 -> 3.0 s (excluded from RTF). The headline
+  is not a warm-cache artifact; the product-side cold start costs +1.6 s.
 - Exp541 (KEEP, modes recorded): RAM-lean mode (EXTRA_ENV="VAE_SEQ_ENCODERS=1")
   re-measured at the OMP-off build: 3.9896 @ 1909.6 MB (SEQ 31.3 s) vs the
   concurrent default 3.48 @ 2.07 GB -> the concurrency trades +164 MB for

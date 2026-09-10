@@ -62,6 +62,7 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
 | sustained 138 s (frozen build) | RTF **3.45**, VAE 313.5 s, RSS flat 2.09 GB, no drift (halves-match 4.25 %, identical to earlier runs), majflt 0 |
 | determinism | repeated runs byte-identical, matching references from earlier builds |
 | out-of-domain (20 s music) | RTF 2.97, sane `[Music]`+lyrics output, no pathological loops |
+| input formats / cold start | 48 kHz stereo handled (one word differs); after evicting the page cache the RTF is unchanged (3.4713) and only the load grows (1.4 → 3.0 s, excluded from RTF) |
 | CPU utilisation | 1.88 of 2 pinned cores (94 %) — the pipeline is saturated |
 | reproducibility | artifacts bit-exact; documented build+measure recipe verified from a clean build tree |
 
