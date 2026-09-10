@@ -739,3 +739,38 @@ emits `METRIC name=value` lines. Runtime ~3-6 min (dominated by the phone run).
 - Baseline numbers (phone, -t 4, pinned, pieces 13): 10 s RTF ~12.4-13.3
   (VAE ~109 s of it), RSS ~3.1-3.3 GB; 17 s RTF 11.6; 69 s RTF 12.5.
   Accuracy anchor: 40-utt WER 4.13% (official PyTorch 4.82%), parity 2.2%.
+- Exp457 (KEEP, rotation+audit): Q4 6.84 resolves Exp452. Brief-2 (DeerFlow
+  BitNet/ARM-VAE) audit: 7 levers -> 0 runs (all closed or N/A). Two real
+  finds: (1) objdump proves 598 sdot ALREADY in shipped libggml.so (bin has
+  0 - it contains no ggml code; cpuinfo has asimddp, NO i8mm => smmlal path
+  inapplicable, 0 is correct); (2) HARNESS BUG: measure.sh pushed only
+  bin/asr_streaming, never libggml.so/libllama.so - silently invalidating any
+  ggml-side experiment. Fixed (md5-diff push in measure.sh). This retro-
+  actively invalidates Exp1's (-mcpu=cortex-a78) and Exp14's (ThinLTO)
+  discards - their rebuilt .so never left the host.
+- Exp458 (KEEP, revisit#2): -mcpu=cortex-a78 for the whole Android build
+  (GGML_ARM_DOTPROD stays ON; ARCH_FLAGS intact). RTF 6.152 vs 6.49-6.59
+  band (-6.5%), VAE 44.2 vs 48.9 (-10%), LM flat, transcript char-identical.
+  Mechanism: sdot 598->646, fmla 1284->1542 in shipped libggml.so.
+  Flag lives in .auto/setup.sh MACHINE_FLAGS (device protocol, like -t2/C0),
+  NOT in-tree (armv8.2 codegen SIGILLs on A53/A72 parts).
+- Exp459 (KEEP, A/B/A control): no-mcpu rebuild 6.579, band center => Exp458
+  CONFIRMED. Temp flat 28.4->28.6, tokens 45 both arms.
+- Exp460 (discard): -mtune=cortex-a78 only = 6.37 (41% of the win; arch
+  features give +3.4% over tune). Portable-in-tree promotion DECLINED.
+- Exp461 (KEEP, longs validation): A78 build on 69s chat = 5.7572 vs 6.26
+  ref (-8.0%), VAE -8.2%, LM -7.8% (prefill GEMMs benefit on longs).
+  Sustained ~7 min @30.7C, RSS flat, majflt 0.
+- Exp462 (KEEP, longs control): no-mcpu rebuild 6.2423 reproduces 6.26x2
+  => -7.7% on longs CONFIRMED. Transcript NOT codegen-invariant (19 diff
+  tokens/~700): wider vectors change partial-sum order, LM amplifies over
+  24 chunks => WER gate mandatory for codegen changes (use eval40.sh).
+- Exp463 (KEEP, validated shippable): A78 anchor 6.1204 (VAE 43.9, best yet)
+  + ON-DEVICE 40-utt WER 4.55% (S=28 D=1 I=4) vs 4.41% (S=27 D=1 I=4) =
+  +0.14pp/one word => SHIPPABLE. Mean phone RTF over the 40 utts 6.714
+  (short-utt runs carry ~4s load overhead per run). New anchor band 6.12-6.15;
+  old-build band 6.49-6.59 dead. F16/Q4/ultra-lean bands stale -> rotation
+  must re-baseline them on the A78 build. checks.sh token band is now a
+  density band (1.5-9 tok/s) so long-clip runs validate; measure.sh takes
+  AUDIO= override (default stream_10s_24k.wav); eval40.sh/score_hyp.py are
+  the 40-utt gate tooling (hyp sets in eval-librispeech/hyp-<tag>/).

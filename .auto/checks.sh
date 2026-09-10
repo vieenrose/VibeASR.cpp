@@ -14,5 +14,10 @@ NWORDS=$(echo "$TEXT" | wc -w)
 TOP1=$(echo "$TEXT" | tr '[:upper:]' '[:lower:]' | grep -oE "[a-z0-9']+" | sort | uniq -c | sort -rn | head -n 1 | awk '{print $1}')
 if [ "$TOP1" -gt 0 ] && [ "$(( TOP1 * 100 / NWORDS ))" -gt 40 ]; then echo "checks: word-dominance collapse ($TOP1/$NWORDS)"; exit 1; fi
 NTOK=$(grep -oE 'tokens: [0-9]+' .auto/last_err.txt | head -n 1 | awk '{print $2}')
-if [ "${NTOK:-0}" -lt 20 ] || [ "${NTOK:-0}" -gt 100 ]; then echo "checks: token count out of band ($NTOK)"; exit 1; fi
+# Density band, not an absolute band: the protocol clip runs ~4.5 tok/s (45/10s),
+# 17s ~4.0, 69s ~6.4. An absolute 20-100 band false-fails every long-clip run.
+DUR=$(grep -oE 'Audio: [0-9.]+s' .auto/last_err.txt | head -n 1 | awk '{print $2}' | sed 's/s//')
+[ "${NTOK:-0}" -lt 20 ] && { echo "checks: too few tokens ($NTOK)"; exit 1; }
+BAD=$(awk -v n="${NTOK:-0}" -v d="${DUR:-10}" 'BEGIN{t=n/d; print (t>=1.5 && t<=9.0) ? 0 : 1}')
+[ "$BAD" = 0 ] || { echo "checks: token density out of band ($NTOK tok / ${DUR}s)"; exit 1; }
 echo "checks: OK (words=$NWORDS tokens=$NTOK)"
