@@ -810,6 +810,24 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp492 (discard, closed): imatrix-guided LM quantization is INERT for the
+  blocked-int8 types - quantize_q4_0_4x4() does UNUSED(quant_weights) and uses
+  the unweighted ref quantizer. A 220-chunk bilingual public-domain imatrix was
+  built and applied; 40-utt WER bit-identical (5.10%, S=31 D=2 I=4) and RTF
+  identical (5.1332 vs 5.1348). Recovering the fast tiers' +0.55 pp now needs a
+  clean f16 -> 4x4 quant (3 GB source, disk peak ~5.7 GB > 2.4 GB free) or
+  per-tensor gguf surgery. Both parked.
+- Exp488/490/493 (KEEP, tier family + evidence): BALANCED-LEAN (VAE-4x4 p26)
+  = 5.208 @ 1.98 GB (69 s 4.9374, identical tokens, RSS flat) - replaces the
+  ultra-lean tier. Balanced tier evidence matrix (vs accuracy-first): 10 s
+  5.14/5.17 vs 6.00-6.04; 17 s 4.46 vs 5.23; 69 s 4.82 vs 5.61; slice-B 5.27
+  vs 6.14; 40-utt mean 5.65 vs 6.58 (WER 4.82% vs 4.55%) - all four clips agree
+  at -14 to -15%, delta located entirely in the VAE phase.
+- Exp489 (crash, closed): conv weights cannot be Q4_0_4x4 - for a 3D tensor
+  ggml derives strides from ne0 (=K) but the interleaved type needs 32-element
+  blocks along ne0 and the matmul row to be ne0*ne1; they coincide only for
+  K % 32 == 0. Workaround (pad K to 32 with front zeros + re-validate the
+  streaming cache) parked.
 - Exp476-477 (KEEP, third wave): LM Q4_0_4x4 = blocked int8 kernel path.
   MEASURED: the fork's ggml dispatches gemv/gemm ONLY for types that carry
   them; Q4_K_M/plain Q4_0 have vec_dot only, so the 26-row prefill re-streamed
