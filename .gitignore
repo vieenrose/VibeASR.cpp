@@ -57,3 +57,4 @@ stats/
 data/
 build-android/
 .auto/last_*
+eval40_*.txt
