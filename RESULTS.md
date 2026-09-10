@@ -57,7 +57,7 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
 
 | check | result |
 |---|---|
-| 40-utt LibriSpeech gate (on-device, shipped config, re-run after each threading change) | WER **4.41 %** (S=28 D=1 I=3); all 40 transcripts **byte-identical** across all three gates |
+| 40-utt LibriSpeech gate (on-device, shipped config, re-run after each change) | WER **4.41 %** (S=28 D=1 I=3); all 40 transcripts **byte-identical** across the OMP-off, deferred-late-stage and post-change gates (Exp537/554) |
 | 69 s equal-token comparison | 3.43 vs 5.62 accuracy-first (−39 %), tokens 438 vs 442 |
 | sustained 138 s (frozen build) | RTF **3.45**, VAE 313.5 s, RSS flat 2.09 GB, no drift (halves-match 4.25 %, identical to earlier runs), majflt 0 |
 | determinism | repeated runs byte-identical, matching references from earlier builds |
@@ -65,10 +65,10 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
 | out-of-domain (20 s music) | RTF 2.97, sane `[Music]`+lyrics output, no pathological loops |
 | speaker attribution (first diarization evidence, Exp548) | two-speaker synthetic clips: on a 0.5 s-gap concatenation **all tiers agree** (single speaker — a model behaviour, not a quantization effect); on an **overlapped** mix the quantized stack emits **Speaker 0 + Speaker 1** while the F16 control emits one — i.e. attribution is exercised and not collapsed by quantization. No multi-speaker reference exists in the loop's assets, so attribution *quality* is unscored (validation boundary) |
 | non-speech edge cases | 5 s digital silence → `[Silence][Silence]`; 5 s −50 dBFS white noise → `[Noise]` — correct model tags, short decodes, **no hallucinated text and no repetition loops** |
-| input formats / cold start | 48 kHz stereo handled (one word differs); after evicting the page cache the RTF is unchanged (3.4713) and only the load grows (1.4 → 3.0 s, excluded from RTF) |
+| input formats / cold start | 48 kHz stereo handled (one word differs); after evicting the page cache the RTF is unchanged (3.4713 pre-change, 3.3010 on the deferred build) and only the load grows (1.4 → 2.6 s, excluded from RTF) |
 | CPU utilisation | 1.88 of 2 pinned cores (94 %) — the pipeline is saturated |
 | hardware envelope (Exp544) | the two pinned A78 primes are **hard-capped at 1.3 GHz** (54 % of their 2.4 GHz rating) regardless of load — all numbers are the device's sustained, power-capped behaviour. At that clock the LM prefill runs at ~90 % of the achievable int8 rate; the VAE's FFN at ~15 % (shape-limited: L=50 columns in the deep stages, short contractions in the early ones) |
-| reproducibility | artifacts bit-exact; a clean-tree rebuild reproduces the shipped binaries **byte-for-byte** (asr_streaming `0371eb80`, libggml `6ce4c983`, libllama `92ad2456`) |
+| reproducibility | artifacts bit-exact; the documented recipe (`.auto/setup.sh` from a wiped `build-android/`) reproduces the shipped binaries **byte-for-byte** - re-verified on the deferred build (Exp562): asr_streaming `92fb3403`, libggml `6ce4c983`, libllama `92ad2456`, and the device copies match |
 
 ## What moved the needle (five waves, −71 %)
 
@@ -126,9 +126,10 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
 | `vae-encoder-q4x4ffn.gguf` | `b909b7901d5d318d81ce4cbaeac31437` |
 | `lm-q4_0_4_4.gguf` (q6_K embeddings) | `db67eecbd31bba707666414dd977902f` |
 | `streaming-lm-q4_k_m.gguf` (intermediate) | `046be3d4775e10f8b635b03ec1bc79cb` |
-| Android `asr_streaming` (A78 build, OMP off) | `0371eb80f6ce582f8d4cb91c07b3a539` |
+| `lm-4x4-head.gguf` (OPTIONAL faster variant, q8_0 head -> q4_0_4x4: RTF -4.1 %, WER 4.96 % — declined as default) | `62854dfffbd24fdca7a2aa4717df24eb` |
+| Android `asr_streaming` (A78 build, OMP off, deferred late stages) | `92fb3403d482bf761a9e0e8200630fff` |
 | `libggml.so` / `libllama.so` (shipped) | `6ce4c983ab2b310fb8dce8e75e402f7e` / `92ad2456979d99e2a1afee4a8cebad1d` |
 
-Full engineering log: 533 experiments in `.auto/log.jsonl`; per-wave detail and
+Full engineering log: 562 experiments in `.auto/log.jsonl`; per-wave detail and
 the implementation notes in `STREAMING_1P5B.md`; loop protocol in
 `.auto/prompt.md`; parked work with recipes in `.auto/ideas.md`.
