@@ -51,7 +51,10 @@ struct stream_params {
     int n_ctx = 4096;  // covers ~15 min audio; KV 112MB vs 450MB at 16384
     int n_batch = 512;
     int max_tokens_per_chunk = 256;
-    int vae_pieces = 13;  // window split count; must divide 26 (frames). 13x6400 or 26x3200.
+    int vae_pieces = 2;   // window split count; must divide 26 (frames).
+                          // 2x41600 is the measured optimum with the lifetime
+                          // (graph-allocator) activation buffers; 26 is the RAM-lean
+                          // end of the curve; 13 the historical gate protocol.
     bool xwin = false;    // cross-window carry: VAE cache persists across hops
                           // (full-context features, no overlap recompute)
     int xwin_reset = 8;   // reset carry every N hops (0 = never). Bounds KV/context
@@ -332,7 +335,12 @@ int main(int argc, char ** argv) {
     std::vector<float> afe(FRAMES_PER_WINDOW * acoustic_dim);
     std::vector<float> sfe(FRAMES_PER_WINDOW * semantic_dim);
     std::vector<float> speech_emb(FRAMES_PER_WINDOW * n_embd);
-    vae_cache_t * vcache = (params.vae_pieces > 1) ? vae_cache_new() : nullptr;
+    // The cached (and, by default, deferred) path is used for every piece count
+    // including 1, where the single piece is the whole window: the cache is cold
+    // at the window start and there are no interior boundaries, i.e. exactly the
+    // semantics of the legacy full-window encode, but the deep stages still get
+    // their window-level pass.
+    vae_cache_t * vcache = (params.vae_pieces >= 1) ? vae_cache_new() : nullptr;
     const int piece_samples = WINDOW_SAMPLES / params.vae_pieces;
     const int piece_frames = FRAMES_PER_WINDOW / params.vae_pieces;
     fprintf(stderr, "VAE pieces: %d x %d samples (%d frames each)%s\n\n",

@@ -17,11 +17,11 @@ believed unreachable without retraining; do NOT chase it by cheating).
 | F16 accuracy-first | `VAE_FILE=vae-encoder-f16.gguf` | ~4.77 (deferred late stages) | 4.7705 (Exp555; was 5.3362) |
 | BALANCED | `VAE_FILE=vae-encoder-q4x4ffn.gguf` + LM Q4_K_M | ~4.16 (deferred late stages) | 4.1649 (Exp555; was 4.4007) |
 | FAST-LM v2 | `VAE_FILE=vae-encoder-f16.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) | ~5.21 | 5.2138 (tokens 42), WER 4.41% |
-| **MAX-SPEED v2 (DEFAULT, p26)** | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) + F16 im2col + concurrent encoders + **GGML_OPENMP=OFF** + **deferred deep stages** | **~3.30-3.35** | Protocol band 3.2983-3.3280 (n=4, mean 3.319); 17 s cell 2.8772; 69 s cell 3.2064; 138 s see Exp558; 40-utt gate WER 4.41% with 40/40 transcripts byte-identical to the pre-deferred gate; RSS 2.06 GB |
+| **MAX-SPEED v3 (DEFAULT, p2)** | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) + F16 im2col + concurrent encoders + **GGML_OPENMP=OFF** + **deferred deep stages** + **lifetime (ggml-alloc) activation buffers** + **PIECES=2** | **~3.17-3.18** | Protocol: 3.1832 (health), 3.1715-3.1725 (p2 sweep); VAE 22.8-22.9 s; RSS 2.30 GB; 40-utt gate WER 4.68% (same 6 marginal utterances as any deep-stage re-blocking; the protocol transcript is byte-identical to v2). RAM-lean alternative: p26 + the same stack = 3.2501 @ 1.90 GB, same gate |
 | Q8 anchor | `VAE_FILE=vae-encoder-q8_0mixed.gguf` | 6.12-6.15 | 6.1204/6.1520/6.1659 |
 | Q4 | `VAE_FILE=vae-encoder-q4ffn.gguf` | ~6.48 | 6.4776 |
 | ultra-lean (superseded) | `VAE_FILE=vae-encoder-q4ffn.gguf PIECES=26` | ~6.61 | 6.6066 |
-| MAX-SPEED-LEAN | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q4_0_4_4.gguf PIECES=26` | ~4.39 | 4.3898 @ 1.93 GB (lowest RSS of any tier) |
+| MAX-SPEED-LEAN | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q4_0_4_4.gguf PIECES=26` | ~4.39 | 4.3898 @ 1.93 GB (legacy path; bit-exact fallback) |
 | BALANCED-LEAN | `VAE_FILE=vae-encoder-q4x4ffn.gguf PIECES=26` | ~5.21 | 5.208 (69 s 4.9374, identical tokens, RSS 1.98 GB) |
 Old-build bands (6.49-6.59 Q8, 10.5 F16, 6.81 Q4, 7.06 ultra-lean) are DEAD.
 69 s equal-token: accuracy-first 5.6089 / balanced 4.8228 / max-speed 4.046.

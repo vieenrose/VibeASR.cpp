@@ -11,6 +11,9 @@ TAG=${1:-a78}; START=${2:-0}; COUNT=${3:-40}
 VAE_FILE=${VAE_FILE:-vae-encoder-q8_0mixed.gguf}
 LM_FILE=${LM_FILE:-streaming-lm-q4_k_m.gguf}
 THREADS=${THREADS:-2}; MASK=${MASK:-C0}
+# Piece count of the encode; 13 is the historical gate protocol, and the
+# shipped default is 2 (see .auto/prompt.md). PIECES=2 .auto/eval40.sh ...
+PIECES=${PIECES:-13}
 OUT=../eval-librispeech/hyp-$TAG
 mkdir -p "$OUT"
 adb -s $DEV shell "mkdir -p $RDIR/ls40" >/dev/null 2>&1
@@ -27,7 +30,7 @@ for ((i=START; i<START+COUNT && i<${#WAVS[@]}; i++)); do
   W=${WAVS[$i]}; B=$(basename "$W"); K=${B%.wav}
   [ -s "$OUT/$K.txt" ] && { echo "skip $K"; continue; }
   adb -s $DEV push "$W" $RDIR/ls40/ >/dev/null 2>&1
-  adb -s $DEV shell "cd $RDIR && LD_LIBRARY_PATH=. taskset $MASK ./asr_streaming --vae-model ./$VAE_FILE --lm-model ./$LM_FILE --audio ls40/$B -t $THREADS --vae-pieces 13" > .auto/eval40_out.txt 2> .auto/eval40_err.txt || { echo "FAILED $K"; exit 1; }
+  adb -s $DEV shell "cd $RDIR && LD_LIBRARY_PATH=. taskset $MASK ./asr_streaming --vae-model ./$VAE_FILE --lm-model ./$LM_FILE --audio ls40/$B -t $THREADS --vae-pieces $PIECES" > .auto/eval40_out.txt 2> .auto/eval40_err.txt || { echo "FAILED $K"; exit 1; }
   python3 - "$OUT/$K.txt" <<'PY'
 import sys
 s=open('.auto/eval40_out.txt',encoding='utf-8',errors='replace').read()

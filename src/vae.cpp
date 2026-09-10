@@ -52,6 +52,13 @@ struct vae_stream_cache {
     std::map<std::string, vae_stream_slot> slots;
     struct Tap { std::string key; struct ggml_tensor * xh = nullptr; struct ggml_tensor * x = nullptr; int64_t P = 0; };
     std::vector<Tap> taps;     // recorded per forward build, consumed post-compute
+    // Host-fed tensors (the [hist|zeros] staging buffers of the concat sites).
+    // Under the lifetime allocator their data does not exist during the graph
+    // build, so the write is deferred to a Fill record consumed by the caller
+    // right after ggml_gallocr_alloc_graph.
+    struct Fill { struct ggml_tensor * t = nullptr; const std::vector<float> * hist = nullptr; int64_t P = 0; };
+    std::vector<Fill> fills;
+    bool lifetime = false;
     int next_id = 0;
 };
 
@@ -113,10 +120,18 @@ static struct ggml_tensor * vae_cached_concat(
     struct ggml_tensor * hp = ggml_new_tensor(ctx, x->type, GGML_MAX_DIMS, hne);
     int64_t N = xp->ne[0];
     int64_t nch = xp->ne[1] * xp->ne[2] * xp->ne[3];
-    float * hp_data = (float *)hp->data;
-    for (int64_t c = 0; c < nch; c++) {
-        memcpy(hp_data + c * N, slot.hist.data() + c * P, (size_t)P * sizeof(float));
-        memset(hp_data + c * N + P, 0, (size_t)(N - P) * sizeof(float));
+    if (cache->lifetime) {
+        // Data placement happens after graph allocation: just pin and record.
+        ggml_set_input(hp);
+        vae_stream_cache::Fill fill;
+        fill.t = hp; fill.hist = &slot.hist; fill.P = P;
+        cache->fills.push_back(fill);
+    } else {
+        float * hp_data = (float *)hp->data;
+        for (int64_t c = 0; c < nch; c++) {
+            memcpy(hp_data + c * N, slot.hist.data() + c * P, (size_t)P * sizeof(float));
+            memset(hp_data + c * N + P, 0, (size_t)(N - P) * sizeof(float));
+        }
     }
     struct ggml_tensor * xh = ggml_add(ctx, xp, hp);
     vae_stream_cache::Tap tap;
@@ -1277,30 +1292,62 @@ static int32_t vae_encode_early_impl(
     if (inference_time_ms) clock_gettime(CLOCK_MONOTONIC, &start_time);
 
     const size_t bytes_per_sample = 65536;  // F16-weight graph (see vae_encode_impl)
-    const size_t vae_ctx_mem_size = (size_t)n_samples * bytes_per_sample + (size_t)64 * 1024 * 1024;
-    if (compute_buf_size_ref < vae_ctx_mem_size) {
-        void* grown = realloc(compute_buf_ref, vae_ctx_mem_size);
-        if (grown == NULL) { fprintf(stderr, "[VAE] Error: early arena alloc failed\n"); return -1; }
-        compute_buf_ref = grown; compute_buf_size_ref = vae_ctx_mem_size;
-    }
-    struct ggml_init_params ctx_params = { compute_buf_size_ref, compute_buf_ref, false };
-    // Diagnostic: the arena is reused across pieces, so a systematic
-    // cache-set/aliasing interaction between the packed activation tensors
-    // would show up as a base-address dependence. VAE_ARENA_OFFSET shifts the
-    // ggml buffer base by N bytes (default 0 = shipped behaviour).
+    // Allocation mode. Default: the graph allocator (ggml-alloc) reuses buffers
+    // by tensor liveness, so the arena holds only the PEAK LIVE SET instead of
+    // every tensor of the graph (the legacy fixed arena costs ~64 KB per input
+    // sample: 274 MB at 3200 samples, 2.7 GB at 41600). VAE_LEGACY_ARENA=1
+    // restores the historical arena for A/B measurement.
+    static ggml_gallocr_t gallocr[2] = { nullptr, nullptr };
+    // Metadata arena (tensor structs only, no data): allocated once per slot and
+    // re-initialised per call, so pieces do not pay a fresh 64 MB mmap each.
+    static void * md_buf[2] = { nullptr, nullptr };
+    static size_t md_size[2] = { 0, 0 };
+    const bool legacy_arena = (getenv("VAE_LEGACY_ARENA") != nullptr);
+
     size_t arena_off = 0;
     if (const char* e = getenv("VAE_ARENA_OFFSET")) arena_off = (size_t)strtoull(e, nullptr, 0);
-    if (arena_off > 0 && compute_buf_size_ref > arena_off + 1024 * 1024) {
-        ctx_params.mem_buffer = (char*)compute_buf_ref + arena_off;
-        ctx_params.mem_size = compute_buf_size_ref - arena_off;
-    }
     if (compute_ctx_ref) ggml_free(compute_ctx_ref);
-    compute_ctx_ref = ggml_init(ctx_params);
+    if (legacy_arena) {
+        const size_t vae_ctx_mem_size = (size_t)n_samples * bytes_per_sample + (size_t)64 * 1024 * 1024;
+        if (compute_buf_size_ref < vae_ctx_mem_size) {
+            void* grown = realloc(compute_buf_ref, vae_ctx_mem_size);
+            if (grown == NULL) { fprintf(stderr, "[VAE] Error: early arena alloc failed\n"); return -1; }
+            compute_buf_ref = grown; compute_buf_size_ref = vae_ctx_mem_size;
+        }
+        struct ggml_init_params ctx_params = { compute_buf_size_ref, compute_buf_ref, false };
+        // Diagnostic: the arena is reused across pieces, so a systematic
+        // cache-set/aliasing interaction between the packed activation tensors
+        // would show up as a base-address dependence. VAE_ARENA_OFFSET shifts
+        // the ggml buffer base by N bytes (default 0 = shipped behaviour).
+        if (arena_off > 0 && compute_buf_size_ref > arena_off + 1024 * 1024) {
+            ctx_params.mem_buffer = (char*)compute_buf_ref + arena_off;
+            ctx_params.mem_size = compute_buf_size_ref - arena_off;
+        }
+        compute_ctx_ref = ggml_init(ctx_params);
+    } else {
+        if (gallocr[slot] == nullptr) {
+            gallocr[slot] = ggml_gallocr_new(ggml_backend_cpu_buffer_type());
+            if (gallocr[slot] == nullptr) { fprintf(stderr, "[VAE] Error: gallocr init failed\n"); return -1; }
+        }
+        // no_alloc: this context only holds tensor metadata; the tensor data is
+        // placed by the graph allocator below (and its buffers persist across
+        // pieces because the gallocr object is cached per slot).
+        const size_t md_need = (size_t)16 * 1024 * 1024;
+        if (md_size[slot] < md_need) {
+            void * grown = realloc(md_buf[slot], md_need);
+            if (grown == NULL) { fprintf(stderr, "[VAE] Error: metadata arena alloc failed\n"); return -1; }
+            md_buf[slot] = grown; md_size[slot] = md_need;
+        }
+        struct ggml_init_params ctx_params = { md_size[slot], md_buf[slot], true };
+        compute_ctx_ref = ggml_init(ctx_params);
+        if (compute_ctx_ref == nullptr) { fprintf(stderr, "[VAE] Error: ctx init failed\n"); return -1; }
+    }
 
     struct ggml_tensor* input = ggml_new_tensor_3d(compute_ctx_ref, GGML_TYPE_F32, n_samples, 1, 1);
     ggml_set_name(input, "input_audio");
-    memcpy(input->data, audio, (size_t)n_samples * sizeof(float));
+    if (legacy_arena) memcpy(input->data, audio, (size_t)n_samples * sizeof(float));
 
+    if (cache != nullptr && !legacy_arena) cache->lifetime = true;
     struct ggml_tensor* result = encoder.forward_early(compute_ctx_ref, input, cache, split);
 
     struct ggml_cgraph* gf = ggml_new_graph_custom(compute_ctx_ref, vae_model_max_nodes(ctx->model), false);
@@ -1309,6 +1356,47 @@ static int32_t vae_encode_early_impl(
         for (size_t ti = 0; ti < cache->taps.size(); ti++) {
             ggml_build_forward_expand(gf, cache->taps[ti].xh);
             if (cache->taps[ti].x) ggml_build_forward_expand(gf, cache->taps[ti].x);
+        }
+    }
+    if (!legacy_arena) {
+        // Lifetime allocation: input at the front, outputs (the boundary tensor
+        // and every streaming-cache concat node read back after the compute)
+        // pinned so their buffers survive to the end of the graph.
+        ggml_set_input(input);
+        ggml_set_output(result);
+        if (cache != nullptr) {
+            for (size_t ti = 0; ti < cache->taps.size(); ti++) {
+                ggml_set_output(cache->taps[ti].xh);
+                if (cache->taps[ti].x) ggml_set_output(cache->taps[ti].x);
+            }
+        }
+        if (!ggml_gallocr_alloc_graph(gallocr[slot], gf)) {
+            fprintf(stderr, "[VAE] Error: gallocr_alloc_graph failed (n_samples=%d)\n", n_samples);
+            return -1;
+        }
+        if (getenv("VAE_MEM_STATS") != nullptr) {
+            static int mem_dumps = 0;
+            if (mem_dumps++ < 4) {
+                fprintf(stderr, "[VAE_MEM] slot=%d lifetime buffer=%.1f MB nodes=%d\n",
+                        slot, ggml_gallocr_get_buffer_size(gallocr[slot], 0) / 1e6,
+                        ggml_graph_n_nodes(gf));
+            }
+        }
+        // Data placement happens after the allocation, so write the input now
+        // and materialise the streaming-cache staging buffers.
+        memcpy(input->data, audio, (size_t)n_samples * sizeof(float));
+        if (cache != nullptr) {
+            for (size_t fi = 0; fi < cache->fills.size(); fi++) {
+                const vae_stream_cache::Fill & f = cache->fills[fi];
+                const int64_t N = f.t->ne[0];
+                const int64_t nch = f.t->ne[1] * f.t->ne[2] * f.t->ne[3];
+                float * d = (float *)f.t->data;
+                for (int64_t c = 0; c < nch; c++) {
+                    memcpy(d + c * N, f.hist->data() + c * f.P, (size_t)f.P * sizeof(float));
+                    memset(d + c * N + f.P, 0, (size_t)(N - f.P) * sizeof(float));
+                }
+            }
+            cache->fills.clear();
         }
     }
     struct timespec c0, c1;
