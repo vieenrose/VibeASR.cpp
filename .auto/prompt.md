@@ -818,6 +818,12 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp532 (KEEP, robustness): 20 s of MUSIC (out-of-domain) at RTF 2.9748 with
+  sane output ([Music] tags + lyrics), tokens 39 in band, RSS flat - the shipped
+  tier generalises beyond speech. Also recorded (ideas.md): the fixed-window
+  protocol wastes 16% of the VAE work on tail padding for the 10 s clip; a
+  production streaming engine would flush a short final window - a task change,
+  ineligible for the metric (and only 1.4% on a 138 s file).
 - Exp531 (KEEP, secondary): parallel VAE loader copy (4 workers, byte-split,
   idempotent overlaps): load_s 1.6-1.7 -> 1.4 s, transcript byte-identical,
   RTF unchanged (load is excluded from RTF by protocol). Remaining load is the
