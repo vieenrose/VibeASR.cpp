@@ -211,8 +211,12 @@ The 69 s token count is 438 vs 442 (-0.9%), i.e. the old short-clip truncation
 the 10 s protocol clip ends 3 tokens early (42/45) and the 17 s clip is
 content-complete but garbles the brand name ("YyY … YSR" vs "Y-voice … Y-voice
 ASR") — i.e. the 4-bit body's residual cost is rare/proper-token fidelity, not
-missing content. Use the balanced tier (Q4_K_M LM, clean zh transcripts) when
-proper nouns matter; the 69 s English WER story is unaffected (4.41%).
+missing content. A controlled test (Exp499) localises it: a plain-`Q4_0`
+requant of the same source - same tensor demotions, but the `vec_dot` path -
+transcribes "Y-voice" cleanly, so the garble comes from the blocked-int8
+kernel/layout path itself, not from which tensors are 4-bit. Use the balanced
+tier (Q4_K_M LM, clean zh transcripts) when proper nouns matter; the 69 s
+English WER story is unaffected (4.41%).
 
 \* The `Q4_0_4x4` LM shifts greedy end-of-chunk decisions on some short clips,
 so its 10 s / 17 s token counts are below baseline (40/45 and 64/68) and those

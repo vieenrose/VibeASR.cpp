@@ -854,7 +854,11 @@ train/use cycle (tested, no gain; kept for reproducibility).
   the lean family covers sub-2 GB: balanced-lean (p26 + Q4_K_M LM, 5.208 @
   1.98 GB) and max-speed-lean (p26 + 4x4 LM, 4.3898 @ 1.93 GB).
   zh-clip caveat of the 4x4 LM: rare/proper tokens degrade ('Y-voice' -> 'YyY'),
-  content otherwise complete; Q4_K_M LM stays the clean-transcript option. Keep the historical tiers documented but do not re-run them
+  content otherwise complete; Q4_K_M LM stays the clean-transcript option.
+  Exp499 localised it: a plain-Q4_0 requant (same demotions, vec_dot path)
+  transcribes 'Y-voice' cleanly => the garble is the blocked-int8 KERNEL path,
+  not tensor precision. gguf surgery to restore q6_K tensors is therefore CLOSED;
+  the only remaining fix would be kernel-side (3rdparty). Keep the historical tiers documented but do not re-run them
   as candidates.
 - Exp476-477 (KEEP, third wave): LM Q4_0_4x4 = blocked int8 kernel path.
   MEASURED: the fork's ggml dispatches gemv/gemm ONLY for types that carry
