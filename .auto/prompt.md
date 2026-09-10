@@ -842,6 +842,17 @@ train/use cycle (tested, no gain; kept for reproducibility).
   blocks along ne0 and the matmul row to be ne0*ne1; they coincide only for
   K % 32 == 0. Workaround (pad K to 32 with front zeros + re-validate the
   streaming cache) parked.
+- LESSON (quantization defaults): llama-quantize silently demotes
+  token_embd.weight to plain q4_0 unless --token-embedding-type is given; for
+  this LM those rows drive the chunk-boundary control tokens and cost 0.7 pp
+  WER. Verify every artifact's per-tensor types (grep 'converting to' / 'type ='
+  in the quantize log) before gating.
+- LADDER STATUS (post Exp495-496): the tier space collapsed - max-speed v2
+  (VAE-4x4 + LM-4x4 q6_K-emb) Pareto-dominates the accuracy-first and balanced
+  tiers (4.2436 / 4.7396 mean / 4.0678 on 69 s at WER 4.41% and RSS 2.11 GB);
+  the only remaining variant is balanced-lean (p26, 5.208 @ 1.98 GB) for
+  sub-2 GB devices. Keep the historical tiers documented but do not re-run them
+  as candidates.
 - Exp476-477 (KEEP, third wave): LM Q4_0_4x4 = blocked int8 kernel path.
   MEASURED: the fork's ggml dispatches gemv/gemm ONLY for types that carry
   them; Q4_K_M/plain Q4_0 have vec_dot only, so the 26-row prefill re-streamed
