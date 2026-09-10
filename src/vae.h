@@ -80,6 +80,48 @@ int32_t vae_encode_parallel_cached(
     float* acoustic_ms,
     float* semantic_ms);
 
+// ---------------------------------------------------------------------------
+// Deferred late-stage encode (window-level batching of the deep stages).
+//
+// The early stages stay piece-wise with the carried cache (boundary tensor per
+// piece); the deep stages then run ONCE per window over the concatenated
+// boundary tensors (bshape = the per-piece boundary's ne[0..3], with ne[0] the
+// time axis). Stage split defaults to 6 (deepest stage only); VAE_LATE_SPLIT
+// overrides. Equivalent to the piece-wise path by the cache invariant (outputs
+// equal a full-window cold run up to matmul blocking order).
+int32_t vae_encode_early_parallel_cached(
+    vae_context_t* ctx,
+    vae_cache_t* cache,
+    const float* audio,
+    int32_t n_samples,
+    float* boundary_acoustic, int64_t ashape[4],
+    float* boundary_semantic, int64_t sshape[4],
+    float* acoustic_ms, float* semantic_ms);
+
+int32_t vae_encode_late_parallel(
+    vae_context_t* ctx,
+    const float* boundary_acoustic, const int64_t ashape[4],
+    const float* boundary_semantic, const int64_t sshape[4],
+    int64_t n_time_total,
+    float* output_acoustic, float* output_semantic,
+    float* acoustic_ms, float* semantic_ms);
+
+// Single-encoder variants (debug / RAM-lean experiments).
+int32_t vae_encode_early_cached(
+    vae_context_t* ctx,
+    vae_cache_t* cache,
+    const float* audio,
+    int32_t n_samples,
+    float* boundary_out,
+    int64_t bshape[4]);
+
+int32_t vae_encode_late(
+    vae_context_t* ctx,
+    const float* boundary,
+    const int64_t bshape[4],
+    int64_t n_time_total,
+    float* output);
+
 int32_t vae_encode_semantic_cached(
     vae_context_t* ctx,
     vae_cache_t* cache,

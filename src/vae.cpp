@@ -479,18 +479,52 @@ struct AudioVAEEncoder {
     struct ggml_tensor* connector_fc2_weight;
     struct ggml_tensor* connector_fc2_bias;
     
-    struct ggml_tensor* forward(
+    // Stages [0, split) of the encoder with the streaming cache. The output is
+    // the stage-boundary tensor in the conv layout: [T, C] (time fastest), the
+    // exact tensor the next stage's downsample conv consumes. split == n_stages
+    // leaves x untouched.
+    struct ggml_tensor* forward_early(
         struct ggml_context* ctx,
         struct ggml_tensor* x,
-        vae_stream_cache* cache = nullptr) {
+        vae_stream_cache* cache,
+        int split) {
 
         if (cache != nullptr) {
             cache->next_id = 0;
             cache->taps.clear();
         }
 
-        // Downsamples and stages
-        for (int i = 0; i < n_stages; i++) {
+        for (int i = 0; i < split && i < n_stages; i++) {
+
+            x = ggml_nn_conv_1d(ctx, x, downsamples[i].conv_weight,
+                                 downsamples[i].conv_bias,
+                                 downsample_strides[i], downsample_kernel_sizes[i]-downsample_strides[i], 1,
+                                 cache);
+
+            for (int j = 0; j < stage_depths[i]; j++) {
+                x = stages[i][j].forward(ctx, x, cache);
+            }
+
+            x = ggml_cont(ctx, ggml_permute(ctx, x, 1, 0, 2, 3));
+
+        }
+
+        return x;
+    }
+
+    // Stages [split, n_stages) + head + connector. Two modes:
+    //   cache != nullptr: piece-wise streaming (history from the cache).
+    //   cache == nullptr: the input carries the whole window, so the convs
+    //   only zero-pad at the window start - exactly the legacy cold-window
+    //   semantics the cache reproduces piece-wise. Used by the deferred
+    //   (window-level late stages) path.
+    struct ggml_tensor* forward_late(
+        struct ggml_context* ctx,
+        struct ggml_tensor* x,
+        vae_stream_cache* cache,
+        int split) {
+
+        for (int i = split; i < n_stages; i++) {
 
             x = ggml_nn_conv_1d(ctx, x, downsamples[i].conv_weight,
                                  downsamples[i].conv_bias,
@@ -507,13 +541,21 @@ struct AudioVAEEncoder {
 
         // Head
         x = ggml_nn_conv_1d(ctx, x, head_conv_weight, head_conv_bias, 1, head_kernel_size - 1, 1, cache);
-        
+
         // Connector: fc1 -> norm -> fc2
         x = ggml_nn_linear(ctx, x, connector_fc1_weight, connector_fc1_bias);
         x = ggml_nn_rms_norm(ctx, x, connector_norm_weight);
         x = ggml_nn_linear(ctx, x, connector_fc2_weight, connector_fc2_bias);
 
         return x;
+    }
+
+    struct ggml_tensor* forward(
+        struct ggml_context* ctx,
+        struct ggml_tensor* x,
+        vae_stream_cache* cache = nullptr) {
+
+        return forward_late(ctx, forward_early(ctx, x, cache, n_stages), cache, n_stages);
     }
 };
 
@@ -1175,6 +1217,315 @@ static int32_t vae_encode_impl(
     }
     
     return (int32_t)n_frames;
+}
+
+// ============================================================================
+// Deferred late-stage encode (window-level batching of the deep stages).
+//
+// Motivation (measured): at 26 pieces per window the deepest ConvNeXt stage sees
+// ONE latent frame per 3200-sample piece, so its ffn linears are GEMVs
+// (a=[8192,2048] x b=[8192,1]) running at ~13.6 GMAC/s and re-streaming ~150 MB
+// of weights per piece per encoder. The early stages must stay piece-wise (their
+// activations are what the RAM budget allows), but the deep tail can be batched
+// over the whole window: the streaming cache already makes the piece-wise early
+// stages bit-equal to a full-window run, so the concatenated boundary tensors
+// ARE the window-level boundary activations. Running [split, n_stages) once over
+// them turns the deep GEMVs into L=26 GEMMs and reads each deep weight once per
+// window instead of once per piece. The late convs then need no cache: with the
+// whole sequence present they only zero-pad at the window start, which is
+// exactly the legacy cold-window semantics the cache reproduces piece-wise.
+// ============================================================================
+static int vae_late_split(void) {
+    int split = 6;  // shipped default: only the deepest stage is deferred
+    if (const char* e = getenv("VAE_LATE_SPLIT")) {
+        int v = atoi(e);
+        if (v >= 0 && v <= 7) split = v;
+    }
+    return split;
+}
+
+// Encode stages [0, split) of one piece. Writes the dense boundary tensor
+// (shape bshape = the graph result's ne[0..2]) to boundary_out and returns its
+// element count, or -1. The streaming cache is carried exactly as in the
+// un-split path.
+static int32_t vae_encode_early_impl(
+    vae_context_t* ctx,
+    AudioVAEEncoder& encoder,
+    const float* audio,
+    int32_t n_samples,
+    float* boundary_out,
+    int64_t bshape[4],
+    vae_stream_cache* cache,
+    int split,
+    int slot,
+    float* inference_time_ms,
+    int n_threads_ovr = 0) {
+
+    if (!ctx || !audio || !boundary_out || n_samples <= 0) return -1;
+    struct ggml_context*& compute_ctx_ref = (slot == 0) ? ctx->compute_ctx  : ctx->compute_ctx2;
+    void*&                compute_buf_ref = (slot == 0) ? ctx->compute_buf  : ctx->compute_buf2;
+    size_t&               compute_buf_size_ref = (slot == 0) ? ctx->compute_buf_size : ctx->compute_buf_size2;
+
+    struct timespec start_time, end_time;
+    if (inference_time_ms) clock_gettime(CLOCK_MONOTONIC, &start_time);
+
+    const size_t bytes_per_sample = 65536;  // F16-weight graph (see vae_encode_impl)
+    const size_t vae_ctx_mem_size = (size_t)n_samples * bytes_per_sample + (size_t)64 * 1024 * 1024;
+    if (compute_buf_size_ref < vae_ctx_mem_size) {
+        void* grown = realloc(compute_buf_ref, vae_ctx_mem_size);
+        if (grown == NULL) { fprintf(stderr, "[VAE] Error: early arena alloc failed\n"); return -1; }
+        compute_buf_ref = grown; compute_buf_size_ref = vae_ctx_mem_size;
+    }
+    struct ggml_init_params ctx_params = { compute_buf_size_ref, compute_buf_ref, false };
+    if (compute_ctx_ref) ggml_free(compute_ctx_ref);
+    compute_ctx_ref = ggml_init(ctx_params);
+
+    struct ggml_tensor* input = ggml_new_tensor_3d(compute_ctx_ref, GGML_TYPE_F32, n_samples, 1, 1);
+    ggml_set_name(input, "input_audio");
+    memcpy(input->data, audio, (size_t)n_samples * sizeof(float));
+
+    struct ggml_tensor* result = encoder.forward_early(compute_ctx_ref, input, cache, split);
+
+    struct ggml_cgraph* gf = ggml_new_graph_custom(compute_ctx_ref, vae_model_max_nodes(ctx->model), false);
+    ggml_build_forward_expand(gf, result);
+    if (cache != nullptr) {
+        for (size_t ti = 0; ti < cache->taps.size(); ti++) {
+            ggml_build_forward_expand(gf, cache->taps[ti].xh);
+            if (cache->taps[ti].x) ggml_build_forward_expand(gf, cache->taps[ti].x);
+        }
+    }
+    struct timespec c0, c1;
+    clock_gettime(CLOCK_MONOTONIC, &c0);
+    if (ggml_graph_compute_with_ctx(compute_ctx_ref, gf,
+            n_threads_ovr > 0 ? n_threads_ovr : ctx->n_threads) != GGML_STATUS_SUCCESS) {
+        fprintf(stderr, "[VAE] Error: early graph compute failed\n"); return -1;
+    }
+    clock_gettime(CLOCK_MONOTONIC, &c1);
+    if (getenv("VAE_LATE_STATS") != nullptr) {
+        static int dumps = 0;
+        if (dumps++ < 6) {
+            fprintf(stderr, "[VAE_EARLY] slot=%d nsamp=%d split=%d nthr=%d nodes=%d compute=%.1f ms used=%.1f MB\n",
+                    slot, n_samples, split, n_threads_ovr > 0 ? n_threads_ovr : ctx->n_threads,
+                    ggml_graph_n_nodes(gf),
+                    (c1.tv_sec - c0.tv_sec) * 1000.0 + (c1.tv_nsec - c0.tv_nsec) / 1e6,
+                    ggml_used_mem(compute_ctx_ref) / 1e6);
+        }
+    }
+    if (cache != nullptr) vae_cache_update(cache);
+
+    if (!ggml_is_contiguous(result)) {
+        fprintf(stderr, "[VAE] Error: early boundary not contiguous\n"); return -1;
+    }
+    for (int d = 0; d < GGML_MAX_DIMS; d++) bshape[d] = result->ne[d];
+    const int64_t n_elems = ggml_nelements(result);
+    memcpy(boundary_out, result->data, (size_t)n_elems * sizeof(float));
+
+    if (inference_time_ms) {
+        clock_gettime(CLOCK_MONOTONIC, &end_time);
+        *inference_time_ms = (float)((end_time.tv_sec - start_time.tv_sec) * 1000.0 +
+                                     (end_time.tv_nsec - start_time.tv_nsec) / 1e6);
+    }
+    return (int32_t)n_elems;
+}
+
+// Stages [split, n_stages) + head + connector over a whole window's boundary
+// tensor (n_time_total x C, memory order matching forward_early's output).
+// Returns the frame count, or -1.
+static int32_t vae_encode_late_impl(
+    vae_context_t* ctx,
+    AudioVAEEncoder& encoder,
+    const float* boundary,
+    const int64_t bshape[4],
+    int64_t n_time_total,
+    float* output,
+    int split,
+    int slot,
+    float* inference_time_ms,
+    int n_threads_ovr = 0) {
+
+    if (!ctx || !boundary || !output || n_time_total <= 0) return -1;
+    const int64_t C = bshape[1];
+    if (bshape[0] <= 0 || C <= 0) return -1;
+    struct ggml_context*& compute_ctx_ref = (slot == 0) ? ctx->compute_ctx  : ctx->compute_ctx2;
+    void*&                compute_buf_ref = (slot == 0) ? ctx->compute_buf  : ctx->compute_buf2;
+    size_t&               compute_buf_size_ref = (slot == 0) ? ctx->compute_buf_size : ctx->compute_buf_size2;
+
+    struct timespec start_time, end_time;
+    if (inference_time_ms) clock_gettime(CLOCK_MONOTONIC, &start_time);
+
+    // The blocked-int8 GEMM kernel interleaves 4 activation columns; a column
+    // count that is not a multiple of 4 drops off the fast path (measured on
+    // device: VAE 314 s vs 26 s at 26 columns). Every deeper layer's column
+    // count is the frame count times the stride product, so pad the FRAME count
+    // to a multiple of 4 with zero columns. All late ops are causal (convs) or
+    // pointwise (norms, linears), so the real frames are unaffected.
+    int64_t cum = 1;
+    for (int i = split; i < encoder.n_stages; i++) cum *= encoder.downsample_strides[i];
+    int64_t t_pad = n_time_total;
+    const int64_t n_frames_want = n_time_total / cum;
+    if (n_time_total % cum == 0) {
+        const int64_t frames_pad = (n_frames_want + 3) / 4 * 4;
+        t_pad = frames_pad * cum;
+    }
+
+    // The late graph is tiny next to the early one (its activations are the
+    // deep stages'), so this never grows the arena after an early pass.
+    const size_t vae_ctx_mem_size = (size_t)128 * 1024 * 1024;
+    if (compute_buf_size_ref < vae_ctx_mem_size) {
+        void* grown = realloc(compute_buf_ref, vae_ctx_mem_size);
+        if (grown == NULL) { fprintf(stderr, "[VAE] Error: late arena alloc failed\n"); return -1; }
+        compute_buf_ref = grown; compute_buf_size_ref = vae_ctx_mem_size;
+    }
+    struct ggml_init_params ctx_params = { compute_buf_size_ref, compute_buf_ref, false };
+    if (compute_ctx_ref) ggml_free(compute_ctx_ref);
+    compute_ctx_ref = ggml_init(ctx_params);
+
+    struct ggml_tensor* input = ggml_new_tensor_3d(compute_ctx_ref, GGML_TYPE_F32, t_pad, C, 1);
+    ggml_set_name(input, "input_boundary");
+    // boundary is [n_time_total, C] with time fastest (element (t,c) at t + c*T),
+    // so the pad columns are per-channel tails, not one flat block.
+    {
+        const float* src = boundary;
+        float* dst = (float*)input->data;
+        for (int64_t c = 0; c < C; c++) {
+            memcpy(dst + (size_t)c * t_pad, src + (size_t)c * n_time_total,
+                   (size_t)n_time_total * sizeof(float));
+            if (t_pad > n_time_total)
+                memset(dst + (size_t)c * t_pad + n_time_total, 0,
+                       (size_t)(t_pad - n_time_total) * sizeof(float));
+        }
+    }
+
+    // cache == nullptr: the sequence provides its own history (cold window head).
+    struct ggml_tensor* result = encoder.forward_late(compute_ctx_ref, input, nullptr, split);
+
+    struct ggml_cgraph* gf = ggml_new_graph_custom(compute_ctx_ref, vae_model_max_nodes(ctx->model), false);
+    ggml_build_forward_expand(gf, result);
+    if (getenv("VAE_LATE_STATS") != nullptr) {
+        static int dumps = 0;
+        if (dumps++ < 3) {
+            fprintf(stderr, "[VAE_LATE] slot=%d in=[%lld,%lld] arena=%.1f MB used=%.1f MB nodes=%d\n",
+                    slot, (long long)n_time_total, (long long)C,
+                    compute_buf_size_ref / 1e6, ggml_used_mem(compute_ctx_ref) / 1e6,
+                    ggml_graph_n_nodes(gf));
+        }
+    }
+    struct timespec b1, c0, c1;
+    clock_gettime(CLOCK_MONOTONIC, &b1);
+    clock_gettime(CLOCK_MONOTONIC, &c0);
+    if (ggml_graph_compute_with_ctx(compute_ctx_ref, gf,
+            n_threads_ovr > 0 ? n_threads_ovr : ctx->n_threads) != GGML_STATUS_SUCCESS) {
+        fprintf(stderr, "[VAE] Error: late graph compute failed\n"); return -1;
+    }
+    clock_gettime(CLOCK_MONOTONIC, &c1);
+    if (getenv("VAE_LATE_STATS") != nullptr) {
+        static int dumps = 0;
+        if (dumps++ < 6) {
+            fprintf(stderr, "[VAE_LATE] slot=%d t_pad=%lld C=%lld frames=%lld nthr=%d nodes=%d build=%.1f compute=%.1f used=%.1f MB\n",
+                    slot, (long long)t_pad, (long long)C, (long long)n_frames_want,
+                    n_threads_ovr > 0 ? n_threads_ovr : ctx->n_threads, ggml_graph_n_nodes(gf),
+                    (b1.tv_sec - start_time.tv_sec) * 1000.0 + (b1.tv_nsec - start_time.tv_nsec) / 1e6,
+                    (c1.tv_sec - c0.tv_sec) * 1000.0 + (c1.tv_nsec - c0.tv_nsec) / 1e6,
+                    ggml_used_mem(compute_ctx_ref) / 1e6);
+        }
+    }
+
+    const int64_t n_frames = result->ne[1];
+    const int64_t out_dim  = result->ne[0];
+    if (n_frames < n_frames_want) {
+        fprintf(stderr, "[VAE] Error: late frames %lld < want %lld\n",
+                (long long)n_frames, (long long)n_frames_want);
+        return -1;
+    }
+    memcpy(output, result->data, (size_t)(n_frames_want * out_dim) * sizeof(float));
+
+    if (inference_time_ms) {
+        clock_gettime(CLOCK_MONOTONIC, &end_time);
+        *inference_time_ms = (float)((end_time.tv_sec - start_time.tv_sec) * 1000.0 +
+                                     (end_time.tv_nsec - start_time.tv_nsec) / 1e6);
+    }
+    return (int32_t)n_frames_want;
+}
+
+int32_t vae_encode_early_cached(
+    vae_context_t* ctx,
+    vae_cache_t* cache,
+    const float* audio,
+    int32_t n_samples,
+    float* boundary_out,
+    int64_t bshape[4]) {
+
+    if (!cache) return -1;
+    return vae_encode_early_impl(ctx, ctx->model->acoustic_encoder, audio, n_samples,
+                                 boundary_out, bshape, &cache->acoustic, vae_late_split(), 0, nullptr);
+}
+
+int32_t vae_encode_late(
+    vae_context_t* ctx,
+    const float* boundary,
+    const int64_t bshape[4],
+    int64_t n_time_total,
+    float* output) {
+
+    return vae_encode_late_impl(ctx, ctx->model->acoustic_encoder, boundary, bshape,
+                                n_time_total, output, vae_late_split(), 0, nullptr);
+}
+
+// Both encoders' early stages for one piece, concurrently (one thread each).
+int32_t vae_encode_early_parallel_cached(
+    vae_context_t* ctx,
+    vae_cache_t* cache,
+    const float* audio,
+    int32_t n_samples,
+    float* ab, int64_t ashape[4],
+    float* sb, int64_t sshape[4],
+    float* acoustic_ms, float* semantic_ms) {
+
+    if (!ctx || !cache) return -1;
+    const int split = vae_late_split();
+    int32_t ra = -1, rs = -1;
+    std::thread ta([&]() {
+        ra = vae_encode_early_impl(ctx, ctx->model->acoustic_encoder, audio, n_samples,
+                                   ab, ashape, &cache->acoustic, split, 0, acoustic_ms, 1);
+    });
+    std::thread tb([&]() {
+        rs = vae_encode_early_impl(ctx, ctx->model->semantic_encoder, audio, n_samples,
+                                   sb, sshape, &cache->semantic, split, 1, semantic_ms, 1);
+    });
+    ta.join(); tb.join();
+    if (ra < 0 || rs < 0) {
+        fprintf(stderr, "[VAE] parallel early mismatch: acoustic=%d semantic=%d\n", ra, rs);
+        return -1;
+    }
+    return 0;
+}
+
+// Both encoders' late stages for one window, concurrently (one thread each).
+int32_t vae_encode_late_parallel(
+    vae_context_t* ctx,
+    const float* ab, const int64_t ashape[4],
+    const float* sb, const int64_t sshape[4],
+    int64_t n_time_total,
+    float* aout, float* sout,
+    float* acoustic_ms, float* semantic_ms) {
+
+    if (!ctx) return -1;
+    const int split = vae_late_split();
+    int32_t ra = -1, rs = -1;
+    std::thread ta([&]() {
+        ra = vae_encode_late_impl(ctx, ctx->model->acoustic_encoder, ab, ashape,
+                                  n_time_total, aout, split, 0, acoustic_ms, 1);
+    });
+    std::thread tb([&]() {
+        rs = vae_encode_late_impl(ctx, ctx->model->semantic_encoder, sb, sshape,
+                                  n_time_total, sout, split, 1, semantic_ms, 1);
+    });
+    ta.join(); tb.join();
+    if (ra < 0 || rs < 0) {
+        fprintf(stderr, "[VAE] parallel late mismatch: acoustic=%d semantic=%d\n", ra, rs);
+        return -1;
+    }
+    return (ra == rs) ? ra : -1;
 }
 
 int32_t vae_encode_acoustic(

@@ -426,6 +426,87 @@ int main(int argc, char ** argv) {
             // upstream cold-window parity). Pieces are 3200-multiples, so every
             // strided layer grid stays aligned and outputs tile exactly.
             vae_cache_reset(vcache);
+            // Deferred late stages are the DEFAULT: the early stages run
+            // piece-wise as usual (their activations are what the RAM budget
+            // allows) but write their boundary tensors into a window-sized
+            // buffer; the deep stages then run ONCE for the whole window, which
+            // turns the deep GEMVs into window-level GEMMs (measured on device:
+            // VAE 26.0 -> 24.2 s, RTF -5%, RSS unchanged, transcript differs by
+            // one proper-noun token). VAE_DEFER_LATE=0 restores the piece-wise
+            // path; VAE_LATE_SPLIT overrides the stage split (default 6).
+            const char * defer_env = getenv("VAE_DEFER_LATE");
+            const bool defer_late =
+                ((defer_env == nullptr) || (atoi(defer_env) > 0)) &&
+                // RAM-lean mode keeps its single shared arena (both encoders on
+                // slot 0, sequential), which the deferred path does not use, so
+                // VAE_SEQ_ENCODERS=1 falls back to the piece-wise encode.
+                (getenv("VAE_SEQ_ENCODERS") == nullptr);
+            if (defer_late) {
+                // Deferred late stages (VAE_DEFER_LATE=1): the early stages run
+                // piece-wise as usual (their activations are what the RAM budget
+                // allows) but write their boundary tensors into a window-sized
+                // buffer; the deep stages then run ONCE for the whole window,
+                // which turns the deep GEMVs into L=26 GEMMs and reads the deep
+                // weights once per window instead of once per piece. Equivalent
+                // by the cache invariant (piece-wise early == full window).
+                const size_t scratch_n = (size_t)piece_samples * 8 + 4096;
+                std::vector<float> asct(scratch_n), ssct(scratch_n);
+                std::vector<float> abnd, sbnd;
+                int64_t ashape[4] = {0,0,0,0}, sshape[4] = {0,0,0,0};
+                int64_t tpiece = 0, cch_a = 0, cch_s = 0;
+                for (int p = 0; p < params.vae_pieces; p++) {
+                    const float * piece = window.data() + p * piece_samples;
+                    float ac_ms = 0.0f, sem_ms = 0.0f;
+                    if (vae_encode_early_parallel_cached(vae_ctx, vcache, piece, piece_samples,
+                                                         asct.data(), ashape, ssct.data(), sshape,
+                                                         &ac_ms, &sem_ms) < 0) {
+                        fprintf(stderr, "window %d piece %d: early encode failed\n", w, p);
+                        return 1;
+                    }
+                    g_ac_ms += ac_ms; g_sem_ms += sem_ms;
+                    if (p == 0) {
+                        tpiece = ashape[0]; cch_a = ashape[1]; cch_s = sshape[1];
+                        // Boundary layout is [T, C] (time fastest, C = the
+                        // deepest stage's width); a shape without a clear time
+                        // axis would make the concatenation ambiguous, so fail
+                        // loudly instead of silently mis-tiling.
+                        if (tpiece <= 0 || ashape[0] * ashape[1] > (int64_t)scratch_n ||
+                            sshape[0] != ashape[0] || sshape[0] * sshape[1] > (int64_t)scratch_n ||
+                            cch_a <= tpiece || cch_s <= tpiece) {
+                            fprintf(stderr, "window %d: unexpected boundary shape a=[%lld,%lld] s=[%lld,%lld]\n",
+                                    w, (long long)ashape[0], (long long)ashape[1],
+                                    (long long)sshape[0], (long long)sshape[1]);
+                            return 1;
+                        }
+                        const int64_t T_total = tpiece * params.vae_pieces;
+                        abnd.assign((size_t)T_total * cch_a, 0.0f);
+                        sbnd.assign((size_t)T_total * cch_s, 0.0f);
+                    } else if (ashape[0] != tpiece || ashape[1] != cch_a || sshape[1] != cch_s) {
+                        fprintf(stderr, "window %d piece %d: boundary shape drift\n", w, p);
+                        return 1;
+                    }
+                    const int64_t T_total = tpiece * params.vae_pieces;
+                    // Strided tile: piece p's channel c row (tpiece contiguous
+                    // floats at c*tpiece) lands at offset c*T_total + p*tpiece.
+                    for (int64_t c = 0; c < cch_a; c++)
+                        memcpy(abnd.data() + (size_t)c * T_total + (size_t)p * tpiece,
+                               asct.data() + (size_t)c * tpiece, (size_t)tpiece * sizeof(float));
+                    for (int64_t c = 0; c < cch_s; c++)
+                        memcpy(sbnd.data() + (size_t)c * T_total + (size_t)p * tpiece,
+                               ssct.data() + (size_t)c * tpiece, (size_t)tpiece * sizeof(float));
+                }
+                float ac_ms = 0.0f, sem_ms = 0.0f;
+                int nfr = vae_encode_late_parallel(vae_ctx, abnd.data(), ashape,
+                                                   sbnd.data(), sshape,
+                                                   tpiece * params.vae_pieces,
+                                                   afe.data(), sfe.data(), &ac_ms, &sem_ms);
+                g_ac_ms += ac_ms; g_sem_ms += sem_ms;
+                if (nfr != FRAMES_PER_WINDOW) {
+                    fprintf(stderr, "window %d: late stages returned %d frames (want %d)\n",
+                            w, nfr, FRAMES_PER_WINDOW);
+                    return 1;
+                }
+            } else
             for (int p = 0; p < params.vae_pieces; p++) {
                 const float * piece = window.data() + p * piece_samples;
                 float * af = afe.data() + p * piece_frames * acoustic_dim;
