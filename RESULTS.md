@@ -26,7 +26,7 @@ runs the 10 s protocol clip pinned to the prime cores and prints `METRIC` lines.
 
 | tier | files | 10 s | 17 s | 69 s | 40-utt mean | WER | RSS |
 |---|---|---|---|---|---|---|---|
-| **max-speed (shipped)** | 2.3 GB | **3.18** | **2.88** | **3.21** | **3.28** | **4.68 %** | 2.30 GB |
+| **max-speed (shipped)** | 2.3 GB | **3.18** | **2.74** | **3.08** | **3.14** | **4.68 %** | 2.30 GB |
 | _max-speed, RAM-lean (`VAE_SEQ_ENCODERS=1`)_ | 2.0 GB | _4.01_ | — | — | — | 4.41 % | **1.91 GB** |
 | balanced (clean zh transcripts) | 1.9 GB | 4.44 | — | 4.64 | — | 4.82 % | 2.00 GB |
 | accuracy-first (VAE F16) | 2.5 GB | 5.35 | — | 5.62 | 6.58 | 4.55 % | 2.95 GB |
@@ -61,7 +61,7 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
 |---|---|
 | 40-utt LibriSpeech gate (on-device, shipped config, re-run after each change) | WER **4.68 %** (S=29 D=2 I=3) at the shipped p2+lifetime build, with 34/40 transcripts byte-identical to the previous 4.41 % gate; that gate's 6 differing utterances are the same six that any re-blocking of the deep stages moves (identical at p2 and p26, and to the split-5 experiment), and the zh protocol canary is byte-identical everywhere. The pre-change gate was 4.41 % (S=28 D=1 I=3, 40/40 identical) |
 | 69 s equal-token comparison | 3.43 vs 5.62 accuracy-first (−39 %), tokens 438 vs 442 |
-| sustained 138 s (frozen build) | RTF **3.45**, VAE 313.5 s, RSS flat 2.09 GB, no drift (halves-match 4.25 %, identical to earlier runs), majflt 0 |
+| sustained 138 s (frozen build) | RTF **3.14** (v3: p2 + lifetime allocator), VAE 271.9 s, RSS flat 2.31 GB over 47 windows, token count identical to the v2 run, majflt 0 |
 | determinism | repeated runs byte-identical, matching references from earlier builds |
 | output stability | byte-identical transcripts vs pre-change references on **every** clip used (10 s, 17 s, 69 s, 138 s halves, and 40/40 gate utterances) |
 | out-of-domain (20 s music) | RTF 2.97, sane `[Music]`+lyrics output, no pathological loops |
