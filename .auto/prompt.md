@@ -818,6 +818,16 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp544 (diagnostic, hardware envelope): the pinned primes are HARD-CAPPED at
+  1.3 GHz (54% of the 2.4 GHz rating) - constant under load, spin, and idle;
+  the A55 cluster is not capped (0.5-2.0 GHz). Governor/max-freq nodes are
+  SELinux-blocked and forcing a perf mode would be benchmark-gaming (not done).
+  Consequence for the peak math: at 1.3 GHz the LM prefill is at ~90% of the
+  achievable int8 rate (nothing left) and the VAE's FFN at ~15%
+  (shape-limited => 3rdparty). Also explains why the A55s are unusable despite
+  not being clock-capped: every multi-threaded op barrier-waits for the slowest
+  thread (the -t4/F0 +63% disaster), and the only coarse-grained parallelism is
+  the two encoder chains, already on the primes.
 - Exp543 (KEEP, robustness): COLD-CACHE first run (page cache evicted by writing
   and deleting a 4.2 GB file - no root needed): RTF 3.4713 (identical to the warm
   band), VAE/LM unchanged, load_s 1.4 -> 3.0 s (excluded from RTF). The headline
