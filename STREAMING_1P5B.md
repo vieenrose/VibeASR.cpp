@@ -332,11 +332,13 @@ so that gate transfers unchanged; together with the shipped tier's 40/40
 byte-identical gate transcripts, every tier's accuracy number is valid for the
 current kernels without a fresh 40-minute gate per tier.
 
-**Sustained long-form check (Exp515):** a 138 s clip (the
-69 s chat concatenated with itself) runs at RTF **3.90** with RSS flat at
-1.92 GB (+14 MB over 9 minutes, majflt 0) and the two halves of the transcript
-matching at 4.25% WER - i.e. no thermal cliff, no memory growth, and no context
-drift over 18 chunks with a growing LM history. `--xwin` (cross-window VAE carry) is ~8% faster on short
+**Sustained long-form check (Exp515 pre-, Exp526 post-concurrency):** a 138 s
+clip (the 69 s chat concatenated with itself) runs at RTF **3.52** (was 3.90
+sequentially) with RSS flat at 2.09 GB (+165 MB for the concurrent encoders'
+second arena, no growth over 8 minutes, majflt 0) and the two halves of the
+transcript matching at 4.25% WER - identical to the pre-concurrency run, i.e.
+no thermal cliff, no memory growth, no context drift, and no threading
+instability over 36 chunks / 72 parallel encoder launches. `--xwin` (cross-window VAE carry) is ~8% faster on short
 clips but drifts (+11.5% WER) on 69 s — shorts-only opt-in, legacy windows
 default. The VAE runs at ~50% of DRAM roofline (Exp75: 72% of time in GEMM
 kernels, fusion ceiling ≈1.2×); remaining kernel upside needs fused NEON

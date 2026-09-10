@@ -34,8 +34,9 @@ MODEL ARTIFACTS: models-streaming/vae-encoder-q4x4ffn.gguf (converter outtype
   Q4_0_4_4); both pushed to /data/local/tmp/vibeasr.
 
 ## Metrics
-- Sustained reference (Exp515, shipped tier, 138 s clip): RTF 3.9046, RSS
-  1923.9 MB flat, halves-match WER 4.25% (no drift over 18 chunks).
+- Sustained reference (Exp526, shipped tier + concurrent encoders, 138 s clip):
+  RTF 3.5205, RSS 2088.9 MB flat, halves-match WER 4.25% (no drift over 36
+  chunks / 72 parallel launches). Pre-concurrency was 3.9046 @ 1923.9 MB.
 
 - **Primary**: `rtf` (unitless, lower is better) — generation time (VAE+LM,
   `load:` EXCLUDED by harness construction) / audio duration on the phone,
@@ -814,6 +815,11 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp526 (KEEP, soak): 138 s at the shipped config: RTF 3.5205 (-9.8% vs
+  pre-concurrency 3.9046), halves-match WER 4.25% identical, RSS flat 2.09 GB.
+  Side analysis: F16 conv matmuls are on ggml's non-blocked path (blck_1 = 16
+  row tiles re-read the weights per tile), but p13-vs-p26 (which doubles the
+  re-read count) moves RTF by ~1% => conv-int8 (the fix) stays LOW priority.
 - Exp525 (KEEP, final validation): full 40-utt gate at the SHIPPED config
   (concurrent encoders): WER 4.41% (S=28 D=1 I=3) with ALL 40 transcripts
   BYTE-IDENTICAL to the sequential gate; mean RTF 3.9113 vs 4.4745 = -12.6%.
