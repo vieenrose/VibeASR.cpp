@@ -1277,6 +1277,16 @@ static int32_t vae_encode_early_impl(
         compute_buf_ref = grown; compute_buf_size_ref = vae_ctx_mem_size;
     }
     struct ggml_init_params ctx_params = { compute_buf_size_ref, compute_buf_ref, false };
+    // Diagnostic: the arena is reused across pieces, so a systematic
+    // cache-set/aliasing interaction between the packed activation tensors
+    // would show up as a base-address dependence. VAE_ARENA_OFFSET shifts the
+    // ggml buffer base by N bytes (default 0 = shipped behaviour).
+    size_t arena_off = 0;
+    if (const char* e = getenv("VAE_ARENA_OFFSET")) arena_off = (size_t)strtoull(e, nullptr, 0);
+    if (arena_off > 0 && compute_buf_size_ref > arena_off + 1024 * 1024) {
+        ctx_params.mem_buffer = (char*)compute_buf_ref + arena_off;
+        ctx_params.mem_size = compute_buf_size_ref - arena_off;
+    }
     if (compute_ctx_ref) ggml_free(compute_ctx_ref);
     compute_ctx_ref = ggml_init(ctx_params);
 
