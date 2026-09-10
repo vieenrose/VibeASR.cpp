@@ -818,6 +818,9 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp546 (KEEP, stability): 17 s at the frozen build: 3.0665, transcript
+  byte-identical to the pre-concurrency reference. Every deliverable clip is now
+  transcript-verified (10 s, 17 s, 69 s, 138 s halves, 40/40 gate utts).
 - Exp545 (KEEP, integrity + health): shipped hashes refreshed after OMP-off
   (asr_streaming 0371eb80, libggml.so 6ce4c983, libllama.so 92ad2456; device
   verified identical). A55 option closed by arithmetic: A55 int8 ~16 GMAC/s at
