@@ -68,7 +68,7 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
 | input formats / cold start | 48 kHz stereo handled (one word differs); after evicting the page cache the RTF is unchanged (3.4713) and only the load grows (1.4 → 3.0 s, excluded from RTF) |
 | CPU utilisation | 1.88 of 2 pinned cores (94 %) — the pipeline is saturated |
 | hardware envelope (Exp544) | the two pinned A78 primes are **hard-capped at 1.3 GHz** (54 % of their 2.4 GHz rating) regardless of load — all numbers are the device's sustained, power-capped behaviour. At that clock the LM prefill runs at ~90 % of the achievable int8 rate; the VAE's FFN at ~15 % (shape-limited: L=50 columns in the deep stages, short contractions in the early ones) |
-| reproducibility | artifacts bit-exact; documented build+measure recipe verified from a clean build tree |
+| reproducibility | artifacts bit-exact; a clean-tree rebuild reproduces the shipped binaries **byte-for-byte** (asr_streaming `0371eb80`, libggml `6ce4c983`, libllama `92ad2456`) |
 
 ## What moved the needle (five waves, −71 %)
 
@@ -112,6 +112,8 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
 - **Fusions**: the fork's fused `mul_mat_add`/`add_scaled` ops are I8_S-only and
   output int8; folding layer scales into weights saves ~1 %; F16 activations are
   blocked because `mul_mat`'s output type is F32-hardcoded.
+- **Security hardening**: disabling `-fstack-protector-strong`/`-D_FORTIFY_SOURCE=2`
+  buys nothing (Exp549: 3.5028, in-band) — the shipped build keeps them.
 - **Codegen**: PGO re-tested properly (protocol-trained, push fixed) = 0 %;
   ThinLTO's earlier null stands on a valid basis now; the compiler axis is closed.
 - **Quality ceiling**: RTF < 1 on this phone class needs retraining (QAT INT8 VAE

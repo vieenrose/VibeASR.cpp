@@ -818,6 +818,12 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp549 (diagnostic, closed honestly): disabling the NDK hardening flags
+  (-fno-stack-protector -U_FORTIFY_SOURCE, verified to take effect) gives NO
+  gain (3.5028, in-band) => the shipped build keeps the security flags.
+  BONUS: a clean-tree rebuild (rm -rf build-android && setup.sh) reproduces the
+  shipped binaries BIT-IDENTICALLY (0371eb80/6ce4c983/92ad2456) - provenance is
+  byte-level.
 - Exp548 (KEEP, diarization smoke test): first attribution evidence. Two-speaker
   synthetic clips: (a) separated (0.5 s gap) - ALL tiers label one speaker, i.e.
   a model behaviour, not quantization; (b) overlapped - the shipped quantized
