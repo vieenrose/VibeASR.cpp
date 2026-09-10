@@ -10,6 +10,15 @@ LM_FILE=${LM_FILE:-streaming-lm-q4_k_m.gguf}
 
 cmake --build build-android --target asr_streaming -j20 > .auto/last_build.log 2>&1 || { tail -n 20 .auto/last_build.log; exit 1; }
 adb -s $DEV push build-android/bin/asr_streaming $RDIR/ > /dev/null 2>&1 || exit 1
+# The binary is dynamically linked against libggml/libllama: pushing only the
+# executable silently leaves a stale ggml on the device, so any ggml-side change
+# (ARCH_FLAGS, quant kernels) measures the OLD kernels. Push libs when they differ.
+for L in 3rdparty/llama.cpp/ggml/src/libggml.so 3rdparty/llama.cpp/src/libllama.so; do
+  B=build-android/$L; [ -f "$B" ] || continue
+  M=$(md5sum "$B" | awk '{print $1}')
+  D=$(adb -s $DEV shell "md5sum $RDIR/$(basename $B) 2>/dev/null" | awk '{print $1}' | tr -d '\r')
+  [ "$D" = "$M" ] || { echo "pushing $(basename $B) (was stale)"; adb -s $DEV push "$B" $RDIR/ > /dev/null 2>&1 || exit 1; }
+done
 adb -s $DEV push .auto/bench_device.sh $RDIR/ > /dev/null 2>&1 || exit 1
 
 adb -s $DEV shell "LM_FILE=${LM_FILE:-streaming-lm-q4_k_m.gguf} VAE_FILE=${VAE_FILE:-vae-encoder-f16.gguf} MASK=${MASK:-C0} THREADS=${THREADS:-2} sh $RDIR/bench_device.sh stream_10s_24k.wav ${THREADS:-2} ${PIECES:-13} loop" > .auto/last_run.txt 2>&1 || exit 1
