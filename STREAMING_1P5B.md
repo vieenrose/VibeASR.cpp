@@ -176,6 +176,7 @@ everything else stays F16.
 | fast: VAE F16 + LM Q4_0_4x4 | 2.5 GB | 5.13 | 4.54 | 5.86 | 4.82 | 5.10% | 2.88 GB |
 | max-speed: VAE Q4_0_4x4-FFN + LM Q4_0_4x4 | 1.9 GB | **4.26**\* | **3.76**\* | **4.77** | **4.05** | 5.10% | **2.05 GB** |
 | ultra-lean (plain Q4-FFN + 26 pieces) | 1.6 GB | 6.61 | — | — | — | 5.23% | 1.97 GB |
+| **balanced-lean (Q4_0_4x4-FFN + 26 pieces)** | 1.9 GB | 5.21 | — | — | 4.94 | — | **1.98 GB** |
 | Q8-mixed VAE (history) | 1.9 GB | 6.14 | — | 6.71 | 5.76 | 4.55% | 2.44 GB |
 | _pre-A78 F16 (history)_ | 2.5 GB | _10.5_ | — | — | _9.73_ | 4.13% (desktop) | 2.99 GB |
 
@@ -186,6 +187,13 @@ one where its output length matches (444 vs 442-443), so **4.05 (−28%) is the
 headline speed claim** for the max-speed tier. The balanced tier (4x4 VAE +
 Q4_K_M LM) does not truncate (46/45, 69/68) and is the best all-round tier:
 −14% RTF for +0.27 pp WER.
+
+The **balanced-lean** variant (`--vae-pieces 26` on the same files) trades
++1% (10 s) / +2.4% (69 s) RTF for −180 MB RSS at *identical* transcripts — the
+4 GB-device option, and a strict upgrade over the old ultra-lean tier
+(6.61 @ 1.97 GB). VAE granularity is otherwise closed: 13 pieces remains the
+time-optimal split, and the reason 26 is now nearly free is that the 4x4
+weights are 4x smaller, so extra launches no longer pay weight-traffic.
 
 Against the original baseline (12.24) the max-speed tier is **−65%**; against
 the pre-A78 loop best (6.52) it is −35%. The balanced tier dominates the fast
