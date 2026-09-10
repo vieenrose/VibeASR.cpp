@@ -117,13 +117,51 @@ Three findings re-opened the loop after it had converged at 6.52:
 PGO was re-tested properly after the push fix (Exp471: protocol-trained,
 instrumented train/use cycle) and gives **0%** — the codegen axis is saturated.
 
+### Third wave: LM blocked-int8 kernels (Exp476-477, 6.01 → 5.13)
+
+The LM used 29% of the time and was **not** compute-bound: this fork's
+`ggml.c` dispatches to blocked `gemv`/`gemm` kernels only when the *weight
+type* carries them, and `Q4_K_M`/plain `Q4_0` carry `vec_dot` only — so every
+prefill re-streamed the 1.1 GB weight set **once per input row** (a 26-frame
+window ≈ 29 GB of traffic). `GGML_TYPE_Q4_0_4_4` ships hand-written asm
+gemv/gemm kernels (160 `sdot`/`udot`, guarded by `__aarch64__`+`__ARM_NEON`,
+so they run **without** i8mm — unlike the 8x8 variant which needs
+`__ARM_FEATURE_MATMUL_INT8` and is unusable on this SoC).
+
+Re-quantising the LM to `Q4_0_4_4` (`llama-quantize --allow-requantize …
+Q4_0_4_4`, 1.3 s on the host) gives, at **equal output length** (69 s clip,
+443 vs 442 tokens):
+
+* RTF 4.8179 vs 5.6089 (**−14.1%**), LM 76.6 s vs 130.6 s (**−41%**):
+  prefill 29.2 vs 68.8 (−58%), decode 47.4 vs 61.7 (−23%).
+* Control that isolates the mechanism: plain `Q4_0` (same 4.5 bpw, no blocked
+  kernels) = LM 17.2 s, i.e. identical to `Q4_K_M` — the win is the kernel
+  path, not the bit width.
+* 40-utt on-device gate: **WER 5.10%** (S=31 D=2 I=4) vs 4.55% (S=27 D=1 I=4)
+  for `Q4_K_M` = **+0.55 pp**; paired text diff 2.34%, 15/40 utts differ.
+  The `Q4_0_4x4` quantizer uses symmetric absmax (`d = amax/8`) instead of
+  plain `Q4_0`'s asymmetric min/max, which is where the extra error comes from
+  (`ggml-aarch64.c`, 3rdparty).
+* Caveat: on the 10 s zh protocol clip the fast LM emitted 37 tokens vs 45
+  (content truncated) — the 10 s RTF ratio (5.13 vs 6.01) therefore flatters
+  itself by generating fewer tokens; quote the 69 s equal-length number.
+
+**Two shipping tiers** (both on-device gated, both 10 s protocol at `-t 2`/C0):
+
+| tier | files | 10 s | 17 s | 69 s | peak RSS | 40-utt WER |
+|---|---|---|---|---|---|---|
+| **accuracy-first (VAE F16 + LM Q4_K_M)** | 2.5 GB | **6.01** | 5.23 | 5.61 | 2.99 GB | **4.55%** |
+| **fast (VAE F16 + LM Q4_0_4x4)** | 2.5 GB | **5.13** | — | **4.82** | 2.88 GB | 5.10% |
+| low-RAM (VAE Q4-FFN) | 1.6 GB | 6.48 | — | — | 2.16 GB | 5.23% (pre-A78) |
+| ultra-lean (Q4-FFN + 26 pieces) | 1.6 GB | 6.61 | — | — | 1.97 GB | 5.23% (pre-A78) |
+
 | tier | files | phone RTF (10 s / 17 s / 69 s) | phone peak RSS | WER |
 |---|---|---|---|---|
-| **leader (VAE F16 + LM Q4_K_M, A78 build)** | **2.5 GB** | **6.02 / 5.23 / 5.62** | **2.99 GB** | **4.55% (40-utt on-device), 2.06% vs PT-ref** |
-| recommended-old (VAE Q8-mixed, A78 build) | 1.9 GB | 6.14 / — / 5.76 | 2.44 GB | 4.55% (40-utt on-device) |
+| accuracy-first (VAE F16 + LM Q4_K_M, A78 build) | 2.5 GB | 6.02 / 5.23 / 5.62 | 2.99 GB | 4.55% (40-utt on-device), 2.06% vs PT-ref |
+| Q8-mixed VAE (A78 build) | 1.9 GB | 6.14 / — / 5.76 | 2.44 GB | 4.55% (40-utt on-device) |
 | min-size (VAE Q4-FFN, A78 build) | 1.6 GB | 6.48 / — / — | 2.16 GB | 5.23% (40-utt, pre-A78) |
 | ultra-lean (Q4-FFN + 26 pieces, A78 build) | 1.6 GB | 6.61 / — / — | 1.97 GB | 5.23% (40-utt, pre-A78) |
-| _pre-A78 F16 (for reference)_ | 2.5 GB | _10.5 / — / 9.73_ | 2.99 GB | 4.13% (desktop 40-utt), 3.3% (69 s) |
+| _pre-A78 F16 (history)_ | 2.5 GB | _10.5 / — / 9.73_ | 2.99 GB | 4.13% (desktop 40-utt), 3.3% (69 s) |
 
 40-utt gates above are **on-device** (`.auto/eval40.sh` + `.auto/score_hyp.py`,
 hyp sets in `eval-librispeech/hyp-{a78,f16a78}/`) because a codegen gate must run

@@ -11,6 +11,17 @@ Baseline (original protocol): RTF ~12.4-13.3 on the 10 s slice.
 Goal direction: as far below baseline as honest engineering goes (RTF < 1 is
 believed unreachable without retraining; do NOT chase it by cheating).
 
+## Current bands (A78 codegen build, 10 s protocol, -t2/C0, pieces 13)
+| tier | env | band | readings |
+|---|---|---|---|
+| F16 leader | `VAE_FILE=vae-encoder-f16.gguf` | 6.01-6.04 | 6.0097/6.0352/6.0201/6.0378/6.0301/5.9593 |
+| Q8 anchor | `VAE_FILE=vae-encoder-q8_0mixed.gguf` | 6.12-6.15 | 6.1204/6.1520/6.1659 |
+| Q4 | `VAE_FILE=vae-encoder-q4ffn.gguf` | ~6.48 | 6.4776 |
+| ultra-lean | `VAE_FILE=vae-encoder-q4ffn.gguf PIECES=26` | ~6.61 | 6.6066 |
+Old-build bands (6.49-6.59 Q8, 10.5 F16, 6.81 Q4, 7.06 ultra-lean) are DEAD.
+Non-protocol clips on the leader: 17 s 5.2297, 69 s 5.6225, slice-B 6.1437,
+40-utt mean 6.5823, mean RSS 2.99 GB (F16) - alarm only above 3.5 GB.
+
 ## Metrics
 - **Primary**: `rtf` (unitless, lower is better) — generation time (VAE+LM,
   `load:` EXCLUDED by harness construction) / audio duration on the phone,
@@ -778,6 +789,29 @@ train/use cycle (tested, no gain; kept for reproducibility).
   => -7.7% on longs CONFIRMED. Transcript NOT codegen-invariant (19 diff
   tokens/~700): wider vectors change partial-sum order, LM amplifies over
   24 chunks => WER gate mandatory for codegen changes (use eval40.sh).
+- Exp476-477 (KEEP, third wave): LM Q4_0_4x4 = blocked int8 kernel path.
+  MEASURED: the fork's ggml dispatches gemv/gemm ONLY for types that carry
+  them; Q4_K_M/plain Q4_0 have vec_dot only, so the 26-row prefill re-streamed
+  the 1.1 GB weight set once per row (~29 GB/window). Q4_0_4x4 has dotprod asm
+  gemv/gemm (160 sdot; NEON-only guard, no i8mm needed - the 8x8 variant DOES
+  need __ARM_FEATURE_MATMUL_INT8 and is unusable on this SoC).
+  69 s equal-token (443 vs 442): RTF 4.8179 vs 5.6089 = -14.1%, LM -41%
+  (prefill -58%, decode -23%). Control: plain Q4_0 (same bpw, no blocked
+  kernels) = LM 17.2 s = no change => the win is the kernel path.
+  40-utt gate: WER 5.10% (S=31 D=2 I=4) vs 4.55% = +0.55 pp (paired text diff
+  2.34%, 15/40 utts differ). Cause: the 4x4 quantizer uses symmetric absmax
+  (d = amax/8) vs plain Q4_0's asymmetric min/max (ggml-aarch64.c, 3rdparty).
+  CAVEAT: on the 10 s zh clip the fast LM writes 37 tokens vs 45 (truncated)
+  => its 10 s RTF (5.13) flatters itself by decoding less; quote the 69 s
+  equal-length number for the speed claim. Tier status: opt-in FAST tier
+  (validated), accuracy-first leader stays VAE F16 + LM Q4_K_M.
+  Artifact: lm-q4_0_4_4.gguf in models-streaming + on device; produced with
+  llama-quantize --allow-requantize <q4_k_m> <out> Q4_0_4_4 (1.3 s).
+- VAE note for the next wave: the VAE's linears are prefill-like (batch 2) and
+  dequant/instruction-bound (F16 42.3 s vs Q4 47.4 s) - a Q4_0_4x4 VAE would
+  put them on the same sdot gemv path, but convert_vae_to_gguf.py must
+  implement the interleaved layout itself (llama-quantize on the VAE gguf
+  fails on depthwise conv tensors). Parked in ideas.md with the recipe.
 - Exp464-473 (re-baseline + second wave): Q4 6.48, ultra-lean 6.61, F16 6.01/6.04
   (old bands 6.81/7.06/10.5 all dead - A78 build). F16 turned out the new leader
   because the f16 path was instruction-bound pre-A78 (see Exp466). F16 69s 5.62
