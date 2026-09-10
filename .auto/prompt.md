@@ -14,13 +14,22 @@ believed unreachable without retraining; do NOT chase it by cheating).
 ## Current bands (A78 codegen build, 10 s protocol, -t2/C0, pieces 13)
 | tier | env | band | readings |
 |---|---|---|---|
-| F16 leader | `VAE_FILE=vae-encoder-f16.gguf` | 6.01-6.04 | 6.0097/6.0352/6.0201/6.0378/6.0301/5.9593 |
+| F16 accuracy-first | `VAE_FILE=vae-encoder-f16.gguf` | 6.01-6.04 | 8 readings, mean 6.023 |
+| BALANCED | `VAE_FILE=vae-encoder-q4x4ffn.gguf` | ~5.14 | 5.1411 (Exp480) |
+| FAST-LM | `VAE_FILE=vae-encoder-f16.gguf LM_FILE=lm-q4_0_4x4.gguf` | ~5.13 | 5.1348 (tokens 37 on this clip - truncated) |
+| MAX-SPEED | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q4_0_4x4.gguf` | ~4.26 | 4.2576 (tokens 40 on this clip) |
 | Q8 anchor | `VAE_FILE=vae-encoder-q8_0mixed.gguf` | 6.12-6.15 | 6.1204/6.1520/6.1659 |
 | Q4 | `VAE_FILE=vae-encoder-q4ffn.gguf` | ~6.48 | 6.4776 |
 | ultra-lean | `VAE_FILE=vae-encoder-q4ffn.gguf PIECES=26` | ~6.61 | 6.6066 |
 Old-build bands (6.49-6.59 Q8, 10.5 F16, 6.81 Q4, 7.06 ultra-lean) are DEAD.
-Non-protocol clips on the leader: 17 s 5.2297, 69 s 5.6225, slice-B 6.1437,
-40-utt mean 6.5823, mean RSS 2.99 GB (F16) - alarm only above 3.5 GB.
+69 s equal-token: accuracy-first 5.6089 / balanced 4.8228 / max-speed 4.046.
+40-utt mean RTF: 6.5823 / 5.6523 / 4.7689. WER: 4.55% / 4.82% / 5.10%.
+RSS: 2.99 / 2.16 / 2.05 GB. Both 4x4 tiers use ~1.9 GB of model files.
+NOTE: the 10 s protocol clip truncates under lm-q4_0_4x4 (37-40 tokens vs 45) -
+quote 69 s equal-token numbers for the 4x4-LM tiers' speed claims.
+MODEL ARTIFACTS: models-streaming/vae-encoder-q4x4ffn.gguf (converter outtype
+  q4_0_4x4_ffn) and lm-q4_0_4_4.gguf (llama-quantize --allow-requantize ...
+  Q4_0_4_4); both pushed to /data/local/tmp/vibeasr.
 
 ## Metrics
 - **Primary**: `rtf` (unitless, lower is better) — generation time (VAE+LM,
@@ -789,6 +798,17 @@ train/use cycle (tested, no gain; kept for reproducibility).
   => -7.7% on longs CONFIRMED. Transcript NOT codegen-invariant (19 diff
   tokens/~700): wider vectors change partial-sum order, LM amplifies over
   24 chunks => WER gate mandatory for codegen changes (use eval40.sh).
+- Exp480-483 (KEEP, fourth wave): VAE `ffn.linear` (104 tensors, ~82% of VAE
+  file bytes) -> GGML_TYPE_Q4_0_4x4 via a new converter outtype `q4_0_4x4_ffn`
+  (numpy port of quantize_q4_0_nr_bl + make_block_q4_0x4 xor 0x88; weight
+  quantizer is the standard per-row Q4_0, only the packing is interleaved).
+  VAE 42.7 -> 34.0 s (-20.4%); RTF 6.00 -> 5.14; RSS 2.99 -> 2.16 GB; load
+  1.6 s. vs the plain-Q4_0 VAE tier (VAE 47.4 s) = -28% => kernel path again.
+  40-utt on-device gate: WER 4.82% (S=29 D=2 I=4) vs 4.55% = +0.27 pp (best
+  trade of the loop). 69 s: RTF 4.8228, tokens 435 (vs 442), RSS flat.
+  max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
+  (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
+  RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
 - Exp476-477 (KEEP, third wave): LM Q4_0_4x4 = blocked int8 kernel path.
   MEASURED: the fork's ggml dispatches gemv/gemm ONLY for types that carry
   them; Q4_K_M/plain Q4_0 have vec_dot only, so the 26-row prefill re-streamed
