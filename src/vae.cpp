@@ -1071,6 +1071,15 @@ static int32_t vae_encode_impl(
             std::string key = ggml_op_name(node->op);
             if (node->op == GGML_OP_MUL_MAT && node->src[0]) {
                 key += std::string("/") + ggml_type_name(node->src[0]->type);
+                if (getenv("VAE_MMSHAPES") != nullptr) {
+                    const struct ggml_tensor* a = node->src[0];
+                    const struct ggml_tensor* b = node->src[1];
+                    fprintf(stderr, "[MMSHAPE] %-8s a=[%lld,%lld,%lld,%lld] b=[%lld,%lld,%lld,%lld] dst=[%lld,%lld,%lld,%lld]\n",
+                            ggml_type_name(a->type),
+                            (long long)a->ne[0], (long long)a->ne[1], (long long)a->ne[2], (long long)a->ne[3],
+                            (long long)b->ne[0], (long long)b->ne[1], (long long)b->ne[2], (long long)b->ne[3],
+                            (long long)node->ne[0], (long long)node->ne[1], (long long)node->ne[2], (long long)node->ne[3]);
+                }
             }
             auto& e = by_op[key];
             e.bytes += b; e.count += 1; e.macs += macs;
