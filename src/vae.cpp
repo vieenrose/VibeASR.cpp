@@ -790,13 +790,42 @@ vae_model_t* vae_load_model_from_file(
             if (base != MAP_FAILED) {
                 bool ok = true;
                 madvise(base, (size_t) st.st_size, MADV_WILLNEED);
+                struct CopyJob { struct ggml_tensor* t; size_t off; size_t sz; };
+                std::vector<CopyJob> jobs;
+                jobs.reserve(n_tensors);
+                size_t total_bytes = 0;
                 for (int i = 0; i < n_tensors; i++) {
                     const char* name = gguf_get_tensor_name(gguf_ctx, i);
                     struct ggml_tensor* tensor = model->tensors[name];
                     size_t offset = data_offset + gguf_get_tensor_offset(gguf_ctx, i);
                     size_t tensor_size = ggml_nbytes(tensor);
                     if (offset + tensor_size > (size_t) st.st_size) { ok = false; break; }
-                    ggml_backend_tensor_set(tensor, (const char*) base + offset, 0, tensor_size);
+                    jobs.push_back({tensor, offset, tensor_size});
+                    total_bytes += tensor_size;
+                }
+                if (ok && !jobs.empty()) {
+                    // Parallel copy: the mmap page-cache -> arena memcpy is the
+                    // whole cost of the load phase (0.4-1.4 GB) and is trivially
+                    // parallel over tensors; a tensor straddling a worker's
+                    // byte range may be copied twice, which is idempotent.
+                    const int nworkers = 4;
+                    std::vector<std::thread> th;
+                    th.reserve(nworkers);
+                    for (int w = 0; w < nworkers; w++) {
+                        th.emplace_back([&, w]() {
+                            const size_t begin = total_bytes * (size_t) w / (size_t) nworkers;
+                            const size_t end   = total_bytes * (size_t)(w + 1) / (size_t) nworkers;
+                            size_t acc = 0;
+                            for (const CopyJob& j : jobs) {
+                                if (acc >= end) break;
+                                if (acc + j.sz > begin) {
+                                    ggml_backend_tensor_set(j.t, (const char*) base + j.off, 0, j.sz);
+                                }
+                                acc += j.sz;
+                            }
+                        });
+                    }
+                    for (auto& x : th) x.join();
                 }
                 munmap(base, (size_t) st.st_size);
                 loaded = ok;
