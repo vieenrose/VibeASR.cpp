@@ -1236,7 +1236,14 @@ static int32_t vae_encode_impl(
 // exactly the legacy cold-window semantics the cache reproduces piece-wise.
 // ============================================================================
 static int vae_late_split(void) {
-    int split = 6;  // shipped default: only the deepest stage is deferred
+    // Shipped default: only the deepest stage is deferred. Split 5 was measured
+    // (Exp565, 40-utt gate) at RTF -0.9% / VAE -1.4% but WER 4.41 -> 4.68%
+    // (+0.27 pp, 34/40 transcripts identical), i.e. a net loss for the
+    // recommended tier whose contract is "fastest acceptable accuracy"; it stays
+    // an option (VAE_LATE_SPLIT=5). Splits <= 4 are additionally blocked by the
+    // arena holding every tensor live (a 256 MiB single allocation at split 4):
+    // they need the lifetime-based allocator project, not numerical work.
+    int split = 6;
     if (const char* e = getenv("VAE_LATE_SPLIT")) {
         int v = atoi(e);
         if (v >= 0 && v <= 7) split = v;
@@ -1379,8 +1386,15 @@ static int32_t vae_encode_late_impl(
     }
 
     // The late graph is tiny next to the early one (its activations are the
-    // deep stages'), so this never grows the arena after an early pass.
-    const size_t vae_ctx_mem_size = (size_t)128 * 1024 * 1024;
+    // deep stages'), so this never grows the arena after an early pass, except
+    // for deeper splits where the window-level stages get large (VAE_LATE_SPLIT
+    // experiments). VAE_LATE_ARENA_MB overrides the budget.
+    size_t late_arena = (size_t)128 * 1024 * 1024;
+    if (const char* e = getenv("VAE_LATE_ARENA_MB")) {
+        long v = atol(e);
+        if (v > 0) late_arena = (size_t)v * 1024 * 1024;
+    }
+    const size_t vae_ctx_mem_size = late_arena;
     if (compute_buf_size_ref < vae_ctx_mem_size) {
         void* grown = realloc(compute_buf_ref, vae_ctx_mem_size);
         if (grown == NULL) { fprintf(stderr, "[VAE] Error: late arena alloc failed\n"); return -1; }

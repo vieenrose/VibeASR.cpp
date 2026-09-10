@@ -449,7 +449,7 @@ int main(int argc, char ** argv) {
                 // which turns the deep GEMVs into L=26 GEMMs and reads the deep
                 // weights once per window instead of once per piece. Equivalent
                 // by the cache invariant (piece-wise early == full window).
-                const size_t scratch_n = (size_t)piece_samples * 8 + 4096;
+                const size_t scratch_n = (size_t)piece_samples * 128 + 4096;
                 std::vector<float> asct(scratch_n), ssct(scratch_n);
                 std::vector<float> abnd, sbnd;
                 int64_t ashape[4] = {0,0,0,0}, sshape[4] = {0,0,0,0};
@@ -466,13 +466,14 @@ int main(int argc, char ** argv) {
                     g_ac_ms += ac_ms; g_sem_ms += sem_ms;
                     if (p == 0) {
                         tpiece = ashape[0]; cch_a = ashape[1]; cch_s = sshape[1];
-                        // Boundary layout is [T, C] (time fastest, C = the
-                        // deepest stage's width); a shape without a clear time
-                        // axis would make the concatenation ambiguous, so fail
-                        // loudly instead of silently mis-tiling.
-                        if (tpiece <= 0 || ashape[0] * ashape[1] > (int64_t)scratch_n ||
-                            sshape[0] != ashape[0] || sshape[0] * sshape[1] > (int64_t)scratch_n ||
-                            cch_a <= tpiece || cch_s <= tpiece) {
+                        // Boundary layout is [T, C] (time fastest; the stage-level
+                        // cont(permute(1,0,2,3)) guarantees ne0 = time). Only the
+                        // per-encoder shape agreement and the scratch fit are
+                        // checked here; C can be smaller than T for deep splits.
+                        if (tpiece <= 0 || cch_a <= 0 || cch_s <= 0 ||
+                            ashape[0] * ashape[1] > (int64_t)scratch_n ||
+                            sshape[0] != ashape[0] ||
+                            sshape[0] * sshape[1] > (int64_t)scratch_n) {
                             fprintf(stderr, "window %d: unexpected boundary shape a=[%lld,%lld] s=[%lld,%lld]\n",
                                     w, (long long)ashape[0], (long long)ashape[1],
                                     (long long)sshape[0], (long long)sshape[1]);
