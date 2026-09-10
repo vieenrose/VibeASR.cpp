@@ -17,7 +17,7 @@ believed unreachable without retraining; do NOT chase it by cheating).
 | F16 accuracy-first | `VAE_FILE=vae-encoder-f16.gguf` | 6.01-6.04 | 8 readings, mean 6.023 |
 | BALANCED | `VAE_FILE=vae-encoder-q4x4ffn.gguf` | ~5.14 | 5.1411 (Exp480) |
 | FAST-LM v2 | `VAE_FILE=vae-encoder-f16.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) | ~5.21 | 5.2138 (tokens 42), WER 4.41% |
-| MAX-SPEED v2 | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) | ~4.24 | 4.2436 (tokens 39); 40-utt mean 4.7396, WER 4.41%; Pareto-dominates accuracy-first |
+| MAX-SPEED v2 | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) | 4.24-4.29 | 4.2436/4.2866 (n=2, tokens 39); 40-utt mean 4.7396, WER 4.41%; Pareto-dominates accuracy-first |
 | Q8 anchor | `VAE_FILE=vae-encoder-q8_0mixed.gguf` | 6.12-6.15 | 6.1204/6.1520/6.1659 |
 | Q4 | `VAE_FILE=vae-encoder-q4ffn.gguf` | ~6.48 | 6.4776 |
 | ultra-lean (superseded) | `VAE_FILE=vae-encoder-q4ffn.gguf PIECES=26` | ~6.61 | 6.6066 |
