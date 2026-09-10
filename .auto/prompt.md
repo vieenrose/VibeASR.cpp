@@ -11,13 +11,13 @@ Baseline (original protocol): RTF ~12.4-13.3 on the 10 s slice.
 Goal direction: as far below baseline as honest engineering goes (RTF < 1 is
 believed unreachable without retraining; do NOT chase it by cheating).
 
-## Current bands (A78 codegen build, 10 s protocol, -t2/C0, pieces 13)
+## Current bands (A78 codegen build, 10 s protocol, -t2/C0, pieces 26 = new default)
 | tier | env | band | readings |
 |---|---|---|---|
 | F16 accuracy-first | `VAE_FILE=vae-encoder-f16.gguf` | ~5.80 (was 6.01-6.04 pre-im2col) | 5.7994 |
 | BALANCED | `VAE_FILE=vae-encoder-q4x4ffn.gguf` | ~5.14 | 5.1411 (Exp480) |
 | FAST-LM v2 | `VAE_FILE=vae-encoder-f16.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) | ~5.21 | 5.2138 (tokens 42), WER 4.41% |
-| MAX-SPEED v2 | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) + F16 im2col | ~3.99 | 3.9946; 17 s 3.4997, 69 s 3.8265, slice-B 4.1467; 40-utt mean 4.4686, WER 4.41% |
+| **MAX-SPEED v2 (DEFAULT, p26)** | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) + F16 im2col | **3.98-4.00** | p26 3.9788, p13 4.0075 back-to-back (text identical); 17 s 3.5160, 69 s 3.8258, RSS 1.91 GB; 40-utt mean 4.4686, WER 4.41% |
 | Q8 anchor | `VAE_FILE=vae-encoder-q8_0mixed.gguf` | 6.12-6.15 | 6.1204/6.1520/6.1659 |
 | Q4 | `VAE_FILE=vae-encoder-q4ffn.gguf` | ~6.48 | 6.4776 |
 | ultra-lean (superseded) | `VAE_FILE=vae-encoder-q4ffn.gguf PIECES=26` | ~6.61 | 6.6066 |
@@ -858,6 +858,12 @@ train/use cycle (tested, no gain; kept for reproducibility).
   this LM those rows drive the chunk-boundary control tokens and cost 0.7 pp
   WER. Verify every artifact's per-tensor types (grep 'converting to' / 'type ='
   in the quantize log) before gating.
+- Exp509-510 (KEEP, protocol): after the F16-im2col change removed the
+  per-launch activation overhead, pieces=26 matches pieces=13 on ALL clips
+  (10 s -0.7% same-session, 17 s +0.5%, 69 s -0.02%) with byte-identical
+  transcripts and 160 MB less RAM => p26 is the new default (measure.sh
+  PIECES default changed); p13 stays the historical reference and the
+  WER-gate substrate (the split does not change numerics; verified).
 - LADDER STATUS (post Exp495-496): the tier space collapsed - max-speed v2
   (VAE-4x4 + LM-4x4 q6_K-emb) Pareto-dominates the accuracy-first and balanced
   tiers (4.2436 / 4.7396 mean / 4.0678 on 69 s at WER 4.41% and RSS 2.11 GB);
