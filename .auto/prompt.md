@@ -17,7 +17,7 @@ believed unreachable without retraining; do NOT chase it by cheating).
 | F16 accuracy-first | `VAE_FILE=vae-encoder-f16.gguf` | 6.01-6.04 | 8 readings, mean 6.023 |
 | BALANCED | `VAE_FILE=vae-encoder-q4x4ffn.gguf` | ~5.14 | 5.1411 (Exp480) |
 | FAST-LM v2 | `VAE_FILE=vae-encoder-f16.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) | ~5.21 | 5.2138 (tokens 42), WER 4.41% |
-| MAX-SPEED | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q4_0_4x4.gguf` | ~4.26 | 4.2576 (tokens 40 on this clip) |
+| MAX-SPEED v2 | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) | ~4.24 | 4.2436 (tokens 39); 40-utt mean 4.7396, WER 4.41%; Pareto-dominates accuracy-first |
 | Q8 anchor | `VAE_FILE=vae-encoder-q8_0mixed.gguf` | 6.12-6.15 | 6.1204/6.1520/6.1659 |
 | Q4 | `VAE_FILE=vae-encoder-q4ffn.gguf` | ~6.48 | 6.4776 |
 | ultra-lean (superseded) | `VAE_FILE=vae-encoder-q4ffn.gguf PIECES=26` | ~6.61 | 6.6066 |
@@ -26,10 +26,10 @@ Old-build bands (6.49-6.59 Q8, 10.5 F16, 6.81 Q4, 7.06 ultra-lean) are DEAD.
 69 s equal-token: accuracy-first 5.6089 / balanced 4.8228 / max-speed 4.046.
 40-utt mean RTF: 6.5823 / 5.6523 / 4.7689. WER: 4.55% / 4.82% / 5.10%.
 RSS: 2.99 / 2.16 / 2.05 GB. Both 4x4 tiers use ~1.9 GB of model files.
-NOTE: the 10 s protocol clip truncates under lm-q4_0_4x4 (37-40 tokens vs 45) -
+NOTE: the 10 s clip truncates less with the corrected LM (42 tokens vs 45; was 37 with a q4_0 token_embd) -
 quote 69 s equal-token numbers for the 4x4-LM tiers' speed claims.
 MODEL ARTIFACTS: models-streaming/vae-encoder-q4x4ffn.gguf (converter outtype
-  q4_0_4x4_ffn) and lm-q4_0_4_4.gguf (llama-quantize --allow-requantize ...
+  q4_0_4x4_ffn) and lm-q4_0_4_4.gguf (llama-quantize --allow-requantize --token-embedding-type q6_K ...
   Q4_0_4_4); both pushed to /data/local/tmp/vibeasr.
 
 ## Metrics
@@ -858,8 +858,10 @@ train/use cycle (tested, no gain; kept for reproducibility).
   => its 10 s RTF (5.13) flatters itself by decoding less; quote the 69 s
   equal-length number for the speed claim. Tier status: opt-in FAST tier
   (validated), accuracy-first leader stays VAE F16 + LM Q4_K_M.
-  Artifact: lm-q4_0_4_4.gguf in models-streaming + on device; produced with
-  llama-quantize --allow-requantize <q4_k_m> <out> Q4_0_4_4 (1.3 s).
+  Artifact: lm-q4_0_4_4.gguf in models-streaming + on device (md5 db67eecb), produced with
+  llama-quantize --allow-requantize --token-embedding-type q6_K <q4_k_m> <out> Q4_0_4_4 (1.3 s).
+  ALWAYS pass --token-embedding-type q6_K: the default demotes token_embd to q4_0
+  and costs ~0.7 pp WER (Exp494).
 - VAE note for the next wave: the VAE's linears are prefill-like (batch 2) and
   dequant/instruction-bound (F16 42.3 s vs Q4 47.4 s) - a Q4_0_4x4 VAE would
   put them on the same sdot gemv path, but convert_vae_to_gguf.py must
