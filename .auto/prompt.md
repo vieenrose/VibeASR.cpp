@@ -46,6 +46,9 @@ MODEL ARTIFACTS: models-streaming/vae-encoder-q4x4ffn.gguf (converter outtype
   `load_s` (model load, wall-clock only).
 
 ## How to Run
+`EXTRA_ENV` on measure.sh forwards env vars to the device run (e.g.
+`EXTRA_ENV="VAE_SEQ_ENCODERS=1"` for the RAM-lean sequential-encoder mode,
+which is 4.01 @ 1.91 GB vs the default 3.53 @ 2.07 GB).
 `./.auto/measure.sh` — builds Android target, pushes binary AND the shared
 libs (`libggml.so`/`libllama.so`, md5-diffed — pushing only the binary silently
 measures stale kernels, the bug that invalidated Exp1/14/26), runs the phone
@@ -815,6 +818,10 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp529 (KEEP, ladder): shipped 17 s clip 3.0680 (was 3.4997 sequential,
+  -12.3%); RAM-lean mode (VAE_SEQ_ENCODERS=1) 4.0089 @ 1910.3 MB. Harness fix:
+  measure.sh now forwards EXTRA_ENV to the device (the env var had been silently
+  dropped, caught because the "sequential" run reproduced the concurrent numbers).
 - Exp528 (discard, closed): 2 threads per encoder chain = VAE +44% worse
   (38.6 vs 26.8 s) => the concurrent win came from avoiding intra-chain
   coupling, not stall-filling. Optimum = 2 chains x 1 thread. (Knob
