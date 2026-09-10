@@ -818,6 +818,10 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp540 (KEEP, statistics): 3 consecutive shipped-config runs: 3.4862/3.4853/
+  3.4781 (36.1-36.3C) => within-run sd 0.004; over the 7 OMP-off readings
+  (34.6-37.1C) mean 3.482, sd 0.010 => the shipped band is 3.47-3.50 and the
+  headline is 12.24 -> 3.48 (-71.6%). Docs state the band with n and sd.
 - Exp539 (KEEP, robustness): 48 kHz stereo input handled correctly end to end
   (format detect -> mono downmix -> resample; RTF 3.4979, tokens 40, one word
   differs). The fallback resampler is linear - a product-side note, no loop
