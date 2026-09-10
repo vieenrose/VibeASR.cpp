@@ -818,6 +818,10 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp547 (KEEP, robustness): non-speech edge cases - 5 s digital silence ->
+  '[Silence][Silence]', 5 s -50 dBFS white noise -> '[Noise]' - correct model
+  tags, short decodes (1.0 / 0.6 s), no hallucination and no loops. Real-meeting
+  behaviour (pauses, muted mics) is clean. Health 3.4786.
 - Exp546 (KEEP, stability): 17 s at the frozen build: 3.0665, transcript
   byte-identical to the pre-concurrency reference. Every deliverable clip is now
   transcript-verified (10 s, 17 s, 69 s, 138 s halves, 40/40 gate utts).
