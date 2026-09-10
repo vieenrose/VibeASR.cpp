@@ -71,7 +71,10 @@ vs 12.5 GB for PyTorch CPU fp32 and 5.5 -> 15.5 GB for offline BitNet on long fi
   carried-state cache is required. The stock BitNet I8_S VAE path is untouched
   (`asr_infer` behavior unchanged); the streaming VAE stays F16 because naive
   PTQ I8_S collapses output (repetition loops) — that VAE was never QAT-trained.
-- Env-gated diagnostics: `VAE_CACHE_TRACE=1` (per-site checksums),
+- Env-gated diagnostics: `VAE_GRAPH_STATS=1` (per-op byte-traffic profile of the
+  first built graph - MUL_MAT ~32%, IM2COL ~11%, ADD ~10%, MUL/gelu ~7% of a
+  ~700 MB/piece materialising-op total; RESHAPE/PERMUTE are views and cost
+  nothing), `VAE_CACHE_TRACE=1` (per-site checksums),
   `VAE_DUMP_FRAMES=<prefix>` (output frames), `VAE_DUMP_SITE=<sN|all>` (site inputs).\n
 ## Phone evaluation (OPPO CPH2371, Dimensity 1300, 8 GB RAM, Android 13)
 
