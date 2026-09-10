@@ -818,6 +818,18 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp552 (KEEP, shape diagnosis): new VAE_MMSHAPES hook dumps the real per-node
+  matmul shapes. Found the VAE's ffn shapes are BIMODAL: the deepest linears are
+  GEMV (a=[8192,2048] x b=[8192,1]; [4096,1024] x [4096,8]) because the streaming
+  design yields 1 latent frame per 3200-sample piece, while everything else has
+  L=40..3200 (GEMM, at peak per Exp551). The GEMV regime measures 13.6 GMAC/s
+  streaming => the deep tail costs ~2.6 s per chain per clip (~10% of the VAE).
+  Batching it via --vae-pieces 2 (deep shapes -> L=13 GEMM, verified) LOSES:
+  VAE 28.3 s vs 26.0 and RSS 3822 MB (early-stage activations explode 13x).
+  Deferred deep-stage batching (window-level) is the only exploit left: ~7% RTF
+  ceiling, multi-day graph split => PARKED as a project. Residual (needs a
+  profiler): in-graph GEMM shapes still deliver ~25 GMAC/s aggregate vs the
+  microbench's 40-45/thread. Health 3.4731.
 - Exp551 (KEEP, decisive diagnostic): on-device microbenchmark of ggml_mul_mat at
   the VAE's/LM's exact shapes (built against the same libggml.so). RESULT: the
   4x4 kernel is at hardware peak (single-thread 32-46 GMAC/s; streaming weights
