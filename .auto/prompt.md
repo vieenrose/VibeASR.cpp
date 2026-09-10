@@ -818,6 +818,10 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp536 (KEEP, verification): OMP-off on the 69 s clip: 3.3834 vs 3.4284
+  (-1.3%), VAE -2.1%, transcript BYTE-IDENTICAL (10 s too) => the change is
+  numerically inert; the full 40-utt gate at the OMP-off build is the next
+  deliverable step.
 - Exp535 (KEEP, seventh wave): GGML_OPENMP=OFF in the device build. With the
   concurrent-1-thread chains, OpenMP entered a parallel region per op for no
   parallelism; removing it gives -1.1% RTF / -1.5% VAE (A/B/A at equal temp),
