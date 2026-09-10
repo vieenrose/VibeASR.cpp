@@ -14,10 +14,10 @@ believed unreachable without retraining; do NOT chase it by cheating).
 ## Current bands (A78 codegen build, 10 s protocol, -t2/C0, pieces 13)
 | tier | env | band | readings |
 |---|---|---|---|
-| F16 accuracy-first | `VAE_FILE=vae-encoder-f16.gguf` | 6.01-6.04 | 8 readings, mean 6.023 |
+| F16 accuracy-first | `VAE_FILE=vae-encoder-f16.gguf` | ~5.80 (was 6.01-6.04 pre-im2col) | 5.7994 |
 | BALANCED | `VAE_FILE=vae-encoder-q4x4ffn.gguf` | ~5.14 | 5.1411 (Exp480) |
 | FAST-LM v2 | `VAE_FILE=vae-encoder-f16.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) | ~5.21 | 5.2138 (tokens 42), WER 4.41% |
-| MAX-SPEED v2 | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) | 4.24-4.29 | 4.2436/4.2866 (n=2, tokens 39); 40-utt mean 4.7396, WER 4.41%; Pareto-dominates accuracy-first |
+| MAX-SPEED v2 | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) + F16 im2col | ~3.99 | 3.9946; 17 s 3.4997, 69 s 3.8265, slice-B 4.1467; 40-utt mean 4.4686, WER 4.41% |
 | Q8 anchor | `VAE_FILE=vae-encoder-q8_0mixed.gguf` | 6.12-6.15 | 6.1204/6.1520/6.1659 |
 | Q4 | `VAE_FILE=vae-encoder-q4ffn.gguf` | ~6.48 | 6.4776 |
 | ultra-lean (superseded) | `VAE_FILE=vae-encoder-q4ffn.gguf PIECES=26` | ~6.61 | 6.6066 |
@@ -811,6 +811,16 @@ train/use cycle (tested, no gain; kept for reproducibility).
   max-speed combo (VAE-4x4 + LM-4x4): 10 s 4.2576, 69 s equal-token 4.046
   (-27.9% vs accuracy-first), 40-utt mean 4.7689, WER 5.10% (S=31 D=3 I=3),
   RSS 2.05 GB, majflt 0 everywhere. FINAL LADDER in STREAMING_1P5B.md.
+- Exp503-508 (KEEP, fifth wave): F16 im2col for the convs. ggml_conv_1d and
+  ggml_conv_1d_dw hardcode a F32 im2col -> 2x im2col traffic + a full extra
+  F16 conversion of src1 inside mul_mat. src/vae.cpp now builds the convs with
+  ggml_im2col(..., GGML_TYPE_F16) + mul_mat (stock structure copied, dtype
+  changed). VAE 33.8 -> 31.4 s (-7.5%), RTF 4.24 -> 3.99 (-6.3%); NOT
+  bit-identical (rounding moved into the copy) so the 40-utt gate was re-run:
+  WER 4.41% with IDENTICAL error counts. Other clips: 17 s 3.50, 69 s 3.83,
+  slice-B 4.15, lean 4.00 @ 1.91 GB; other tiers also gained (balanced 4.91,
+  accuracy-first 5.80). GOTCHA: ggml_im2col_asym's op is hardwired to the I8_S
+  compute (writes I8_S into an F16 dst -> garbage); use ggml_im2col.
 - Exp494-495 (KEEP, accuracy fix): the blocked-int8 LM's +0.55 pp was almost
   entirely the TOKEN EMBEDDING table - llama-quantize's default demotes
   token_embd.weight q6_K -> q4_0, and those rows carry the control tokens that

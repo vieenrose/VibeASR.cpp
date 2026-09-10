@@ -168,6 +168,29 @@ An **imatrix** was also tested (Exp492) and is inert for this type:
   (content truncated) — the 10 s RTF ratio (5.13 vs 6.01) therefore flatters
   itself by generating fewer tokens; quote the 69 s equal-length number.
 
+### Fifth wave: F16 im2col for the convs (Exp503-508, 4.24 → 3.99)
+
+`ggml_conv_1d`/`ggml_conv_1d_dw` hardcode a **F32 im2col**: that doubles the
+im2col write+read traffic and forces `mul_mat` to materialise a second full
+F16 copy of its src1 (`vec_dot_type` is F16 for F16 weights). Our conv weights
+are F16, so `src/vae.cpp` now builds the convs itself with
+`ggml_im2col(..., GGML_TYPE_F16)` + `mul_mat` (the stock ops' structure copied
+verbatim, only the im2col dtype changed):
+
+* VAE 33.8 → **31.4 s (−7.5%)**, RTF 4.24 → **3.99 (−6.3%)**, RSS 2069 MB.
+* Not bit-identical (the F32→F16 rounding happens in the copy instead of in
+  `mul_mat`), so the 40-utt gate was re-run: **WER 4.41% (S=28 D=1 I=3, H=697),
+  identical error counts** to the pre-change gate. Mean 40-utt RTF 4.47.
+* All four clips agree: 17 s 3.50 (−6.7%), 69 s 3.83 (−5.9%), slice-B 4.15
+  (−5.9%), 40-utt mean 4.47 (−5.7%), every token count identical.
+* Other tiers gain too (their convs are F16): balanced 5.14 → 4.91,
+  accuracy-first 6.01 → 5.80, lean (p26) 4.39 → **4.00 @ 1.91 GB**.
+
+**Gotcha for anyone repeating this:** do *not* use `ggml_im2col_asym` — its op
+(`GGML_OP_IM2COL_ASYM`) is hardwired to `ggml_compute_forward_im2col_i8_s`, so
+an F16 `dst_type` silently writes I8_S data into an F16 tensor (caught on the
+x86 desktop build: output collapsed to 7 tokens). Use `ggml_im2col`.
+
 ### Fourth wave: VAE blocked-int8 kernels (Exp480-483, 6.01 → 4.26)
 
 The same trick applies to the VAE, and the VAE is the bigger prize (71% of
@@ -193,12 +216,12 @@ everything else stays F16.
 
 | tier | files | 10 s | 17 s | 40-utt mean | 69 s (equal tokens) | WER (40-utt) | RSS |
 |---|---|---|---|---|---|---|---|
-| max-speed: VAE Q4_0_4x4-FFN + LM Q4_0_4x4 (q6_K emb) | 2.0 GB | **4.24** | — | **4.74** | **4.07** | **4.41%** | 2.11 GB |
-| balanced: VAE Q4_0_4x4-FFN + LM Q4_K_M | 1.9 GB | 5.14 | 4.46 | 5.65 | 4.82 | 4.82% | 2.16 GB |
+| max-speed: VAE Q4_0_4x4-FFN + LM Q4_0_4x4 (q6_K emb) + F16 im2col | 2.0 GB | **3.99** | **3.50** | **4.47** | **3.83** | **4.41%** | 2.07 GB |
+| balanced: VAE Q4_0_4x4-FFN + LM Q4_K_M | 1.9 GB | 4.91 | — | — | — | 4.82% | 2.12 GB |
 | fast-LM: VAE F16 + LM Q4_0_4x4 (q6_K emb) | 2.5 GB | 5.21 | — | 5.73 | — | 4.41% | 2.94 GB |
 | balanced-lean: VAE Q4_0_4x4-FFN + 26 pieces (Q4_K_M LM) | 1.9 GB | 5.21 | — | — | 4.94 | — | 1.98 GB |
-| **max-speed-lean: VAE-4x4 + LM-4x4 (q6_K emb) + 26 pieces** | 2.0 GB | **4.39** | — | — | — | — | **1.93 GB** |
-| accuracy-first: VAE F16 + LM Q4_K_M | 2.5 GB | 6.00 | 5.23 | 6.58 | 5.61 | 4.55% | 2.99 GB |
+| **max-speed-lean: VAE-4x4 + LM-4x4 (q6_K emb) + 26 pieces** | 2.0 GB | **4.00** | — | — | — | — | **1.91 GB** |
+| accuracy-first: VAE F16 + LM Q4_K_M | 2.5 GB | 5.80 | — | — | — | 4.55% | 2.88 GB |
 | ultra-lean (plain Q4-FFN + 26 pieces, history) | 1.6 GB | 6.61 | — | — | — | 5.23% | 1.97 GB |
 | Q8-mixed VAE (history) | 1.9 GB | 6.14 | — | 6.71 | 5.76 | 4.55% | 2.44 GB |
 | _pre-A78 F16 (history)_ | 2.5 GB | _10.5_ | — | — | _9.73_ | 4.13% (desktop) | 2.99 GB |
