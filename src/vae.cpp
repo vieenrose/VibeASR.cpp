@@ -1473,30 +1473,53 @@ static int32_t vae_encode_late_impl(
         t_pad = frames_pad * cum;
     }
 
-    // The late graph is tiny next to the early one (its activations are the
-    // deep stages'), so this never grows the arena after an early pass, except
-    // for deeper splits where the window-level stages get large (VAE_LATE_SPLIT
-    // experiments). VAE_LATE_ARENA_MB overrides the budget.
-    size_t late_arena = (size_t)128 * 1024 * 1024;
-    if (const char* e = getenv("VAE_LATE_ARENA_MB")) {
-        long v = atol(e);
-        if (v > 0) late_arena = (size_t)v * 1024 * 1024;
-    }
-    const size_t vae_ctx_mem_size = late_arena;
-    if (compute_buf_size_ref < vae_ctx_mem_size) {
-        void* grown = realloc(compute_buf_ref, vae_ctx_mem_size);
-        if (grown == NULL) { fprintf(stderr, "[VAE] Error: late arena alloc failed\n"); return -1; }
-        compute_buf_ref = grown; compute_buf_size_ref = vae_ctx_mem_size;
-    }
-    struct ggml_init_params ctx_params = { compute_buf_size_ref, compute_buf_ref, false };
+    // Allocation: same lifetime (ggml-alloc) scheme as the early pass, which
+    // measured 2.5% faster and 160 MB leaner there by keeping only the live set
+    // resident. VAE_LEGACY_ARENA=1 falls back to the fixed arena; with it,
+    // VAE_LATE_ARENA_MB overrides the budget (default 128 MB). The late graph
+    // has no streaming-cache sites, so there are no staging tensors to fill.
+    static ggml_gallocr_t gallocr_late[2] = { nullptr, nullptr };
+    static void * md_buf_late[2] = { nullptr, nullptr };
+    static size_t md_size_late[2] = { 0, 0 };
+    const bool legacy_late = (getenv("VAE_LEGACY_ARENA") != nullptr);
     if (compute_ctx_ref) ggml_free(compute_ctx_ref);
-    compute_ctx_ref = ggml_init(ctx_params);
+    if (legacy_late) {
+        size_t late_arena = (size_t)128 * 1024 * 1024;
+        if (const char* e = getenv("VAE_LATE_ARENA_MB")) {
+            long v = atol(e);
+            if (v > 0) late_arena = (size_t)v * 1024 * 1024;
+        }
+        const size_t vae_ctx_mem_size = late_arena;
+        if (compute_buf_size_ref < vae_ctx_mem_size) {
+            void* grown = realloc(compute_buf_ref, vae_ctx_mem_size);
+            if (grown == NULL) { fprintf(stderr, "[VAE] Error: late arena alloc failed\n"); return -1; }
+            compute_buf_ref = grown; compute_buf_size_ref = vae_ctx_mem_size;
+        }
+        struct ggml_init_params ctx_params = { compute_buf_size_ref, compute_buf_ref, false };
+        compute_ctx_ref = ggml_init(ctx_params);
+        if (compute_ctx_ref == nullptr) { fprintf(stderr, "[VAE] Error: late ctx init failed\n"); return -1; }
+    } else {
+        if (gallocr_late[slot] == nullptr) {
+            gallocr_late[slot] = ggml_gallocr_new(ggml_backend_cpu_buffer_type());
+            if (gallocr_late[slot] == nullptr) { fprintf(stderr, "[VAE] Error: late gallocr init failed\n"); return -1; }
+        }
+        const size_t md_need = (size_t)16 * 1024 * 1024;
+        if (md_size_late[slot] < md_need) {
+            void * grown = realloc(md_buf_late[slot], md_need);
+            if (grown == NULL) { fprintf(stderr, "[VAE] Error: late metadata alloc failed\n"); return -1; }
+            md_buf_late[slot] = grown; md_size_late[slot] = md_need;
+        }
+        struct ggml_init_params ctx_params = { md_size_late[slot], md_buf_late[slot], true };
+        compute_ctx_ref = ggml_init(ctx_params);
+        if (compute_ctx_ref == nullptr) { fprintf(stderr, "[VAE] Error: late ctx init failed\n"); return -1; }
+    }
 
     struct ggml_tensor* input = ggml_new_tensor_3d(compute_ctx_ref, GGML_TYPE_F32, t_pad, C, 1);
     ggml_set_name(input, "input_boundary");
     // boundary is [n_time_total, C] with time fastest (element (t,c) at t + c*T),
-    // so the pad columns are per-channel tails, not one flat block.
-    {
+    // so the pad columns are per-channel tails, not one flat block. Under the
+    // lifetime allocator the write moves after ggml_gallocr_alloc_graph below.
+    if (legacy_late) {
         const float* src = boundary;
         float* dst = (float*)input->data;
         for (int64_t c = 0; c < C; c++) {
@@ -1513,6 +1536,30 @@ static int32_t vae_encode_late_impl(
 
     struct ggml_cgraph* gf = ggml_new_graph_custom(compute_ctx_ref, vae_model_max_nodes(ctx->model), false);
     ggml_build_forward_expand(gf, result);
+    if (!legacy_late) {
+        ggml_set_input(input);
+        ggml_set_output(result);
+        if (!ggml_gallocr_alloc_graph(gallocr_late[slot], gf)) {
+            fprintf(stderr, "[VAE] Error: late gallocr_alloc_graph failed\n"); return -1;
+        }
+        const float* src = boundary;
+        float* dst = (float*)input->data;
+        for (int64_t c = 0; c < C; c++) {
+            memcpy(dst + (size_t)c * t_pad, src + (size_t)c * n_time_total,
+                   (size_t)n_time_total * sizeof(float));
+            if (t_pad > n_time_total)
+                memset(dst + (size_t)c * t_pad + n_time_total, 0,
+                       (size_t)(t_pad - n_time_total) * sizeof(float));
+        }
+        if (getenv("VAE_MEM_STATS") != nullptr) {
+            static int dumps = 0;
+            if (dumps++ < 4) {
+                fprintf(stderr, "[VAE_MEM] late slot=%d buffer=%.1f MB nodes=%d\n",
+                        slot, ggml_gallocr_get_buffer_size(gallocr_late[slot], 0) / 1e6,
+                        ggml_graph_n_nodes(gf));
+            }
+        }
+    }
     if (getenv("VAE_LATE_STATS") != nullptr) {
         static int dumps = 0;
         if (dumps++ < 3) {
