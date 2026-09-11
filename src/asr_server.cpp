@@ -26,6 +26,7 @@
 #include <cstring>
 #include <ctime>
 #include <string>
+#include <thread>
 #include <vector>
 
 struct server_params {
@@ -154,31 +155,26 @@ static int process_chunk(
     int32_t n_samples = (int32_t)audio.samples.size();
     int32_t expected_frames = (n_samples + params.compress_ratio - 1) / params.compress_ratio;
 
-    // VAE Acoustic Encode
+    // VAE encode: sequential acoustic+semantic (the whole-file path shares one
+    // per-slot lifetime allocator; a concurrent entry would need separate slots,
+    // which the streaming CLI has and the server does not yet plumb).
     std::vector<float> acoustic_features(expected_frames * acoustic_dim);
-    float acoustic_time_ms = 0.0f;
+    std::vector<float> semantic_features(expected_frames * semantic_dim);
+    float acoustic_time_ms = 0.0f, semantic_time_ms = 0.0f;
     int32_t acoustic_frames = vae_encode_acoustic_with_timing(
         vae_ctx, audio.samples.data(), n_samples,
         acoustic_features.data(), &acoustic_time_ms);
-
     if (acoustic_frames < 0) {
         fprintf(stdout, "[ERROR] VAE acoustic encoding failed\n---END---\n");
-        fflush(stdout);
-        return -1;
+        fflush(stdout); return -1;
     }
     acoustic_features.resize(acoustic_frames * acoustic_dim);
-
-    // VAE Semantic Encode
-    std::vector<float> semantic_features(expected_frames * semantic_dim);
-    float semantic_time_ms = 0.0f;
     int32_t semantic_frames = vae_encode_semantic_with_timing(
         vae_ctx, audio.samples.data(), n_samples,
         semantic_features.data(), &semantic_time_ms);
-
     if (semantic_frames < 0) {
         fprintf(stdout, "[ERROR] VAE semantic encoding failed\n---END---\n");
-        fflush(stdout);
-        return -1;
+        fflush(stdout); return -1;
     }
     semantic_features.resize(semantic_frames * semantic_dim);
 
