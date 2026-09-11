@@ -2,6 +2,9 @@
 # 40-utt LibriSpeech accuracy gate ON THE PHONE (the codegen gate must run on the
 # target ISA, unlike the historical desktop-run hyp-* sets).
 #   .auto/eval40.sh <hyp-tag> <start> <count>     e.g. .auto/eval40.sh a78 0 20
+#   RESUME=1 .auto/eval40.sh <hyp-tag> <start> <count>  # continue an interrupted gate
+# A hyp dir never silently mixes configs: re-running an existing non-empty tag
+# without RESUME=1 fails loudly, and resume verifies the stored run-info matches.
 # Emits METRIC lines (mean rtf over the utterances actually run).
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -16,9 +19,35 @@ THREADS=${THREADS:-2}; MASK=${MASK:-C0}
 PIECES=${PIECES:-13}
 OUT=../eval-librispeech/hyp-$TAG
 mkdir -p "$OUT"
+# Provenance + resume guard (Exp617): a hyp dir must never silently mix transcripts
+# from different configs. Fresh tag => stamp run-info (.log suffix so the *.txt
+# scorer glob never sees it). Existing non-empty dir => require RESUME=1 AND a
+# matching run-info, else fail loudly.
+RESUME=${RESUME:-0}
+RUNINFO="$OUT/run-info.log"
+cur_info="VAE_FILE=$VAE_FILE LM_FILE=$LM_FILE THREADS=$THREADS MASK=$MASK PIECES=$PIECES EXTRA_ENV=${EXTRA_ENV:-} BIN=$(md5sum build-android/bin/asr_streaming 2>/dev/null | awk '{print $1}')"
+if [ -n "$(ls -A "$OUT" 2>/dev/null | grep -v '^run-info.log$')" ]; then
+  if [ "$RESUME" != "1" ]; then
+    echo "REFUSING: $OUT already holds transcripts; re-running without RESUME=1 would silently mix or skip them. Use a fresh hyp tag, or RESUME=1 to continue the same config (provenance is checked)." >&2
+    exit 1
+  fi
+  if [ -f "$RUNINFO" ]; then
+    old_info=$(cat "$RUNINFO")
+    if [ "$old_info" != "$cur_info" ]; then
+      echo "REFUSING resume: config mismatch." >&2
+      echo "  stored: $old_info" >&2
+      echo "  now:    $cur_info" >&2
+      exit 1
+    fi
+  fi
+else
+  echo "$cur_info" > "$RUNINFO"
+fi
 adb -s $DEV shell "mkdir -p $RDIR/ls40" >/dev/null 2>&1
-# same lib-freshness guard as measure.sh - the binary alone is not the artifact
-for L in 3rdparty/llama.cpp/ggml/src/libggml.so 3rdparty/llama.cpp/src/libllama.so; do
+# same freshness guard as measure.sh - the binary alone is not the artifact.
+# NOTE: the executable itself is included: a gate must run the current tree's
+# binary, not whatever a previous session left on device.
+for L in bin/asr_streaming 3rdparty/llama.cpp/ggml/src/libggml.so 3rdparty/llama.cpp/src/libllama.so; do
   B=build-android/$L; [ -f "$B" ] || continue
   M=$(md5sum "$B" | awk '{print $1}')
   D=$(adb -s $DEV shell "md5sum $RDIR/$(basename $B) 2>/dev/null" | awk '{print $1}' | tr -d '\r')
