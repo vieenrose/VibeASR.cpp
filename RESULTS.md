@@ -28,7 +28,7 @@ runs the 10 s protocol clip pinned to the prime cores and prints `METRIC` lines.
 |---|---|---|---|---|---|---|---|
 | **max-speed-lean (seq-mode p26)** | 1.76 GB | **3.88** | — | — | — | same class | **1.76 GB** |
 | **whole-file / server path** (Exp578/579) | — | — | live set **188-313 MB** for 6-10 s files | — | — | — | — |
-| **max-speed (shipped)** | 2.2 GB | **3.15** | **2.75** | **3.07** | **3.13** | **4.68 %** | 2.19 GB |
+| **max-speed (shipped)** | 2.2 GB | **3.09** | **2.75** | **3.07** | **3.13** | **4.68 %** | 2.19 GB |
 | _max-speed, RAM-lean (`VAE_SEQ_ENCODERS=1`)_ | 2.0 GB | _4.01_ | — | — | — | 4.41 % | **1.91 GB** |
 | balanced (clean zh transcripts) | 1.9 GB | 4.44 | — | 4.64 | — | 4.82 % | 2.00 GB |
 | accuracy-first (VAE F16) | 2.5 GB | 5.35 | — | 5.62 | 6.58 | 4.55 % | 2.95 GB |
@@ -56,7 +56,8 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
 | **3.48** | **−72 %** | OpenMP off for the 1-thread chains |
 | 3.30 | −73 % | deferred deep stages: the deepest ConvNeXt stage runs once per window over the concatenated boundary tensors (L=1 GEMV → L=28 GEMM) |
 | 3.18 | −74 % | lifetime (ggml-alloc) activation buffers + PIECES=2: the early-stage graph holds only its live set (15.5 MB vs a 274 MB arena scaled at 64 KB/sample), which also unblocks large pieces |
-| **3.15** | **−74 %** | zero-copy weights: the VAE loader points the tensors into the read-only gguf mapping (alignment-checked, copy fallback) instead of duplicating 536 MB into an arena, and the late pass got the same lifetime allocator → load 1.4 → 1.2 s, RSS 2.19 GB |
+| **3.09** | **−75 %** | depthwise conv as K dense-view multiply-adds in [C, T] (Exp580): the im2col + batched 3-D mul_mat + two cont/permutes of the mixer path, measured at 29% of the VAE, became K dense tap multiply-adds |
+| 3.15 | −74 % | zero-copy weights: the VAE loader points the tensors into the read-only gguf mapping (alignment-checked, copy fallback) instead of duplicating 536 MB into an arena, and the late pass got the same lifetime allocator → load 1.4 → 1.2 s, RSS 2.19 GB |
 
 ## Evidence
 

@@ -112,6 +112,21 @@ static struct ggml_tensor * vae_cached_concat(
     // xh = pad_ext(x) + [hist | zeros]: bit-exact vs legacy when hist=0
     // (x + 0 == x), correct carry when warm. conv below runs with pad=0.
     struct ggml_tensor * xp = ggml_pad_ext(ctx, x, (int)P, 0, 0, 0, 0, 0, 0, 0);
+    // Cold window head: the history is all zeros, so the staging tensor and the
+    // add are pure overhead (x + 0.0f == x exactly). Skipping them removes two
+    // full passes over the padded tensor for the first piece of every window,
+    // which is half the pieces at the shipped PIECES=2. Exact by construction,
+    // so outputs are unchanged; the tap still reads the real tail from xp.
+    if (!slot.warm && getenv("VAE_NO_COLD_SKIP") == nullptr) {
+        if (getenv("VAE_CACHE_TRACE") != nullptr) {
+            fprintf(stderr, "[CACHE_SKIP] %s cold head: returning pad_ext directly (P=%lld)\n",
+                    key.c_str(), (long long)P);
+        }
+        vae_stream_cache::Tap tap;
+        tap.key = key; tap.xh = xp; tap.x = x; tap.P = P;
+        cache->taps.push_back(tap);
+        return xp;
+    }
     // ggml dense tensors are Fortran-order (ne[0] fastest): time t of channel c
     // lives at t + c*N. slot.hist is stored channel-major: channel c occupies
     // [c*P, (c+1)*P). Scatter it into the first P time steps of hp (rest zeros).
@@ -368,7 +383,50 @@ static struct ggml_tensor* ggml_nn_conv_1d_dw(
             x = ggml_pad_ext(ctx, x, padding, 0, 0, 0, 0, 0, 0, 0);
             padding = 0;
         }
-        result = vae_conv_1d_dw_f16(ctx, w, x, stride, padding, dilation);
+        const bool dw_taps = (getenv("VAE_DW_CT_OFF") == nullptr) &&
+                             stride == 1 && dilation == 1 && b != NULL &&
+                             x->ne[2] == 1 && w->ne[1] == 1 && w->ne[3] == 1 && x->ne[0] > 2 * w->ne[0];
+        if (dw_taps &&
+            x->ne[2] == 1 && w->ne[1] == 1 && w->ne[3] == 1 && x->ne[0] > 2 * w->ne[0]) {
+            // Depthwise conv as K dense-view multiply-adds in the [C, T] layout
+            // (Exp580, default since it measured RTF 3.1523 -> 3.0829 on device).
+            // The weight transposes ONCE to [C, K] so each tap is a contiguous
+            // [C,1] slice, and each tap's input is a plain row offset of a dense
+            // [C, T] tensor. Exp569's slower variant worked in [T, C], where the
+            // weight broadcast along the innermost dimension and every tap view
+            // was strided. VAE_DW_CT_OFF=1 restores the im2col + 3-D mul_mat path.
+            const int64_t K = w->ne[0];
+            const int64_t C = w->ne[2];
+            struct ggml_tensor* xc = ggml_cont(ctx, ggml_permute(ctx, x, 1, 0, 2, 3));   // [C, T']
+            // NOTE ggml's permute convention is result.ne[axis_i] = a.ne[i], so
+            // going from [K, 1, C] to [C, K] needs (1, 2, 0), not (2, 0, 1).
+            struct ggml_tensor* ww = ggml_permute(ctx, w, 1, 2, 0, 3);                   // [C, K]
+            ww = ggml_cont(ctx, ww);
+            if (ww->type != GGML_TYPE_F32) ww = ggml_cast(ctx, ww, GGML_TYPE_F32);
+            const int64_t T_out = xc->ne[1] - (K - 1);
+            if (getenv("VAE_DW_DEBUG") != nullptr) {
+                static int dbg = 0;
+                if (dbg++ < 4) {
+                    fprintf(stderr, "[DWDBG] x=[%lld,%lld,%lld] w=[%lld,%lld,%lld] K=%lld C=%lld xc=[%lld,%lld] nbc=%lld ww=[%lld,%lld] nbc=%lld T_out=%lld pad_left=%d\n",
+                            (long long)x->ne[0], (long long)x->ne[1], (long long)x->ne[2],
+                            (long long)w->ne[0], (long long)w->ne[1], (long long)w->ne[2],
+                            (long long)K, (long long)C,
+                            (long long)xc->ne[0], (long long)xc->ne[1], (long long)xc->nb[1],
+                            (long long)ww->ne[0], (long long)ww->ne[1], (long long)ww->nb[1],
+                            (long long)T_out, padding);
+                }
+            }
+            struct ggml_tensor* acc = nullptr;
+            for (int64_t k = 0; k < K; k++) {
+                struct ggml_tensor* xk = ggml_view_2d(ctx, xc, C, T_out, xc->nb[1], (size_t)k * xc->nb[1]);
+                struct ggml_tensor* wk = ggml_view_2d(ctx, ww, C, 1, ww->nb[1], (size_t)k * ww->nb[1]);
+                struct ggml_tensor* term = ggml_mul(ctx, xk, wk);
+                acc = (acc == nullptr) ? term : ggml_add(ctx, acc, term);
+            }
+            result = acc;   // [C, T_out]: the layout the block's residual uses
+        } else {
+            result = vae_conv_1d_dw_f16(ctx, w, x, stride, padding, dilation);
+        }
         if (b != NULL) {
             result = ggml_add(ctx, result, b);
         }
