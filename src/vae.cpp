@@ -1007,6 +1007,8 @@ static size_t vae_model_max_nodes(const vae_model_t* model) {
     return std::max<size_t>(1024, n_tensors * 3) + 128;
 }
 
+static enum ggml_status vae_graph_compute_planned(struct ggml_cgraph * gf, int n_threads);
+
 static int32_t vae_encode_impl(
     vae_context_t* ctx,
     AudioVAEEncoder& encoder,
@@ -1057,13 +1059,10 @@ static int32_t vae_encode_impl(
     static ggml_gallocr_t gallocr_pw[2] = { nullptr, nullptr };
     static void * md_buf_pw[2] = { nullptr, nullptr };
     static size_t md_size_pw[2] = { 0, 0 };
-    // Size guard (Exp578): the graph allocator is verified up to the largest
-    // piece the streaming path uses (83200 samples = one window). For whole-file
-    // inputs (the server and the non-streaming demo, where this path runs with
-    // the entire file) ggml's lifetime allocator segfaults inside the compute
-    // somewhere between 96k and 144k samples, so larger inputs keep the arena.
-    const bool lifetime_ok = (n_samples <= 83200);
-    const bool legacy_arena = (getenv("VAE_LEGACY_ARENA") != nullptr) || !lifetime_ok;
+    // No size limit: the work buffer is allocated outside the metadata arena
+    // (see vae_graph_compute_planned), which is what made whole-file inputs
+    // crash before Exp579.
+    const bool legacy_arena = (getenv("VAE_LEGACY_ARENA") != nullptr);
     if (compute_ctx_ref) ggml_free(compute_ctx_ref);
     if (legacy_arena) {
         const size_t bytes_per_sample = use_i8_s ? 10240 : 65536;
@@ -1251,7 +1250,10 @@ static int32_t vae_encode_impl(
         }
     }
     if (getenv("VAE_ZC_STATS") != nullptr) fprintf(stderr, "[DBG] precompute\n");
-    if (ggml_graph_compute_with_ctx(compute_ctx_ref, gf, n_threads_ovr > 0 ? n_threads_ovr : ctx->n_threads) != GGML_STATUS_SUCCESS) {
+    enum ggml_status st = legacy_arena
+        ? ggml_graph_compute_with_ctx(compute_ctx_ref, gf, n_threads_ovr > 0 ? n_threads_ovr : ctx->n_threads)
+        : vae_graph_compute_planned(gf, n_threads_ovr > 0 ? n_threads_ovr : ctx->n_threads);
+    if (st != GGML_STATUS_SUCCESS) {
         fprintf(stderr, "[VAE] Error: Graph computation failed\n");
         return -1;
     }
@@ -1353,6 +1355,26 @@ static int32_t vae_encode_impl(
 // whole sequence present they only zero-pad at the window start, which is
 // exactly the legacy cold-window semantics the cache reproduces piece-wise.
 // ============================================================================
+// Lifetime-allocation graphs live in a small metadata-only context, so the
+// generic ggml_graph_compute_with_ctx cannot be used: it allocates the op work
+// buffer INSIDE the context arena (ggml_new_object(ctx, WORK_BUFFER, work_size)
+// then work_data = ctx->mem_buffer + obj->offs) and silently overruns a small
+// arena - on device that showed up as a segfault for inputs where work_size
+// exceeded the metadata arena (between 96k and 144k samples, Exp579). Plan and
+// allocate the work buffer ourselves instead.
+static enum ggml_status vae_graph_compute_planned(struct ggml_cgraph * gf, int n_threads) {
+    struct ggml_cplan cplan = ggml_graph_plan(gf, n_threads, nullptr);
+    void * work = nullptr;
+    if (cplan.work_size > 0) {
+        work = malloc(cplan.work_size);
+        if (work == nullptr) return GGML_STATUS_ALLOC_FAILED;
+    }
+    cplan.work_data = (uint8_t *) work;
+    enum ggml_status st = ggml_graph_compute(gf, &cplan);
+    free(work);
+    return st;
+}
+
 static int vae_late_split(void) {
     // Shipped default: only the deepest stage is deferred. Split 5 was measured
     // (Exp565, 40-utt gate) at RTF -0.9% / VAE -1.4% but WER 4.41 -> 4.68%
@@ -1504,8 +1526,7 @@ static int32_t vae_encode_early_impl(
     }
     struct timespec c0, c1;
     clock_gettime(CLOCK_MONOTONIC, &c0);
-    if (ggml_graph_compute_with_ctx(compute_ctx_ref, gf,
-            n_threads_ovr > 0 ? n_threads_ovr : ctx->n_threads) != GGML_STATUS_SUCCESS) {
+    if (vae_graph_compute_planned(gf, n_threads_ovr > 0 ? n_threads_ovr : ctx->n_threads) != GGML_STATUS_SUCCESS) {
         fprintf(stderr, "[VAE] Error: early graph compute failed\n"); return -1;
     }
     clock_gettime(CLOCK_MONOTONIC, &c1);
@@ -1675,8 +1696,7 @@ static int32_t vae_encode_late_impl(
     struct timespec b1, c0, c1;
     clock_gettime(CLOCK_MONOTONIC, &b1);
     clock_gettime(CLOCK_MONOTONIC, &c0);
-    if (ggml_graph_compute_with_ctx(compute_ctx_ref, gf,
-            n_threads_ovr > 0 ? n_threads_ovr : ctx->n_threads) != GGML_STATUS_SUCCESS) {
+    if (vae_graph_compute_planned(gf, n_threads_ovr > 0 ? n_threads_ovr : ctx->n_threads) != GGML_STATUS_SUCCESS) {
         fprintf(stderr, "[VAE] Error: late graph compute failed\n"); return -1;
     }
     clock_gettime(CLOCK_MONOTONIC, &c1);
