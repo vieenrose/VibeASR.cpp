@@ -424,9 +424,13 @@ static struct ggml_tensor* ggml_nn_conv_1d_dw(
                       : ggml_pad_ext(ctx, x, padding, 0, 0, 0, 0, 0, 0, 0);
             padding = 0;
         }
+        // For the im2col fallback with a channels-first input: one cont/permute
+        // back to [T, C] so the legacy path stays usable in every mode.
+        // The im2col fallback reshapes x to [T,1,C,N] with time on ne[0]; with a
+        // channels-first input that reshape is a hard assert (the 83200-sample
+        // guard incident, Exp602). Keep the taps as the only [C,T]-consumer.
         const bool dw_taps = (getenv("VAE_DW_CT_OFF") == nullptr) &&
-                             stride == 1 && dilation == 1 && b != NULL &&
-                             (ct_in || (x->ne[2] == 1 && w->ne[1] == 1 && w->ne[3] == 1 && x->ne[0] > 2 * w->ne[0]));
+                             stride == 1 && dilation == 1 && b != NULL && ct_in;
         if (dw_taps) {
             // Depthwise conv as K dense-view multiply-adds in the [C, T] layout
             // (Exp580, default since it measured RTF 3.1523 -> 3.0829 on device).
