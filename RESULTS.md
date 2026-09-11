@@ -15,7 +15,7 @@ llama-quantize --allow-requantize --token-embedding-type q6_K \
     streaming-lm-q4_k_m.gguf lm-q4_0_4_4.gguf Q4_0_4_4
 # binary (device-specific build protocol; in-tree CMake stays armv8.0-safe)
 ./.auto/setup.sh                     # NDK cross-build with -mcpu=cortex-a78
-LM_FILE=lm-q4_0_4_4.gguf VAE_FILE=vae-encoder-q4x4ffn.gguf ./.auto/measure.sh
+LM_FILE=lm-q8head.gguf VAE_FILE=vae-encoder-q4x4ffn.gguf ./.auto/measure.sh
 ```
 
 `.auto/measure.sh` builds, pushes the binary **and the shared libs** (md5-diffed),
