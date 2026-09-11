@@ -549,7 +549,14 @@ struct ConvNeXtBlock {
             x = ggml_nn_linear_relu(ctx, x, ffn_fc1_weight, ffn_fc1_bias);
         } else {
             x = ggml_nn_linear(ctx, x, ffn_fc1_weight, ffn_fc1_bias);
-            x = ggml_gelu(ctx, x);
+            // Upstream trains exact erf GELU (ACT2FN["gelu"]); the tanh approx
+            // differs by <= ~3e-4 elementwise. VAE_GELU_QUICK=1 selects it - a
+            // model approximation, so it must pass the accuracy gate.
+            if (getenv("VAE_GELU_QUICK") != nullptr) {
+                x = ggml_gelu_quick(ctx, x);
+            } else {
+                x = ggml_gelu(ctx, x);
+            }
         }
         
         x = ggml_nn_linear(ctx, x, ffn_fc2_weight, ffn_fc2_bias);
