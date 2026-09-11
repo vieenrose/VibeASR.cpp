@@ -132,7 +132,8 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
 | artifact | md5 |
 |---|---|
 | `vae-encoder-q4x4ffn.gguf` | `b909b7901d5d318d81ce4cbaeac31437` |
-| `lm-q4_0_4_4.gguf` (q6_K embeddings) | `222d4bf7794c4b030a82751a1b3226f5` |
+| `lm-q4_0_4_4.gguf` (q6_K embeddings, predecessor) | `db67eecbd31bba707666414dd977902f` |
+| `lm-q8head.gguf` (**shipped**: Q4_0_4_4 bulk, q6_K embeddings, **Q8_0 head**) | `222d4bf7794c4b030a82751a1b3226f5` |
 | `streaming-lm-q4_k_m.gguf` (intermediate) | `046be3d4775e10f8b635b03ec1bc79cb` |
 | `lm-4x4-head.gguf` (OPTIONAL faster variant, q8_0 head -> q4_0_4x4: RTF -4.1 %, WER 4.96 % — declined as default) | `62854dfffbd24fdca7a2aa4717df24eb` |
 | Android `asr_streaming` (A78 build, OMP off, deferred late stages + lifetime activation buffers + zero-copy weights) | `fda51262bd5cc1248a8b283e727f9b50` |
