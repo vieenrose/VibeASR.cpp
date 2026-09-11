@@ -125,7 +125,7 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
   blocked because `mul_mat`'s output type is F32-hardcoded.
 - **Security hardening**: disabling `-fstack-protector-strong`/`-D_FORTIFY_SOURCE=2`
   buys nothing (Exp549: 3.5028, in-band) — the shipped build keeps them.
-- **Codegen**: PGO re-tested properly (protocol-trained, push fixed) = 0 %; a 4-way flag sweep (-funroll-loops / -falign-loops=32 / -falign-functions=64 / -fno-semantic-interposition) was measured without wiping, so Make kept stale objects and the numbers are not evidence; redone properly (wiped), -funroll-loops is BYTE-IDENTICAL to the shipped binary (Release/-O3 already makes the same unroll decisions everywhere in this tree), so the flag changes nothing;
+- **Codegen**: PGO re-tested properly (protocol-trained, push fixed) = 0 %; ThinLTO (`-flto=thin` on top of the shipped A78 flags, wiped build, libs verified pushed) = 0 % null (2.7820, in-band), so the invalid-basis revisit is closed; `-funroll-loops` is BYTE-IDENTICAL to the shipped binary on a wiped build (Release/-O3 already makes the same unroll decisions everywhere in this tree); the compiler axis is closed.
   ThinLTO's earlier null stands on a valid basis now; the compiler axis is closed.
 - **Quality ceiling**: RTF < 1 on this phone class needs retraining (QAT INT8 VAE
   and/or a smaller encoder+LM), not more porting.
