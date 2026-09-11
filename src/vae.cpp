@@ -517,8 +517,14 @@ struct ConvNeXtBlock {
         // Exp586: run the mixer channels-first so neither the transpose in nor
         // the one inside the depthwise helper is needed. F16 path only (the
         // I8_S fusion owns its own layout). VAE_CT_BLOCK_OFF=1 for the A/B.
+        // Must match the depthwise helper's ct_in test EXACTLY: if the block skips
+        // the transpose but the helper then rejects the channels-first input, the
+        // helper's dim-0 cache/pad path is fed a [C, T] tensor. That mismatch bit
+        // the piece-wise path (lean tier, and --xwin's 6400-sample pieces) where the
+        // deep stages only have T = 1..8 samples per piece.
         const bool ct_block = (getenv("VAE_CT_BLOCK_OFF") == nullptr) && !is_i8s &&
-                              mixer_conv_weight->ne[1] == 1 && x->ne[0] == mixer_conv_weight->ne[2];
+                              mixer_conv_weight->ne[1] == 1 && x->ne[0] == mixer_conv_weight->ne[2] &&
+                              x->ne[1] > 2 * mixer_conv_weight->ne[0];
         if (!ct_block) {
             x = ggml_cont(ctx, ggml_permute(ctx, x, 1, 0, 2, 3));
         }
