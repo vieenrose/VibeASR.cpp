@@ -1048,71 +1048,88 @@ static int32_t vae_encode_impl(
     // before any audio is processed. A small fixed pool starts everywhere but
     // silently caps input length and then segfaults past it. Size the arena
     // from the actual sample count instead, with ~15% headroom.
-    const size_t bytes_per_sample = use_i8_s ? 10240 : 65536;
-    // The coefficient above already carries ~15% headroom over the measured
-    // ggml_used_mem rate; the former +512 MB constant was pure slack and is
-    // wasteful now that two arenas can be live at once (concurrent encoders):
-    // two 0.7 GB arenas cost more RSS than the whole optional speed-up is worth.
-    const size_t vae_ctx_mem_size =
-        (size_t)n_samples * bytes_per_sample + (size_t)64 * 1024 * 1024;
-    // Grow (never shrink) the reused arena. The pages are first-touched once, by
-    // whichever request needs them; later requests find them already mapped.
-    if (compute_buf_size_ref < vae_ctx_mem_size) {
-        void * grown = realloc(compute_buf_ref, vae_ctx_mem_size);
-        if (grown == NULL) {
-            fprintf(stderr, "[VAE] Error: failed to allocate %.2f GB compute arena\n",
-                    vae_ctx_mem_size / 1073741824.0);
-            return -1;
+    // Allocation: the same lifetime (ggml-alloc) scheme as the split early/late
+    // passes - the context holds only metadata and the graph allocator places
+    // the live set (a few tens of MB) instead of an arena scaled at
+    // 10-64 KB per input sample (which made whole-file calls - the server and
+    // the non-streaming demo - reserve gigabytes). VAE_LEGACY_ARENA=1 restores
+    // the historical arena for A/B measurement.
+    static ggml_gallocr_t gallocr_pw[2] = { nullptr, nullptr };
+    static void * md_buf_pw[2] = { nullptr, nullptr };
+    static size_t md_size_pw[2] = { 0, 0 };
+    // Size guard (Exp578): the graph allocator is verified up to the largest
+    // piece the streaming path uses (83200 samples = one window). For whole-file
+    // inputs (the server and the non-streaming demo, where this path runs with
+    // the entire file) ggml's lifetime allocator segfaults inside the compute
+    // somewhere between 96k and 144k samples, so larger inputs keep the arena.
+    const bool lifetime_ok = (n_samples <= 83200);
+    const bool legacy_arena = (getenv("VAE_LEGACY_ARENA") != nullptr) || !lifetime_ok;
+    if (compute_ctx_ref) ggml_free(compute_ctx_ref);
+    if (legacy_arena) {
+        const size_t bytes_per_sample = use_i8_s ? 10240 : 65536;
+        const size_t vae_ctx_mem_size =
+            (size_t)n_samples * bytes_per_sample + (size_t)64 * 1024 * 1024;
+        if (compute_buf_size_ref < vae_ctx_mem_size) {
+            void * grown = realloc(compute_buf_ref, vae_ctx_mem_size);
+            if (grown == NULL) {
+                fprintf(stderr, "[VAE] Error: failed to allocate %.2f GB compute arena\n",
+                        vae_ctx_mem_size / 1073741824.0);
+                return -1;
+            }
+            compute_buf_ref      = grown;
+            compute_buf_size_ref = vae_ctx_mem_size;
         }
-        compute_buf_ref      = grown;
-        compute_buf_size_ref = vae_ctx_mem_size;
+        struct ggml_init_params ctx_params = {
+            compute_buf_size_ref, compute_buf_ref, false,
+        };
+        compute_ctx_ref = ggml_init(ctx_params);
+    } else {
+        if (gallocr_pw[slot] == nullptr) {
+            gallocr_pw[slot] = ggml_gallocr_new(ggml_backend_cpu_buffer_type());
+            if (gallocr_pw[slot] == nullptr) { fprintf(stderr, "[VAE] Error: gallocr init failed\n"); return -1; }
+        }
+        const size_t md_need = (size_t)16 * 1024 * 1024;
+        if (md_size_pw[slot] < md_need) {
+            void * grown = realloc(md_buf_pw[slot], md_need);
+            if (grown == NULL) { fprintf(stderr, "[VAE] Error: metadata arena alloc failed\n"); return -1; }
+            md_buf_pw[slot] = grown; md_size_pw[slot] = md_need;
+        }
+        struct ggml_init_params ctx_params = { md_size_pw[slot], md_buf_pw[slot], true };
+        compute_ctx_ref = ggml_init(ctx_params);
+        if (compute_ctx_ref == nullptr) { fprintf(stderr, "[VAE] Error: ctx init failed\n"); return -1; }
     }
 
-    struct ggml_init_params ctx_params = {
-        /*.mem_size   =*/ compute_buf_size_ref,
-        /*.mem_buffer =*/ compute_buf_ref,
-        /*.no_alloc   =*/ false,  // Let ggml allocate tensors
-    };
-
-    if (compute_ctx_ref) {
-        ggml_free(compute_ctx_ref);
-    }
-    compute_ctx_ref = ggml_init(ctx_params);
-
+    // Input tensor (data placement happens after graph allocation in lifetime mode).
+    float i8_scale = 1.0f;
     struct ggml_tensor* input;
     if (use_i8_s) {
-        // Quantize F32 audio to I8_S
         input = ggml_new_tensor_3d(compute_ctx_ref, GGML_TYPE_I8_S, n_samples, 1, 1);
         ggml_set_name(input, "input_audio_i8s");
-        
-        // Find max abs value
         float amax = 0.00001f;
         for (int32_t i = 0; i < n_samples; i++) {
             float abs_val = fabsf(audio[i]);
             if (abs_val > amax) amax = abs_val;
         }
-        float scale = 127.0f / amax;
-        
-        // Quantize to int8
-        int8_t * dst_i8 = (int8_t *) input->data;
-        for (int32_t i = 0; i < n_samples; i++) {
-            int v = (int)roundf(audio[i] * scale);
-            if (v >  127) v =  127;
-            if (v < -128) v = -128;
-            dst_i8[i] = (int8_t)v;
+        i8_scale = 127.0f / amax;
+        if (legacy_arena) {
+            int8_t * dst_i8 = (int8_t *) input->data;
+            for (int32_t i = 0; i < n_samples; i++) {
+                int v = (int)roundf(audio[i] * i8_scale);
+                if (v >  127) v =  127;
+                if (v < -128) v = -128;
+                dst_i8[i] = (int8_t)v;
+            }
+            float * scale_ptr = (float *)((char *) input->data + n_samples);
+            *scale_ptr = i8_scale;
         }
-        
-        // Store scale after int8 data
-        float * scale_ptr = (float *)((char *) input->data + n_samples);
-        *scale_ptr = scale;
     } else {
-        // Use F32 input directly
         input = ggml_new_tensor_3d(compute_ctx_ref, GGML_TYPE_F32, n_samples, 1, 1);
         ggml_set_name(input, "input_audio");
-        memcpy(input->data, audio, n_samples * sizeof(float));
+        if (legacy_arena) memcpy(input->data, audio, (size_t)n_samples * sizeof(float));
     }
     
     // Build computation graph
+    if (cache != nullptr && !legacy_arena) cache->lifetime = true;
     struct ggml_tensor* result = encoder.forward(compute_ctx_ref, input, cache);
     
     // Build graph with pre-allocated nodes (similar to llama_ref.cpp)
@@ -1129,11 +1146,56 @@ static int32_t vae_encode_impl(
         }
     }
     
+    if (!legacy_arena) {
+        ggml_set_input(input);
+        ggml_set_output(result);
+        if (cache != nullptr) {
+            for (size_t ti = 0; ti < cache->taps.size(); ti++) {
+                ggml_set_output(cache->taps[ti].xh);
+                if (cache->taps[ti].x) ggml_set_output(cache->taps[ti].x);
+            }
+        }
+        if (getenv("VAE_ZC_STATS") != nullptr) fprintf(stderr, "[DBG] prealloc n_samples=%d nodes=%d\n", n_samples, ggml_graph_n_nodes(gf));
+        if (!ggml_gallocr_alloc_graph(gallocr_pw[slot], gf)) {
+            fprintf(stderr, "[VAE] Error: gallocr_alloc_graph failed (n_samples=%d)\n", n_samples);
+            return -1;
+        }
+        if (getenv("VAE_ZC_STATS") != nullptr) fprintf(stderr, "[DBG] alloc ok buffer=%.1f MB\n", ggml_gallocr_get_buffer_size(gallocr_pw[slot], 0)/1e6);
+        // Data placement after allocation: the audio input and the
+        // streaming-cache staging buffers.
+        if (use_i8_s) {
+            int8_t * dst_i8 = (int8_t *) input->data;
+            for (int32_t i = 0; i < n_samples; i++) {
+                int v = (int)roundf(audio[i] * i8_scale);
+                if (v >  127) v =  127;
+                if (v < -128) v = -128;
+                dst_i8[i] = (int8_t)v;
+            }
+            float * scale_ptr = (float *)((char *) input->data + n_samples);
+            *scale_ptr = i8_scale;
+        } else {
+            memcpy(input->data, audio, (size_t)n_samples * sizeof(float));
+        }
+        if (cache != nullptr) {
+            for (size_t fi = 0; fi < cache->fills.size(); fi++) {
+                const vae_stream_cache::Fill & f = cache->fills[fi];
+                const int64_t N = f.t->ne[0];
+                const int64_t nch = f.t->ne[1] * f.t->ne[2] * f.t->ne[3];
+                float * d = (float *)f.t->data;
+                for (int64_t c = 0; c < nch; c++) {
+                    memcpy(d + c * N, f.hist->data() + c * f.P, (size_t)f.P * sizeof(float));
+                    memset(d + c * N + f.P, 0, (size_t)(N - f.P) * sizeof(float));
+                }
+            }
+            cache->fills.clear();
+        }
+    }
     if (getenv("VAE_MEM_STATS") != nullptr) {
         static int mem_dumps = 0;
         if (mem_dumps++ < 4) {
-            fprintf(stderr, "[VAE_MEM] slot=%d arena=%.1f MB used=%.1f MB nodes=%d\n",
-                    slot, compute_buf_size_ref / 1e6,
+            fprintf(stderr, "[VAE_MEM] slot=%d %s=%.1f MB used=%.1f MB nodes=%d\n",
+                    slot, legacy_arena ? "arena" : "lifetime",
+                    legacy_arena ? compute_buf_size_ref / 1e6 : ggml_gallocr_get_buffer_size(gallocr_pw[slot], 0) / 1e6,
                     ggml_used_mem(compute_ctx_ref) / 1e6, ggml_graph_n_nodes(gf));
         }
     }
@@ -1188,10 +1250,12 @@ static int32_t vae_encode_impl(
                     100.0 * kv.second.bytes / total, kv.second.macs / 1e9);
         }
     }
+    if (getenv("VAE_ZC_STATS") != nullptr) fprintf(stderr, "[DBG] precompute\n");
     if (ggml_graph_compute_with_ctx(compute_ctx_ref, gf, n_threads_ovr > 0 ? n_threads_ovr : ctx->n_threads) != GGML_STATUS_SUCCESS) {
         fprintf(stderr, "[VAE] Error: Graph computation failed\n");
         return -1;
     }
+    if (getenv("VAE_ZC_STATS") != nullptr) fprintf(stderr, "[DBG] postcompute\n");
 
     // Debug: dump one site input (ne0-major floats) if requested (VAE_DUMP_SITE=s7).
     // NOTE: runs BEFORE vae_cache_update reads nothing back, but taps are cleared
