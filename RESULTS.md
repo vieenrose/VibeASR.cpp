@@ -1,8 +1,8 @@
 # Results — VibeVoice-ASR-Streaming 1.5B on phone CPU (RTF)
 
-**Headline:** phone RTF **12.24 → 3.53 (−71 %)** on the 10 s protocol clip, at
+**Headline:** phone RTF **12.24 → 2.79 (−77 %)** on the 10 s protocol clip, at
 **equal-or-better accuracy** (40-utt WER 4.41 % vs 4.55 % for the original
-configuration), with **less RAM** (2.07 GB vs 2.99 GB) and a **1.4 s** model load.
+configuration), with **less RAM** (2.23 GB vs 2.99 GB) and a **1.2 s** model load.
 All numbers are measured on-device (OPPO CPH2371, Dimensity 1300, 8 GB, Android 13),
 CPU-only, `-t 2` pinned to the two 2.4 GHz prime cores.
 
@@ -25,7 +25,7 @@ LM_FILE=lm-q8head.gguf VAE_FILE=vae-encoder-q4x4ffn.gguf ./.auto/measure.sh
 runs the 10 s protocol clip pinned to the prime cores and prints `METRIC` lines.
 `EXTRA_ENV=` forwards env vars to the device run; `AUDIO=` selects the clip.
 
-## Final tier ladder (all on-device, 10 s protocol, 26 pieces)
+## Final tier ladder (all on-device, 10 s protocol, 2 pieces)
 
 | tier | files | 10 s | 17 s | 69 s | 40-utt mean | WER | RSS |
 |---|---|---|---|---|---|---|---|
@@ -39,7 +39,7 @@ runs the 10 s protocol clip pinned to the prime cores and prints `METRIC` lines.
 
 Shipped recipe: VAE `Q4_0_4x4` ffn linears (converter outtype `q4_0_4x4_ffn`) +
 F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddings**
-+ **concurrent acoustic/semantic encoders** (one thread each), 26 VAE pieces.
++ **Q8_0 output head** + **concurrent acoustic/semantic encoders** (one thread each), 2 VAE pieces (PIECES=2 harness default).
 
 
 ## Progression on the 10 s protocol (each step validated)
@@ -70,7 +70,7 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
 |---|---|
 | 40-utt LibriSpeech gate (on-device, shipped config, re-run after each change) | WER **4.68 %** (S=29 D=2 I=3) at the shipped p2+lifetime build, with 34/40 transcripts byte-identical to the previous 4.41 % gate; that gate's 6 differing utterances are the same six that any re-blocking of the deep stages moves (identical at p2 and p26, and to the split-5 experiment), and the zh protocol canary is byte-identical everywhere. The pre-change gate was 4.41 % (S=28 D=1 I=3, 40/40 identical). Re-validated at HEAD (Exp613, after the gelu-knob and dw-taps-guard commits): WER **4.41 %** (S=28 D=1 I=3 H=697), 40/40 transcripts byte-identical to the hyp-q8head reference set |
 | 69 s equal-token comparison | 3.43 vs 5.62 accuracy-first (−39 %), tokens 438 vs 442 |
-| sustained 138 s (frozen build) | RTF **3.14** (v3: p2 + lifetime allocator), VAE 271.9 s, RSS flat 2.31 GB over 47 windows, token count identical to the v2 run, majflt 0 |
+| sustained 138 s (frozen build) | RTF **2.80** (v3.5 stack, Exp614 re-validation), RSS flat ~2.2 GB over 47 windows, token count identical, majflt 0 |
 | determinism | repeated runs byte-identical, matching references from earlier builds |
 | output stability | byte-identical transcripts vs pre-change references on **every** clip used (10 s, 17 s, 69 s, 138 s halves, and 40/40 gate utterances) |
 | out-of-domain (20 s music) | RTF 2.97, sane `[Music]`+lyrics output, no pathological loops |
@@ -81,7 +81,7 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
 | hardware envelope (Exp544) | the two pinned A78 primes are **hard-capped at 1.3 GHz** (54 % of their 2.4 GHz rating) regardless of load — all numbers are the device's sustained, power-capped behaviour. At that clock the LM prefill runs at ~90 % of the achievable int8 rate; the VAE's FFN at ~15 % (shape-limited: L=50 columns in the deep stages, short contractions in the early ones) |
 | reproducibility | artifacts bit-exact; the documented recipe (`.auto/setup.sh` from a wiped `build-android/`) reproduces the shipped binaries **byte-for-byte** - re-verified on the v3.5 build (Exp610): asr_streaming `4bb34abc`, libggml `6ce4c983`, libllama `92ad2456`, and the device copies match |
 
-## What moved the needle (five waves, −71 %)
+## What moved the needle (five waves, −77 %)
 
 1. **Harness bug + A78 codegen (−6.5 %).** `measure.sh` pushed only the executable,
    never the `libggml.so`/`libllama.so` it links against — so every ggml-side
@@ -113,7 +113,7 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
 - **Concurrency**: 2 threads per chain = VAE +44 % worse; two concurrent inference
   streams each take exactly 2× the solo time ⇒ no idle capacity, so any
   pipelining/overlap (window or phase level) is dead.
-- **Granularity / threads**: 26 pieces optimal (13 costs +319 MB for ~1 %); LM
+- **Granularity / threads**: 2 pieces optimal (Exp620 re-sweep on the shipped tier: p13 +3.2 % slower, p1 ties at +335 MB); LM
   thread count 2 (4 threads = +12 %); no 4-fast-core configuration exists.
 - **Conv-weight int8**: storage layout forbids block types on 3D conv tensors
   (kernel dim < 32); the 2D-storage workaround's net traffic gain is ~15 % of the
@@ -178,6 +178,6 @@ Hashes/gate counts available. Thanks!
 | Android `asr_streaming` (A78 build, OMP off, deferred late stages + lifetime activation buffers + zero-copy weights + [C,T] blocks, Q8_0 head) | `4bb34abcff3aa6d5e1e1fd40349653ef` |
 | `libggml.so` / `libllama.so` (shipped) | `6ce4c983ab2b310fb8dce8e75e402f7e` / `92ad2456979d99e2a1afee4a8cebad1d` |
 
-Full engineering log: 562 experiments in `.auto/log.jsonl`; per-wave detail and
+Full engineering log in `.auto/log.jsonl`; per-wave detail and
 the implementation notes in `STREAMING_1P5B.md`; loop protocol in
 `.auto/prompt.md`; parked work with recipes in `.auto/ideas.md`.

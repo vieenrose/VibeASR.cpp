@@ -90,8 +90,8 @@ the frozen recipes, and the copies on the phone match the host byte-for-byte:
 
 Build fingerprint on the phone: `libggml.so 40a1f284e75dbc3c180215267068c12e`,
 `libllama.so 92ad2456979d99e2a1afee4a8cebad1d`. To re-run the full tier
-measurement: `LM_FILE=lm-q4_0_4_4.gguf VAE_FILE=vae-encoder-q4x4ffn.gguf ./.auto/measure.sh`
-(26 pieces is the harness default), WER gate: `./.auto/eval40.sh <tag> 0 40` +
+measurement: `LM_FILE=lm-q8head.gguf VAE_FILE=vae-encoder-q4x4ffn.gguf ./.auto/measure.sh`
+(2 pieces is the harness default; the binary `--vae-pieces` flag itself defaults to 13), WER gate: `./.auto/eval40.sh <tag> 0 40` +
 `venv-vibe/bin/python .auto/score_hyp.py <tag>`.
 
 ## Phone evaluation (OPPO CPH2371, Dimensity 1300, 8 GB RAM, Android 13)
@@ -269,11 +269,16 @@ everything else stays F16.
   mean **4.77**, WER 5.10% (S=31 D=3 I=3), RSS **2.05 GB**, 69 s transcript
   diff vs accuracy-first 3.93%.
 
-### Final tier ladder (all on-device gated, 10 s protocol `-t 2`/C0, 26 pieces default)
+### Final tier ladder (Exp525–542-era snapshot — SUPERSEDED)
+
+> **Superseded in v3.5:** the shipped default is now PIECES=2 at RTF 2.76–2.80
+> (clips 2.41/2.71/2.79, gate 4.41 % re-validated at HEAD); the current ladder
+> lives in RESULTS.md. The table below (all on-device gated, 10 s protocol
+> `-t 2`/C0, 26-piece default) is preserved as history.
 
 | tier | files | 10 s | 17 s | 40-utt mean | 69 s (equal tokens) | WER (40-utt) | RSS |
 |---|---|---|---|---|---|---|---|
-| **max-speed (shipped default): 4x4 VAE + 4x4 LM (q6_K emb) + F16 im2col + concurrent encoders + OMP off, 26 pieces** | 2.0 GB | **3.48** (3.47-3.50, n=7, sd 0.010) | **3.05** | **3.86** | **3.38** | **4.41%**\*\*\* | 2.07 GB |
+| **max-speed (shipped default as of Exp542): 4x4 VAE + 4x4 LM (q6_K emb) + F16 im2col + concurrent encoders + OMP off, 26 pieces** | 2.0 GB | **3.48** (3.47-3.50, n=7, sd 0.010) | **3.05** | **3.86** | **3.38** | **4.41%**\*\*\* | 2.07 GB |
 | _max-speed, RAM-lean (`VAE_SEQ_ENCODERS=1`)_ | 2.0 GB | _4.01_ | — | — | — | 4.41% | **1.91 GB** |
 | balanced: VAE Q4_0_4x4-FFN + LM Q4_K_M (final build) | 1.9 GB | **4.40** | — | — | — | 4.82% | 2.07 GB |
 | fast-LM: VAE F16 + LM Q4_0_4x4 (q6_K emb) _(pre-im2col)_ | 2.5 GB | 5.21 | — | 5.73 | — | 4.41% | 2.94 GB |
@@ -324,12 +329,14 @@ headline speed claim** for the max-speed tier. The balanced tier (4x4 VAE +
 Q4_K_M LM) does not truncate (46/45, 69/68) and is the best all-round tier:
 −14% RTF for +0.27 pp WER.
 
-The **balanced-lean** variant (`--vae-pieces 26` on the same files) trades
-+1% (10 s) / +2.4% (69 s) RTF for −180 MB RSS at *identical* transcripts — the
-4 GB-device option, and a strict upgrade over the old ultra-lean tier
-(6.61 @ 1.97 GB). VAE granularity is otherwise closed: 13 pieces remains the
-time-optimal split, and the reason 26 is now nearly free is that the 4x4
-weights are 4x smaller, so extra launches no longer pay weight-traffic.
+The **balanced-lean** variant (`--vae-pieces 26` on the same files) traded
++1% (10 s) / +2.4% (69 s) RTF for −180 MB RSS at *identical* transcripts in the
+Exp542-era concurrent regime. The current RAM-lean tier is the **sequential** p26
+(`VAE_SEQ_ENCODERS=1`): 3.19 @ 1.82 GB (RESULTS.md ladder). VAE granularity is
+otherwise closed: **2 pieces is the time-optimal split** (Exp620 re-sweep on the
+shipped tier: p13 +3.2% slower, p1 ties at +335 MB) — the deferred late pass
+captures the deep-layer batching benefit window-wide, leaving only per-piece
+overhead, so finer splits lose.
 
 Against the original baseline (12.24) the max-speed tier is **−65%**; against
 the pre-A78 loop best (6.52) it is −35%. The balanced tier dominates the fast
