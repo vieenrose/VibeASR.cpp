@@ -587,6 +587,11 @@ struct vae_model {
     struct ggml_context* params_ctx = nullptr;
     ggml_backend_t backend = nullptr;
     ggml_backend_buffer_t params_buffer = nullptr;
+    // Zero-copy load: the tensors point straight into the read-only mapping and
+    // it stays mapped for the model's lifetime. File-backed clean pages are
+    // reclaimable under memory pressure, unlike the anonymous arena copy.
+    void* mmap_base = nullptr;
+    size_t mmap_size = 0;
     
     AudioVAEEncoder acoustic_encoder;
     AudioVAEEncoder semantic_encoder;
@@ -597,6 +602,10 @@ struct vae_model {
     std::map<std::string, struct ggml_tensor*> tensors;
     
     ~vae_model() {
+        if (mmap_base) {
+            munmap(mmap_base, mmap_size);
+            mmap_base = nullptr;
+        }
         if (params_buffer) {
             ggml_backend_buffer_free(params_buffer);
         }
@@ -827,17 +836,29 @@ vae_model_t* vae_load_model_from_file(
         model->tensors[name] = tensor;
     }
     
-    // Allocate backend buffer
-    model->params_buffer = ggml_backend_alloc_ctx_tensors(model->params_ctx, model->backend);
-    
-    // Load tensor data from file. Fast path: mmap + one memcpy per tensor
-    // straight from the page cache into the backend buffer. The old per-tensor
-    // `std::vector<char> buf(n)` also value-initialised (zero-filled) every
-    // tensor and copied twice (file->buf->tensor), i.e. ~3x the file's bytes in
-    // memory traffic plus per-tensor allocation churn - measurable startup on
-    // the 0.8-1.4 GB VAE files (see load_s).
     size_t data_offset = gguf_get_data_offset(gguf_ctx);
+    // Zero-copy plan: point the tensors straight into the read-only mapping and
+    // keep it for the model's lifetime (file-backed clean pages are reclaimable
+    // under memory pressure, unlike an anonymous arena copy, and there is no
+    // 0.5 GB memcpy at startup). Requires every tensor's file offset to be
+    // 32-byte aligned (gguf general.alignment; mmap itself is page-aligned),
+    // which is checked from metadata before mapping. Enabled by default since
+    // Exp575 measured it: RTF and transcripts identical, load 1.4 -> 1.2 s, and
+    // the 536 MB of weights stop being a private anonymous copy (they become
+    // clean, reclaimable file-backed pages). VAE_COPY_WEIGHTS=1 restores the
+    // arena copy.
+    const bool zerocopy_req = (getenv("VAE_COPY_WEIGHTS") == nullptr);
+    bool zc_offsets_ok = zerocopy_req;
+    for (int i = 0; zerocopy_req && i < n_tensors; i++) {
+        const char* name = gguf_get_tensor_name(gguf_ctx, i);
+        struct ggml_tensor* tensor = model->tensors[name];
+        size_t offset = data_offset + gguf_get_tensor_offset(gguf_ctx, i);
+        if ((offset % 32) != 0 || ggml_nbytes(tensor) == 0) { zc_offsets_ok = false; break; }
+    }
+    const bool zerocopy_req_ok = zerocopy_req && zc_offsets_ok;
+    bool zerocopied = false;
     bool loaded = false;
+
 #if VAE_HAVE_MMAP
     {
         int fd = open(model_path, O_RDONLY);
@@ -861,37 +882,55 @@ vae_model_t* vae_load_model_from_file(
                     total_bytes += tensor_size;
                 }
                 if (ok && !jobs.empty()) {
-                    // Parallel copy: the mmap page-cache -> arena memcpy is the
-                    // whole cost of the load phase (0.4-1.4 GB) and is trivially
-                    // parallel over tensors; a tensor straddling a worker's
-                    // byte range may be copied twice, which is idempotent.
-                    const int nworkers = 4;
-                    std::vector<std::thread> th;
-                    th.reserve(nworkers);
-                    for (int w = 0; w < nworkers; w++) {
-                        th.emplace_back([&, w]() {
-                            const size_t begin = total_bytes * (size_t) w / (size_t) nworkers;
-                            const size_t end   = total_bytes * (size_t)(w + 1) / (size_t) nworkers;
-                            size_t acc = 0;
-                            for (const CopyJob& j : jobs) {
-                                if (acc >= end) break;
-                                if (acc + j.sz > begin) {
-                                    ggml_backend_tensor_set(j.t, (const char*) base + j.off, 0, j.sz);
+                    if (zerocopy_req_ok && ((uintptr_t) base % 32) == 0) {
+                        for (const CopyJob& j : jobs) j.t->data = (char*) base + j.off;
+                        model->mmap_base = base;
+                        model->mmap_size = (size_t) st.st_size;
+                        zerocopied = true;
+                        if (getenv("VAE_ZEROCOPY_STATS") != nullptr) {
+                            fprintf(stderr, "[VAE_ZC] zero-copy weights: %.1f MB mapped, no arena copy\n",
+                                    total_bytes / 1e6);
+                        }
+                    } else {
+                        if (!model->params_buffer) {
+                            model->params_buffer = ggml_backend_alloc_ctx_tensors(model->params_ctx, model->backend);
+                        }
+                        if (!model->params_buffer) { ok = false; }
+                        // Parallel copy: the mmap page-cache -> arena memcpy is the
+                        // whole cost of the load phase (0.4-1.4 GB) and is trivially
+                        // parallel over tensors; a tensor straddling a worker's
+                        // byte range may be copied twice, which is idempotent.
+                        const int nworkers = 4;
+                        std::vector<std::thread> th;
+                        th.reserve(nworkers);
+                        for (int w = 0; ok && w < nworkers; w++) {
+                            th.emplace_back([&, w]() {
+                                const size_t begin = total_bytes * (size_t) w / (size_t) nworkers;
+                                const size_t end   = total_bytes * (size_t)(w + 1) / (size_t) nworkers;
+                                size_t acc = 0;
+                                for (const CopyJob& j : jobs) {
+                                    if (acc >= end) break;
+                                    if (acc + j.sz > begin) {
+                                        ggml_backend_tensor_set(j.t, (const char*) base + j.off, 0, j.sz);
+                                    }
+                                    acc += j.sz;
                                 }
-                                acc += j.sz;
-                            }
-                        });
+                            });
+                        }
+                        for (auto& x : th) x.join();
                     }
-                    for (auto& x : th) x.join();
                 }
-                munmap(base, (size_t) st.st_size);
+                if (!zerocopied) munmap(base, (size_t) st.st_size);
                 loaded = ok;
             }
             close(fd);
         }
     }
 #endif
-    if (!loaded) {
+    if (!loaded && !zerocopied) {
+        if (!model->params_buffer) {
+            model->params_buffer = ggml_backend_alloc_ctx_tensors(model->params_ctx, model->backend);
+        }
         FILE* f = fopen(model_path, "rb");
         if (!f) {
             fprintf(stderr, "[VAE] Error: Failed to open file for reading\n");
