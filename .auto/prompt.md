@@ -21,7 +21,7 @@ believed unreachable without retraining; do NOT chase it by cheating).
 | Q8 anchor | `VAE_FILE=vae-encoder-q8_0mixed.gguf` | 6.12-6.15 | 6.1204/6.1520/6.1659 |
 | Q4 | `VAE_FILE=vae-encoder-q4ffn.gguf` | ~6.48 | 6.4776 |
 | ultra-lean (superseded) | `VAE_FILE=vae-encoder-q4ffn.gguf PIECES=26` | ~6.61 | 6.6066 |
-| MAX-SPEED-LEAN | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q4_0_4_4.gguf PIECES=26 EXTRA_ENV=VAE_SEQ_ENCODERS=1` | **~3.17** | VAE 23.3 s; **RSS 1763 MB**; tokens 36; [C,T] blocks apply here too (Exp589: 3.89 -> 3.17). `VAE_LEGACY_ARENA=1` / `VAE_CT_BLOCK_OFF=1` give bit-exact legacy variants |
+| MAX-SPEED-LEAN | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q8head.gguf PIECES=26 EXTRA_ENV=VAE_SEQ_ENCODERS=1` | **~3.19** | VAE 24.1 s; **RSS 1818 MB**; tokens 36. At the v3.5 stack the [C,T] blocks make the piece-wise early stages fast (was 3.89 / 1764 MB with the q6_K-head LM). `VAE_LEGACY_ARENA=1` gives the bit-exact legacy variant |
 | BALANCED-LEAN | `VAE_FILE=vae-encoder-q4x4ffn.gguf PIECES=26` | ~5.21 | 5.208 (69 s 4.9374, identical tokens, RSS 1.98 GB) |
 Old-build bands (6.49-6.59 Q8, 10.5 F16, 6.81 Q4, 7.06 ultra-lean) are DEAD.
 69 s equal-token: accuracy-first 5.6089 / balanced 4.8228 / max-speed 4.046.
