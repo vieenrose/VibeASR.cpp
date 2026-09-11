@@ -130,6 +130,42 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
 - **Quality ceiling**: RTF < 1 on this phone class needs retraining (QAT INT8 VAE
   and/or a smaller encoder+LM), not more porting.
 
+## Upstream issues (drafted from our numbers, not yet filed - neither author has upstream access)
+
+Drafts below were written from this project's gate data with a research agent (DeerFlow) and
+reviewed against the logs. File to llama.cpp / ggml when someone has an identity.
+
+### B1: [ARM CPU] No gemv/gemm kernel for q6_K (output head): 26ms/tok fallback on A78-dotprod; request q6_K_4x4 tile or canonical fast head type
+
+Hi, reporting a measured ARM-CPU gap with repro numbers, asking for either (a) a q6_K GEMV/GEMM
+tile for aarch64-dotprod, or (b) maintainer guidance canonicalizing large-vocab heads to a type
+that has one. Setup: 2x pinned Cortex-A78 @ measured 1.3GHz (Dimensity 1300, ARMv8.2+DOTPROD, no
+i8mm), single-stream single-token decode, Qwen2.5-family LM n_embd=1536, vocab 151936 ->
+output.weight 233.4M params. Sizes: q6_K 191MB (0.82 B/p), q8_0 248MB (1.06), q4_0_4x4 141MB (0.60),
+q5_K 158MB (0.68). Kernels: ggml-cpu-aarch64.c has NEON/dotprod tiles for q4_0*/q8_0 only; q6_K
+(and q5_K) fall back to scalar vec_dot_q6_K_q8_K. Measured: q6_K head 191MB@~7.3GB/s eff -> ~26ms
+of 105ms/token (24.8%). q8_0 derived: 248MB@~13GB/s dotprod ~= ~19ms; end-to-end decode delta
+measured 17ms/token with ~5ms run variance (decode 4.3->3.6s, -16%, WER-neutral). q4_0_4x4 ~15ms
+via interleaved GEMV BUT gate 4.41->4.96% (+0.55pp) + zh proper-noun loss; q5_K -14% decode but
+4.41->5.10% (+0.42pp). All four variants ran the same graph/protocol on 2xA78@1.3GHz with the
+40-utt on-device LibriSpeech gate + bilingual zh canary as the decision pair. So no type today is
+both fast and accuracy-neutral. Ask: q6_K_4x4 (or q8_0_4x4) GEMV tile, or docs blessing q8_0 as the
+ARM head type. I can attach hashes/gate counts. Thanks!
+
+### B4: [quantize/docs] imatrix + quant-weights silently no-op for Q4_0_4x4/4x8/8x8 family; request docs + CLI warning (+q4_K output-type footgun, unconfirmed)
+
+Hi, requesting a docs + CLI guard, with evidence. Fact: quantize_q4_0_4x4() marks quant_weights
+UNUSED and ggml_quantize_chunk never consults an imatrix for the 4x4/8x8 family (quants.c;
+verified still true upstream). Evidence: built a 220-chunk imatrix from public-domain bilingual
+text, applied during Q4_0_4x4 requant (llama-quantize --allow-requantize ... Q4_0_4_4): only
+token_embd/plain-q4_0 tensors could be weighted and both reported 'did not find weights'; 40-utt
+gate + protocol RTF bit-identical with/without imatrix. Ask (durable part): one-line docs note the
+blocked 4x4/8x8 family ignores imatrix/quant-weights (only K-quants/IQ consume them). Nice-to-have:
+CLI warn when --imatrix meets a 4x4/8x8 target. Companion, please-confirm: --output-tensor-type
+q4_K wrote a broken ~198MB partial (of a ~1GB model) in my fork - please confirm on current HEAD
+before merging that half; if confirmed, the same note should list supported output types loudly.
+Hashes/gate counts available. Thanks!
+
 ## Provenance
 
 | artifact | md5 |
