@@ -31,7 +31,7 @@ runs the 10 s protocol clip pinned to the prime cores and prints `METRIC` lines.
 |---|---|---|---|---|---|---|---|
 | **max-speed-lean (seq-mode p26)** | 1.82 GB | **3.19** | — | — | — | same class | **1.76 GB** |
 | **whole-file / server path** (Exp578/579) | — | — | live set **188-313 MB** for 6-10 s files | — | — | — | — |
-| **max-speed (shipped)** | 2.1 GB | **2.79** | TBD | TBD | TBD | **4.41 %** | 2.07 GB |
+| **max-speed (shipped)** | 2.2 GB | **2.79** | **2.41** | **2.71** | **2.79** | **4.41 %** | 2.23 GB |
 | _max-speed, RAM-lean (`VAE_SEQ_ENCODERS=1`)_ | 2.0 GB | _4.01_ | — | — | — | 4.41 % | **1.91 GB** |
 | balanced (clean zh transcripts) | 1.9 GB | 4.44 | — | 4.64 | — | 4.82 % | 2.00 GB |
 | accuracy-first (VAE F16) | 2.5 GB | 5.35 | — | 5.62 | 6.58 | 4.55 % | 2.95 GB |
