@@ -30,7 +30,7 @@ for ((i=START; i<START+COUNT && i<${#WAVS[@]}; i++)); do
   W=${WAVS[$i]}; B=$(basename "$W"); K=${B%.wav}
   [ -s "$OUT/$K.txt" ] && { echo "skip $K"; continue; }
   adb -s $DEV push "$W" $RDIR/ls40/ >/dev/null 2>&1
-  adb -s $DEV shell "cd $RDIR && LD_LIBRARY_PATH=. taskset $MASK ./asr_streaming --vae-model ./$VAE_FILE --lm-model ./$LM_FILE --audio ls40/$B -t $THREADS --vae-pieces $PIECES" > .auto/eval40_out.txt 2> .auto/eval40_err.txt || { echo "FAILED $K"; exit 1; }
+  adb -s $DEV shell "cd $RDIR && ${EXTRA_ENV:-} LD_LIBRARY_PATH=. taskset $MASK ./asr_streaming --vae-model ./$VAE_FILE --lm-model ./$LM_FILE --audio ls40/$B -t $THREADS --vae-pieces $PIECES" > .auto/eval40_out.txt 2> .auto/eval40_err.txt || { echo "FAILED $K"; exit 1; }
   python3 - "$OUT/$K.txt" <<'PY'
 import sys
 s=open('.auto/eval40_out.txt',encoding='utf-8',errors='replace').read()
