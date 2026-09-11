@@ -12,7 +12,10 @@ CPU-only, `-t 2` pinned to the two 2.4 GHz prime cores.
 # weights (bit-exactly reproducible, see hashes below)
 python3 utils/convert_vae_to_gguf.py models-pt --outtype q4_0_4x4_ffn -o vae-encoder-q4x4ffn.gguf
 llama-quantize --allow-requantize --token-embedding-type q6_K \
-    streaming-lm-q4_k_m.gguf lm-q4_0_4_4.gguf Q4_0_4_4
+    --output-tensor-type q8_0 \
+    streaming-lm-q4_k_m.gguf lm-q8head.gguf Q4_0_4_4
+# audit: requantize silently demotes precision (Exp493 cost 0.7 pp); fail loudly
+python3 .auto/check_tensors.py ../models-streaming/lm-q8head.gguf ../models-streaming/vae-encoder-q4x4ffn.gguf
 # binary (device-specific build protocol; in-tree CMake stays armv8.0-safe)
 ./.auto/setup.sh                     # NDK cross-build with -mcpu=cortex-a78
 LM_FILE=lm-q8head.gguf VAE_FILE=vae-encoder-q4x4ffn.gguf ./.auto/measure.sh
