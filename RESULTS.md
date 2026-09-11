@@ -79,7 +79,7 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
 | input formats / cold start | 48 kHz stereo handled (one word differs); after evicting the page cache the RTF is unchanged (3.4713 pre-change, 3.3010 on the deferred build) and only the load grows (1.4 → 2.6 s, excluded from RTF) |
 | CPU utilisation | 1.88 of 2 pinned cores (94 %) — the pipeline is saturated |
 | hardware envelope (Exp544) | the two pinned A78 primes are **hard-capped at 1.3 GHz** (54 % of their 2.4 GHz rating) regardless of load — all numbers are the device's sustained, power-capped behaviour. At that clock the LM prefill runs at ~90 % of the achievable int8 rate; the VAE's FFN at ~15 % (shape-limited: L=50 columns in the deep stages, short contractions in the early ones) |
-| reproducibility | artifacts bit-exact; the documented recipe (`.auto/setup.sh` from a wiped `build-android/`) reproduces the shipped binaries **byte-for-byte** - re-verified on the v3.2 build (Exp576): asr_streaming `fda51262`, libggml `6ce4c983`, libllama `92ad2456`, and the device copies match |
+| reproducibility | artifacts bit-exact; the documented recipe (`.auto/setup.sh` from a wiped `build-android/`) reproduces the shipped binaries **byte-for-byte** - re-verified on the v3.5 build (Exp598): asr_streaming `7425cb90`, libggml `6ce4c983`, libllama `92ad2456`, and the device copies match |
 
 ## What moved the needle (five waves, −71 %)
 
@@ -125,7 +125,7 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
   blocked because `mul_mat`'s output type is F32-hardcoded.
 - **Security hardening**: disabling `-fstack-protector-strong`/`-D_FORTIFY_SOURCE=2`
   buys nothing (Exp549: 3.5028, in-band) — the shipped build keeps them.
-- **Codegen**: PGO re-tested properly (protocol-trained, push fixed) = 0 %;
+- **Codegen**: PGO re-tested properly (protocol-trained, push fixed) = 0 %; a 4-way flag sweep (-funroll-loops / -falign-loops=32 / -falign-functions=64 / -fno-semantic-interposition) was measured without wiping, so Make kept stale objects and the numbers are not evidence; redone properly (wiped), -funroll-loops is BYTE-IDENTICAL to the shipped binary (Release/-O3 already makes the same unroll decisions everywhere in this tree), so the flag changes nothing;
   ThinLTO's earlier null stands on a valid basis now; the compiler axis is closed.
 - **Quality ceiling**: RTF < 1 on this phone class needs retraining (QAT INT8 VAE
   and/or a smaller encoder+LM), not more porting.
@@ -175,7 +175,7 @@ Hashes/gate counts available. Thanks!
 | `lm-q8head.gguf` (**shipped**: Q4_0_4_4 bulk, q6_K embeddings, **Q8_0 head**) | `222d4bf7794c4b030a82751a1b3226f5` |
 | `streaming-lm-q4_k_m.gguf` (intermediate) | `046be3d4775e10f8b635b03ec1bc79cb` |
 | `lm-4x4-head.gguf` (OPTIONAL faster variant, q8_0 head -> q4_0_4x4: RTF -4.1 %, WER 4.96 % — declined as default) | `62854dfffbd24fdca7a2aa4717df24eb` |
-| Android `asr_streaming` (A78 build, OMP off, deferred late stages + lifetime activation buffers + zero-copy weights) | `fda51262bd5cc1248a8b283e727f9b50` |
+| Android `asr_streaming` (A78 build, OMP off, deferred late stages + lifetime activation buffers + zero-copy weights + [C,T] blocks, Q8_0 head) | `7425cb90dd2b3b72f74b9045f5051a09` |
 | `libggml.so` / `libllama.so` (shipped) | `6ce4c983ab2b310fb8dce8e75e402f7e` / `92ad2456979d99e2a1afee4a8cebad1d` |
 
 Full engineering log: 562 experiments in `.auto/log.jsonl`; per-wave detail and
