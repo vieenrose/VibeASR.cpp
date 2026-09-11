@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 
 DEV=AYBY6HQCMBF6B6KZ
 RDIR=/data/local/tmp/vibeasr
-LM_FILE=${LM_FILE:-streaming-lm-q4_k_m.gguf}
+LM_FILE=${LM_FILE:-lm-q4_0_4_4.gguf}
 
 cmake --build build-android --target asr_streaming -j20 > .auto/last_build.log 2>&1 || { tail -n 20 .auto/last_build.log; exit 1; }
 adb -s $DEV push build-android/bin/asr_streaming $RDIR/ > /dev/null 2>&1 || exit 1
@@ -22,7 +22,7 @@ done
 adb -s $DEV push .auto/bench_device.sh $RDIR/ > /dev/null 2>&1 || exit 1
 
 [ -n "${EXTRA_ENV:-}" ] && echo "note: forwarding EXTRA_ENV='$EXTRA_ENV' to the device"
-adb -s $DEV shell "${EXTRA_ENV:-} LM_FILE=${LM_FILE:-streaming-lm-q4_k_m.gguf} VAE_FILE=${VAE_FILE:-vae-encoder-f16.gguf} MASK=${MASK:-C0} THREADS=${THREADS:-2} sh $RDIR/bench_device.sh ${AUDIO:-stream_10s_24k.wav} ${THREADS:-2} ${PIECES:-2} loop" > .auto/last_run.txt 2>&1 || exit 1
+adb -s $DEV shell "${EXTRA_ENV:-} LM_FILE=${LM_FILE:-lm-q4_0_4_4.gguf} VAE_FILE=${VAE_FILE:-vae-encoder-q4x4ffn.gguf} MASK=${MASK:-C0} THREADS=${THREADS:-2} sh $RDIR/bench_device.sh ${AUDIO:-stream_10s_24k.wav} ${THREADS:-2} ${PIECES:-2} loop" > .auto/last_run.txt 2>&1 || exit 1
 cat .auto/last_run.txt | tail -n 2
 adb -s $DEV pull $RDIR/out-loop.log .auto/last_out.txt > /dev/null 2>&1
 adb -s $DEV pull $RDIR/err-loop.log .auto/last_err.txt > /dev/null 2>&1
