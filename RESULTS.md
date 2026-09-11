@@ -53,7 +53,8 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
 | 3.53 | −71 % | concurrent acoustic/semantic encoder chains (1 thread each) |
 | **3.48** | **−72 %** | OpenMP off for the 1-thread chains |
 | 3.30 | −73 % | deferred deep stages: the deepest ConvNeXt stage runs once per window over the concatenated boundary tensors (L=1 GEMV → L=28 GEMM) |
-| **3.18** | **−74 %** | lifetime (ggml-alloc) activation buffers + PIECES=2: the early-stage graph holds only its live set (15.5 MB vs a 274 MB arena scaled at 64 KB/sample), which also unblocks large pieces |
+| 3.18 | −74 % | lifetime (ggml-alloc) activation buffers + PIECES=2: the early-stage graph holds only its live set (15.5 MB vs a 274 MB arena scaled at 64 KB/sample), which also unblocks large pieces |
+| **3.15** | **−74 %** | zero-copy weights: the VAE loader points the tensors into the read-only gguf mapping (alignment-checked, copy fallback) instead of duplicating 536 MB into an arena, and the late pass got the same lifetime allocator → load 1.4 → 1.2 s, RSS 2.19 GB |
 
 ## Evidence
 
