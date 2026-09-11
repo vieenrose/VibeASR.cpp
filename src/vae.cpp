@@ -50,13 +50,13 @@ struct vae_stream_slot {
 
 struct vae_stream_cache {
     std::map<std::string, vae_stream_slot> slots;
-    struct Tap { std::string key; struct ggml_tensor * xh = nullptr; struct ggml_tensor * x = nullptr; int64_t P = 0; };
+    struct Tap { std::string key; struct ggml_tensor * xh = nullptr; struct ggml_tensor * x = nullptr; int64_t P = 0; int dim = 0; };
     std::vector<Tap> taps;     // recorded per forward build, consumed post-compute
     // Host-fed tensors (the [hist|zeros] staging buffers of the concat sites).
     // Under the lifetime allocator their data does not exist during the graph
     // build, so the write is deferred to a Fill record consumed by the caller
     // right after ggml_gallocr_alloc_graph.
-    struct Fill { struct ggml_tensor * t = nullptr; const std::vector<float> * hist = nullptr; int64_t P = 0; };
+    struct Fill { struct ggml_tensor * t = nullptr; const std::vector<float> * hist = nullptr; int64_t P = 0; int dim = 0; };
     std::vector<Fill> fills;
     bool lifetime = false;
     int next_id = 0;
@@ -80,16 +80,45 @@ void vae_cache_reset(vae_cache_t * cache) {
 // Build concat(hist, x) along dim0 for one conv site, recording a tap.
 // P = the site's left-pad length (== history length). Cold/empty slots use
 // zeros, which reproduces the legacy pad_ext(zeros) path exactly.
+static void vae_fill_staging(struct ggml_tensor * t, const std::vector<float> * hist, int64_t P, int dim);
+
+// Scatter a slot's history into a staging tensor created by vae_cached_concat.
+// dim 0: time is ne[0], channels are ne[1..3] (element (t,c) at t + c*N).
+// dim 1: time is ne[1], channels are ne[0] (element (c,t) at c + t*C).
+static void vae_fill_staging(struct ggml_tensor * t, const std::vector<float> * hist, int64_t P, int dim) {
+    float * d = (float *) t->data;
+    if (dim == 0) {
+        const int64_t N = t->ne[0];
+        const int64_t nch = t->ne[1] * t->ne[2] * t->ne[3];
+        for (int64_t c = 0; c < nch; c++) {
+            memcpy(d + c * N, hist->data() + c * P, (size_t)P * sizeof(float));
+            memset(d + c * N + P, 0, (size_t)(N - P) * sizeof(float));
+        }
+    } else {
+        const int64_t C = t->ne[0];
+        const int64_t total = C * t->ne[1] * t->ne[2] * t->ne[3];
+        memset(d, 0, (size_t)total * sizeof(float));
+        for (int64_t c = 0; c < C; c++) {
+            for (int64_t k = 0; k < P; k++) d[c + k * C] = hist->data()[c * P + k];
+        }
+    }
+}
+
 static struct ggml_tensor * vae_cached_concat(
     struct ggml_context * ctx,
     struct ggml_tensor * x,
     int64_t P,
-    vae_stream_cache * cache) {
+    vae_stream_cache * cache,
+    int time_dim = 0) {
     std::string key = "s" + std::to_string(cache->next_id++);
     vae_stream_slot & slot = cache->slots[key];  // default-constructed if new
     if (!slot.warm) {
         slot.n1 = x->ne[1]; slot.n2 = x->ne[2]; slot.n3 = x->ne[3];
-        slot.hist.assign((size_t)(P * slot.n1 * slot.n2 * slot.n3), 0.0f);
+        // History is one row per CHANNEL: on dim-0 time that is ne[1..3], but on
+        // dim-1 time the channels are ne[0] (sizing by ne[1..3] would allocate
+        // T/P times too much and mis-index later).
+        const int64_t hist_n = (time_dim == 0) ? (slot.n1 * slot.n2 * slot.n3) : x->ne[0];
+        slot.hist.assign((size_t)(P * hist_n), 0.0f);
     }
     if (getenv("VAE_CACHE_TRACE") != nullptr) {
         fprintf(stderr, "[CACHE_X] %s xop=%d xne=[%lld,%lld,%lld,%lld] xnb=[%lld,%lld,%lld,%lld] contig=%d\n",
@@ -111,7 +140,9 @@ static struct ggml_tensor * vae_cached_concat(
     // pad_ext (legacy zero-pad) and add (residuals everywhere) are proven.
     // xh = pad_ext(x) + [hist | zeros]: bit-exact vs legacy when hist=0
     // (x + 0 == x), correct carry when warm. conv below runs with pad=0.
-    struct ggml_tensor * xp = ggml_pad_ext(ctx, x, (int)P, 0, 0, 0, 0, 0, 0, 0);
+    struct ggml_tensor * xp = (time_dim == 0)
+        ? ggml_pad_ext(ctx, x, (int)P, 0, 0, 0, 0, 0, 0, 0)
+        : ggml_pad_ext(ctx, x, 0, 0, (int)P, 0, 0, 0, 0, 0);
     // Cold window head: the history is all zeros, so the staging tensor and the
     // add are pure overhead (x + 0.0f == x exactly). Skipping them removes two
     // full passes over the padded tensor for the first piece of every window,
@@ -123,7 +154,7 @@ static struct ggml_tensor * vae_cached_concat(
                     key.c_str(), (long long)P);
         }
         vae_stream_cache::Tap tap;
-        tap.key = key; tap.xh = xp; tap.x = x; tap.P = P;
+        tap.key = key; tap.xh = xp; tap.x = x; tap.P = P; tap.dim = time_dim;
         cache->taps.push_back(tap);
         return xp;
     }
@@ -133,24 +164,18 @@ static struct ggml_tensor * vae_cached_concat(
     int64_t hne[GGML_MAX_DIMS];
     for (int d = 0; d < GGML_MAX_DIMS; d++) hne[d] = xp->ne[d];
     struct ggml_tensor * hp = ggml_new_tensor(ctx, x->type, GGML_MAX_DIMS, hne);
-    int64_t N = xp->ne[0];
-    int64_t nch = xp->ne[1] * xp->ne[2] * xp->ne[3];
     if (cache->lifetime) {
         // Data placement happens after graph allocation: just pin and record.
         ggml_set_input(hp);
         vae_stream_cache::Fill fill;
-        fill.t = hp; fill.hist = &slot.hist; fill.P = P;
+        fill.t = hp; fill.hist = &slot.hist; fill.P = P; fill.dim = time_dim;
         cache->fills.push_back(fill);
     } else {
-        float * hp_data = (float *)hp->data;
-        for (int64_t c = 0; c < nch; c++) {
-            memcpy(hp_data + c * N, slot.hist.data() + c * P, (size_t)P * sizeof(float));
-            memset(hp_data + c * N + P, 0, (size_t)(N - P) * sizeof(float));
-        }
+        vae_fill_staging(hp, &slot.hist, P, time_dim);
     }
     struct ggml_tensor * xh = ggml_add(ctx, xp, hp);
     vae_stream_cache::Tap tap;
-    tap.key = key; tap.xh = xh; tap.x = x; tap.P = P;
+    tap.key = key; tap.xh = xh; tap.x = x; tap.P = P; tap.dim = time_dim;
     cache->taps.push_back(tap);
     return xh;
 }
@@ -169,9 +194,20 @@ static void vae_cache_update(vae_stream_cache * cache) {
             fprintf(stderr, "[CACHE_UPDATE] %s NULL data!\n", tap.key.c_str());
         } else {
             float * xhd = (float *)xh->data;
-            for (int64_t c = 0; c < nch; c++) {
-                memcpy(slot.hist.data() + c * tap.P, xhd + c * n0 + (n0 - tap.P),
-                       (size_t)tap.P * sizeof(float));
+            if (tap.dim == 0) {
+                for (int64_t c = 0; c < nch; c++) {
+                    memcpy(slot.hist.data() + c * tap.P, xhd + c * n0 + (n0 - tap.P),
+                           (size_t)tap.P * sizeof(float));
+                }
+            } else {
+                // time on ne[1]: channels are ne[0] (nch above counts time here)
+                const int64_t C = xh->ne[0];
+                const int64_t nT = xh->ne[1];
+                for (int64_t c = 0; c < C; c++) {
+                    for (int64_t k = 0; k < tap.P; k++) {
+                        slot.hist[c * tap.P + k] = xhd[c + (nT - tap.P + k) * C];
+                    }
+                }
             }
         }
         slot.warm = true;
@@ -376,18 +412,22 @@ static struct ggml_tensor* ggml_nn_conv_1d_dw(
         result = ggml_reshape_3d(ctx, result, result->ne[1], result->ne[2], 1);
         result = ggml_cont(ctx, ggml_permute(ctx, result, 1, 0, 2, 3));
     } else {
+        // Channels-first input [C, T] (the block's natural layout when it is not
+        // transposed): time is ne[1], so cache concat and padding go along dim 1.
+        const bool ct_in = (x->ne[2] == 1) && (w->ne[1] == 1) && (w->ne[3] == 1) &&
+                           (x->ne[0] == w->ne[2]) && (x->ne[1] > 2 * w->ne[0]);
         if (cache != nullptr && padding > 0 && x->type == GGML_TYPE_F32) {
-            x = vae_cached_concat(ctx, x, padding, cache);
+            x = vae_cached_concat(ctx, x, padding, cache, ct_in ? 1 : 0);
             padding = 0;
         } else if (padding > 0) {
-            x = ggml_pad_ext(ctx, x, padding, 0, 0, 0, 0, 0, 0, 0);
+            x = ct_in ? ggml_pad_ext(ctx, x, 0, 0, padding, 0, 0, 0, 0, 0)
+                      : ggml_pad_ext(ctx, x, padding, 0, 0, 0, 0, 0, 0, 0);
             padding = 0;
         }
         const bool dw_taps = (getenv("VAE_DW_CT_OFF") == nullptr) &&
                              stride == 1 && dilation == 1 && b != NULL &&
-                             x->ne[2] == 1 && w->ne[1] == 1 && w->ne[3] == 1 && x->ne[0] > 2 * w->ne[0];
-        if (dw_taps &&
-            x->ne[2] == 1 && w->ne[1] == 1 && w->ne[3] == 1 && x->ne[0] > 2 * w->ne[0]) {
+                             (ct_in || (x->ne[2] == 1 && w->ne[1] == 1 && w->ne[3] == 1 && x->ne[0] > 2 * w->ne[0]));
+        if (dw_taps) {
             // Depthwise conv as K dense-view multiply-adds in the [C, T] layout
             // (Exp580, default since it measured RTF 3.1523 -> 3.0829 on device).
             // The weight transposes ONCE to [C, K] so each tap is a contiguous
@@ -397,7 +437,7 @@ static struct ggml_tensor* ggml_nn_conv_1d_dw(
             // was strided. VAE_DW_CT_OFF=1 restores the im2col + 3-D mul_mat path.
             const int64_t K = w->ne[0];
             const int64_t C = w->ne[2];
-            struct ggml_tensor* xc = ggml_cont(ctx, ggml_permute(ctx, x, 1, 0, 2, 3));   // [C, T']
+            struct ggml_tensor* xc = ct_in ? x : ggml_cont(ctx, ggml_permute(ctx, x, 1, 0, 2, 3));
             // NOTE ggml's permute convention is result.ne[axis_i] = a.ne[i], so
             // going from [K, 1, C] to [C, K] needs (1, 2, 0), not (2, 0, 1).
             struct ggml_tensor* ww = ggml_permute(ctx, w, 1, 2, 0, 3);                   // [C, K]
@@ -474,7 +514,14 @@ struct ConvNeXtBlock {
 
         x = ggml_nn_rms_norm(ctx, x, mixer_norm_weight);
 
-        x = ggml_cont(ctx, ggml_permute(ctx, x, 1, 0, 2, 3));
+        // Exp586: run the mixer channels-first so neither the transpose in nor
+        // the one inside the depthwise helper is needed. F16 path only (the
+        // I8_S fusion owns its own layout). VAE_CT_BLOCK_OFF=1 for the A/B.
+        const bool ct_block = (getenv("VAE_CT_BLOCK_OFF") == nullptr) && !is_i8s &&
+                              mixer_conv_weight->ne[1] == 1 && x->ne[0] == mixer_conv_weight->ne[2];
+        if (!ct_block) {
+            x = ggml_cont(ctx, ggml_permute(ctx, x, 1, 0, 2, 3));
+        }
 
         x = ggml_nn_conv_1d_dw(ctx, x, mixer_conv_weight, mixer_conv_bias,
                                 /*stride=*/1, /*padding=*/kernel_size-1, /*dilation=*/1,
@@ -1236,13 +1283,7 @@ static int32_t vae_encode_impl(
         if (cache != nullptr) {
             for (size_t fi = 0; fi < cache->fills.size(); fi++) {
                 const vae_stream_cache::Fill & f = cache->fills[fi];
-                const int64_t N = f.t->ne[0];
-                const int64_t nch = f.t->ne[1] * f.t->ne[2] * f.t->ne[3];
-                float * d = (float *)f.t->data;
-                for (int64_t c = 0; c < nch; c++) {
-                    memcpy(d + c * N, f.hist->data() + c * f.P, (size_t)f.P * sizeof(float));
-                    memset(d + c * N + f.P, 0, (size_t)(N - f.P) * sizeof(float));
-                }
+                vae_fill_staging(f.t, f.hist, f.P, f.dim);
             }
             cache->fills.clear();
         }
@@ -1571,13 +1612,7 @@ static int32_t vae_encode_early_impl(
         if (cache != nullptr) {
             for (size_t fi = 0; fi < cache->fills.size(); fi++) {
                 const vae_stream_cache::Fill & f = cache->fills[fi];
-                const int64_t N = f.t->ne[0];
-                const int64_t nch = f.t->ne[1] * f.t->ne[2] * f.t->ne[3];
-                float * d = (float *)f.t->data;
-                for (int64_t c = 0; c < nch; c++) {
-                    memcpy(d + c * N, f.hist->data() + c * f.P, (size_t)f.P * sizeof(float));
-                    memset(d + c * N + f.P, 0, (size_t)(N - f.P) * sizeof(float));
-                }
+                vae_fill_staging(f.t, f.hist, f.P, f.dim);
             }
             cache->fills.clear();
         }
