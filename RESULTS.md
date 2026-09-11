@@ -68,7 +68,7 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
 
 | check | result |
 |---|---|
-| 40-utt LibriSpeech gate (on-device, shipped config, re-run after each change) | WER **4.68 %** (S=29 D=2 I=3) at the shipped p2+lifetime build, with 34/40 transcripts byte-identical to the previous 4.41 % gate; that gate's 6 differing utterances are the same six that any re-blocking of the deep stages moves (identical at p2 and p26, and to the split-5 experiment), and the zh protocol canary is byte-identical everywhere. The pre-change gate was 4.41 % (S=28 D=1 I=3, 40/40 identical) |
+| 40-utt LibriSpeech gate (on-device, shipped config, re-run after each change) | WER **4.68 %** (S=29 D=2 I=3) at the shipped p2+lifetime build, with 34/40 transcripts byte-identical to the previous 4.41 % gate; that gate's 6 differing utterances are the same six that any re-blocking of the deep stages moves (identical at p2 and p26, and to the split-5 experiment), and the zh protocol canary is byte-identical everywhere. The pre-change gate was 4.41 % (S=28 D=1 I=3, 40/40 identical). Re-validated at HEAD (Exp613, after the gelu-knob and dw-taps-guard commits): WER **4.41 %** (S=28 D=1 I=3 H=697), 40/40 transcripts byte-identical to the hyp-q8head reference set |
 | 69 s equal-token comparison | 3.43 vs 5.62 accuracy-first (−39 %), tokens 438 vs 442 |
 | sustained 138 s (frozen build) | RTF **3.14** (v3: p2 + lifetime allocator), VAE 271.9 s, RSS flat 2.31 GB over 47 windows, token count identical to the v2 run, majflt 0 |
 | determinism | repeated runs byte-identical, matching references from earlier builds |
