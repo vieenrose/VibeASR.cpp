@@ -103,3 +103,17 @@
   the K/IC axes when flattening) and the project is done. Also: the probe's verdict threshold should be
   per-block (|diff| <= ~0.55 * that block's scale) rather than a global ratio, since 0.061 of the global
   max IS q4 noise; my <0.05 cut would have failed correct bytes.
+- ATTRIBUTION ON THE CONV-INT8 GRAPH (Exp693 - supersedes Exp683's conv share and
+  refreshes Exp674's elementwise split; re-derive again after any op-level change).
+  vae_s ablations, baseline 16.5 s: conv dots (VAE_ABL_CONV) 15.0 = 9.1% of VAE
+  (was 12.3% on F16 dots - the int8 route took a third of it), bias adds 2.4%,
+  layer-scale mul 1.8%, residual add 1.8%, depthwise taps 1.8% => elementwise total
+  ~7.8%, unchanged by the conv change as expected. Nothing in the VAE now has a
+  single ablatable item above ~9%, and that 9% is already int8 dot work.
+- BLOCKED-CONV STAGING CONTRACT, PROBED THREE WAYS (Exp692/693): the blocked conv
+  matmul REQUIRES an F32 src1. ggml_im2col(dst=Q8_0) SIGABORTs (no quantized im2col
+  path in this build); im2col(dst=F16) fed straight to mul_mat hits
+  GGML_ASSERT(src1->type == GGML_TYPE_F32); ggml_cast(F16->Q8_0) runs but computes
+  garbage (1024 tokens vs 39) because it violates that contract. So the F32
+  unfolding is the only supported staging and the ~2% the wrong arm shows is
+  unreachable in this ggml. Do not re-probe staging variants.
