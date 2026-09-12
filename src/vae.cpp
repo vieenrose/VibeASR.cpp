@@ -611,7 +611,7 @@ struct ConvNeXtBlock {
 
         if (is_i8s) {
             x = ggml_add_scaled(ctx, x, residual, mixer_layer_scale);
-        } else if (getenv("VAE_LS_FUSE") != nullptr) {
+        } else if (getenv("VAE_LS_FUSE_OFF") == nullptr) {   // default ON since Exp671: -1.1% at byte-identical output
             x = ggml_add_scaled(ctx, x, residual, mixer_layer_scale);   // x*scale + residual, 1 pass
         } else {
             // F32 path: x = x * layer_scale + residual
@@ -641,7 +641,7 @@ struct ConvNeXtBlock {
 
         if (is_i8s) {
             x = ggml_add_scaled(ctx, x, residual, ffn_layer_scale);
-        } else if (getenv("VAE_LS_FUSE") != nullptr) {
+        } else if (getenv("VAE_LS_FUSE_OFF") == nullptr) {   // default ON since Exp671: -1.1% at byte-identical output
             x = ggml_add_scaled(ctx, x, residual, ffn_layer_scale);     // x*scale + residual, 1 pass
         } else {
             x = vae_abl_mul(ctx, x, ffn_layer_scale, "VAE_ABL_SCALE");
