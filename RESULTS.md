@@ -29,10 +29,11 @@ runs the 10 s protocol clip pinned to the prime cores and prints `METRIC` lines.
 
 | tier | files | 10 s | 17 s | 69 s | 40-utt mean | WER | RSS |
 |---|---|---|---|---|---|---|---|
-| **max-speed-lean (`--vae-pieces 26`, concurrent — Exp641/642)** | 1.82 GB | **2.90** | — | **2.83** | **3.20** | **4.55 %** | **1.84 GB** |
+| **max-speed-lean (`--vae-pieces 13`, concurrent — Exp643)** | 1.82 GB | **2.84** | — | **2.78** | — | **4.55 %**† | **1.88 GB** |
+| _same, 26 pieces (−32 MB, +1.3 % time, identical output)_ | 1.82 GB | _2.88_ | — | _2.83_ | _3.20_ | _4.55 % (tag `leanp26c`)_ | _1.84 GB_ |
 | **whole-file / server path** (Exp578/579) | — | — | live set **188-313 MB** for 6-10 s files | — | — | — | — |
 | **max-speed (shipped)** | 2.2 GB | **2.79** | **2.41** | **2.71** | **2.79** | **4.41 %** | 2.23 GB |
-| _max-speed, RAM-lean (`VAE_SEQ_ENCODERS=1`)_ | 2.0 GB | _4.01_ | — | — | — | 4.41 % | **1.91 GB** |
+| _last resort: p26 + `VAE_SEQ_ENCODERS=1` (sequential encoders)_ | 1.82 GB | _3.19_ | — | _3.13_ | — | _4.55 %_ | _1.82 GB_ |
 | balanced (clean zh transcripts) | 1.9 GB | 4.44 | — | 4.64 | — | 4.82 % | 2.00 GB |
 | accuracy-first (VAE F16) | 2.5 GB | 5.35 | — | 5.62 | 6.58 | 4.55 % | 2.95 GB |
 | _original configuration (session start)_ | 2.5 GB | _6.52_ | — | — | _6.58_ | _4.55 %_ | _2.99 GB_ |
@@ -41,17 +42,26 @@ Shipped recipe: VAE `Q4_0_4x4` ffn linears (converter outtype `q4_0_4x4_ffn`) +
 F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddings**
 + **Q8_0 output head** + **concurrent acoustic/semantic encoders** (one thread each), 2 VAE pieces (PIECES=2 harness default).
 
-**RAM-lean tier (Exp641/642).** Same files, `--vae-pieces 26`, **default
-(concurrent) encoders** — 2.90 on the protocol clip and 2.83 on 69 s at
-1.84–1.85 GB RSS, gate WER 4.55 % (S=29 D=1 I=3, tag `leanp26c`; +0.14 pp over
-the p2 default, which is the granularity cost also seen with the old
-sequential lean config). The `VAE_SEQ_ENCODERS=1` fallback that used to define
-this tier is now only a last resort: at 26 pieces the early-stage activations
-are tiny, so running both encoders costs just ~25 MB more RSS and buys −9.5 %
-RTF (3.19 → 2.90, VAE 144.8 → 124.4 s on 69 s). Note the deferred late stages
-are what make this cheap: at p26 they turn the deep GEMVs into window GEMMs
-(−5.7 %, `VAE_DEFER_LATE=0` measures 3.07); at p2 the pieces are already 13
-frames, so defer measures a no-op there.
+**RAM-lean tier (Exp641–643).** Same files, `--vae-pieces 13`, **default
+(concurrent) encoders** — 2.84 on the protocol clip and 2.78 on 69 s at
+1.87–1.88 GB RSS (vs the p2 default: +2.3 % / +2.7 % time for −350 MB). Its
+accuracy is the gated 4.55 % **by byte-identity, not by inference**: a full
+40-utt gate at p13 (tag `leanp13c`) scored WER 4.55 % (S=29 D=1 I=3, H=696) with
+**40/40 transcripts byte-identical** to the `leanp26c` set, so the two fine
+granularities are the same model output at different cost. 26 pieces is the
+−32 MB / +1.3 % variant of the same tier. The `VAE_SEQ_ENCODERS=1` config that used to define this tier is now a
+last resort: at fine granularity the early-stage activations are tiny, so
+concurrency costs ~30 MB and buys −11 % RTF (3.13 → 2.78 on 69 s). The deferred
+late stages are what make this cheap — at p26/p13 they turn the deep GEMVs into
+window GEMMs (−5.7 %); at p2 the pieces are already 13 frames, so defer
+measures a no-op there.
+
+† Verified, not inferred: `leanp13c` = WER 4.55 % with 40/40 transcripts
+byte-identical to the `leanp26c` gate set. The invariance is expected because
+the early stages are exact under the streaming-cache invariant; the dw
+taps-vs-F16-im2col branch (Exp640) is selected by piece size, which is why
+p13/p26 agree with each other and differ from p2 (40 vs 39 tokens on the
+protocol clip).
 
 
 ## Progression on the 10 s protocol (each step validated)
