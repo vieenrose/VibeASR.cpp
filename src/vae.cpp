@@ -410,6 +410,69 @@ static struct ggml_tensor* vae_conv_1d_dw_f16(
     return ggml_reshape_3d(ctx, result, C, OL, N);
 }
 
+// --- blocked-int8 conv weights (Exp685) -------------------------------------------------------
+// A non-depthwise conv weight can be stored two ways:
+//   F16        3-D [K, IC, OC]   the original layout; im2col reads its shape for the geometry
+//   Q4_0_4x4   2-D [K*IC, OC]    blocked int8, so the conv dots run the fast 4x4 gemm instead of
+//                                F16 dots. The VAE is kernel-RATE-bound (Exp681) and these dots are
+//                                12.3% of VAE seconds (Exp683), which is the whole case for this.
+// The blocked layout needs the matmul row (= ne[0]) to be a multiple of the 32-element block. For
+// every non-depthwise conv in this model K*IC already is (128..16384, verified in Exp684), so NO
+// kernel padding is required - and no data reordering either, because a 3-D [K,IC,OC] tensor's
+// memory order (kw fastest, then ic) is exactly the row-major [K*IC, OC] matrix that im2col's row
+// order (ic*KW + kw) expects.
+// What the 2-D form costs: im2col can no longer tell K from IC, and ggml_im2col asserts an F16 src0
+// even though its loops provably read only src1->data. So the geometry rides in a metadata-only
+// carrier - an F16-shaped tensor that is never read. Its data points at a static dummy on purpose:
+// a leaf with data == NULL gets handed to the pool allocator, and [K,IC,OC] in F16 is ~700 MB.
+static struct ggml_context* vae_geom_ctx = nullptr;
+static float g_vae_geom_dummy[16];
+
+// Called from the loader only. Deliberately not lazily initialized inside the graph path: two
+// concurrent encoder threads racing on a shared lazy init is the Exp669 segfault.
+static void vae_geom_ctx_init() {
+    if (!vae_geom_ctx) {
+        struct ggml_init_params params = { /*mem_size=*/ 1 << 16, /*mem_buffer=*/ nullptr,
+                                           /*no_alloc=*/ true };
+        vae_geom_ctx = ggml_init(params);
+    }
+}
+
+// Kernel size of a conv weight. 3-D: ne[0]. Blocked int8 2-D [K*IC, OC]: row / IC, with IC from the
+// architecture table because the tensor no longer carries it. Returns -1 for an unsupported layout.
+static int vae_conv_kernel_size(const struct ggml_tensor* w, int64_t ic) {
+    if (ggml_n_dims(w) == 2 && ggml_is_quantized(w->type)) {
+        if (ic <= 0 || w->ne[0] % ic != 0) return -1;
+        return (int) (w->ne[0] / ic);
+    }
+    return (int) w->ne[0];
+}
+
+// Geometry carrier for a blocked-int8 conv weight; nullptr when the weight needs none (F16 path).
+static struct ggml_tensor* vae_conv_geom(struct ggml_tensor* w, int K) {
+    if (!w || ggml_n_dims(w) != 2 || !ggml_is_quantized(w->type)) return nullptr;
+    const int64_t row = w->ne[0], OC = w->ne[1];
+    if (K <= 0 || row % K != 0 || row % 32 != 0 || OC % 4 != 0) return nullptr;
+    struct ggml_tensor* g = ggml_new_tensor_3d(vae_geom_ctx, GGML_TYPE_F16, K, row / K, OC);
+    g->data = g_vae_geom_dummy;   // never dereferenced: im2col uses ne[] only
+    return g;
+}
+
+static struct ggml_tensor* vae_conv_1d_i8(
+        struct ggml_context* ctx, struct ggml_tensor* geom, struct ggml_tensor* w,
+        struct ggml_tensor* x, int s0, int p0, int d0) {
+    struct ggml_tensor* im2col = ggml_im2col(ctx, geom, x, s0, 0, p0, 0, d0, 0, false, GGML_TYPE_F16);
+    struct ggml_tensor* col = ggml_reshape_2d(ctx, im2col, im2col->ne[0],
+                                              im2col->ne[2] * im2col->ne[1]);
+    if (vae_abl("VAE_ABL_CONV")) {   // same measurement-only substitution as the F16 path (Exp683)
+        struct ggml_tensor* f = ggml_cast(ctx, col, GGML_TYPE_F32);
+        return ggml_view_2d(ctx, f, geom->ne[2], f->ne[1], f->nb[1], 0);
+    }
+    // vec_dot_type of the blocked types is Q8_0, so the unfolded activations must arrive as Q8_0.
+    // This cast is the staging cost the project's EV estimate already accounts for.
+    return ggml_mul_mat(ctx, w, ggml_cast(ctx, col, GGML_TYPE_Q8_0));
+}
+
 static struct ggml_tensor* ggml_nn_conv_1d(
     struct ggml_context* ctx,
     struct ggml_tensor* x,
@@ -418,7 +481,8 @@ static struct ggml_tensor* ggml_nn_conv_1d(
     int stride,
     int padding,
     int dilation,
-    vae_stream_cache* cache = nullptr) {
+    vae_stream_cache* cache = nullptr,
+    struct ggml_tensor* geom = nullptr) {
 
     struct ggml_tensor* result;
 
@@ -439,7 +503,9 @@ static struct ggml_tensor* ggml_nn_conv_1d(
             x = ggml_pad_ext(ctx, x, padding, 0, 0, 0, 0, 0, 0, 0);
             padding = 0;
         }
-        result = vae_conv_1d_f16(ctx, w, x, stride, padding, dilation);
+        result = ggml_is_quantized(w->type) && geom
+                 ? vae_conv_1d_i8(ctx, geom, w, x, stride, padding, dilation)
+                 : vae_conv_1d_f16(ctx, w, x, stride, padding, dilation);
         if (b != NULL) {
             result = vae_abl_add(ctx, result, b, "VAE_ABL_BIAS");
         }
@@ -719,6 +785,7 @@ struct AudioVAEEncoder {
     struct {
         struct ggml_tensor* conv_weight;
         struct ggml_tensor* conv_bias;
+        struct ggml_tensor* conv_geom = nullptr;   // geometry carrier, blocked-int8 weights only
     } downsamples[n_downsamples];
     
     // Stages (ConvNeXt blocks)
@@ -727,6 +794,7 @@ struct AudioVAEEncoder {
     // Head (just conv)
     struct ggml_tensor* head_conv_weight;
     struct ggml_tensor* head_conv_bias;
+    struct ggml_tensor* head_conv_geom = nullptr;  // geometry carrier, blocked-int8 weights only
     int head_kernel_size = 0;  // read from weights (8 padded / 7 trimmed)
     
     // Connector (fc1 -> norm -> fc2)
@@ -756,7 +824,7 @@ struct AudioVAEEncoder {
             x = ggml_nn_conv_1d(ctx, x, downsamples[i].conv_weight,
                                  downsamples[i].conv_bias,
                                  downsample_strides[i], downsample_kernel_sizes[i]-downsample_strides[i], 1,
-                                 cache);
+                                 cache, downsamples[i].conv_geom);
 
             for (int j = 0; j < stage_depths[i]; j++) {
                 x = stages[i][j].forward(ctx, x, cache);
@@ -786,7 +854,7 @@ struct AudioVAEEncoder {
             x = ggml_nn_conv_1d(ctx, x, downsamples[i].conv_weight,
                                  downsamples[i].conv_bias,
                                  downsample_strides[i], downsample_kernel_sizes[i]-downsample_strides[i], 1,
-                                 cache);
+                                 cache, downsamples[i].conv_geom);
 
             for (int j = 0; j < stage_depths[i]; j++) {
                 x = stages[i][j].forward(ctx, x, cache);
@@ -797,7 +865,8 @@ struct AudioVAEEncoder {
         }
 
         // Head
-        x = ggml_nn_conv_1d(ctx, x, head_conv_weight, head_conv_bias, 1, head_kernel_size - 1, 1, cache);
+        x = ggml_nn_conv_1d(ctx, x, head_conv_weight, head_conv_bias, 1, head_kernel_size - 1, 1, cache,
+                            head_conv_geom);
 
         // Connector: fc1 -> norm -> fc2
         x = ggml_nn_linear(ctx, x, connector_fc1_weight, connector_fc1_bias);
@@ -917,8 +986,18 @@ static bool load_encoder_weights(
         }
         
         // Read kernel size from weight tensor shape [out_channels, in_channels, kernel_size]
-        // In GGUF, dimensions are reversed, so ne[0] is kernel_size
-        encoder.downsample_kernel_sizes[i] = encoder.downsamples[i].conv_weight->ne[0];
+        // In GGUF, dimensions are reversed, so ne[0] is kernel_size. A blocked-int8 weight is stored
+        // 2-D [K*IC, OC], so its kernel size comes from row / IC (see vae_conv_1d_i8).
+        vae_geom_ctx_init();
+        encoder.downsample_kernel_sizes[i] = vae_conv_kernel_size(
+                encoder.downsamples[i].conv_weight,
+                i ? AudioVAEEncoder::downsample_dims[i-1] : 0);
+        if (encoder.downsample_kernel_sizes[i] <= 0) {
+            fprintf(stderr, "%s: downsample %d conv has an unsupported weight layout\n", __func__, i);
+            return false;
+        }
+        encoder.downsamples[i].conv_geom = vae_conv_geom(encoder.downsamples[i].conv_weight,
+                                                        encoder.downsample_kernel_sizes[i]);
     }
     
     // Load stages
@@ -996,7 +1075,13 @@ static bool load_encoder_weights(
     
     // Get output dim from head conv weight [kernel, in_dim, out_dim]
     encoder.output_dim = encoder.head_conv_weight->ne[2];
-    encoder.head_kernel_size = (int)encoder.head_conv_weight->ne[0];
+    encoder.head_kernel_size = vae_conv_kernel_size(encoder.head_conv_weight,
+                                                    AudioVAEEncoder::downsample_dims[6]);
+    if (encoder.head_kernel_size <= 0) {
+        fprintf(stderr, "%s: head conv has an unsupported weight layout\n", __func__);
+        return false;
+    }
+    encoder.head_conv_geom = vae_conv_geom(encoder.head_conv_weight, encoder.head_kernel_size);
     
     // Load connector weights (fc1 -> norm -> fc2)
     std::string connector_fc1_w = prefix + "_connector.fc1.weight";
