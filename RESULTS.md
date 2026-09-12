@@ -32,7 +32,7 @@ runs the 10 s protocol clip pinned to the prime cores and prints `METRIC` lines.
 | **max-speed-lean (`--vae-pieces 13`, concurrent — Exp643)** | 1.82 GB | **2.84** | — | **2.78** | — | **4.55 %**† | **1.88 GB** |
 | _same, 26 pieces (−32 MB, +1.3 % time, identical output)_ | 1.82 GB | _2.88_ | — | _2.83_ | _3.20_ | _4.55 % (tag `leanp26c`)_ | _1.84 GB_ |
 | **whole-file / server path** (Exp578/579) | — | — | live set **188-313 MB** for 6-10 s files | — | — | — | — |
-| **max-speed (shipped)** | 2.2 GB | **2.79** | **2.41** | **2.71** | **2.79** | **4.41 %** | 2.23 GB |
+| **max-speed (shipped)** | 2.2 GB | **2.79** | **2.41** | **2.71** | **3.12** | **4.41 %** | 2.23 GB |
 | _last resort: p26 + `VAE_SEQ_ENCODERS=1` (sequential encoders)_ | 1.82 GB | _3.19_ | — | _3.13_ | — | _4.55 %_ | _1.82 GB_ |
 | balanced (clean zh transcripts) | 1.9 GB | 4.44 | — | 4.64 | — | 4.82 % | 2.00 GB |
 | accuracy-first (VAE F16) | 2.5 GB | 5.35 | — | 5.62 | 6.58 | 4.55 % | 2.95 GB |
@@ -59,6 +59,13 @@ concurrency costs ~30 MB and buys −11 % RTF (3.13 → 2.78 on 69 s). The defer
 late stages are what make this cheap — at p26/p13 they turn the deep GEMVs into
 window GEMMs (−5.7 %); at p2 the pieces are already 13 frames, so defer
 measures a no-op there.
+
+**Column definition (corrected in Exp645).** The `40-utt mean` column is the
+arithmetic mean of the per-utterance phone RTF over the 40-utt gate set
+(`.auto/eval40.sh`; short utterances pay window amortization), **not** a clip
+cell — it sits above the 10 s number by construction. The shipped tier measures
+**3.1235** (tag `gate645`); the cell previously carried the 10 s value by
+mistake, and the era table's 3.91 was the same quantity pre-optimization.
 
 † Verified, not inferred: `leanp13c` = WER 4.55 % with 40/40 transcripts
 byte-identical to the `leanp26c` gate set. The invariance is expected because
