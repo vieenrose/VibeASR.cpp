@@ -9,6 +9,8 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstdlib>
+#include <vector>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -1134,6 +1136,188 @@ struct vae_context_params vae_context_default_params() {
     return params;
 }
 
+// VAE_CONV_I8_CMP=1 - load-time A/B for the blocked-int8 conv weights (Exp687's probe).
+//
+// It has to happen here rather than inside the model graph because a node nothing consumes is pruned
+// and would silently never run, and it has to happen on device because Q4_0_4_4 cannot be evaluated
+// on x86 at all (the ARM gemv/gemm report "unsupported" and the generic path needs a NULL vec_dot).
+//
+// Mechanism: multiplying the weight by a Q8_0 IDENTITY returns the dequantized weight itself -
+// sum_k W[k,j] * I[k,i] = W[i,j], and Q8_0 represents 1.0 exactly (scale = 1/127, entry 127) - so no
+// knowledge of the block layout is needed: this is ggml's own reader, the same one inference uses.
+//
+// The self-test is the load-bearing part: a hand-built matrix is quantized with the runtime's own
+// ggml_quantize_chunk (the same function the offline converter calls) and read back through this
+// mechanism. Until that control says "mechanism OK", the conv verdict below means nothing (Exp660's
+// rule: a checker is untrustworthy until a known-good case makes it pass or fail correctly).
+static void vae_probe_int8_weights(struct vae_model* model) {
+    if (!getenv("VAE_CONV_I8_CMP")) return;
+    static bool done = false;                      // load runs once, on the loading thread
+    if (done) return;
+    done = true;
+
+    const int64_t CK = 32, CM = 4;                 // control: one 32-wide block x 4 rows
+    std::vector<float> csrc((size_t)CK * CM);
+    for (int64_t j = 0; j < CM; j++)
+        for (int64_t i = 0; i < CK; i++)
+            csrc[(size_t)j * CK + i] = 0.25f * (float)(((i * 7 + j * 13) % 41) - 20);
+    std::vector<uint8_t> cq(4096);                 // the blob for [CK, CM] is 72 bytes
+    size_t wrote = ggml_quantize_chunk(GGML_TYPE_Q4_0_4_4, csrc.data(), cq.data(), 0, CM, CK, nullptr);
+    fprintf(stderr, "[I8CMP] control: quantized %lld x %lld -> %zu bytes\n", (long long)CM, (long long)CK, wrote);
+
+    const char* pick = nullptr;                    // first converted conv that fits an identity
+    int64_t pk = 0, pm = 0;
+    for (auto& kv : model->tensors) {
+        struct ggml_tensor* t = kv.second;
+        if (!t || t->type != GGML_TYPE_Q4_0_4_4 || ggml_n_dims(t) != 2) continue;
+        if (t->ne[0] > 4096 || t->ne[1] % 4) continue;
+        if (strstr(kv.first.c_str(), "conv.weight")) { pick = kv.first.c_str(); pk = t->ne[0]; pm = t->ne[1]; break; }
+    }
+    if (!pick) { fprintf(stderr, "[I8CMP] no converted conv tensor found (is this a conv-int8 file?)\n"); return; }
+    struct ggml_tensor* w = model->tensors[pick];
+    // Reference values come from the SOURCE FILE (VAE_CONV_I8_REF), read as raw f16 by name - not from
+    // a tensor copied into the converted file. An earlier version added a <name>_ref tensor and the
+    // loader never registered it (562 keys for a 563-tensor file), which is a gguf-counting puzzle
+    // this avoids entirely: the untouched source is a better reference anyway.
+    std::string rname = pick;
+    struct ggml_tensor* ref = nullptr;
+    std::vector<ggml_fp16_t> rbuf;
+    const char* ref_path = getenv("VAE_CONV_I8_REF");
+    if (!ref_path) {
+        fprintf(stderr, "[I8CMP] set VAE_CONV_I8_REF=/path/to/source.gguf for the verdict (control still runs)\n");
+    } else {
+        struct gguf_init_params gp{ /*no_alloc=*/ true, /*ctx=*/ nullptr };
+        struct gguf_context* g2 = gguf_init_from_file(ref_path, gp);
+        if (!g2) {
+            fprintf(stderr, "[I8CMP] could not open ref file %s\n", ref_path);
+        } else {
+            int idx = -1;
+            // Resolve by name via the same iteration the loader uses: gguf_find_tensor's return
+            // convention (tensor index vs data offset) differs across ggml versions, and guessing it
+            // wrong would read some other tensor and produce a confident, wrong verdict.
+            for (uint32_t i = 0; i < gguf_get_n_tensors(g2); i++)
+                if (strcmp(gguf_get_tensor_name(g2, i), rname.c_str()) == 0) { idx = (int)i; break; }
+            if (idx < 0) {
+                fprintf(stderr, "[I8CMP] %s not found in %s\n", rname.c_str(), ref_path);
+            } else if (gguf_get_tensor_type(g2, idx) != GGML_TYPE_F16) {
+                fprintf(stderr, "[I8CMP] ref tensor in %s is not f16 - wrong source file?\n", ref_path);
+            } else {
+                const size_t n = (size_t)pk * pm;                     // [k, m] in tensor memory order
+                rbuf.resize(n);
+                FILE* f = fopen(ref_path, "rb");
+                if (!f || fseek(f, (long)(gguf_get_data_offset(g2) + gguf_get_tensor_offset(g2, idx)), SEEK_SET) != 0 ||
+                    fread(rbuf.data(), sizeof(ggml_fp16_t), n, f) != n) {
+                    fprintf(stderr, "[I8CMP] short read of the ref tensor\n");
+                    rbuf.clear();
+                } else {
+                    ref = (struct ggml_tensor*)1;                     // only used as a "we have data" flag
+                }
+                if (f) fclose(f);
+            }
+            gguf_free(g2);
+        }
+    }
+    fprintf(stderr, "[I8CMP] target %s  weight=[%lld, %lld]  tensors=%zu  ref=%s\n", pick, (long long)pk, (long long)pm,
+            model->tensors.size(), ref ? getenv("VAE_CONV_I8_REF") : "unavailable");
+
+    struct ggml_context* ctx = nullptr;
+    // Small arena on purpose: the probe's tensors are tens of KB, and a big anonymous allocation at
+    // load time (when ~2.2 GB is already resident) can fail - ggml_init then returns NULL and the very
+    // next ggml_new_tensor_* segfaults. Never call into a context without checking it.
+    ggml_init_params p{ (size_t)(16 << 20), ctx, false };
+    ctx = ggml_init(p);        // ggml_init RETURNS the context; discarding it leaves NULL and makes
+                               // the next ggml_new_tensor_* segfault (this was the probe's own bug)
+    if (!ctx) { fprintf(stderr, "[I8CMP] ggml_init FAILED (arena allocation)\n"); return; }
+    struct ggml_tensor* wq = ggml_new_tensor_2d(ctx, GGML_TYPE_Q4_0_4_4, pk, pm);
+    struct ggml_tensor* id = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, pk, 1);
+    struct ggml_tensor* y = ggml_mul_mat(ctx, wq, ggml_cast(ctx, id, GGML_TYPE_Q8_0));
+    memcpy(wq->data, w->data, ggml_nbytes(w));
+    float* idd = (float*)id->data;
+
+    struct ggml_cgraph* gf = ggml_new_graph(ctx);
+    ggml_build_forward_expand(gf, y);
+    // Read the weight ONE COLUMN AT A TIME. Feeding a full identity was the first attempt and gave
+    // zeros plus a NaN: with a wide src1 only column 0 of y got written and the rest stayed as
+    // uninitialized arena - the symptom was exactly "first sample has a value, every later sample is
+    // 0". A [k, 1] selector is the shape the gemv path is written for, and y is then exactly column i
+    // of the dequantized weight.
+    std::vector<float> got((size_t)pk * pm);
+    bool ok = true;
+    for (int64_t i = 0; i < pk && ok; i++) {
+        for (int64_t r = 0; r < pk; r++) idd[r] = (r == i) ? 1.0f : 0.0f;
+        if (ggml_graph_compute_with_ctx(ctx, gf, 1) != GGML_STATUS_SUCCESS) { ok = false; break; }
+        const float* yr = (const float*)y->data;
+        for (int64_t j = 0; j < pm; j++) got[(size_t)i * pm + j] = yr[j];
+    }
+    if (!ok) {
+        fprintf(stderr, "[I8CMP] selector product FAILED to compute - the probe itself is broken\n");
+        ggml_free(ctx);
+        return;
+    }
+    const float* yd = got.data();                  // element (k=i, m=j) at i*pm + j
+    if (ref) {
+        const ggml_fp16_t* rd16 = rbuf.data();
+        double worst = 0, scale = 0;
+        for (int64_t i = 0; i < pk; i++)
+            for (int64_t j = 0; j < pm; j++) {
+                double got = yd[(size_t)i * pm + j];
+                double want = ggml_fp16_to_fp32(rd16[(size_t)j * pk + i]);
+                worst = fmax(worst, fabs(got - want));
+                scale = fmax(scale, fabs(want));
+            }
+        fprintf(stderr, "[I8CMP] conv samples: ");
+        for (int s = 0; s < 4; s++) {
+            int64_t i = (int64_t)s * 7 % pk, j = (int64_t)s * 5 % pm;
+            fprintf(stderr, "(%g vs %g) ", yd[(size_t)i * pm + j], ggml_fp16_to_fp32(rd16[(size_t)j * pk + i]));
+        }
+        fprintf(stderr, "\n");
+        fprintf(stderr, "[I8CMP] conv vs source: max|diff|=%.6g  max|w|=%.6g  ratio=%.4f  -> %s\n", worst, scale,
+                scale ? worst / scale : 0.0,
+                worst / (scale ? scale : 1) < 0.05 ? "BYTES MATCH (bug is in the graph)" : "BYTES DO NOT MATCH (converter)");
+    }
+    // control read-back: same mechanism, bytes made by the same quantizer call the converter uses
+    {
+        struct ggml_tensor* cw = ggml_new_tensor_2d(ctx, GGML_TYPE_Q4_0_4_4, CK, CM);
+        memcpy(cw->data, cq.data(), wrote);
+        struct ggml_tensor* cid = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, CK, 1);
+        float* cd = (float*)cid->data;
+        struct ggml_tensor* cy = ggml_mul_mat(ctx, cw, ggml_cast(ctx, cid, GGML_TYPE_Q8_0));
+        struct ggml_cgraph* g2 = ggml_new_graph(ctx);
+        ggml_build_forward_expand(g2, cy);
+        bool cok = true;
+        std::vector<float> cg((size_t)CK * CM);
+        for (int64_t i = 0; i < CK && cok; i++) {
+            for (int64_t r = 0; r < CK; r++) cd[r] = (r == i) ? 1.0f : 0.0f;
+            if (ggml_graph_compute_with_ctx(ctx, g2, 1) != GGML_STATUS_SUCCESS) { cok = false; break; }
+            const float* cyr = (const float*)cy->data;
+            for (int64_t j = 0; j < CM; j++) cg[(size_t)i * CM + j] = cyr[j];
+        }
+        if (cok) {
+            const float* cd2 = cg.data();
+            double worst = 0, scale = 0;
+            for (int64_t i = 0; i < CK; i++)
+                for (int64_t j = 0; j < CM; j++) {
+                    double got = cd2[(size_t)i * CM + j], want = csrc[(size_t)j * CK + i];
+                    worst = fmax(worst, fabs(got - want));
+                    scale = fmax(scale, fabs(want));
+                }
+            fprintf(stderr, "[I8CMP] control samples: ");
+            for (int s = 0; s < 4; s++) {
+                int64_t i = s * 5 % CK, j = s % CM;
+                fprintf(stderr, "(%g vs %g) ", cd2[(size_t)i * CM + j], csrc[(size_t)j * CK + i]);
+            }
+            fprintf(stderr, "\n");
+            fprintf(stderr, "[I8CMP] control: max|diff|=%.6g max|w|=%.6g ratio=%.4f -> %s\n", worst, scale,
+                    scale ? worst / scale : 0.0,
+                    worst / (scale ? scale : 1) < 0.25 ? "mechanism OK" : "MECHANISM BROKEN - verdict above means nothing");
+        } else {
+            fprintf(stderr, "[I8CMP] control FAILED to compute\n");
+        }
+        // (the control above is what makes the verdict below meaningful - Exp660's rule)
+    }
+    ggml_free(ctx);
+}
+
 vae_model_t* vae_load_model_from_file(
     const char* model_path,
     struct vae_model_params params) {
@@ -1304,8 +1488,9 @@ vae_model_t* vae_load_model_from_file(
     
     model->acoustic_dim = model->acoustic_encoder.connector_output_dim;
     model->semantic_dim = model->semantic_encoder.connector_output_dim;
-    
-    
+
+    vae_probe_int8_weights(model);   // no-op unless VAE_CONV_I8_CMP=1
+
     return model;
 }
 

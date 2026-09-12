@@ -57,3 +57,30 @@
   f16: mul_mat(reshape_2d(ref), im2col_f16) - then reads both outputs back on the host and prints
   max|diff| and the reference scale. Near-zero => my bytes are right, the bug is in the graph wiring.
   Large => the converter (most likely my ggml_quantize_chunk argument order).
+- CONV-INT8 ROOT CAUSE (Exp688, FOUR iterations after Exp685's "garbage output"): the offline
+  converter quantized on the HOST, and `ggml_quantize_chunk(GGML_TYPE_Q4_0_4_4, ...)` on x86 writes
+  correct nibbles but **ZERO fp16 SCALES** - .auto/qt.c proves it directly (d = {0,0,0,0}, qs = 68 9c
+  d0 14 ...). value = d * (q - 8), so every weight dequantizes to exactly 0: the conv path computes
+  zeros, the LM gets silence, the protocol run emits 9 tokens. Nothing was wrong with the graph, the
+  geometry, the padding, the Q8_0 staging, or the 2-D layout - and no amount of reasoning about those
+  could have found this, because a zero-scale blob is legal bytes.
+  * Why nobody noticed: a zero-scale block passes every size/shape check the converter makes, and the
+    shipped 4x4 ggufs are fine because llama-quantize uses llama-quant.cpp's own path, not
+    ggml_quantize_chunk.
+  * HOW IT WAS FOUND: the on-device load-time probe (vae.cpp, VAE_CONV_I8_CMP=1) multiplies the int8
+    weight by a one-hot [k,1] selector - the gemv shape - so the product IS the dequantized column.
+    Its self-test (quantize a known matrix with the runtime's own ggml_quantize_chunk, read it back)
+    PASSED on device (ratio 0.125 = q4 noise), which is what made the conv verdict trustworthy: the
+    device quantizer+reader agree, so the file's bytes were the only suspect. That in turn localized
+    the fault to the host tool, where qt.c confirmed it in one run.
+  * FIX (queued, straightforward): quantize on the device. quant4x4.cpp is plain ggml C++, so build it
+    with the same NDK toolchain as the app (30 s), have conv_int8.py ship each conv's raw f16 bytes to
+    the device, run the ARM helper there, and pull the blobs back. The file assembly stays on the host.
+    Then re-probe (expect "BYTES MATCH"), measure 3 reps (stop rule >= 2%) and gate 40 utts (WER <=
+    ~4.9%); the EV is +2 to +4% RTF on 12.3% of VAE time (Exp683).
+  * PROBE GOTCHAS learned the same run (all cost a device round trip): (1) ggml_init RETURNS the
+    context - discarding the result left ctx NULL and segfaulted; (2) a wide src1 into a blocked
+    mul_mat wrote only column 0 and left the rest of the output as uninitialized arena (zeros + a
+    NaN), so dequantize with a [k,1] selector one column at a time; (3) the reference must come from
+    the source file by name (an extra *_ref tensor in the converted file was not registered by the
+    loader: 562 keys for a 563-tensor file, unresolved and now irrelevant).

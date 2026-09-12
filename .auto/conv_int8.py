@@ -98,6 +98,10 @@ def main():
     src, dst = sys.argv[1], sys.argv[2]
     q = sys.argv[4] if len(sys.argv) > 4 and sys.argv[3] == '--quantizer' else '.auto/quant4x4'
     dry = '--dry' in sys.argv
+    # --emit-ref NAME also copies that tensor's original F16 data into the output under <name>_ref, so
+    # the on-device probe (vae.cpp, VAE_CONV_I8_CMP=1) can compare ggml's own dequantization of the
+    # converted bytes against the source values. Debug aid only; nothing reads it otherwise.
+    ref_name = sys.argv[sys.argv.index('--emit-ref') + 1] if '--emit-ref' in sys.argv else None
     info = parse(src)
     real = os.path.getsize(src)
     # Parse-then-offset correctness matters more here than the measurement itself: writing the wrong
@@ -147,7 +151,13 @@ def main():
         # infos_start is the offset just after the KV section, and the header (magic, version,
         # n_tensors, n_kv) is inside that prefix - the count must NOT be written again or every
         # later field shifts by 8 bytes (my first run did exactly that).
-        out.write(f.read(info['infos_start']))
+        prefix = bytearray(f.read(info['infos_start']))
+        if ref_name:
+            # ...but when --emit-ref appends a tensor the count must go UP by one, or every parser
+            # reads only the first N records and the extra tensor's data sits in the tail, invisible
+            # (that is how this file briefly ended up with 16 KB of unreachable bytes).
+            struct.pack_into('<Q', prefix, 8, info['n'] + 1)     # n_tensors: u64 right after magic+ver
+        out.write(prefix)
     offset, placed = 0, []
     for t in info['tensors']:
         if t['name'] in blobs:
@@ -163,6 +173,19 @@ def main():
         offset += size
         while offset % align:
             offset += 1                                 # every tensor starts on an aligned offset
+    if ref_name:
+        hit = [t for t in placed if t['name'] == ref_name]
+        if not hit:
+            sys.exit(f'--emit-ref: {ref_name!r} is not in this file (or was not converted)')
+        src_t = hit[0]
+        ref = dict(src_t)                      # keep 'off'/'nbytes' - the data loop reads the source
+        ref['name'] = ref_name + '_ref'
+        ref['_off'], ref['_dims'], ref['_dt'], ref['_size'] = offset, list(src_t['dims']), F16, src_t['nbytes']
+        placed.append(ref)
+        offset += ref['_size']
+        while offset % align:
+            offset += 1
+        print(f'emit-ref: added {ref["name"]} as f16 {ref["_dims"]} ({ref["_size"]} bytes)', file=sys.stderr)
     for t in placed:
         w_str(out, t['name'])
         out.write(struct.pack('<I', len(t['_dims'])))
