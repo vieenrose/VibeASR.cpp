@@ -47,15 +47,19 @@ regenerated audio must hash to `984e60b14cfe…` to be the same probe).
 | accuracy-first (VAE F16) | 2.5 GB | 5.35 | — | 5.62 | 6.58 | 4.55 % | 2.95 GB |
 | _original configuration (session start)_ | 2.5 GB | _6.52_ | — | — | _6.58_ | _4.55 %_ | _2.99 GB_ |
 
-> **The WER column does not transfer across domains (Exp651–652).** Every number above
-> is LibriSpeech *test-clean* — read speech. On a held-out consumer/accented English set
-> (Common Voice 17.0 `en` test, CC0, never used by this loop) the same tiers score
-> 29.6 % (max-speed) / 30.0 % (lean) / 26.4 % (accuracy-first): the tiers that are
-> indistinguishable on read speech differ by ~3.2 pp on hard audio, where accuracy-first
-> is genuinely better. So "this tier costs ≤0.5 pp of accuracy" is a statement about
-> read speech, not about product audio. Re-price any tier choice on hard audio before
-> shipping it into the wild. (Held-out sample is 220 tokens, so treat the 3.2 pp as
-> suggestive — direction consistent, CI ~±2.6 pp.)
+> **The WER column is read-speech-only (Exp651, Exp653).** Every number above is
+> LibriSpeech *test-clean*. On held-out consumer/accented audio (Common Voice 17.0 `en`
+> and `zh-TW` test splits, CC0, never used by this loop) the shipped tier scores
+> **29.6 %** (English, 220 tokens) and **42.3 %** (zh-TW, 468 tokens) — so any WER quoted
+> from this ladder must carry the qualifier “read speech”.
+> **Correction (Exp653):** Exp652 reported that on hard audio the tiers separate
+> (accuracy-first 26.4 % vs shipped 29.6 %). That **failed to replicate** in a second
+> hard-audio domain with 2× the tokens: zh-TW held-out gives shipped **42.31 %** vs
+> accuracy-first **42.52 %** with *identical* substitution counts (S=189 in both), even
+> though the arms differ in both encoder and LM precision. Read together: **quantization
+> is accuracy-neutral in both clean and hard audio**, and the large zh error rate is
+> LM/data-side (no precision setting moves it). The tier ranking stands; only the
+> absolute numbers need the read-speech qualifier.
 
 Shipped recipe: VAE `Q4_0_4x4` ffn linears (converter outtype `q4_0_4x4_ffn`) +
 F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddings**
