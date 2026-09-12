@@ -1134,6 +1134,57 @@ static size_t vae_model_max_nodes(const vae_model_t* model) {
     return std::max<size_t>(1024, n_tensors * 3) + 128;
 }
 
+// Static traffic + compute profile of a planned graph (VAE_GRAPH_STATS=1). Shared by the
+// legacy piece-wise path and both split passes, so the SHIPPED configuration can be profiled
+// (Exp631: the old inline-only version silently emitted nothing on forward_early/forward_late).
+// Bytes are a device-independent bandwidth proxy (weights read once per mul_mat, src1 re-reads
+// counted per use); MACs are output-elements x contraction length for MUL_MAT, element counts
+// for elementwise ops, 0 for views.
+static void vae_graph_stats_dump(struct ggml_cgraph* gf, const char* phase) {
+    struct Row { size_t bytes = 0; size_t count = 0; double macs = 0.0; };
+    std::map<std::string, Row> by_op;
+    size_t total = 0;
+    double total_macs = 0.0;
+    const bool shapes = getenv("VAE_MMSHAPES") != nullptr;
+    const int n_nodes = ggml_graph_n_nodes(gf);
+    for (int i = 0; i < n_nodes; i++) {
+        struct ggml_tensor* node = ggml_graph_node(gf, i);
+        size_t b = ggml_nbytes(node);
+        for (int s = 0; s < GGML_MAX_SRC; s++) {
+            if (node->src[s]) b += ggml_nbytes(node->src[s]);
+        }
+        double macs = 0.0;
+        if (node->op == GGML_OP_MUL_MAT && node->src[0] && node->src[1]) {
+            macs = (double) ggml_nelements(node) * (double) node->src[0]->ne[0];
+        } else if (node->op != GGML_OP_RESHAPE && node->op != GGML_OP_PERMUTE &&
+                   node->op != GGML_OP_VIEW && node->op != GGML_OP_TRANSPOSE) {
+            macs = (double) ggml_nelements(node);
+        }
+        std::string key = ggml_op_name(node->op);
+        if (node->op == GGML_OP_MUL_MAT && node->src[0]) {
+            key += std::string("/") + ggml_type_name(node->src[0]->type);
+            if (shapes) {
+                const struct ggml_tensor* a = node->src[0];
+                const struct ggml_tensor* b1 = node->src[1];
+                fprintf(stderr, "[MMSHAPE:%s] %-8s a=[%lld,%lld,%lld,%lld] b=[%lld,%lld,%lld,%lld] dst=[%lld,%lld,%lld,%lld]\n",
+                        phase, ggml_type_name(a->type),
+                        (long long)a->ne[0], (long long)a->ne[1], (long long)a->ne[2], (long long)a->ne[3],
+                        (long long)b1->ne[0], (long long)b1->ne[1], (long long)b1->ne[2], (long long)b1->ne[3],
+                        (long long)node->ne[0], (long long)node->ne[1], (long long)node->ne[2], (long long)node->ne[3]);
+            }
+        }
+        auto& e = by_op[key];
+        e.bytes += b; e.count += 1; e.macs += macs;
+        total += b; total_macs += macs;
+    }
+    fprintf(stderr, "[VAE_STATS:%s] nodes=%d total=%.1f MB macs=%.2f G\n", phase, n_nodes, total / 1e6, total_macs / 1e9);
+    for (auto& kv : by_op) {
+        fprintf(stderr, "[VAE_STATS:%s] %-16s n=%4zu bytes=%9.1f MB %5.1f%%  macs=%9.3f G\n",
+                phase, kv.first.c_str(), kv.second.count, kv.second.bytes / 1e6,
+                100.0 * kv.second.bytes / total, kv.second.macs / 1e9);
+    }
+}
+
 static enum ggml_status vae_graph_compute_planned(struct ggml_cgraph * gf, int n_threads);
 
 static int32_t vae_encode_impl(
@@ -1323,52 +1374,7 @@ static int32_t vae_encode_impl(
     static bool graph_stats_dumped = false;
     if (getenv("VAE_GRAPH_STATS") != nullptr && !graph_stats_dumped) {
         graph_stats_dumped = true;
-        // Static traffic + compute profile: input+output bytes and MACs per op
-        // type. Bytes are a device-independent proxy for bandwidth (weights are
-        // read once per mul_mat; src1 re-reads counted per use); MACs are
-        // output-elements x contraction length for MUL_MAT, element counts for
-        // the elementwise ops, and are 0 for views.
-        struct Row { size_t bytes = 0; size_t count = 0; double macs = 0.0; };
-        std::map<std::string, Row> by_op;
-        size_t total = 0;
-        double total_macs = 0.0;
-        const int n_nodes = ggml_graph_n_nodes(gf);
-        for (int i = 0; i < n_nodes; i++) {
-            struct ggml_tensor* node = ggml_graph_node(gf, i);
-            size_t b = ggml_nbytes(node);
-            for (int s = 0; s < GGML_MAX_SRC; s++) {
-                if (node->src[s]) b += ggml_nbytes(node->src[s]);
-            }
-            double macs = 0.0;
-            if (node->op == GGML_OP_MUL_MAT && node->src[0] && node->src[1]) {
-                macs = (double) ggml_nelements(node) * (double) node->src[0]->ne[0];
-            } else if (node->op != GGML_OP_RESHAPE && node->op != GGML_OP_PERMUTE &&
-                       node->op != GGML_OP_VIEW && node->op != GGML_OP_TRANSPOSE) {
-                macs = (double) ggml_nelements(node);
-            }
-            std::string key = ggml_op_name(node->op);
-            if (node->op == GGML_OP_MUL_MAT && node->src[0]) {
-                key += std::string("/") + ggml_type_name(node->src[0]->type);
-                if (getenv("VAE_MMSHAPES") != nullptr) {
-                    const struct ggml_tensor* a = node->src[0];
-                    const struct ggml_tensor* b = node->src[1];
-                    fprintf(stderr, "[MMSHAPE] %-8s a=[%lld,%lld,%lld,%lld] b=[%lld,%lld,%lld,%lld] dst=[%lld,%lld,%lld,%lld]\n",
-                            ggml_type_name(a->type),
-                            (long long)a->ne[0], (long long)a->ne[1], (long long)a->ne[2], (long long)a->ne[3],
-                            (long long)b->ne[0], (long long)b->ne[1], (long long)b->ne[2], (long long)b->ne[3],
-                            (long long)node->ne[0], (long long)node->ne[1], (long long)node->ne[2], (long long)node->ne[3]);
-                }
-            }
-            auto& e = by_op[key];
-            e.bytes += b; e.count += 1; e.macs += macs;
-            total += b; total_macs += macs;
-        }
-        fprintf(stderr, "[VAE_STATS] nodes=%d total=%.1f MB macs=%.2f G\n", n_nodes, total / 1e6, total_macs / 1e9);
-        for (auto& kv : by_op) {
-            fprintf(stderr, "[VAE_STATS] %-16s n=%4zu bytes=%9.1f MB %5.1f%%  macs=%9.3f G\n",
-                    kv.first.c_str(), kv.second.count, kv.second.bytes / 1e6,
-                    100.0 * kv.second.bytes / total, kv.second.macs / 1e9);
-        }
+        vae_graph_stats_dump(gf, "piecewise");
     }
     if (getenv("VAE_ZC_STATS") != nullptr) fprintf(stderr, "[DBG] precompute\n");
     enum ggml_status st = legacy_arena
@@ -1641,6 +1647,10 @@ static int32_t vae_encode_early_impl(
     }
     struct timespec c0, c1;
     clock_gettime(CLOCK_MONOTONIC, &c0);
+    if (getenv("VAE_GRAPH_STATS") != nullptr) {
+        static bool dumped_early = false;
+        if (!dumped_early) { dumped_early = true; vae_graph_stats_dump(gf, "early"); }
+    }
     if (vae_graph_compute_planned(gf, n_threads_ovr > 0 ? n_threads_ovr : ctx->n_threads) != GGML_STATUS_SUCCESS) {
         fprintf(stderr, "[VAE] Error: early graph compute failed\n"); return -1;
     }
@@ -1811,6 +1821,10 @@ static int32_t vae_encode_late_impl(
     struct timespec b1, c0, c1;
     clock_gettime(CLOCK_MONOTONIC, &b1);
     clock_gettime(CLOCK_MONOTONIC, &c0);
+    if (getenv("VAE_GRAPH_STATS") != nullptr) {
+        static bool dumped_late = false;
+        if (!dumped_late) { dumped_late = true; vae_graph_stats_dump(gf, "late"); }
+    }
     if (vae_graph_compute_planned(gf, n_threads_ovr > 0 ? n_threads_ovr : ctx->n_threads) != GGML_STATUS_SUCCESS) {
         fprintf(stderr, "[VAE] Error: late graph compute failed\n"); return -1;
     }
