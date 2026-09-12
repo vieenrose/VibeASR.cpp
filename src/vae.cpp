@@ -492,9 +492,11 @@ static struct ggml_tensor* ggml_nn_conv_1d_dw(
                             (long long)T_out, padding);
                 }
             }
-            // NOT the default (Exp666): it measured -3.7% RTF with a byte-identical transcript but
-            // segfaulted once on the 40-utt gate, so the cause is unknown - keep it opt-in until then.
-            if (getenv("VAE_DW_CONV1D") != nullptr && stride == 1 && dilation == 1) {
+            // DEFAULT since Exp670: -3.7% RTF with a byte-identical transcript. It looked unsafe
+            // in Exp666 because it coincided with a pre-existing data race in vae_abl()'s shared
+            // knob memo, which Exp669 fixed (thread_local); see the crash post-mortem there.
+            // VAE_DW_CONV1D_OFF=1 restores the tap-chain fallback.
+            if (getenv("VAE_DW_CONV1D_OFF") == nullptr && stride == 1 && dilation == 1) {
                 // ONE depthwise conv op instead of a K-long elementwise chain: (K+1) tensor
                 // passes instead of ~3K, i.e. Exp665's 9.0% tap cost -> ~1.5%. Bit-identical to
                 // the tap chain by construction (ascending k, product rounded before each add,
