@@ -463,21 +463,23 @@ static struct ggml_tensor* vae_conv_geom(struct ggml_tensor* w, int K) {
 static struct ggml_tensor* vae_conv_1d_i8(
         struct ggml_context* ctx, struct ggml_tensor* geom, struct ggml_tensor* w,
         struct ggml_tensor* x, int s0, int p0, int d0) {
-    // VAE_CONV_I8_NOCAST=1 feeds the F32 unfolding straight to mul_mat and lets ggml convert it the
-    // way the LM path does every run (from_float_to_mat), instead of pre-converting to Q8_0 here.
-    const bool nocast = vae_abl("VAE_CONV_I8_NOCAST");
+    // This fork's blocked mul_mat supports an F32 src1 only: it converts to Q8_0 internally (the
+    // from_float_to_mat route, which is what the LM uses every run). Handing it a PRE-converted Q8_0
+    // tensor computes something else - silently, since device builds compile the asserts out - and the
+    // symptom is a 1024-token runaway instead of the reference 39 with the same file. Measured both ways
+    // (int8 file, 2 reps each): F32 src1 -> 2.4649/2.4632 with the reference transcript; Q8_0 src1 ->
+    // 11.41/11.50, garbage. The wrong arm is ~2% faster on vae_s, which is exactly the kind of trap
+    // worth leaving a switch for, documented as broken.
+    const bool q8cast = vae_abl("VAE_CONV_I8_Q8CAST");
     struct ggml_tensor* im2col = ggml_im2col(ctx, geom, x, s0, 0, p0, 0, d0, 0, false,
-                                             nocast ? GGML_TYPE_F32 : GGML_TYPE_F16);
+                                             q8cast ? GGML_TYPE_F16 : GGML_TYPE_F32);
     struct ggml_tensor* col = ggml_reshape_2d(ctx, im2col, im2col->ne[0],
                                               im2col->ne[2] * im2col->ne[1]);
     if (vae_abl("VAE_ABL_CONV")) {   // same measurement-only substitution as the F16 path (Exp683)
-        struct ggml_tensor* f = nocast ? col : ggml_cast(ctx, col, GGML_TYPE_F32);
+        struct ggml_tensor* f = q8cast ? ggml_cast(ctx, col, GGML_TYPE_F32) : col;
         return ggml_view_2d(ctx, f, geom->ne[2], f->ne[1], f->nb[1], 0);
     }
-    // vec_dot_type of the blocked types is Q8_0. Either hand ggml an F32 src1 and let it convert
-    // (the LM's route), or pre-convert to Q8_0 here - both arms exist because only one of them can
-    // be what this fork's blocked gemm actually supports.
-    return ggml_mul_mat(ctx, w, nocast ? col : ggml_cast(ctx, col, GGML_TYPE_Q8_0));
+    return ggml_mul_mat(ctx, w, q8cast ? ggml_cast(ctx, col, GGML_TYPE_Q8_0) : col);
 }
 
 static struct ggml_tensor* ggml_nn_conv_1d(
