@@ -183,7 +183,10 @@ single-word difference into an apparent systematic cost.
 5. **F16 im2col (−6 %), concurrent encoders (−12 %), OpenMP off (−1 %).** `ggml_conv_1d` hardcodes
    a F32 im2col; building it in F16 halves the traffic and removes a conversion
    pass. And the acoustic/semantic encoders are independent chains, so they now
-   run concurrently one thread each (intra-chain splitting scaled only 1.57×).
+   run concurrently one thread each (intra-chain splitting scaled only 1.57×; Exp678 bounds that
+   at ≤1.85× and shows the choice is not a throughput lever - 2 chains at 1 thread each = 17.0 s
+   each vs one chain alone on both cores = 9.2 s, i.e. concurrent and sequential do the same work
+   rate within 5 %).
    Plus a mmap loader with a parallel copy (load 5.4 → 1.4 s).
 
 ## Closed avenues (each with a mechanism or measurement)

@@ -207,7 +207,9 @@ VAE**. New shipped band **3.47-3.49**.
 
 The acoustic and semantic encoders are independent — separate weights, separate
 streaming caches, separate compute arenas. Thread-scaling data (Exp519: the VAE
-scales only 1.57× from 1→2 threads) showed the dependent chains do not saturate
+scales only 1.57× from 1→2 threads; Exp678 bounds that at ≤1.85× and measures the mode choice
+itself at only ~5 % — concurrent 17.2 s vs sequential 18.1 s wall for the same two chains, so
+this is a small, already-banked win rather than a throughput lever) showed the dependent chains do not saturate
 two cores, so the two encoders now run **concurrently, one thread each**
 (`vae_encode_parallel_cached`, a second `(ggml_context, arena)` pair; default
 on, `VAE_SEQ_ENCODERS=1` opts back out). Opting out is now a **last resort**:
