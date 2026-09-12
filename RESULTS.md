@@ -23,7 +23,13 @@ LM_FILE=lm-q8head.gguf VAE_FILE=vae-encoder-q4x4ffn.gguf ./.auto/measure.sh
 
 `.auto/measure.sh` builds, pushes the binary **and the shared libs** (md5-diffed),
 runs the 10 s protocol clip pinned to the prime cores and prints `METRIC` lines.
-`EXTRA_ENV=` forwards env vars to the device run; `AUDIO=` selects the clip.
+`EXTRA_ENV=` forwards env vars to the device run; `AUDIO=` selects the clip (or use
+`measure.sh --clip PATH`, which validates and pushes the file — since Exp648 unknown
+flags are a hard error, because `--clip` used to be silently ignored and measured the
+default 10 s clip instead). Behavioural probes and their scorer:
+`.auto/build_gate_multispk.py` (deterministic, CC0 Common Voice 17.0 sources) and
+`.auto/score_stream.py --selftest` (WER by language + diarization attribution with the
+standard optimal tag↔voice mapping; 5 self-tests).
 
 ## Final tier ladder (all on-device, 10 s protocol, 2 pieces)
 
@@ -111,7 +117,8 @@ protocol clip).
 | determinism | repeated runs byte-identical, matching references from earlier builds |
 | output stability | byte-identical transcripts vs pre-change references on **every** clip used (10 s, 17 s, 69 s, 138 s halves, and 40/40 gate utterances) |
 | out-of-domain (20 s music) | RTF 2.97, sane `[Music]`+lyrics output, no pathological loops |
-| speaker attribution (first diarization evidence, Exp548) | two-speaker synthetic clips: on a 0.5 s-gap concatenation **all tiers agree** (single speaker — a model behaviour, not a quantization effect); on an **overlapped** mix the quantized stack emits **Speaker 0 + Speaker 1** while the F16 control emits one — i.e. attribution is exercised and not collapsed by quantization. No multi-speaker reference exists in the loop's assets, so attribution *quality* is unscored (validation boundary) |
+| speaker attribution | scored since **Exp648** on a real multi-speaker reference (`eval-bilingual/gate_ms.wav`, 4 gold voices): the shipped tier uses **one** `Speaker` tag for all four voices — attribution error **0.567** (exactly the one-bucket optimum), per-voice consistency 0.743, tags used 1/4. Earlier synthetic probes (Exp548/609) *did* split on an overlapped two-speaker mix, so tags are reachable; the collapse is behaviour-dependent (sequential turns with 300 ms gaps here), not a quantization artifact. Quantization itself is exonerated: tiers agree on the synthetic clips |
+| bilingual + code-switch probe (Exp648, 57 s, 12 turns) | WER **30.9 %** overall — **English 10.7 %**, **zh-TW 39.1 %** — with **zero** deletions and insertions: content, turn order and language identification are all correct; every error is a Traditional-Chinese **homophone substitution** (一次次存取→以自身認知, 黃燈→王登, 實境→史進, 味噌→味增). Intra-utterance code-switching is handled (one turn mixes both languages and is transcribed). Neither gap is visible to the 40-utt gate or the protocol RTF. Probe clip ran at RTF **2.40** / RSS 2.23 GB |
 | non-speech edge cases | 5 s digital silence → `[Silence][Silence]`; 5 s −50 dBFS white noise → `[Noise]` — correct model tags, short decodes, **no hallucinated text and no repetition loops** |
 | input formats / cold start | 48 kHz stereo handled (one word differs); after evicting the page cache the RTF is unchanged (3.4713 pre-change, 3.3010 on the deferred build) and only the load grows (1.4 → 2.6 s, excluded from RTF) |
 | CPU utilisation | 1.88 of 2 pinned cores (94 %) — the pipeline is saturated |
