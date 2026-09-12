@@ -28,9 +28,14 @@ echo "note: audio=$AUDIO skip_build=$SKIP_BUILD" >&2
 # Co-runner guard (Exp679): a host-side `timeout` leaves the DEVICE-side run alive, and a live
 # second asr_streaming halves throughput (two pinned 2-thread runs on two A78s, Exp533). That
 # produced plausible-but-2x-slow numbers here, so say it out loud instead of measuring it.
+# NOTE the two set -e traps here, both hit in the first version: `grep -c` EXITS 1 when the count
+# is 0 (the normal idle case), and a bare `[ ... ] && echo` returns 1 when the test is false -
+# either one aborts this script before it measures anything.
 if command -v adb >/dev/null 2>&1; then
-  BUSY=$(adb -s $DEV shell "ps -A -o NAME" 2>/dev/null | tr -d '\r' | grep -c asr_streaming)
-  [ "${BUSY:-0}" -gt 0 ] && echo "WARNING: $BUSY asr_streaming already running on device - timings will be inflated (kill them first)" >&2
+  BUSY=$( { adb -s $DEV shell "ps -A -o NAME" 2>/dev/null | tr -d '\r' | grep -c asr_streaming; } || true )
+  if [ "${BUSY:-0}" -gt 0 ] 2>/dev/null; then
+    echo "WARNING: $BUSY asr_streaming already running on device - timings will be inflated (kill them first)" >&2
+  fi
 fi
 
 if [ "$SKIP_BUILD" != 1 ]; then
