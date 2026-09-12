@@ -466,10 +466,11 @@ static struct ggml_tensor* vae_conv_1d_i8(
     // This fork's blocked mul_mat supports an F32 src1 only: it converts to Q8_0 internally (the
     // from_float_to_mat route, which is what the LM uses every run). Handing it a PRE-converted Q8_0
     // tensor computes something else - silently, since device builds compile the asserts out - and the
-    // symptom is a 1024-token runaway instead of the reference 39 with the same file. Measured both ways
-    // (int8 file, 2 reps each): F32 src1 -> 2.4649/2.4632 with the reference transcript; Q8_0 src1 ->
-    // 11.41/11.50, garbage. The wrong arm is ~2% faster on vae_s, which is exactly the kind of trap
-    // worth leaving a switch for, documented as broken.
+    // symptom is a 1024-token runaway instead of the reference 39 with the same file (int8 file, 2 reps
+    // each: F32 src1 -> 2.4649/2.4632 with the reference transcript; Q8_0 src1 -> 11.41/11.50, garbage).
+    // The wrong arm is ~2% faster on vae_s, so the switch stays for experiments. The obvious way to get
+    // that 2% legitimately was ggml_im2col with dst_type=Q8_0 (ggml's own quantized staging, no cast
+    // node): it ABORTS in this build (exit 134, Exp692), so the F32 route is the only supported one.
     const bool q8cast = vae_abl("VAE_CONV_I8_Q8CAST");
     struct ggml_tensor* im2col = ggml_im2col(ctx, geom, x, s0, 0, p0, 0, d0, 0, false,
                                              q8cast ? GGML_TYPE_F16 : GGML_TYPE_F32);
