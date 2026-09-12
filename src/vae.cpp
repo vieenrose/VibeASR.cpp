@@ -461,16 +461,21 @@ static struct ggml_tensor* vae_conv_geom(struct ggml_tensor* w, int K) {
 static struct ggml_tensor* vae_conv_1d_i8(
         struct ggml_context* ctx, struct ggml_tensor* geom, struct ggml_tensor* w,
         struct ggml_tensor* x, int s0, int p0, int d0) {
-    struct ggml_tensor* im2col = ggml_im2col(ctx, geom, x, s0, 0, p0, 0, d0, 0, false, GGML_TYPE_F16);
+    // VAE_CONV_I8_NOCAST=1 feeds the F32 unfolding straight to mul_mat and lets ggml convert it the
+    // way the LM path does every run (from_float_to_mat), instead of pre-converting to Q8_0 here.
+    const bool nocast = vae_abl("VAE_CONV_I8_NOCAST");
+    struct ggml_tensor* im2col = ggml_im2col(ctx, geom, x, s0, 0, p0, 0, d0, 0, false,
+                                             nocast ? GGML_TYPE_F32 : GGML_TYPE_F16);
     struct ggml_tensor* col = ggml_reshape_2d(ctx, im2col, im2col->ne[0],
                                               im2col->ne[2] * im2col->ne[1]);
     if (vae_abl("VAE_ABL_CONV")) {   // same measurement-only substitution as the F16 path (Exp683)
-        struct ggml_tensor* f = ggml_cast(ctx, col, GGML_TYPE_F32);
+        struct ggml_tensor* f = nocast ? col : ggml_cast(ctx, col, GGML_TYPE_F32);
         return ggml_view_2d(ctx, f, geom->ne[2], f->ne[1], f->nb[1], 0);
     }
-    // vec_dot_type of the blocked types is Q8_0, so the unfolded activations must arrive as Q8_0.
-    // This cast is the staging cost the project's EV estimate already accounts for.
-    return ggml_mul_mat(ctx, w, ggml_cast(ctx, col, GGML_TYPE_Q8_0));
+    // vec_dot_type of the blocked types is Q8_0. Either hand ggml an F32 src1 and let it convert
+    // (the LM's route), or pre-convert to Q8_0 here - both arms exist because only one of them can
+    // be what this fork's blocked gemm actually supports.
+    return ggml_mul_mat(ctx, w, nocast ? col : ggml_cast(ctx, col, GGML_TYPE_Q8_0));
 }
 
 static struct ggml_tensor* ggml_nn_conv_1d(
@@ -1078,7 +1083,10 @@ static bool load_encoder_weights(
     encoder.head_kernel_size = vae_conv_kernel_size(encoder.head_conv_weight,
                                                     AudioVAEEncoder::downsample_dims[6]);
     if (encoder.head_kernel_size <= 0) {
-        fprintf(stderr, "%s: head conv has an unsupported weight layout\n", __func__);
+        fprintf(stderr, "%s: head conv unsupported layout: ne=[%lld,%lld,%lld] type=%d ic=%lld\n", __func__,
+                (long long) encoder.head_conv_weight->ne[0], (long long) encoder.head_conv_weight->ne[1],
+                (long long) encoder.head_conv_weight->ne[2], (int) encoder.head_conv_weight->type,
+                (long long) AudioVAEEncoder::downsample_dims[6]);
         return false;
     }
     encoder.head_conv_geom = vae_conv_geom(encoder.head_conv_weight, encoder.head_kernel_size);

@@ -151,7 +151,11 @@ def main():
     offset, placed = 0, []
     for t in info['tensors']:
         if t['name'] in blobs:
-            dims, dt, size = [t['dims'][2], t['dims'][0] * t['dims'][1]], Q4_0_4X4, blobs[t['name']]
+            # This model's loader assigns ne[] in FILE order (verified: a 3-D conv [K,IC,OC] arrives
+            # as ne=[K,IC,OC], and the runtime reads ne[0] as the kernel size), so the 2-D form must
+            # be written [K*IC, OC] to land as ne=[row, OC]. My first run wrote [OC, row] and the
+            # runtime guard caught it - a silent version of that would have been strides garbage.
+            dims, dt, size = [t['dims'][0] * t['dims'][1], t['dims'][2]], Q4_0_4X4, blobs[t['name']]
         else:
             dims, dt, size = t['dims'], t['dt'], t['nbytes']
         t['_off'], t['_dims'], t['_dt'], t['_size'] = offset, dims, dt, size
