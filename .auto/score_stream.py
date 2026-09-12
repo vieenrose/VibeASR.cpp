@@ -18,7 +18,7 @@
                     emitted token, converted to seconds via HOP. Reported because the
                     engine has no token timestamps; window resolution is ~2.9 s.
 
-Usage: .auto/score_stream.py [hyp-file]     (default VibeASR.cpp/.auto/last_out.txt)
+Usage: .auto/score_stream.py [hyp-file] [manifest.json]   (default VibeASR.cpp/.auto/last_out.txt)
        .auto/score_stream.py --selftest
 """
 import json, os, re, sys
@@ -234,7 +234,8 @@ if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == '--selftest':
         sys.exit(selftest())
     hyp = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, 'VibeASR.cpp', '.auto', 'last_out.txt')
-    man = json.load(open(MAN, encoding='utf-8'))
+    man_path = sys.argv[2] if len(sys.argv) > 2 else MAN
+    man = json.load(open(man_path, encoding='utf-8'))
     r = score(hyp, man)
     print(f"GATE {man['total_s']}s, {man['turns']} turns, {r['gold_voices']} gold voices, sha {man['wav_sha256'][:12]}")
     print(f"  WER          {r['wer']:.4f} (S={r['S']} D={r['D']} I={r['I']} H={r['H']}) over {r['ref_tokens']} ref tokens")

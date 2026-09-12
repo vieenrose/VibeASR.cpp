@@ -27,7 +27,8 @@ import csv, hashlib, json, os, random, subprocess, sys, wave
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 RAW = os.path.join(ROOT, 'eval-bilingual', 'raw')
 OUT = os.path.join(ROOT, 'eval-bilingual')
-SR, GAP_MS, SEED = 24000, 300, 649
+SR, GAP_MS, SEED = 24000, int(os.environ.get('GAP_MS', 300)), 649
+SFX = '' if GAP_MS == 300 else f'_g{GAP_MS}'   # keep the canonical probe's files untouched
 ZH_TURNS_PER_SPEAKER = 4    # 2 zh-TW voices x 4 turns (~31 s), incl. the code-switched one
 S1_TURNS = 4                # the code-switched voice only has 4 qualifying clips
 ZH_SPEAKERS = 2
@@ -145,11 +146,11 @@ def main():
             pos += len(pcm) + len(gap)
             qi[id(r)] += 1
 
-    wav_path = os.path.join(OUT, 'gate_ms.wav')
+    wav_path = os.path.join(OUT, 'gate_ms' + SFX + '.wav')
     with wave.open(wav_path, 'wb') as w:
         w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR); w.writeframes(b''.join(parts))
     total = pos / 2 / SR          # pos is BYTES (s16le)
-    ref_path = os.path.join(OUT, 'gate_ms.ref.txt')
+    ref_path = os.path.join(OUT, 'gate_ms' + SFX + '.ref.txt')
     with open(ref_path, 'w', encoding='utf-8') as f:
         f.write(' '.join(t['text'] for t in table) + '\n')
 
@@ -164,7 +165,7 @@ def main():
            'roles': [{'gold': r['gold'], 'lang': r['lang'], 'voice': r['voice'], 'turns': len(r['clips'])}
                      for r in roles],
            'table': table}
-    json.dump(man, open(os.path.join(OUT, 'manifest_ms.json'), 'w', encoding='utf-8'),
+    json.dump(man, open(os.path.join(OUT, 'manifest_ms' + SFX + '.json'), 'w', encoding='utf-8'),
               ensure_ascii=False, indent=1)
     zs = sum(t['dur_s'] for t in table if t['lang'] == 'zh-TW')
     es = sum(t['dur_s'] for t in table if t['lang'] == 'en')
