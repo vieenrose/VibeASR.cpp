@@ -11,17 +11,17 @@ Baseline (original protocol): RTF ~12.4-13.3 on the 10 s slice.
 Goal direction: as far below baseline as honest engineering goes (RTF < 1 is
 believed unreachable without retraining; do NOT chase it by cheating).
 
-## Current bands (A78 codegen build, 10 s protocol, -t2/C0, pieces 26 = new default)
+## Current bands (A78 codegen build, 10 s protocol, -t2/C0, pieces 2 = default; v3.6 stack incl. the fused f32 depthwise-conv kernel, Exp670)
 | tier | env | band | readings |
 |---|---|---|---|
 | F16 accuracy-first | `VAE_FILE=vae-encoder-f16.gguf` | ~4.77 (deferred late stages) | 4.7705 (Exp555; was 5.3362) |
 | BALANCED | `VAE_FILE=vae-encoder-q4x4ffn.gguf` + LM Q4_K_M | ~4.16 (deferred late stages) | 4.1649 (Exp555; was 4.4007) |
 | FAST-LM v2 | `VAE_FILE=vae-encoder-f16.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) | ~5.21 | 5.2138 (tokens 42), WER 4.41% |
-| **MAX-SPEED v3.5 (DEFAULT, p2)** | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q8head.gguf` (Q4_0_4x4 bulk, q6_K embeddings, **Q8_0 head** - the q6_K head has no gemv kernel so each decode token pays the generic path) + the v3.4 VAE stack (F16 im2col + concurrent encoders + deferred deep stages + lifetime buffers + PIECES=2 + zero-copy weights + [C,T] blocks) | **~2.79** | Protocol: 2.7945; decode 4.3 -> 3.7 s; RSS 2.07 GB; load 1.2 s; **40-utt gate WER 4.41%**, 40/40 transcripts byte-identical to the q6_K-head build (re-validated at HEAD, tag gate645; 40-utt mean 3.1235). RAM-lean alternative (`PIECES=13`, encoders still concurrent): see tier row |
+| **MAX-SPEED v3.6 (DEFAULT, p2)** | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q8head.gguf` (Q4_0_4x4 bulk, q6_K embeddings, **Q8_0 head** - the q6_K head has no gemv kernel so each decode token pays the generic path) + the v3.4 VAE stack (F16 im2col + concurrent encoders + deferred deep stages + lifetime buffers + PIECES=2 + zero-copy weights + [C,T] blocks) | **~2.57** | Protocol: 2.5662; VAE 17.6 s; decode 3.6 s; RSS 2.23 GB; load 1.2 s; **40-utt gate WER 4.41%**, 40/40 transcripts byte-identical to the q6_K-head build (re-validated at HEAD, tag gate645; 40-utt mean 2.8805). RAM-lean alternative (`PIECES=13`, encoders still concurrent): see tier row |
 | Q8 anchor | `VAE_FILE=vae-encoder-q8_0mixed.gguf` | 6.12-6.15 | 6.1204/6.1520/6.1659 |
 | Q4 | `VAE_FILE=vae-encoder-q4ffn.gguf` | ~6.48 | 6.4776 |
 | ultra-lean (superseded) | `VAE_FILE=vae-encoder-q4ffn.gguf PIECES=26` | ~6.61 | 6.6066 |
-| MAX-SPEED-LEAN (p13) | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q8head.gguf PIECES=13` | **~2.84** | VAE 20.3 s; **RSS 1880 MB**; tokens 40; 69 s 2.78; 40-utt mean 3.1526. Gate WER 4.55% by 40/40 byte-identity to the p26 gate (tags leanp13c/leanp13t); 138 s RSS flat 1888 MB, no loops (Exp643-646). The old seq-mode recipe (`PIECES=26 EXTRA_ENV=VAE_SEQ_ENCODERS=1`, 3.19 @ 1818 MB) is a LAST RESORT - at fine pieces concurrency costs ~30 MB and buys -11% |
+| MAX-SPEED-LEAN (p13) | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q8head.gguf PIECES=13` | **~2.68** | VAE ~17.7 s; **RSS 1874 MB**; tokens 40; 69 s 2.78 (pre-Exp670, ~-3.5 %); 40-utt mean 3.1526 (pre-Exp670). Gate WER 4.55% by 40/40 byte-identity to the p26 gate (tags leanp13c/leanp13t); 138 s RSS flat 1888 MB, no loops (Exp643-646). The old seq-mode recipe (`PIECES=26 EXTRA_ENV=VAE_SEQ_ENCODERS=1`, 3.19 @ 1818 MB) is a LAST RESORT - at fine pieces concurrency costs ~30 MB and buys -11% |
 | BALANCED-LEAN | `VAE_FILE=vae-encoder-q4x4ffn.gguf PIECES=26` | ~5.21 | 5.208 (69 s 4.9374, identical tokens, RSS 1.98 GB) |
 Old-build bands (6.49-6.59 Q8, 10.5 F16, 6.81 Q4, 7.06 ultra-lean) are DEAD.
 69 s equal-token: accuracy-first 5.6089 / balanced 4.8228 / max-speed 4.046.

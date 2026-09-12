@@ -274,8 +274,9 @@ everything else stays F16.
 ### Final tier ladder (Exp525–542-era snapshot — SUPERSEDED)
 
 > **Superseded in v3.5** (protocol cells refreshed by Exp664, fused depthwise-tap kernel): the shipped
-default is now PIECES=2 at RTF 2.68–2.70
-> (clips 2.41/2.71/2.79, gate 4.41 % re-validated at HEAD); the current ladder
+default is now PIECES=2 at RTF ~2.57 (v3.6: one fused f32 depthwise-conv kernel replaced the
+tap chain - Exp670, −3.5 % at byte-identical output)
+> (69 s 2.55, 138 s 2.62, gate mean 2.88, gate 4.41 % re-validated at HEAD); the current ladder
 > lives in RESULTS.md. The table below (all on-device gated, 10 s protocol
 > `-t 2`/C0, 26-piece default) is preserved as history.
 
