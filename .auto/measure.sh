@@ -7,9 +7,29 @@ cd "$(dirname "$0")/.."
 DEV=AYBY6HQCMBF6B6KZ
 RDIR=/data/local/tmp/vibeasr
 LM_FILE=${LM_FILE:-lm-q8head.gguf}
+AUDIO=${AUDIO:-stream_10s_24k.wav}      # device-side name, unless --clip pushes one
+SKIP_BUILD=${SKIP_BUILD:-0}
 
+# Strict argument parsing: an unrecognised flag used to be ignored silently, which
+# made `measure.sh --clip something.wav` measure the DEFAULT 10 s clip and report it
+# as the new one. Anything unknown is now a hard error.
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --clip)       CLIP_LOCAL="${2:-}"; [ -f "$CLIP_LOCAL" ] || { echo "ERROR: --clip file not found: $CLIP_LOCAL" >&2; exit 1; }
+                  AUDIO=$(basename "$CLIP_LOCAL"); CLIP_PUSH=1; shift 2 ;;
+    --skip-build) SKIP_BUILD=1; shift ;;
+    --env)        EXTRA_ENV="${2:-}"; shift 2 ;;
+    *)            echo "ERROR: unknown argument '$1' (valid: --clip PATH, --skip-build, --env 'K=V ...')" >&2; exit 2 ;;
+  esac
+done
+
+[ "${CLIP_PUSH:-0}" = 1 ] && { adb -s $DEV push "$CLIP_LOCAL" $RDIR/ > /dev/null 2>&1 || exit 1; }
+echo "note: audio=$AUDIO skip_build=$SKIP_BUILD" >&2
+
+if [ "$SKIP_BUILD" != 1 ]; then
 cmake --build build-android --target asr_streaming -j20 > .auto/last_build.log 2>&1 || { tail -n 20 .auto/last_build.log; exit 1; }
 adb -s $DEV push build-android/bin/asr_streaming $RDIR/ > /dev/null 2>&1 || exit 1
+fi
 # The binary is dynamically linked against libggml/libllama: pushing only the
 # executable silently leaves a stale ggml on the device, so any ggml-side change
 # (ARCH_FLAGS, quant kernels) measures the OLD kernels. Push libs when they differ.
@@ -22,7 +42,7 @@ done
 adb -s $DEV push .auto/bench_device.sh $RDIR/ > /dev/null 2>&1 || exit 1
 
 [ -n "${EXTRA_ENV:-}" ] && echo "note: forwarding EXTRA_ENV='$EXTRA_ENV' to the device"
-adb -s $DEV shell "${EXTRA_ENV:-} LM_FILE=${LM_FILE:-lm-q8head.gguf} VAE_FILE=${VAE_FILE:-vae-encoder-q4x4ffn.gguf} MASK=${MASK:-C0} THREADS=${THREADS:-2} sh $RDIR/bench_device.sh ${AUDIO:-stream_10s_24k.wav} ${THREADS:-2} ${PIECES:-2} loop" > .auto/last_run.txt 2>&1 || exit 1
+adb -s $DEV shell "${EXTRA_ENV:-} LM_FILE=${LM_FILE:-lm-q8head.gguf} VAE_FILE=${VAE_FILE:-vae-encoder-q4x4ffn.gguf} MASK=${MASK:-C0} THREADS=${THREADS:-2} sh $RDIR/bench_device.sh ${AUDIO} ${THREADS:-2} ${PIECES:-2} loop" > .auto/last_run.txt 2>&1 || exit 1
 cat .auto/last_run.txt | tail -n 2
 adb -s $DEV pull $RDIR/out-loop.log .auto/last_out.txt > /dev/null 2>&1
 adb -s $DEV pull $RDIR/err-loop.log .auto/last_err.txt > /dev/null 2>&1
