@@ -443,6 +443,6 @@ VAE pieces: 2 x 41600 samples (13 frames each) [streaming cache]
 [VAE_ABL] VAE_ABL_BIAS is ON - output is INVALID, timing ceiling only
 
 ========================================
- Audio: 10.00s | chunks: 4 | tokens: 264 | RTF: 4.4088
- load: 1.2s | VAE: 16.7s (ac 16.5s, sem 16.5s) | LM: 27.4s (prefill 4.4s, decode 23.0s) | total: 46.4s
+ Audio: 10.00s | chunks: 4 | tokens: 256 | RTF: 4.3479
+ load: 1.2s | VAE: 16.7s (ac 16.5s, sem 16.4s) | LM: 26.8s (prefill 4.5s, decode 22.3s) | total: 45.8s
 ========================================

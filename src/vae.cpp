@@ -612,6 +612,13 @@ struct ConvNeXtBlock {
 
         if (is_i8s) {
             x = ggml_add_scaled(ctx, x, residual, mixer_layer_scale);
+        } else if (vae_abl("VAE_ABL_SCALE")) {
+            // measurement-only (Exp674): the fused op applies the scale in-register, so price the
+            // MULTIPLY alone with an add of the same pass count -> separates ALU from bandwidth cost.
+            x = ggml_add(ctx, x, residual);
+        } else if (vae_abl("VAE_ABL_RESID")) {
+            // measurement-only: drop the residual operand (one fewer read pass) -> x*scale only.
+            x = ggml_mul(ctx, x, mixer_layer_scale);
         } else if (getenv("VAE_LS_FUSE_OFF") == nullptr) {   // default ON since Exp671: -1.1% at byte-identical output
             x = ggml_add_scaled(ctx, x, residual, mixer_layer_scale);   // x*scale + residual, 1 pass
         } else {
@@ -654,6 +661,10 @@ struct ConvNeXtBlock {
 
         if (is_i8s) {
             x = ggml_add_scaled(ctx, x, residual, ffn_layer_scale);
+        } else if (vae_abl("VAE_ABL_SCALE")) {
+            x = ggml_add(ctx, x, residual);                    // scale multiply priced out (Exp674)
+        } else if (vae_abl("VAE_ABL_RESID")) {
+            x = ggml_mul(ctx, x, ffn_layer_scale);             // residual operand dropped (Exp674)
         } else if (getenv("VAE_LS_FUSE_OFF") == nullptr) {   // default ON since Exp671: -1.1% at byte-identical output
             x = ggml_add_scaled(ctx, x, residual, ffn_layer_scale);     // x*scale + residual, 1 pass
         } else {
