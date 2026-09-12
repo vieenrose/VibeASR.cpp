@@ -51,13 +51,16 @@ regenerated audio must hash to `984e60b14cfe…` to be the same probe).
 > LibriSpeech *test-clean*. On held-out consumer audio (Common Voice 17.0, CC0, never used
 > by this loop) the shipped tier scores **29.6 %** (English, 220 tokens) and **16.0 %**
 > (zh-TW, 468 tokens), so a WER from this ladder must carry the qualifier “read speech”.
-> Whether the tiers *separate* on hard audio is still open: accuracy-first is better in
-> both hard domains (English −3.2 pp, zh-TW −1.3 pp) and level on read speech
-> (4.55 vs 4.41), but each domain individually is inside its CI (±2.6 and ±1.8 pp), so
-> the honest statement is “a small (~1–3 pp) hard-audio penalty cannot be excluded”, not
-> a settled finding. Exp653's flat “not replicated” verdict and Exp652's strong claim were
-> both drawn before Exp654 fixed the scorer (script folding was missing, which had
-> inflated every zh number ~2.6×); the corrected numbers are in this paragraph.
+> Whether the tiers *separate* on hard audio is **unresolved, and now bounded**
+> (Exp652 → 653 → 655 oscillated because it was argued with unpaired CIs). Tested
+> properly as a *paired* comparison (identical audio, identical reference; exact McNemar
+> on the discordant tokens — `.auto/compare_arms.py`): pooled over 688 hard-audio tokens
+> the discordants are 27 (shipped worse) vs 15 (accuracy-first worse), **p = 0.088** —
+> suggestive, not significant. zh +1.28 pp [−1.07, +3.63], en +3.18 pp [0.00, +6.36].
+> In zh only **30 of 468 tokens differ at all** between the arms while both fail on 56,
+> so the error mass is shared (model-side) and *any* precision-only change is capped at
+> ~1–3 pp by construction. Settling it needs ≥1400 tokens (power 0.71), ideally ~2750
+> (power 0.95) — below that, do not re-run: it cannot conclude.
 
 Shipped recipe: VAE `Q4_0_4x4` ffn linears (converter outtype `q4_0_4x4_ffn`) +
 F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddings**
@@ -134,6 +137,7 @@ protocol clip).
 | out-of-domain (20 s music) | RTF 2.97, sane `[Music]`+lyrics output, no pathological loops |
 | speaker attribution | scored since **Exp648** on a real multi-speaker reference (`eval-bilingual/gate_ms.wav`, 4 gold voices): the shipped tier uses **one** `Speaker` tag for all four voices — attribution error **0.567** (exactly the one-bucket optimum), per-voice consistency 0.743, tags used 1/4. Earlier synthetic probes (Exp548/609) *did* split on an overlapped two-speaker mix, so tags are reachable; the collapse is behaviour-dependent (sequential turns with 300 ms gaps here), not a quantization artifact. Quantization itself is exonerated: tiers agree on the synthetic clips |
 | bilingual + code-switch probe (Exp648, 57 s, 12 turns; **re-scored Exp654**) | WER **14.4 %** overall — **English 10.7 %**, **zh-TW 15.9 %** — with **zero** deletions and insertions: content, turn order and language identification are all correct; the remaining Chinese errors are **phonetic/homophone confusions** (三→山, 盐→缘, 联→莲, 合→和, 镜→尽). Intra-utterance code-switching is handled (one turn mixes both languages and is transcribed). Neither gap is visible to the 40-utt gate or the protocol RTF. Probe clip ran at RTF **2.40** / RSS 2.23 GB. *Superseded:* the original row said 30.9 % / zh 39.1 % — the scorer had not been folding Traditional↔Simplified, so ~26 pp of that was script mismatch, not misrecognition |
+| paired significance testing (Exp655) | between-system claims in this loop were previously made with unpaired CIs, which caused the Exp652/653 flip-flop. Now tested with exact McNemar + a paired bootstrap over tokens (`.auto/compare_arms.py`; self-tests include analytic cases — (0,3) → p = 0.25, (5,1) → 0.21875, (10,2) → 0.0386, identical systems → p = 1, Δ = 0 — and one implementation bug in the first revision was caught by them). Worked example: shipped vs RAM-lean p13 on held-out English are statistically **indistinguishable** (Δ −0.45 pp, 0 vs 1 discordant, p = 1.0), so the lean tier's ~350 MB saving is free on hard audio as well as on the clean gate |
 | scorer integrity (Exp654) | two bugs found by auditing the substitution list rather than the headline number: (a) `score_stream` skipped `fold_script`, inflating all zh WERs ~2.6×; (b) the speaker-mapping fast path for >8 voices ignored the one-to-one constraint, so diarization error was understated (zh held-out 0.233→**0.667**, en held-out 0.184→**0.507**, en control 0.215→**0.734**; ≤8-voice sets used the exact search and are unchanged). Self-tests now run across all three manifest shapes (script-varying, many-speaker, bilingual) — 6/6 each, selected via `GATE_MANIFEST` |
 | held-out generalization (Exp651, **corpus bound**) | Common Voice 17.0 `en` test split (CC0, 24 clips / 24 voices, never used by this loop): WER **29.6 %** (220 tokens; jiwer 30.7 %) vs **4.41 %** on the LibriSpeech gate. Control: LibriSpeech clips in the *same* concatenated 23-voice protocol score **5.49 %**, so the protocol costs ~1 pp and the remaining ~24 pp is **domain** (consumer mics, accents, conditions). Quoted WER must therefore carry the qualifier "read speech (LibriSpeech test-clean)"; on in-the-wild English the operating point is ~30 %. zh-TW held-out added in Exp653/654 (`holdout_zh.wav`, sha `682021e58034`, 48 clips / 48 voices, 468 tokens): **16.0 %** — far better than English, because most of the apparent error there was script handling, not acoustics. Assets: `eval-bilingual/holdout_en.wav` (sha `8f29749cd35b`), `control_ls.wav` (sha `290b65b4d8bf`), `holdout_zh.wav` (sha `682021e58034`) |
 | non-speech edge cases | 5 s digital silence → `[Silence][Silence]`; 5 s −50 dBFS white noise → `[Noise]` — correct model tags, short decodes, **no hallucinated text and no repetition loops** |
