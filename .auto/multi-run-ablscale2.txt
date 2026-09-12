@@ -1,1 +1,1 @@
-exit=0 peak_kb=2292608 hwm_kb=2292608 majflt_delta=0
+exit=0 peak_kb=2282792 hwm_kb=2282792 majflt_delta=0

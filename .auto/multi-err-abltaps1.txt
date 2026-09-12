@@ -418,8 +418,31 @@ Windows: 4 (window=83200 hop=70400)
 VAE pieces: 2 x 41600 samples (13 frames each) [streaming cache]
 
 [VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_TAPS is ON - output is INVALID, timing ceiling only
 
 ========================================
- Audio: 10.00s | chunks: 4 | tokens: 256 | RTF: 4.3877
- load: 1.2s | VAE: 17.2s (ac 17.0s, sem 17.0s) | LM: 26.7s (prefill 4.5s, decode 22.2s) | total: 46.2s
+ Audio: 10.00s | chunks: 4 | tokens: 256 | RTF: 4.4080
+ load: 1.2s | VAE: 17.4s (ac 17.2s, sem 17.2s) | LM: 26.7s (prefill 4.5s, decode 22.1s) | total: 46.4s
 ========================================

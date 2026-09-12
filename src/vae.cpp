@@ -496,7 +496,13 @@ static struct ggml_tensor* ggml_nn_conv_1d_dw(
             // in Exp666 because it coincided with a pre-existing data race in vae_abl()'s shared
             // knob memo, which Exp669 fixed (thread_local); see the crash post-mortem there.
             // VAE_DW_CONV1D_OFF=1 restores the tap-chain fallback.
-            if (getenv("VAE_DW_CONV1D_OFF") == nullptr && stride == 1 && dilation == 1) {
+            if (vae_abl("VAE_ABL_TAPS")) {
+                // Measurement-only (Exp671): drop the whole depthwise conv but keep the graph's
+                // shapes. Needed because this branch now PRECEDES the tap chain - without it the
+                // knob would silently ablate nothing, which is the third time this bug class
+                // appeared (Exp663/665). Output is INVALID with this knob on.
+                result = ggml_view_2d(ctx, xc, C, T_out, xc->nb[1], 0);   // [C, T_out]
+            } else if (getenv("VAE_DW_CONV1D_OFF") == nullptr && stride == 1 && dilation == 1) {
                 // ONE depthwise conv op instead of a K-long elementwise chain: (K+1) tensor
                 // passes instead of ~3K, i.e. Exp665's 9.0% tap cost -> ~1.5%. Bit-identical to
                 // the tap chain by construction (ascending k, product rounded before each add,

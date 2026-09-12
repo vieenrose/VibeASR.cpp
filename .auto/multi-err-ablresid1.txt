@@ -418,8 +418,31 @@ Windows: 4 (window=83200 hop=70400)
 VAE pieces: 2 x 41600 samples (13 frames each) [streaming cache]
 
 [VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
 
 ========================================
- Audio: 10.00s | chunks: 4 | tokens: 7 | RTF: 2.3689
- load: 1.2s | VAE: 18.4s (ac 18.2s, sem 18.2s) | LM: 5.3s (prefill 4.4s, decode 0.9s) | total: 26.0s
+ Audio: 10.00s | chunks: 4 | tokens: 7 | RTF: 2.2572
+ load: 1.2s | VAE: 17.3s (ac 17.1s, sem 17.1s) | LM: 5.3s (prefill 4.4s, decode 0.9s) | total: 24.9s
 ========================================
