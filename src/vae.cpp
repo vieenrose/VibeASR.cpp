@@ -1080,8 +1080,12 @@ static bool load_encoder_weights(
         return false;
     }
     
-    // Get output dim from head conv weight [kernel, in_dim, out_dim]
-    encoder.output_dim = encoder.head_conv_weight->ne[2];
+    // Get output dim from head conv weight [kernel, in_dim, out_dim] - but a blocked-int8 weight is 2-D
+    // [K*IC, OC], where OC is ne[1] and ne[2] is the implicit trailing 1. Reading ne[2] there silently
+    // set output_dim = 1 (a latent dim of 1 passes every shape check and produces a 1024-token runaway),
+    // which is why the int8 file looked broken even after its bytes were proven correct.
+    encoder.output_dim = ggml_n_dims(encoder.head_conv_weight) == 2
+                         ? encoder.head_conv_weight->ne[1] : encoder.head_conv_weight->ne[2];
     encoder.head_kernel_size = vae_conv_kernel_size(encoder.head_conv_weight,
                                                     AudioVAEEncoder::downsample_dims[6]);
     if (encoder.head_kernel_size <= 0) {
@@ -1164,6 +1168,12 @@ static void vae_probe_int8_weights(struct vae_model* model) {
     std::vector<uint8_t> cq(4096);                 // the blob for [CK, CM] is 72 bytes
     size_t wrote = ggml_quantize_chunk(GGML_TYPE_Q4_0_4_4, csrc.data(), cq.data(), 0, CM, CK, nullptr);
     fprintf(stderr, "[I8CMP] control: quantized %lld x %lld -> %zu bytes\n", (long long)CM, (long long)CK, wrote);
+    // Derived scalars the graph depends on. A blocked 2-D weight loses the channel/kernel axes, so
+    // every ne[0]/ne[1]/ne[2] read has to be replaced by a derivation - this prints them to catch the
+    // ones that were missed (output_dim silently became 1 that way).
+    fprintf(stderr, "[I8CMP] dims: acoustic output_dim=%d head_K=%d | semantic output_dim=%d head_K=%d\n",
+            model->acoustic_encoder.output_dim, model->acoustic_encoder.head_kernel_size,
+            model->semantic_encoder.output_dim, model->semantic_encoder.head_kernel_size);
 
     const char* pick = nullptr;                    // first converted conv that fits an identity
     int64_t pk = 0, pm = 0;

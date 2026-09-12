@@ -84,3 +84,22 @@
     NaN), so dequantize with a [k,1] selector one column at a time; (3) the reference must come from
     the source file by name (an extra *_ref tensor in the converted file was not registered by the
     loader: 562 keys for a 563-tensor file, unresolved and now irrelevant).
+  CONV-INT8 STATUS AFTER THE FIX ROUND (Exp689): two real bugs killed Exp685's attempt, neither in the
+  place I had been looking:
+    1. The converter quantized on x86, where ggml_quantize_chunk(Q4_0_4_4) writes valid nibbles with
+       ZERO scales (Exp688) - fixed by quantizing on device (--device, .auto/quant4x4_arm). Probe now
+       reports the dequantized weight matching the source at q4 noise (ratio 0.061 vs control 0.125).
+    2. encoder.output_dim came from head_conv_weight->ne[2]; a blocked 2-D weight has no ne[2], so the
+       latent dim silently became 1. Fixed (n_dims==2 ? ne[1] : ne[2]) and the probe's dims line now
+       matches the reference file exactly (output_dim 64/128, head_K 8, VAE dims 1536/1536).
+  STILL BROKEN: the int8 file produces 1024 tokens (runaway, deterministic hash daa10f03) while
+  measuring vae_s 16.1 vs 17.1 ref (-6%, the predicted win). Everything structural agrees with the
+  reference build, so the remaining suspect is the ONE thing no check has covered: whether this fork's
+  im2col emits rows in (ic*KW + kw) order with kw fastest, matching my weight's memory order (k + K*ic).
+  A mismatch would produce exactly this - plausible-magnitude garbage from correct weights.
+  NEXT (decisive, ~20 lines in the probe): same activations, same im2col, TWO weights - the 3-D F16
+  weight copied from the source file vs my 2-D int8 one - and compare the two products. Agreement =>
+  pairing is fine and the fault is elsewhere; disagreement => fix the converter's row order (transpose
+  the K/IC axes when flattening) and the project is done. Also: the probe's verdict threshold should be
+  per-block (|diff| <= ~0.55 * that block's scale) rather than a global ratio, since 0.061 of the global
+  max IS q4 noise; my <0.05 cut would have failed correct bytes.

@@ -22,6 +22,8 @@ so an unconverted file still works, which is the fallback.
 Usage: conv_int8.py in.gguf out.gguf [--quantizer ./quant4x4] [--dry]
 """
 import os
+import re
+import shutil
 import struct
 import subprocess
 import sys
@@ -94,6 +96,53 @@ def w_str(out, s):
     out.write(struct.pack('<Q', len(b)) + b)
 
 
+def device_quantize(src, targets, info):
+    """Quantize the target convs ON THE DEVICE and return {name: (local_blob_path, size)}.
+
+    Why not on the host: ggml_quantize_chunk(GGML_TYPE_Q4_0_4_4, ...) on x86 writes valid nibbles but
+    ZERO fp16 scales (.auto/qt.c, Exp688), so every weight dequantizes to exactly zero - a legal-looking
+    file that silently destroys the audio front end. The identical code on aarch64 is correct, which the
+    runtime's own probe control demonstrates (quantize a known matrix, read it back: q4-level error).
+    """
+    ms = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'measure.sh')).read()
+    dev = re.search(r'^DEV=(\S+)', ms, re.M).group(1)
+    rdir = re.search(r'^RDIR=(\S+)', ms, re.M).group(1)
+    adb = os.environ.get('ADB') or shutil.which('adb') or 'adb'
+    helper = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'quant4x4_arm')
+    if not os.path.exists(helper):
+        sys.exit(f'missing {helper} - build it with the NDK clang++ against build-android/libggml.so')
+
+    bundle = '/tmp/convint8_bundle.bin'
+    with open(bundle, 'wb') as f, open(src, 'rb') as s:
+        for t in targets:
+            t['_span'] = f.tell()
+            s.seek(info['data_start'] + t['off'])
+            f.write(s.read(t['nbytes']))
+    for local, remote in [(bundle, f'{rdir}/convint8_bundle.bin'), (helper, f'{rdir}/quant4x4_arm')]:
+        subprocess.run([adb, '-s', dev, 'push', local, remote], check=True, capture_output=True)
+    out = {}
+    for i, t in enumerate(targets):
+        K, IC, OC = t['dims']
+        r = subprocess.run([adb, '-s', dev, 'shell',
+                            f'cd {rdir} && LD_LIBRARY_PATH={rdir} ./quant4x4_arm convint8_bundle.bin '
+                            f'{t["_span"]} {K * IC} {OC} q_{i}.bin'],
+                           capture_output=True, text=True)
+        got = r.stdout.strip().splitlines()
+        if r.returncode != 0 or not got:
+            sys.exit(f'device quantize failed on {t["name"]}: rc={r.returncode} {r.stderr.strip()[:200]}')
+        local = f'/tmp/convint8_q_{i}.bin'
+        subprocess.run([adb, '-s', dev, 'pull', f'{rdir}/q_{i}.bin', local], check=True, capture_output=True)
+        out[t['name']] = (local, int(got[-1]))
+    # A zero-scale block is legal bytes, so the round trip is sanity-checked here rather than trusted:
+    # every block's 4 fp16 scales must not all be +-0 (that is exactly what the host bug produced).
+    for t in targets:
+        b = open(out[t['name']][0], 'rb').read()
+        scales = [b[i:i + 8] for i in range(0, min(len(b), 4608), 72)]
+        if scales and all(s in (b'\x00' * 8, b'\x00\x80\x00\x80\x00\x80\x00\x80') for s in scales):
+            sys.exit(f'{t["name"]}: every block scale is zero - device quantizer misbehaved, refusing to write')
+    return out
+
+
 def main():
     src, dst = sys.argv[1], sys.argv[2]
     q = sys.argv[4] if len(sys.argv) > 4 and sys.argv[3] == '--quantizer' else '.auto/quant4x4'
@@ -133,14 +182,21 @@ def main():
 
     # quantize each target into a temp blob first, so a failure leaves the output untouched
     blobs, tmp = {}, {}
-    for t in targets:
-        K, IC, OC = t['dims']
-        path = f'/tmp/convint8_{abs(hash(t["name"]))}.bin'
-        r = subprocess.run([q, src, str(info['data_start'] + t['off']), str(K * IC), str(OC), path],
-                           capture_output=True, text=True)
-        if r.returncode != 0:
-            sys.exit(f'quantizer failed on {t["name"]}: {r.stderr.strip()}')
-        tmp[t['name']], blobs[t['name']] = path, int(r.stdout.strip())
+    if '--device' in sys.argv:
+        for name, (path, size) in device_quantize(src, targets, info).items():
+            tmp[name], blobs[name] = path, size
+        print(f'quantized {len(targets)} convs on the device (x86 ggml writes zero scales for this type - Exp688)')
+    else:
+        for t in targets:
+            K, IC, OC = t['dims']
+            path = f'/tmp/convint8_{abs(hash(t["name"]))}.bin'
+            r = subprocess.run([q, src, str(info['data_start'] + t['off']), str(K * IC), str(OC), path],
+                               capture_output=True, text=True)
+            if r.returncode != 0:
+                sys.exit(f'quantizer failed on {t["name"]}: {r.stderr.strip()}')
+            tmp[t['name']], blobs[t['name']] = path, int(r.stdout.strip())
+            if not any(open(path, 'rb').read(72)):   # all-zero blob = the Exp688 host zero-scale bug
+                sys.exit(f'{t["name"]}: quantizer wrote an all-zero blob (host zero-scale bug) - rerun with --device')
     before = sum(t['nbytes'] for t in targets)
     after = sum(blobs.values())
     print(f'conv weights: {before/1e6:.1f} MB f16 -> {after/1e6:.1f} MB q4_0_4x4 '
