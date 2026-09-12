@@ -29,7 +29,7 @@ runs the 10 s protocol clip pinned to the prime cores and prints `METRIC` lines.
 
 | tier | files | 10 s | 17 s | 69 s | 40-utt mean | WER | RSS |
 |---|---|---|---|---|---|---|---|
-| **max-speed-lean (seq-mode p26)** | 1.82 GB | **3.19** | — | — | — | same class | **1.78 GB** |
+| **max-speed-lean (`--vae-pieces 26`, concurrent — Exp641/642)** | 1.82 GB | **2.90** | — | **2.83** | **3.20** | **4.55 %** | **1.84 GB** |
 | **whole-file / server path** (Exp578/579) | — | — | live set **188-313 MB** for 6-10 s files | — | — | — | — |
 | **max-speed (shipped)** | 2.2 GB | **2.79** | **2.41** | **2.71** | **2.79** | **4.41 %** | 2.23 GB |
 | _max-speed, RAM-lean (`VAE_SEQ_ENCODERS=1`)_ | 2.0 GB | _4.01_ | — | — | — | 4.41 % | **1.91 GB** |
@@ -40,6 +40,18 @@ runs the 10 s protocol clip pinned to the prime cores and prints `METRIC` lines.
 Shipped recipe: VAE `Q4_0_4x4` ffn linears (converter outtype `q4_0_4x4_ffn`) +
 F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddings**
 + **Q8_0 output head** + **concurrent acoustic/semantic encoders** (one thread each), 2 VAE pieces (PIECES=2 harness default).
+
+**RAM-lean tier (Exp641/642).** Same files, `--vae-pieces 26`, **default
+(concurrent) encoders** — 2.90 on the protocol clip and 2.83 on 69 s at
+1.84–1.85 GB RSS, gate WER 4.55 % (S=29 D=1 I=3, tag `leanp26c`; +0.14 pp over
+the p2 default, which is the granularity cost also seen with the old
+sequential lean config). The `VAE_SEQ_ENCODERS=1` fallback that used to define
+this tier is now only a last resort: at 26 pieces the early-stage activations
+are tiny, so running both encoders costs just ~25 MB more RSS and buys −9.5 %
+RTF (3.19 → 2.90, VAE 144.8 → 124.4 s on 69 s). Note the deferred late stages
+are what make this cheap: at p26 they turn the deep GEMVs into window GEMMs
+(−5.7 %, `VAE_DEFER_LATE=0` measures 3.07); at p2 the pieces are already 13
+frames, so defer measures a no-op there.
 
 
 ## Progression on the 10 s protocol (each step validated)
