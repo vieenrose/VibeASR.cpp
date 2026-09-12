@@ -47,6 +47,16 @@ regenerated audio must hash to `984e60b14cfe…` to be the same probe).
 | accuracy-first (VAE F16) | 2.5 GB | 5.35 | — | 5.62 | 6.58 | 4.55 % | 2.95 GB |
 | _original configuration (session start)_ | 2.5 GB | _6.52_ | — | — | _6.58_ | _4.55 %_ | _2.99 GB_ |
 
+> **The WER column does not transfer across domains (Exp651–652).** Every number above
+> is LibriSpeech *test-clean* — read speech. On a held-out consumer/accented English set
+> (Common Voice 17.0 `en` test, CC0, never used by this loop) the same tiers score
+> 29.6 % (max-speed) / 30.0 % (lean) / 26.4 % (accuracy-first): the tiers that are
+> indistinguishable on read speech differ by ~3.2 pp on hard audio, where accuracy-first
+> is genuinely better. So "this tier costs ≤0.5 pp of accuracy" is a statement about
+> read speech, not about product audio. Re-price any tier choice on hard audio before
+> shipping it into the wild. (Held-out sample is 220 tokens, so treat the 3.2 pp as
+> suggestive — direction consistent, CI ~±2.6 pp.)
+
 Shipped recipe: VAE `Q4_0_4x4` ffn linears (converter outtype `q4_0_4x4_ffn`) +
 F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddings**
 + **Q8_0 output head** + **concurrent acoustic/semantic encoders** (one thread each), 2 VAE pieces (PIECES=2 harness default).
