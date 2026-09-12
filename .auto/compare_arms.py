@@ -23,6 +23,7 @@ Usage: .auto/compare_arms.py <hypA> <hypB> <manifest> [label]
 import json, math, os, random, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from score_stream import ref_stream, hyp_stream, align, CJK   # noqa: E402
+from score_mixed import normalize, tokenize                    # noqa: E402
 import re                                                      # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -82,6 +83,61 @@ def compare(hA, hB, man, nboot=20000, seed=7):
             'p_boot_gt0': 1.0 - frac_below}
 
 
+def gate_streams(hyp_dir, refs, names):
+    """Paired token streams for the 40-utt gate: one file per utterance under hyp_dir,
+    references from refs.json. Utterances are a fixed, sorted list, so the two systems
+    are compared token-for-token over the same reference (Exp655 rule: between-system
+    claims need the paired test, not two independent WERs)."""
+    ref, hyp = [], []
+    for name in names:
+        for tok in tokenize(normalize(refs[name])):
+            ref.append({'t': tok, 'gold': name, 'lang': 'en', 'turn': 0, 'start_s': 0.0,
+                        'voice': name, 'end_s': 0.0, 'dur_s': 0.0, 'sha': ''})
+        p = os.path.join(hyp_dir, name + '.txt')
+        body = open(p, encoding='utf-8').read() if os.path.exists(p) else ''
+        for tok in tokenize(normalize(body)):
+            hyp.append({'t': tok, 'spk': 'T0', 'win': 0})
+    return ref, hyp
+
+
+def compare_gate(hyp_dir_a, hyp_dir_b, refs_json, nboot=20000, seed=11):
+    """Paired comparison of two gate hyp directories (same utterance set)."""
+    refs = json.load(open(refs_json, encoding='utf-8'))
+    names = sorted(x for x in refs if os.path.exists(os.path.join(hyp_dir_a, x + '.txt'))
+                   and os.path.exists(os.path.join(hyp_dir_b, x + '.txt')))
+    ref, hA = gate_streams(hyp_dir_a, refs, names)
+    _r, hB = gate_streams(hyp_dir_b, refs, names)
+    ok_a, ia = _mark(ref, hA)
+    ok_b, ib = _mark(ref, hB)
+    n = len(ref)
+    b = sum(1 for x, y in zip(ok_a, ok_b) if x == 1 and y == 0)
+    c = sum(1 for x, y in zip(ok_a, ok_b) if x == 0 and y == 1)
+    wa, wb = (sum(ok_a) + ia) / n, (sum(ok_b) + ib) / n
+    rng = random.Random(seed)
+    diffs = []
+    for _ in range(nboot):
+        idx = [rng.randrange(n) for _ in range(n)]
+        sa = sum(ok_a[i] for i in idx) + ia * len(idx) / n
+        sb = sum(ok_b[i] for i in idx) + ib * len(idx) / n
+        diffs.append((sa - sb) / len(idx))
+    diffs.sort()
+    return {'n': n, 'utts': len(names), 'wer_a': wa, 'wer_b': wb, 'delta': wa - wb,
+            'ci': (diffs[int(0.025 * nboot)], diffs[int(0.975 * nboot)]),
+            'disc_a': b, 'disc_b': c, 'p': mcnemar_exact(b, c), 'ins_a': ia, 'ins_b': ib}
+
+
+def _mark(ref, hyp):
+    ops, _ = align(ref, hyp)
+    ok = [None] * len(ref)
+    ins = 0
+    for op, i, j in ops:
+        if op == 'I':
+            ins += 1
+        elif i is not None:
+            ok[i] = 0 if (op == 'S' and ref[i]['t'] == hyp[j]['t']) else 1
+    return [x if x is not None else 1 for x in ok], ins
+
+
 def selftest():
     man = {'table': [{'turn': i + 1, 'gold': f'S{1 + i // 8}', 'lang': 'en',
                       'voice': 'v', 'start_s': i * 2.0, 'end_s': i * 2.0 + 1.9, 'dur_s': 1.9,
@@ -114,6 +170,15 @@ def selftest():
 if __name__ == '__main__':
     if sys.argv[1] == '--selftest':
         sys.exit(selftest())
+    if sys.argv[1] == '--gate':
+        # compare_arms.py --gate <dirA> <dirB> <refs.json> [label]
+        r = compare_gate(sys.argv[2], sys.argv[3], sys.argv[4])
+        lbl = sys.argv[5] if len(sys.argv) > 5 else 'gate'
+        print(f"{lbl}: n={r['n']} tokens / {r['utts']} utts | A {r['wer_a']:.4f} vs B {r['wer_b']:.4f} "
+              f"| A-B {r['delta']:+.4f} [{r['ci'][0]:+.4f}, {r['ci'][1]:+.4f}]")
+        print(f"    McNemar exact p={r['p']:.4g} from discordants b={r['disc_a']} c={r['disc_b']} "
+              f"| insertions A={r['ins_a']} B={r['ins_b']}")
+        sys.exit(0)
     hA, hB, manifest = sys.argv[1], sys.argv[2], sys.argv[3]
     label = sys.argv[4] if len(sys.argv) > 4 else os.path.basename(manifest)
     r = compare(hA, hB, json.load(open(manifest, encoding='utf-8')))
