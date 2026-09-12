@@ -242,6 +242,21 @@ if '--skip-device' not in sys.argv:
     else:
         warn(f"no asset manifest at {MANIFEST} - device clips are unverified (run --bless once)")
 
+# ---- 7b. no co-runner on the device (Exp679) -----------------------------------
+# A host-side `timeout` kills the adb client, not the device-side process. If the survivor is
+# still RUNNING (State R, model loaded) it shares the two pinned cores and every timing in the
+# session is ~2x inflated - numbers, not errors. Sleeping sub-MB survivors are clutter, not bias.
+if '--skip-device' not in sys.argv:
+    ps = sh(f'adb -s {DEV} shell "ps -A -o PID,STATE,RSS,NAME"', timeout=60).stdout.replace('\r', '')
+    live = [(l.split()[0], l.split()[2]) for l in ps.splitlines()
+            if 'asr_streaming' in l and len(l.split()) >= 4
+            and l.split()[2].isdigit() and int(l.split()[2]) > 200_000]      # >200 MB = has a model
+    if live:
+        bad(f"{len(live)} asr_streaming with a model resident on device (pids "
+            f"{[p for p, _ in live]}) - timings are not comparable until they are killed")
+    else:
+        ok("no co-runner: device is idle for timing")
+
 # ---- 8. frozen references used by A/B tooling ----------------------------------
 for f in sorted(os.listdir(HERE)):
     if f.startswith('ref') and f.endswith('.txt'):

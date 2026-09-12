@@ -25,6 +25,13 @@ done
 
 [ "${CLIP_PUSH:-0}" = 1 ] && { adb -s $DEV push "$CLIP_LOCAL" $RDIR/ > /dev/null 2>&1 || exit 1; }
 echo "note: audio=$AUDIO skip_build=$SKIP_BUILD" >&2
+# Co-runner guard (Exp679): a host-side `timeout` leaves the DEVICE-side run alive, and a live
+# second asr_streaming halves throughput (two pinned 2-thread runs on two A78s, Exp533). That
+# produced plausible-but-2x-slow numbers here, so say it out loud instead of measuring it.
+if command -v adb >/dev/null 2>&1; then
+  BUSY=$(adb -s $DEV shell "ps -A -o NAME" 2>/dev/null | tr -d '\r' | grep -c asr_streaming)
+  [ "${BUSY:-0}" -gt 0 ] && echo "WARNING: $BUSY asr_streaming already running on device - timings will be inflated (kill them first)" >&2
+fi
 
 if [ "$SKIP_BUILD" != 1 ]; then
 cmake --build build-android --target asr_streaming -j20 > .auto/last_build.log 2>&1 || { tail -n 20 .auto/last_build.log; exit 1; }
