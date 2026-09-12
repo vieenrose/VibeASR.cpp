@@ -471,6 +471,13 @@ static struct ggml_tensor* vae_conv_1d_i8(
     // The wrong arm is ~2% faster on vae_s, so the switch stays for experiments. The obvious way to get
     // that 2% legitimately was ggml_im2col with dst_type=Q8_0 (ggml's own quantized staging, no cast
     // node): it ABORTS in this build (exit 134, Exp692), so the F32 route is the only supported one.
+    // This fork's blocked conv matmul REQUIRES an F32 src1: it converts to Q8_0 internally (the
+    // from_float_to_mat route, same as the LM). Two alternatives were tried and both fail, one loudly:
+    //   * ggml_im2col(dst=Q8_0)            -> SIGABRT, no quantized im2col path in this build (Exp692)
+    //   * ggml_im2col(dst=F16) -> mul_mat  -> GGML_ASSERT(src1->type == GGML_TYPE_F32) (Exp693)
+    //   * ggml_cast(F16 -> Q8_0) -> mul_mat-> runs but computes garbage: 1024 tokens vs the reference
+    //     39, silently, since that path's asserts are compiled out on device. It is ~2% faster on
+    //     vae_s, which is exactly why the hatch below is kept and labeled broken.
     const bool q8cast = vae_abl("VAE_CONV_I8_Q8CAST");
     struct ggml_tensor* im2col = ggml_im2col(ctx, geom, x, s0, 0, p0, 0, d0, 0, false,
                                              q8cast ? GGML_TYPE_F16 : GGML_TYPE_F32);
