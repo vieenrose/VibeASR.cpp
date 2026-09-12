@@ -485,6 +485,15 @@ static struct ggml_tensor* ggml_nn_conv_1d_dw(
                             (long long)T_out, padding);
                 }
             }
+            // NOT the default (Exp666): it measured -3.7% RTF with a byte-identical transcript but
+            // segfaulted once on the 40-utt gate, so the cause is unknown - keep it opt-in until then.
+            if (getenv("VAE_DW_CONV1D") != nullptr && stride == 1 && dilation == 1) {
+                // ONE depthwise conv op instead of a K-long elementwise chain: (K+1) tensor
+                // passes instead of ~3K, i.e. Exp665's 9.0% tap cost -> ~1.5%. Bit-identical to
+                // the tap chain by construction (ascending k, product rounded before each add,
+                // no fma) - Exp666.
+                result = ggml_conv1d_dw_ct(ctx, ww, xc);   // [C, T_out]
+            } else {
             struct ggml_tensor* acc = nullptr;
             // ONE fused pass per tap instead of mul-then-add (Exp662 priced the tap chain at
             // 12.7% of VAE time; the fused form moves 3 tensors per tap instead of 5, worth
@@ -507,6 +516,7 @@ static struct ggml_tensor* ggml_nn_conv_1d_dw(
                 }
             }
             result = acc;   // [C, T_out]: the layout the block's residual uses
+            }
         } else {
             // The legacy helper wants time on ne[0]. With the taps disabled by
             // VAE_DW_CT_OFF the block still hands us a [C, T] tensor (ct_block
