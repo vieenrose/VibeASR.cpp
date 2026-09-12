@@ -32,6 +32,7 @@
 // never a result, and it must never be used for an accuracy claim.
 //   VAE_ABL_BIAS  conv/matmul bias adds
 //   VAE_ABL_TAPS  depthwise tap mul+add (K taps x full [C,T] tensors)
+//   VAE_ABL_CONV  the non-depthwise conv MATMULs (view+cast substitute; Exp683)
 //   VAE_ABL_SCALE layer-scale and gamma muls
 //   VAE_ABL_RESID block residual adds
 static bool vae_abl(const char* name) {
@@ -368,9 +369,28 @@ static struct ggml_tensor* vae_conv_1d_f16(
     // hardwired to ggml_compute_forward_im2col_i8_s (BitNet I8_S output), so an
     // F16 dst_type there silently produces garbage.
     struct ggml_tensor* im2col = ggml_im2col(ctx, a, b, s0, 0, p0, 0, d0, 0, false, GGML_TYPE_F16); // [IC*KW, OL, N, 1]
+    struct ggml_tensor* im2d = ggml_reshape_2d(ctx, im2col, im2col->ne[0], (im2col->ne[2] * im2col->ne[1]));
+    if (vae_abl("VAE_ABL_CONV")) {
+        // Measurement-only (Exp683): drop the conv MATMUL and keep everything else - shapes, the
+        // im2col, the bias add, the launch count. A subset view of the im2col rows has the same
+        // [OC, cols] shape whenever K*IC >= OC, so unlike shrinking the contraction (Exp516, which
+        // silently switched to a slower tiny-dot path) this removes the F16 dot work and nothing
+        // else. The cast back to F32 is what mul_mat would have written anyway and is ~two orders
+        // cheaper than the dots. Output is INVALID by design: never gate it, never ship it, never
+        // quote accuracy from it. Read the result off vae_s, not rtf (vae_s is LM-independent).
+        const int64_t OC = a->ne[2];
+        if (OC <= im2d->ne[0]) {
+            return ggml_cast(ctx, ggml_view_2d(ctx, im2d, OC, im2d->ne[1], im2d->nb[1], 0),
+                             GGML_TYPE_F32);
+        }
+        static thread_local bool warned = false;   // thread_local: a shared static here is the Exp669 race
+        if (!warned) { warned = true;
+            fprintf(stderr, "[VAE_ABL_CONV] a shape with OC > K*IC fell through; ablation under-reports\n");
+        }
+    }
     return ggml_mul_mat(ctx,
             ggml_reshape_2d(ctx, a, (a->ne[0] * a->ne[1]), a->ne[2]),
-            ggml_reshape_2d(ctx, im2col, im2col->ne[0], (im2col->ne[2] * im2col->ne[1])));
+            im2d);
 }
 
 static struct ggml_tensor* vae_conv_1d_dw_f16(
