@@ -298,7 +298,8 @@ static struct ggml_tensor* ggml_nn_linear(
     struct ggml_context* ctx,
     struct ggml_tensor* x,
     struct ggml_tensor* w,
-    struct ggml_tensor* b) {
+    struct ggml_tensor* b,
+    bool apply_bias = true) {   // false = return the pre-bias tensor so a consumer can fuse it (Exp673)
     
     int64_t IC = x->ne[0];
     int64_t N = x->ne[1];
@@ -314,7 +315,7 @@ static struct ggml_tensor* ggml_nn_linear(
         result = ggml_mul_mat_add(ctx, w, x, b);
     } else {
         result = ggml_mul_mat(ctx, w, x);
-        if (b != NULL) {
+        if (b != NULL && apply_bias) {
             result = vae_abl_add(ctx, result, b, "VAE_ABL_BIAS");
         }
     }
@@ -625,6 +626,18 @@ struct ConvNeXtBlock {
         
         if (is_i8s) {
             x = ggml_nn_linear_relu(ctx, x, ffn_fc1_weight, ffn_fc1_bias);
+        } else if (getenv("VAE_GELU_BIAS_OFF") == nullptr && getenv("VAE_GELU_QUICK") == nullptr &&
+                   ffn_fc1_bias && ffn_fc1_bias->type == GGML_TYPE_F32 && ggml_is_contiguous(ffn_fc1_bias) &&
+                   ffn_fc1_bias->ne[0] == ffn_fc1_weight->ne[1] &&
+                   ffn_fc1_bias->ne[1] == 1 && ffn_fc1_bias->ne[2] == 1 && ffn_fc1_bias->ne[3] == 1) {
+            // Exp673: mul_mat -> gelu(x+b) in ONE node, removing the bias ADD and its write+read
+            // pass (bias adds measured 5.9% of VAE time). Bit-identical by construction: the fused
+            // kernel reuses the same f32 add and the same ggml_vec_gelu_f32. Built by calling
+            // ggml_nn_linear's OWN body with apply_bias=false - Exp672 proved that re-deriving the
+            // reshape/mul_mat sequence at the call site is NOT equivalent. The gelu-approximation
+            // knob is deliberately excluded above: VAE_GELU_QUICK must keep its own path.
+            x = ggml_nn_linear(ctx, x, ffn_fc1_weight, ffn_fc1_bias, /*apply_bias=*/false);
+            x = ggml_gelu_bias(ctx, x, ffn_fc1_bias);
         } else {
             x = ggml_nn_linear(ctx, x, ffn_fc1_weight, ffn_fc1_bias);
             // Upstream trains exact erf GELU (ACT2FN["gelu"]); the tanh approx
