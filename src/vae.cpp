@@ -495,7 +495,11 @@ static struct ggml_tensor* ggml_nn_conv_1d_dw(
             for (int64_t k = 0; k < K; k++) {
                 struct ggml_tensor* xk = ggml_view_2d(ctx, xc, C, T_out, xc->nb[1], (size_t)k * xc->nb[1]);
                 struct ggml_tensor* wk = ggml_view_2d(ctx, ww, C, 1, ww->nb[1], (size_t)k * ww->nb[1]);
-                if (axpy && acc != nullptr) {
+                if (vae_abl("VAE_ABL_TAPS")) {                      // measurement-only: drop the tap
+                    if (acc == nullptr) {
+                        acc = vae_abl_mul(ctx, xk, wk, "VAE_ABL_TAPS");
+                    }
+                } else if (axpy && acc != nullptr) {
                     acc = ggml_add_scaled(ctx, xk, acc, wk);        // acc + xk * wk
                 } else {
                     struct ggml_tensor* term = vae_abl_mul(ctx, xk, wk, "VAE_ABL_TAPS");

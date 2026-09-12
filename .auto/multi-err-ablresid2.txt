@@ -420,6 +420,6 @@ VAE pieces: 2 x 41600 samples (13 frames each) [streaming cache]
 [VAE_ABL] VAE_ABL_RESID is ON - output is INVALID, timing ceiling only
 
 ========================================
- Audio: 10.00s | chunks: 4 | tokens: 7 | RTF: 2.4704
- load: 1.2s | VAE: 19.4s (ac 19.2s, sem 19.2s) | LM: 5.3s (prefill 4.4s, decode 0.9s) | total: 27.0s
+ Audio: 10.00s | chunks: 4 | tokens: 7 | RTF: 2.3773
+ load: 1.2s | VAE: 18.5s (ac 18.3s, sem 18.2s) | LM: 5.3s (prefill 4.4s, decode 0.9s) | total: 26.1s
 ========================================
