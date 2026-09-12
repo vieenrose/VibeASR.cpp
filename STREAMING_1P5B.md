@@ -83,16 +83,21 @@ the frozen recipes, and the copies on the phone match the host byte-for-byte:
 
 | artifact | recipe | md5 |
 |---|---|---|
-| `vae-encoder-q4x4ffn.gguf` | `python3 utils/convert_vae_to_gguf.py models-pt --outtype q4_0_4x4_ffn -o out.gguf` (33 s) | `b909b7901d5d318d81ce4cbaeac31437` |
+| `vae-encoder-convint8.gguf` (**default since Exp690**) | `python3 .auto/conv_int8.py vae-encoder-q4x4ffn.gguf out.gguf --device` - needs `.auto/quant4x4_arm` (NDK clang++ against build-android/libggml.so). `--device` is mandatory, not cosmetic: x86 `ggml_quantize_chunk(Q4_0_4_4)` writes valid nibbles with **zero scales**. Verify: `VAE_CONV_I8_CMP=1 VAE_CONV_I8_REF=<source> ` (prints the dequant-vs-source ratio plus its own control) | `52884a747af5aa1d…` (sha256) |
+| `vae-encoder-q4x4ffn.gguf` | `python3 utils/convert_vae_to_gguf.py models-pt --outtype q4_0_4x4_ffn -o out.gguf` (33 s) - the F16-conv reference build | `b909b7901d5d318d81ce4cbaeac31437` |
 | `lm-q4_0_4_4.gguf` | `llama-quantize --allow-requantize --token-embedding-type q6_K streaming-lm-q4_k_m.gguf out.gguf Q4_0_4_4` (1.2 s) | `db67eecbd31bba707666414dd977902f` |
 | `streaming-lm-q4_k_m.gguf` (intermediate) | `utils/convert_streaming_lm_stage.py` + quantize | `046be3d4775e10f8b635b03ec1bc79cb` |
 | Android build (`asr_streaming`) | `cmake -B build-android ... -DCMAKE_C_FLAGS="-mcpu=cortex-a78"` (`.auto/setup.sh`) | `98b643ed2496cff89d9b8caec687c3c0` |
 
 Build fingerprint on the phone: `libggml.so 40a1f284e75dbc3c180215267068c12e`,
 `libllama.so 92ad2456979d99e2a1afee4a8cebad1d`. To re-run the full tier
-measurement: `LM_FILE=lm-q8head.gguf VAE_FILE=vae-encoder-q4x4ffn.gguf ./.auto/measure.sh`
-(2 pieces is the harness default; the binary `--vae-pieces` flag itself defaults to 13), WER gate: `./.auto/eval40.sh <tag> 0 40` +
-`venv-vibe/bin/python .auto/score_hyp.py <tag>`.
+measurement: `./.auto/measure.sh` (VAE_FILE now defaults to `vae-encoder-convint8.gguf` and
+LM_FILE to `lm-q8head.gguf`; the script hash-checks both against the device and pushes on
+difference - before Exp689 it pushed neither, so an experiment could measure stale device bytes and
+report them as a result). 2 pieces is the harness default; the binary `--vae-pieces` flag itself
+defaults to 13. WER gate: `./.auto/eval40.sh <tag> 0 40` +
+`venv-vibe/bin/python .auto/score_hyp.py <tag>`; for paired output-equivalence use
+`.auto/compare_arms.py --gate hyp-A hyp-B eval-librispeech/refs.json`.
 
 ## Phone evaluation (OPPO CPH2371, Dimensity 1300, 8 GB RAM, Android 13)
 
@@ -276,9 +281,10 @@ everything else stays F16.
 ### Final tier ladder (Exp525–542-era snapshot — SUPERSEDED)
 
 > **Superseded in v3.5** (protocol cells refreshed by Exp664, fused depthwise-tap kernel): the shipped
-default is now PIECES=2 at RTF ~2.57 (v3.6: one fused f32 depthwise-conv kernel replaced the
-tap chain - Exp670, −3.5 % at byte-identical output)
-> (69 s 2.55, 138 s 2.62, gate mean 2.88, gate 4.41 % re-validated at HEAD); the current ladder
+default is PIECES=2 at RTF **~2.46** (v3.6 fused f32 depthwise-conv kernel −3.5 %, v3.7 layer-scale
+epilogue −1.1 %, v3.8 gelu+bias −0.8 %, **v3.9 blocked-int8 conv weights −3.0 % with the gate paired
+equivalent at McNemar p=1.0 - Exp690**)
+> (69 s 2.43, 138 s 2.50, RSS 2.12 GB, gate 4.38 %); the current ladder
 > lives in RESULTS.md. The table below (all on-device gated, 10 s protocol
 > `-t 2`/C0, 26-piece default) is preserved as history.
 

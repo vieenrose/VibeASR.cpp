@@ -17,11 +17,11 @@ believed unreachable without retraining; do NOT chase it by cheating).
 | F16 accuracy-first | `VAE_FILE=vae-encoder-f16.gguf` | ~4.77 (deferred late stages) | 4.7705 (Exp555; was 5.3362) |
 | BALANCED | `VAE_FILE=vae-encoder-q4x4ffn.gguf` + LM Q4_K_M | ~4.16 (deferred late stages) | 4.1649 (Exp555; was 4.4007) |
 | FAST-LM v2 | `VAE_FILE=vae-encoder-f16.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) | ~5.21 | 5.2138 (tokens 42), WER 4.41% |
-| **MAX-SPEED v3.6 (DEFAULT, p2)** | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q8head.gguf` (Q4_0_4x4 bulk, q6_K embeddings, **Q8_0 head** - the q6_K head has no gemv kernel so each decode token pays the generic path) + the v3.4 VAE stack (F16 im2col + concurrent encoders + deferred deep stages + lifetime buffers + PIECES=2 + zero-copy weights + [C,T] blocks) | **~2.51** | Protocol: 2.5068; VAE 17.1 s; decode 3.6 s; RSS 2.23 GB; load 1.2 s; **40-utt gate WER 4.41%**, 40/40 transcripts byte-identical to the q6_K-head build (re-validated at HEAD, tag gate645; 40-utt mean 2.8197). RAM-lean alternative (`PIECES=13`, encoders still concurrent): see tier row |
+| **MAX-SPEED v3.9 (DEFAULT, p2)** | `VAE_FILE=vae-encoder-convint8.gguf LM_FILE=lm-q8head.gguf` (Q4_0_4x4 bulk, q6_K embeddings, Q8_0 head) + the v3.4 VAE stack (concurrent encoders + deferred deep stages + lifetime buffers + PIECES=2 + zero-copy weights + [C,T] blocks) + the v3.6-v3.8 fusions (dw-conv1d kernel, layer-scale add_scaled, gelu+bias) + **v3.9 blocked-int8 CONV weights** | **~2.46** | Protocol 2.4644 (paired 3+3 reps vs the F16-conv build: every int8 rep below every ref rep); VAE 16.5 s; decode 3.6 s; RSS 2.12 GB; load 1.2-1.4 s; **40-utt gate WER 4.38%, paired vs the frozen reference 2-vs-1 discordant tokens, McNemar p=1.0** (tag convint8) - output-equivalent. F16-conv file `vae-encoder-q4x4ffn.gguf` stays as the reference/accuracy-first VAE. |
 | Q8 anchor | `VAE_FILE=vae-encoder-q8_0mixed.gguf` | 6.12-6.15 | 6.1204/6.1520/6.1659 |
 | Q4 | `VAE_FILE=vae-encoder-q4ffn.gguf` | ~6.48 | 6.4776 |
 | ultra-lean (superseded) | `VAE_FILE=vae-encoder-q4ffn.gguf PIECES=26` | ~6.61 | 6.6066 |
-| MAX-SPEED-LEAN (p13) | `VAE_FILE=vae-encoder-q4x4ffn.gguf LM_FILE=lm-q8head.gguf PIECES=13` | **~2.62** | VAE 18.3 s; **RSS 1874 MB**; tokens 40; 69 s 2.78 (pre-Exp670, ~-3.5 %); 40-utt mean 3.1526 (pre-Exp670). Gate WER 4.55% by 40/40 byte-identity to the p26 gate (tags leanp13c/leanp13t); 138 s RSS flat 1888 MB, no loops (Exp643-646). The old seq-mode recipe (`PIECES=26 EXTRA_ENV=VAE_SEQ_ENCODERS=1`, 3.19 @ 1818 MB) is a LAST RESORT - at fine pieces concurrency costs ~30 MB and buys -11% |
+| MAX-SPEED-LEAN (p13) | `VAE_FILE=vae-encoder-convint8.gguf LM_FILE=lm-q8head.gguf PIECES=13` | **~2.55** | Protocol 2.5501, **RSS 1752 MB**, tokens 39-40; 69 s / 40-utt mean not yet re-measured on this stack (pre-Exp690: 2.78 / 3.1526). Gate: output-equivalent to the p2 tier (1 token of 731, McNemar p=1.0, tags leanp13c/leanp13t). The old seq-mode recipe (`PIECES=26 EXTRA_ENV=VAE_SEQ_ENCODERS=1`) is a LAST RESORT - at fine pieces concurrency costs ~30 MB and buys -11% |
 | BALANCED-LEAN | `VAE_FILE=vae-encoder-q4x4ffn.gguf PIECES=26` | ~5.21 | 5.208 (69 s 4.9374, identical tokens, RSS 1.98 GB) |
 Old-build bands (6.49-6.59 Q8, 10.5 F16, 6.81 Q4, 7.06 ultra-lean) are DEAD.
 69 s equal-token: accuracy-first 5.6089 / balanced 4.8228 / max-speed 4.046.
@@ -29,9 +29,14 @@ Old-build bands (6.49-6.59 Q8, 10.5 F16, 6.81 Q4, 7.06 ultra-lean) are DEAD.
 RSS: 2.99 / 2.16 / 2.05 GB. Both 4x4 tiers use ~1.9 GB of model files.
 NOTE: the 10 s clip truncates less with the corrected LM (42 tokens vs 45; was 37 with a q4_0 token_embd) -
 quote 69 s equal-token numbers for the 4x4-LM tiers' speed claims.
-MODEL ARTIFACTS: models-streaming/vae-encoder-q4x4ffn.gguf (converter outtype
-  q4_0_4x4_ffn) and lm-q4_0_4_4.gguf (llama-quantize --allow-requantize --token-embedding-type q6_K ...
-  Q4_0_4_4); both pushed to /data/local/tmp/vibeasr.
+MODEL ARTIFACTS: models-streaming/vae-encoder-convint8.gguf (DEFAULT since Exp690 - the q4x4ffn
+  file with its 14 non-depthwise conv weights moved to Q4_0_4_4; sha256 52884a747af5aa1d; rebuild with
+  `.auto/conv_int8.py <src> <out> --device`, and --device is REQUIRED because x86
+  ggml_quantize_chunk(Q4_0_4_4) writes ZERO SCALES - Exp688; verify with VAE_CONV_I8_CMP=1),
+  models-streaming/vae-encoder-q4x4ffn.gguf (converter outtype q4_0_4x4_ffn - the F16-conv reference),
+  and lm-q4_0_4_4.gguf (llama-quantize --allow-requantize --token-embedding-type q6_K ... Q4_0_4_4).
+  measure.sh now hash-checks VAE_FILE/LM_FILE against the device and pushes on difference, because an
+  experiment used to be able to measure a stale device file and report it as a new result (Exp689).
 
 ## Metrics
 - Sustained reference (Exp526, shipped tier + concurrent encoders, 138 s clip):
