@@ -43,14 +43,14 @@ def dequant_q4_0_4x4(buf, off, nrow, n_per_row):
             qs = buf[p + 8: p + 8 + 64]                        # 64 interleaved bytes
             p += 72
             for i in range(64):
-                row = g * 4 + (i % 16) // 4
+                rin = (i % 16) // 4                            # which of the 4 interleaved rows
                 src_byte = (i // 16) * 4 + (i % 4)             # byte index within that row
-                col = x * 32 + 2 * src_byte
-                b = qs[i]
-                for half in (0, 1):                            # low nibble = even element
-                    n = (b & 0xF) if half == 0 else (b >> 4)
-                    v = n - 8                                  # xor_mask 0x88 biases the nibbles
-                    yield row, col + half, scales[(i % 16) // 4] * v
+                # quantize_row_q4_0_ref packs element j in the LOW nibble and element j+16 in the
+                # HIGH nibble (not 2j / 2j+1) - getting this wrong is exactly what made my first
+                # round-trip check cry wolf, so the mapping is: byte b -> elements b and b+16.
+                for half in (0, 1):
+                    n = (qs[i] & 0xF) if half == 0 else (qs[i] >> 4)
+                    yield g * 4 + rin, x * 32 + src_byte + 16 * half, scales[rin] * (n - 8)
 
 
 def halves(buf, off, n):
