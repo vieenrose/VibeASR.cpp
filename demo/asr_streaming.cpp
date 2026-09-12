@@ -239,7 +239,46 @@ static int encode_frames(vae_context_t * vae_ctx, vae_cache_t * vcache,
 }
 
 
+// Exp669: fault tracer for diagnosing the dw-conv1d crash (Exp666-668). Off unless
+// VAE_FAULT_TRACE=1, so the shipped binary's crash behaviour is untouched. Prints the faulting
+// address plus the PC as an offset inside its shared object, which maps to a function with
+// llvm-objdump even for static (unexported) kernels: addr = pc - dli_fbase.
+#include <signal.h>
+#include <dlfcn.h>
+#include <ucontext.h>
+#include <unistd.h>
+
+static void vibe_fault_handler(int sig, siginfo_t * si, void * uc) {
+    ucontext_t * c = (ucontext_t *) uc;
+    void * pc = (void *) c->uc_mcontext.pc;
+    Dl_info info;
+    if (dladdr(pc, &info) && info.dli_fbase) {
+        fprintf(stderr, "[FAULT] sig=%d addr=%p pc=%p fbase=%p off=0x%lx sym=%s%+ld\n",
+                sig, si->si_addr, pc, info.dli_fbase,
+                (unsigned long) ((char *) pc - (char *) info.dli_fbase),
+                info.dli_sname ? info.dli_sname : "?",
+                info.dli_sname ? (long) ((char *) pc - (char *) info.dli_saddr) : 0L);
+    } else {
+        fprintf(stderr, "[FAULT] sig=%d addr=%p pc=%p (no dladdr)\n", sig, si->si_addr, pc);
+    }
+    fflush(stderr);
+    _exit(139);
+}
+
+static void vibe_fault_trace_install(void) {
+    if (getenv("VAE_FAULT_TRACE") == nullptr) return;
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_sigaction = vibe_fault_handler;
+    sa.sa_flags = SA_SIGINFO | SA_NODEFER;
+    sigemptyset(&sa.sa_mask);
+    for (int sig : {SIGSEGV, SIGBUS}) sigaction(sig, &sa, nullptr);
+    fprintf(stderr, "[FAULT] tracer installed\n");
+}
+
+
 int main(int argc, char ** argv) {
+    vibe_fault_trace_install();
     stream_params params;
     if (!parse_args(argc, argv, params)) return 1;
 

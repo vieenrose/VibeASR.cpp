@@ -35,7 +35,14 @@
 //   VAE_ABL_SCALE layer-scale and gamma muls
 //   VAE_ABL_RESID block residual adds
 static bool vae_abl(const char* name) {
-    static std::map<std::string, int> cache;
+    // thread_local ON PURPOSE (Exp669): with a plain function-local static, the two concurrent
+    // encoder chains mutate this red-black tree (emplace of a new key) while the other thread is
+    // searching it - undefined behaviour that shows up as a NULL child dereference inside
+    // std::__tree_balance_after_insert. That race, not the depthwise conv kernel, was the
+    // non-deterministic segfault of Exp666-668: the fault PC resolved to libc++ tree rebalancing
+    // and the arms that avoided it were the ones where every key got inserted before the threads
+    // started racing. Per-thread memo = no shared mutation, no lock on the hot path.
+    thread_local std::map<std::string, int> cache;
     auto it = cache.find(name);
     if (it == cache.end()) {
         const bool on = getenv(name) != nullptr;
