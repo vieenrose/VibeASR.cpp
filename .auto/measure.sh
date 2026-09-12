@@ -7,6 +7,12 @@ cd "$(dirname "$0")/.."
 DEV=AYBY6HQCMBF6B6KZ
 RDIR=/data/local/tmp/vibeasr
 LM_FILE=${LM_FILE:-lm-q8head.gguf}
+# Default VAE: conv weights on the blocked-int8 path (-3% RTF, -124 MB, 40-utt gate paired-equivalent
+# with McNemar p=1.0 - Exp690). Rebuild with `.auto/conv_int8.py --device`; the --device half is not
+# cosmetic: ggml_quantize_chunk(Q4_0_4_4) on x86 writes ZERO SCALES, so a host-built file is silent
+# garbage (Exp688). vae-encoder-q4x4ffn.gguf stays as the F16-conv reference and the probe's source.
+VAE_FILE=${VAE_FILE:-vae-encoder-convint8.gguf}
+MODELS_DIR=${MODELS_DIR:-$(cd "$(dirname "$0")/../.." && pwd)/models-streaming}
 AUDIO=${AUDIO:-stream_10s_24k.wav}      # device-side name, unless --clip pushes one
 SKIP_BUILD=${SKIP_BUILD:-0}
 
@@ -24,6 +30,20 @@ while [ $# -gt 0 ]; do
 done
 
 [ "${CLIP_PUSH:-0}" = 1 ] && { adb -s $DEV push "$CLIP_LOCAL" $RDIR/ > /dev/null 2>&1 || exit 1; }
+# Model-file freshness (Exp689: three int8 runs silently measured a STALE device copy, because this
+# script pushed only the binary and libs and never VAE_FILE - so an experiment could report old bytes
+# as a new result). Compare hashes and push only on difference; a missing model file is an error, not a
+# plausible wrong number.
+for _f in "$VAE_FILE" "$LM_FILE"; do
+  _hf="$MODELS_DIR/$_f"
+  [ -f "$_hf" ] || { echo "ERROR: model file not found on host: $_hf" >&2; exit 1; }
+  _hh=$(md5sum "$_hf" | cut -d' ' -f1)
+  _dh=$(adb -s $DEV shell "md5sum $RDIR/$_f" 2>/dev/null | tr -d '\r' | cut -c1-32)
+  if [ "$_hh" != "$_dh" ]; then
+    { echo "note: pushing $_f (device copy was $(if [ -n "$_dh" ]; then echo stale; else echo missing; fi))" >&2; } || true
+    adb -s $DEV push "$_hf" "$RDIR/" > /dev/null 2>&1 || { echo "ERROR: push failed for $_f" >&2; exit 1; }
+  fi
+done
 echo "note: audio=$AUDIO skip_build=$SKIP_BUILD" >&2
 # Co-runner guard (Exp679): a host-side `timeout` leaves the DEVICE-side run alive, and a live
 # second asr_streaming halves throughput (two pinned 2-thread runs on two A78s, Exp533). That
