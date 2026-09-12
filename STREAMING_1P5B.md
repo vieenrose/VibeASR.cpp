@@ -210,7 +210,9 @@ streaming caches, separate compute arenas. Thread-scaling data (Exp519: the VAE
 scales only 1.57× from 1→2 threads) showed the dependent chains do not saturate
 two cores, so the two encoders now run **concurrently, one thread each**
 (`vae_encode_parallel_cached`, a second `(ggml_context, arena)` pair; default
-on, `VAE_SEQ_ENCODERS=1` opts back out for RAM-critical runs).
+on, `VAE_SEQ_ENCODERS=1` opts back out). Opting out is now a **last resort**:
+at fine granularity the per-encoder arenas are small, so concurrency costs only
+~30 MB and is worth −11 % (Exp641–643, see the RESULTS.md ladder).
 
 * VAE 31.4 → **26.7 s (−14.7 %)**, RTF 3.99 → **3.53 (−11.6 %)** on the 10 s
   protocol; 69 s sustained 3.83 → **3.43 (−10.4 %)**; LM unchanged.
@@ -304,7 +306,9 @@ Note (Exp542): with concurrent encoders every tier carries the same two-arena
 footprint, so the balanced tier no longer has a RAM advantage over the shipped
 tier (both ~2.07 GB); its niche is now purely the clean zh transcript (the 4x4
 LM garbles rare/proper tokens, Exp499). RAM-constrained devices use the
-`VAE_SEQ_ENCODERS=1` variant instead (3.99 @ 1.91 GB).
+RAM-lean tier instead (`--vae-pieces 13`, encoders still concurrent): 2.84 on
+the protocol clip and 3.15 on the 40-utt mean at 1.88 GB (Exp643; the older
+`VAE_SEQ_ENCODERS=1` recipe is 3.19 @ 1.82 GB and strictly worse).
 
 With the corrected embedding the **max-speed tier Pareto-dominates the
 accuracy-first tier**: 28% faster on the 40-utt mean and 27.5% on the 69 s clip,
@@ -331,12 +335,21 @@ Q4_K_M LM) does not truncate (46/45, 69/68) and is the best all-round tier:
 
 The **balanced-lean** variant (`--vae-pieces 26` on the same files) traded
 +1% (10 s) / +2.4% (69 s) RTF for −180 MB RSS at *identical* transcripts in the
-Exp542-era concurrent regime. The current RAM-lean tier is the **sequential** p26
-(`VAE_SEQ_ENCODERS=1`): 3.19 @ 1.82 GB (RESULTS.md ladder). VAE granularity is
-otherwise closed: **2 pieces is the time-optimal split** (Exp620 re-sweep on the
-shipped tier: p13 +3.2% slower, p1 ties at +335 MB) — the deferred late pass
-captures the deep-layer batching benefit window-wide, leaving only per-piece
-overhead, so finer splits lose.
+Exp542-era concurrent regime. The current RAM-lean tier is **p13 with the
+encoders left concurrent** (`--vae-pieces 13`, no env flags): 2.84 on the
+protocol clip, 2.78 on 69 s, 3.15 on the 40-utt mean, at 1.88 GB and WER 4.55 %
+with 40/40 transcripts identical to the p26 gate (Exp643/646).
+
+That also corrected the earlier "finer splits lose" conclusion, which held only
+on the time axis: the deferred late pass captures the deep-layer batching
+benefit window-wide at ANY fine piece count, so per-piece overhead is all that
+is left — and the RAM driver is the *early-stage activation arena*, which scales
+with piece size. The measured map over the runnable set {1, 2, 13, 26}
+(non-divisors need a window-loop rework, Exp605) is p1 2.79 @ ~2.56 GB, p2 2.79
+@ 2.23 (default, time-optimal), p13 2.84 @ 1.88, p26 2.88 @ 1.84 — so p2 stays
+the speed default while p13 is the RAM sweet spot, costing +0.9 % on the 40-utt
+mean. p13/p26 produce identical output; p2 differs (40 vs 39 tokens) because
+the dw taps-vs-im2col branch is selected by piece size (Exp640).
 
 Against the original baseline (12.24) the max-speed tier is **−65%**; against
 the pre-A78 loop best (6.52) it is −35%. The balanced tier dominates the fast
