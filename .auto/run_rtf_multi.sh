@@ -15,6 +15,16 @@ DEV=${DEV:-$(grep -m1 '^DEV=' .auto/measure.sh | cut -d= -f2)}   # single source
 RDIR=/data/local/tmp/vibeasr
 REPS=${1:-1}; shift
 DEF_ENV="LM_FILE=lm-q8head.gguf VAE_FILE=vae-encoder-q4x4ffn.gguf MASK=C0"
+# Freshness guard: this runner does NOT build, so sweeping after editing src/ silently
+# measures the old binary (Exp662 burned 12 runs that way). Refuse unless the binary is newer
+# than every source file.
+stale=$(find src demo 3rdparty/llama.cpp/ggml/src 3rdparty/llama.cpp/src -name '*.cpp' -newer build-android/bin/asr_streaming 2>/dev/null | head -3)
+if [ -n "$stale" ]; then
+  echo "ERROR: build-android/bin/asr_streaming is older than:" >&2; echo "$stale" >&2
+  echo "Rebuild first (bash .auto/measure.sh, without --skip-build)." >&2
+  exit 2
+fi
+
 TSV=.auto/multi-$$.tsv
 : > "$TSV"
 adb -s $DEV push .auto/bench_device.sh $RDIR/ >/dev/null 2>&1
