@@ -1,0 +1,111 @@
+{
+ "assets": {
+  "3575-170457-0005.wav": {
+   "md5": "5aca800bff688cf8c739272bb333ccd2",
+   "note": "blessed from device"
+  },
+  "6829-68769-0025.wav": {
+   "md5": "6ef3b025cff9c4fe7576db6768f57af7",
+   "note": "blessed from device"
+  },
+  "chat.wav": {
+   "cell": "STALE: overwritten by the chat69 push (Exp675) - not used by any cell",
+   "ignore_collision": true,
+   "md5": "cb919d2dd8f2003169ef66257fd362b7",
+   "note": "STALE: overwritten by the chat69 push (Exp675) - not used by any cell"
+  },
+  "chat138.wav": {
+   "cell": "138 s sustained/RSS soak",
+   "md5": "07352ef780c356f101008baef4992f40",
+   "note": "138 s sustained/RSS soak"
+  },
+  "chat17.wav": {
+   "cell": "17 s ladder cell (Exp675)",
+   "derived_from": {
+    "file": "chat69.wav",
+    "frames": 408000
+   },
+   "md5": "c7226cdee7fe67856d089f69a3578f03",
+   "note": "17 s ladder cell (Exp675)"
+  },
+  "chat69.wav": {
+   "cell": "69 s ladder cell",
+   "md5": "cb919d2dd8f2003169ef66257fd362b7",
+   "note": "69 s ladder cell"
+  },
+  "control_ls.wav": {
+   "cell": "concatenation control",
+   "md5": "52838aa3db56c073e6ba9ad531317ff9",
+   "note": "concatenation control"
+  },
+  "gate_ms.wav": {
+   "cell": "bilingual multispk probe",
+   "md5": "328793c104f7aff4f4547cba63a05aa0",
+   "note": "bilingual multispk probe"
+  },
+  "gate_ms_g100.wav": {
+   "md5": "2333c95d7058c318313b8c823eeb38cb",
+   "note": "gap sweep 100ms"
+  },
+  "gate_ms_g1000.wav": {
+   "md5": "8cfe49d397029db363d761f07d4e1c00",
+   "note": "gap sweep 1000ms"
+  },
+  "holdout_en.wav": {
+   "cell": "held-out CV-en watchdog",
+   "md5": "feb62bf7c49a222f165151356f6aa398",
+   "note": "held-out CV-en watchdog"
+  },
+  "holdout_zh.wav": {
+   "cell": "held-out CV-zh watchdog",
+   "md5": "a0870fcd3112a75d9712527d6c2ca95b",
+   "note": "held-out CV-zh watchdog"
+  },
+  "hotwords.wav": {
+   "md5": "04cae588f6871b3ac11a562cc42eed55",
+   "note": "hotword probe"
+  },
+  "noise5s.wav": {
+   "md5": "16d1a595d8eef3ef912037bb77f3d684",
+   "note": "noise probe"
+  },
+  "proto48k_stereo.wav": {
+   "md5": "9e3276a5b6138f7508cf17fcb33b1e93",
+   "note": "48k stereo probe"
+  },
+  "short36.wav": {
+   "md5": "2d37df93d2c1b4abd2786ca45d45b468",
+   "note": "sub-piece probe"
+  },
+  "silence5s.wav": {
+   "md5": "15a1b22cb539098a943529a2d357a20c",
+   "note": "silence probe"
+  },
+  "slice10b_24k.wav": {
+   "md5": "80964ff28c2123038761343ff894255f",
+   "note": "blessed from device"
+  },
+  "song20s.wav": {
+   "md5": "1c755097ca3d1a89ac022bbe338a8804",
+   "note": "OOD music probe"
+  },
+  "stream_10s_24k.wav": {
+   "cell": "PROTOCOL METRIC clip",
+   "md5": "df8c369d1fd047d646b8d7dc3d96d677",
+   "note": "PROTOCOL METRIC clip"
+  },
+  "twospk.wav": {
+   "cell": "2-speaker probe",
+   "md5": "bd9bb22c3e209833cd4ccca852d52a71",
+   "note": "2-speaker probe"
+  },
+  "twospk_overlap.wav": {
+   "md5": "e2957b9f514e504742ac24f8f4f32981",
+   "note": "blessed from device"
+  },
+  "twospk_v34.wav": {
+   "md5": "d0cb6df4c923b8652b1b7836b963ad22",
+   "note": "blessed from device"
+  }
+ }
+}

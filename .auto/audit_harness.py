@@ -24,10 +24,14 @@ Exit code is non-zero if any check fails, so it can gate a session.
 Usage: .auto/audit_harness.py [--skip-device]
 """
 import hashlib
+import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
+import wave
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..'))
@@ -157,7 +161,88 @@ else:
             else:
                 ok(f"{f} present on device" + ('' if os.path.exists(host) else ' (no host copy)'))
 
-# ---- 6. frozen references used by A/B tooling ----------------------------------
+# ---- 7. device audio-asset integrity (Exp675) ----------------------------------
+# Two clips backing documented cells turned out to be BYTE-IDENTICAL: chat.wav had been
+# overwritten by the chat69.wav push, so the 17 s ladder cell was measuring a file that no
+# longer existed. A device-side file with no recorded identity can be silently replaced by a
+# later experiment and still print a plausible RTF, so every clip that backs a published number
+# is hashed, and - the part that actually caught this one - collision-checked against the others.
+# Manifest: .auto/device_assets.json (regenerate deliberately with --bless).
+MANIFEST = os.environ.get('AUDIT_ASSET_MANIFEST') or os.path.join(HERE, 'device_assets.json')
+if '--skip-device' not in sys.argv:
+    if '--bless' in sys.argv:
+        names = sorted(os.path.basename(f) for f in
+                       sh(f'adb -s {DEV} shell "ls {RDIR}/*.wav"', timeout=60).stdout
+                       .replace('\r', '').split() if f)
+        h = sh('adb -s ' + DEV + ' shell "md5sum ' + ' '.join(f'{RDIR}/{n}' for n in names) + '"',
+               timeout=300).stdout
+        assets = {}
+        for line in h.splitlines():
+            m = re.match(r'([0-9a-f]{32})\s+\S*/(\S+)$', line.strip())
+            if m:
+                assets[m.group(2)] = {'md5': m.group(1), 'note': 'blessed from device'}
+        with open(MANIFEST, 'w') as f:
+            json.dump({'assets': assets}, f, indent=1, sort_keys=True)
+        print(f"blessed {len(assets)} device clips into {MANIFEST}")
+        sys.exit(0)
+    if os.path.exists(MANIFEST):
+        man = json.load(open(MANIFEST))['assets']
+        names = list(man)
+        got = sh('adb -s ' + DEV + ' shell "md5sum ' + ' '.join(f'{RDIR}/{n}' for n in names)
+                 + ' 2>/dev/null"', timeout=300).stdout
+        have = {os.path.basename(l.split()[-1]): l.split()[0]
+                for l in got.splitlines() if re.match(r'[0-9a-f]{32}\s+\S+', l)}
+        dev = {n: have[n] for n in names if n in have}
+        missing = [n for n in names if n not in have]
+        for n in missing:
+            (bad if man[n].get('cell') else warn)(
+                f"device clip {n} missing" + (f" - backs a documented cell ({man[n]['cell']})"
+                                              if man[n].get('cell') else ' (probe only)'))
+        for n, d in dev.items():
+            if man[n].get('md5') and d != man[n]['md5']:
+                bad(f"{n}: device md5 {d} != blessed {man[n]['md5']}" +
+                    (f" (cell: {man[n]['cell']})" if man[n].get('cell') else ''))
+            else:
+                ok(f"{n} hash matches manifest")
+        # the check that catches Exp675: two documented clips with the same bytes = one was
+        # overwritten by the other, and any 'different condition' comparison is now a no-op.
+        byhash = {}
+        for n, d in dev.items():
+            byhash.setdefault(d, []).append(n)
+        for d, ns in sorted(byhash.items()):
+            if len(ns) > 1:
+                both_documented = all(not man[n].get('ignore_collision') for n in ns)
+                msg = (f"asset collision: {' == '.join(sorted(ns))} are byte-identical "
+                       f"({d[:12]}...) - any A/B between them is measuring one file twice")
+                (bad if both_documented else warn)(
+                    msg + ('' if both_documented else '  [one side is marked stale/unused, so not a failure]'))
+        # derivation check: a clip documented as an excerpt must still be that excerpt
+        for n, spec in man.items():
+            der = spec.get('derived_from')
+            if der and n in dev and der['file'] in dev:
+                tmp = tempfile.mkdtemp()
+                for f in (n, der['file']):
+                    sh(f'adb -s {DEV} pull {RDIR}/{f} {tmp}/{f} > /dev/null 2>&1', timeout=180)
+                if os.path.exists(f"{tmp}/{der['file']}") and os.path.exists(f"{tmp}/{n}"):
+                    # compare AUDIO DATA, not file bytes: the excerpt has its own 44-byte header,
+                    # so hashing the files would never match the source prefix.
+                    wo, ws = wave.open(f"{tmp}/{n}"), wave.open(f"{tmp}/{der['file']}")
+                    par = (wo.getframerate(), wo.getnchannels(), wo.getsampwidth()) == \
+                          (ws.getframerate(), ws.getnchannels(), ws.getsampwidth())
+                    same = par and wo.getnframes() == der['frames'] and \
+                        wo.readframes(der['frames']) == ws.readframes(der['frames'])
+                    detail = ('confirmed' if same else
+                              f"NO (frames {wo.getnframes()} vs {der['frames']}, "
+                              f"params {'match' if par else 'DIFFER'}" + 
+                              (', data differs' if par and wo.getnframes() == der['frames'] else ')'))
+                    wo.close(); ws.close()
+                    (ok if same else bad)(
+                        f"{n} == first {der['frames']} frames of {der['file']}: " + detail)
+                shutil.rmtree(tmp, ignore_errors=True)
+    else:
+        warn(f"no asset manifest at {MANIFEST} - device clips are unverified (run --bless once)")
+
+# ---- 8. frozen references used by A/B tooling ----------------------------------
 for f in sorted(os.listdir(HERE)):
     if f.startswith('ref') and f.endswith('.txt'):
         if os.path.getsize(os.path.join(HERE, f)) < 20:
