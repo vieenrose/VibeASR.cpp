@@ -29,7 +29,10 @@ flags are a hard error, because `--clip` used to be silently ignored and measure
 default 10 s clip instead). Behavioural probes and their scorer:
 `.auto/build_gate_multispk.py` (deterministic, CC0 Common Voice 17.0 sources) and
 `.auto/score_stream.py --selftest` (WER by language + diarization attribution with the
-standard optimal tag↔voice mapping; 5 self-tests).
+standard optimal tag↔voice mapping; 5 self-tests). The probe is also published as a
+public dataset mirror for reuse elsewhere:
+**hf.co/datasets/Luigi/bilingual-zh-en-multispk-probe** (CC0, wav + `gold.json`;
+regenerated audio must hash to `984e60b14cfe…` to be the same probe).
 
 ## Final tier ladder (all on-device, 10 s protocol, 2 pieces)
 
