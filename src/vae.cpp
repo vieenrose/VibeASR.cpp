@@ -27,6 +27,34 @@
 #define VAE_HAVE_MMAP 0
 #endif
 
+// Measurement-only elementwise ablation knobs (Exp662): drop one group of elementwise ops to
+// price its share of VAE time. ANY OF THESE MAKES THE OUTPUT INVALID - it is a timing ceiling,
+// never a result, and it must never be used for an accuracy claim.
+//   VAE_ABL_BIAS  conv/matmul bias adds
+//   VAE_ABL_TAPS  depthwise tap mul+add (K taps x full [C,T] tensors)
+//   VAE_ABL_SCALE layer-scale and gamma muls
+//   VAE_ABL_RESID block residual adds
+static bool vae_abl(const char* name) {
+    static std::map<std::string, int> cache;
+    auto it = cache.find(name);
+    if (it == cache.end()) {
+        const bool on = getenv(name) != nullptr;
+        it = cache.emplace(name, on ? 1 : 0).first;
+        if (on) fprintf(stderr, "[VAE_ABL] %s is ON - output is INVALID, timing ceiling only\n", name);
+    }
+    return it->second != 0;
+}
+static struct ggml_tensor* vae_abl_add(struct ggml_context* ctx, struct ggml_tensor* a,
+                                       struct ggml_tensor* b, const char* knob) {
+    if (vae_abl(knob)) return a;      // op removed entirely: the sum is never materialised
+    return ggml_add(ctx, a, b);
+}
+static struct ggml_tensor* vae_abl_mul(struct ggml_context* ctx, struct ggml_tensor* a,
+                                       struct ggml_tensor* b, const char* knob) {
+    if (vae_abl(knob)) return a;
+    return ggml_mul(ctx, a, b);
+}
+
 // ============================================================================
 // Streaming conv cache (VibeVoiceTokenizerStreamingCache port).
 //
@@ -253,7 +281,7 @@ static struct ggml_tensor* ggml_nn_rms_norm(
         x = ggml_rms_norm_scaled(ctx, x, gamma, 1e-5f);
     } else {
         x = ggml_rms_norm(ctx, x, 1e-5f);
-        x = ggml_mul(ctx, x, gamma);
+        x = vae_abl_mul(ctx, x, gamma, "VAE_ABL_SCALE");
     }
     
     return x;
@@ -280,7 +308,7 @@ static struct ggml_tensor* ggml_nn_linear(
     } else {
         result = ggml_mul_mat(ctx, w, x);
         if (b != NULL) {
-            result = ggml_add(ctx, result, b);
+            result = vae_abl_add(ctx, result, b, "VAE_ABL_BIAS");
         }
     }
     
@@ -309,7 +337,7 @@ static struct ggml_tensor* ggml_nn_linear_relu(
     } else {
         result = ggml_mul_mat(ctx, w, x);
         if (b != NULL) {
-            result = ggml_add(ctx, result, b);
+            result = vae_abl_add(ctx, result, b, "VAE_ABL_BIAS");
         }
         result = ggml_relu(ctx, result);
     }
@@ -385,7 +413,7 @@ static struct ggml_tensor* ggml_nn_conv_1d(
         }
         result = vae_conv_1d_f16(ctx, w, x, stride, padding, dilation);
         if (b != NULL) {
-            result = ggml_add(ctx, result, b);
+            result = vae_abl_add(ctx, result, b, "VAE_ABL_BIAS");
         }
     }
 
@@ -461,8 +489,8 @@ static struct ggml_tensor* ggml_nn_conv_1d_dw(
             for (int64_t k = 0; k < K; k++) {
                 struct ggml_tensor* xk = ggml_view_2d(ctx, xc, C, T_out, xc->nb[1], (size_t)k * xc->nb[1]);
                 struct ggml_tensor* wk = ggml_view_2d(ctx, ww, C, 1, ww->nb[1], (size_t)k * ww->nb[1]);
-                struct ggml_tensor* term = ggml_mul(ctx, xk, wk);
-                acc = (acc == nullptr) ? term : ggml_add(ctx, acc, term);
+                struct ggml_tensor* term = vae_abl_mul(ctx, xk, wk, "VAE_ABL_TAPS");
+                acc = (acc == nullptr) ? term : vae_abl_add(ctx, acc, term, "VAE_ABL_TAPS");
             }
             result = acc;   // [C, T_out]: the layout the block's residual uses
         } else {
@@ -477,7 +505,7 @@ static struct ggml_tensor* ggml_nn_conv_1d_dw(
             result = vae_conv_1d_dw_f16(ctx, w, x, stride, padding, dilation);
         }
         if (b != NULL) {
-            result = ggml_add(ctx, result, b);
+            result = vae_abl_add(ctx, result, b, "VAE_ABL_BIAS");
         }
     }
 
@@ -488,7 +516,7 @@ static struct ggml_tensor* ggml_nn_layer_scale(
     struct ggml_context* ctx,
     struct ggml_tensor* x,
     struct ggml_tensor* gamma) {
-    return ggml_mul(ctx, x, gamma);
+    return vae_abl_mul(ctx, x, gamma, "VAE_ABL_SCALE");
 }
 
 //
@@ -546,8 +574,8 @@ struct ConvNeXtBlock {
             x = ggml_add_scaled(ctx, x, residual, mixer_layer_scale);
         } else {
             // F32 path: x = x * layer_scale + residual
-            x = ggml_mul(ctx, x, mixer_layer_scale);
-            x = ggml_add(ctx, x, residual);
+            x = vae_abl_mul(ctx, x, mixer_layer_scale, "VAE_ABL_SCALE");
+            x = vae_abl_add(ctx, x, residual, "VAE_ABL_RESID");
         }
         
         residual = x;
@@ -573,8 +601,8 @@ struct ConvNeXtBlock {
         if (is_i8s) {
             x = ggml_add_scaled(ctx, x, residual, ffn_layer_scale);
         } else {
-            x = ggml_mul(ctx, x, ffn_layer_scale);
-            x = ggml_add(ctx, x, residual);
+            x = vae_abl_mul(ctx, x, ffn_layer_scale, "VAE_ABL_SCALE");
+            x = vae_abl_add(ctx, x, residual, "VAE_ABL_RESID");
         }
         
         return x;
