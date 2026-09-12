@@ -247,10 +247,18 @@ if '--skip-device' not in sys.argv:
 # still RUNNING (State R, model loaded) it shares the two pinned cores and every timing in the
 # session is ~2x inflated - numbers, not errors. Sleeping sub-MB survivors are clutter, not bias.
 if '--skip-device' not in sys.argv:
-    ps = sh(f'adb -s {DEV} shell "ps -A -o PID,STATE,RSS,NAME"', timeout=60).stdout.replace('\r', '')
-    live = [(l.split()[0], l.split()[2]) for l in ps.splitlines()
-            if 'asr_streaming' in l and len(l.split()) >= 4
-            and l.split()[2].isdigit() and int(l.split()[2]) > 200_000]      # >200 MB = has a model
+    # NB this toybox has no STATE keyword in `ps -o` (it is S, and asking for STATE makes ps print
+    # an error and NO rows, so a check built on it passes vacuously - the Exp660 sin). RSS alone is
+    # the criterion we actually need: a co-runner that matters has a model resident (>200 MB).
+    THRESH = int(os.environ.get('AUDIT_CO_RUNNER_KB', 200_000))
+    ps = sh(f'adb -s {DEV} shell "ps -A -o PID,RSS,NAME"', timeout=60).stdout.replace('\r', '')
+    if not [l for l in ps.splitlines() if l.strip()]:
+        bad("ps returned no rows - the co-runner check cannot be trusted (bad -o keywords?)")
+        live = []
+    else:
+        live = [(l.split()[0], l.split()[1]) for l in ps.splitlines()
+                if 'asr_streaming' in l and len(l.split()) >= 3
+                and l.split()[1].isdigit() and int(l.split()[1]) > THRESH]
     if live:
         bad(f"{len(live)} asr_streaming with a model resident on device (pids "
             f"{[p for p, _ in live]}) - timings are not comparable until they are killed")
