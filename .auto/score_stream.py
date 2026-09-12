@@ -23,11 +23,11 @@ Usage: .auto/score_stream.py [hyp-file] [manifest.json]   (default VibeASR.cpp/.
 """
 import json, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from score_mixed import normalize, tokenize, CJK   # noqa: E402
+from score_mixed import normalize, tokenize, CJK, fold_script   # noqa: E402
 import unicodedata                                  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-MAN = os.path.join(ROOT, 'eval-bilingual', 'manifest_ms.json')
+MAN = os.environ.get('GATE_MANIFEST') or os.path.join(ROOT, 'eval-bilingual', 'manifest_ms.json')
 HOP_S = 70400 / 24000.0          # window k starts at k * HOP_S seconds
 win_re = re.compile(r'^\[(\d+)/(\d+)\]\s?(.*)$')
 spk_re = re.compile(r'speaker\s*(\d+)\s*:', re.I)
@@ -41,7 +41,7 @@ def ref_stream(man):
     speaker/turn/language. Concatenating per-turn tokens is what the .ref file is."""
     toks = []
     for t in man['table']:
-        cleaned = ''.join(' ' if _is_punct(c) else c for c in t['text']).strip()
+        cleaned = fold_script(''.join(' ' if _is_punct(c) else c for c in t['text']).strip())
         for tok in tokenize(cleaned.lower()):
             toks.append({'t': tok, 'gold': t['gold'], 'turn': t['turn'],
                          'lang': 'zh' if re.match('[' + CJK + ']', tok) else 'en',
@@ -78,7 +78,7 @@ def hyp_stream(path):
             runs.append((win, cur, seg))
     toks = []
     for win_i, spk, seg in runs:
-        cleaned = ''.join(' ' if _is_punct(c) else c for c in spk_re.sub(' ', seg)).strip()
+        cleaned = fold_script(''.join(' ' if _is_punct(c) else c for c in spk_re.sub(' ', seg)).strip())
         for tok in tokenize(cleaned.lower()):
             toks.append({'t': tok, 'spk': spk, 'win': win_i})
     return toks
@@ -152,8 +152,16 @@ def score(hyp_path, man=None):
             used.discard(t)
     if len(tags) <= 8 and len(golds) <= 8:
         search(0, set(), 0)
-    else:                                     # safety valve for very many speakers
-        best = sum(max(conf.get((g, t), 0) for t in tags) for g in golds)
+    else:
+        # More speakers than the exact search can afford: greedy by cell weight, which
+        # still respects one-to-one (the earlier "max per voice" shortcut did NOT - it
+        # let every voice claim the same tag and reported attribution 0 for a total
+        # collapse; the zh held-out set with 48 voices exposed it).
+        taken_g, taken_t = set(), set()
+        for (g, t), c in sorted(conf.items(), key=lambda kv: -kv[1]):
+            if g in taken_g or t in taken_t:
+                continue
+            taken_g.add(g); taken_t.add(t); best += c
     attribution = 1.0 - best / attributed if attributed else 0.0
     consist = {}
     for g, tags in tag_by_voice.items():
@@ -227,6 +235,19 @@ def selftest():
     good = r2['wer'] < 1e-9 and r2['hyp_tokens'] == len(ref_stream(man))
     print(f"  {'ok  ' if good else 'FAIL'} + summary block     : WER {r2['wer']:.4f} hyp_tokens {r2['hyp_tokens']} (no double count)")
     ok &= good
+    # regression: script folding. Reference is Traditional; a hypothesis that gets the
+    # words right but writes them Simplified must score ZERO. (Exp654: this path once
+    # bypassed fold_script, which inflated zh WER by ~25 pp of pure script mismatch.)
+    trad = next((t for t in man['table'] if fold_script(t['text']) != t['text']), None)
+    if trad is None:
+        print("  skip trad/simp case   : manifest has no script-varying turn")
+    else:
+        open(tmp, 'w', encoding='utf-8').write(f"[1/2]  Speaker 0:{fold_script(trad['text'])}\n")
+        r3 = score(tmp, {'table': [trad], 'roles': [{'gold': 'S1'}], 'turns': 1,
+                         'total_s': trad['dur_s'], 'wav_sha256': '0' * 16})
+        good = r3['wer'] < 1e-9
+        print(f"  {'ok  ' if good else 'FAIL'} trad ref / simp hyp: WER {r3['wer']:.4f} (script must be free)")
+        ok &= good
     print("self-test:", "PASS" if ok else "FAIL")
     return 0 if ok else 1
 
