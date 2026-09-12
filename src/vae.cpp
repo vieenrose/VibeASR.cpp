@@ -426,9 +426,6 @@ static struct ggml_tensor* ggml_nn_conv_1d_dw(
         }
         // For the im2col fallback with a channels-first input: one cont/permute
         // back to [T, C] so the legacy path stays usable in every mode.
-        // The im2col fallback reshapes x to [T,1,C,N] with time on ne[0]; with a
-        // channels-first input that reshape is a hard assert (the 83200-sample
-        // guard incident, Exp602). Keep the taps as the only [C,T]-consumer.
         const bool dw_taps = (getenv("VAE_DW_CT_OFF") == nullptr) &&
                              stride == 1 && dilation == 1 && b != NULL && ct_in;
         if (dw_taps) {
@@ -469,6 +466,14 @@ static struct ggml_tensor* ggml_nn_conv_1d_dw(
             }
             result = acc;   // [C, T_out]: the layout the block's residual uses
         } else {
+            // The legacy helper wants time on ne[0]. With the taps disabled by
+            // VAE_DW_CT_OFF the block still hands us a [C, T] tensor (ct_block
+            // is independent of the knob), so transpose here - otherwise the
+            // helper's [T,1,C,N] reshape asserts (same dim-0/dim-1 class of bug
+            // as Exp586's guard mismatch, and the state Exp602's fix left the
+            // knob working in; Exp586 re-broke it). The left-pad above was
+            // applied on dim 1, which permutes to exactly dim-0 left-padding.
+            if (ct_in) x = ggml_cont(ctx, ggml_permute(ctx, x, 1, 0, 2, 3));
             result = vae_conv_1d_dw_f16(ctx, w, x, stride, padding, dilation);
         }
         if (b != NULL) {
