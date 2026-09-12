@@ -41,7 +41,7 @@ regenerated audio must hash to `984e60b14cfe…` to be the same probe).
 | **max-speed-lean (`--vae-pieces 13`, concurrent — Exp643, conv-int8 Exp690)** | 1.75 GB | **2.55** | — ° | — ° | — ° | **4.55 %**† | **1.75 GB** |
 | _same, 26 pieces (−32 MB, +1.3 % time, identical output)_ | 1.82 GB | _2.88_ ‡ | — | _2.83_ ‡ | _3.20_ ‡ | _4.55 % (tag `leanp26c`)_ | _1.84 GB_ |
 | **whole-file / server path** (Exp578/579) | — | — | live set **188-313 MB** for 6-10 s files | — | — | — | — |
-| **max-speed (shipped, v3.9 — conv weights blocked-int8, Exp690)** | 2.11 GB | **2.46** | — ° | **2.43** | — ° | **4.38 %** | 2.12 GB |
+| **max-speed (shipped, v3.9 — `VAE_FILE=vae-encoder-convint8.gguf`, blocked-int8 conv weights, Exp690)** | 2.11 GB | **2.46** | — ° | **2.43** | — ° | **4.38 %** | 2.12 GB |
 | _same tier with F16 conv weights (`VAE_FILE=vae-encoder-q4x4ffn.gguf`, the reference build)_ | 2.2 GB | _2.54_ | _2.47_ | _2.50_ | _2.82_ | _4.41 %_ | _2.23 GB_ |
 | _last resort: p26 + `VAE_SEQ_ENCODERS=1` (sequential encoders)_ | 1.82 GB | _3.19_ | — | _3.13_ | — | _4.55 %_ | _1.82 GB_ |
 | balanced (clean zh transcripts) | 1.9 GB | 4.44 | — | 4.64 | — | 4.82 % | 2.00 GB |
