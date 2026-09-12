@@ -38,16 +38,17 @@ regenerated audio must hash to `984e60b14cfe…` to be the same probe).
 
 | tier | files | 10 s | 17 s | 69 s | 40-utt mean | WER | RSS |
 |---|---|---|---|---|---|---|---|
-| **max-speed-lean (`--vae-pieces 13`, concurrent — Exp643)** | 1.82 GB | **2.62** | — | _2.78_ ° | _3.15_ ° | **4.55 %**† | **1.87 GB** |
+| **max-speed-lean (`--vae-pieces 13`, concurrent — Exp643)** | 1.82 GB | **2.62** | **2.57** | **2.59** | **2.90** | **4.55 %**† | **1.87 GB** |
 | _same, 26 pieces (−32 MB, +1.3 % time, identical output)_ | 1.82 GB | _2.88_ ‡ | — | _2.83_ ‡ | _3.20_ ‡ | _4.55 % (tag `leanp26c`)_ | _1.84 GB_ |
 | **whole-file / server path** (Exp578/579) | — | — | live set **188-313 MB** for 6-10 s files | — | — | — | — |
-| **max-speed (shipped)** | 2.2 GB | **2.51** | _2.41_ ° | _2.50_ | **2.82** | **4.41 %** | 2.23 GB |
+| **max-speed (shipped)** | 2.2 GB | **2.51** | **2.47** | _2.50_ | **2.82** | **4.41 %** | 2.23 GB |
 | _last resort: p26 + `VAE_SEQ_ENCODERS=1` (sequential encoders)_ | 1.82 GB | _3.19_ | — | _3.13_ | — | _4.55 %_ | _1.82 GB_ |
 | balanced (clean zh transcripts) | 1.9 GB | 4.44 | — | 4.64 | — | 4.82 % | 2.00 GB |
 | accuracy-first (VAE F16) | 2.5 GB | 5.35 | — | 5.62 | 6.58 | 4.55 % | 2.95 GB |
 | _original configuration (session start)_ | 2.5 GB | _6.52_ | — | — | _6.58_ | _4.55 %_ | _2.99 GB_ |
 
 > ° Measured before the Exp670 depthwise-conv1d path became the default; scale by ~0.965.
+> The **17 s** column was re-measured in Exp675 on `chat17.wav` = a deterministic 17.0 s excerpt of `chat69.wav` (first 408,000 frames). The clip the old 17 s cells were taken on no longer exists: `chat.wav` and `chat69.wav` became byte-identical (both 3,311,576 B) when the 69 s clip was pushed, so the pre-Exp675 17 s numbers are not comparable to the new ones and were replaced, not rescaled. Length ladder is monotone and the lean/shipped gap is now consistent across all four lengths (+3.8 % to +4.4 %), which is the useful cross-check: per-piece overhead does not grow with clip length.
 > Re-measured on the current default: 10 s, 69 s (2.55), 138 s (2.62) and the 40-utt mean (2.88).
 
 > **The WER column is read-speech-only (Exp651, Exp653, Exp654).** Every number above is
