@@ -486,11 +486,21 @@ static struct ggml_tensor* ggml_nn_conv_1d_dw(
                 }
             }
             struct ggml_tensor* acc = nullptr;
+            // ONE fused pass per tap instead of mul-then-add (Exp662 priced the tap chain at
+            // 12.7% of VAE time; the fused form moves 3 tensors per tap instead of 5, worth
+            // -4.6% VAE / -3.3% RTF with output BIT-IDENTICAL to the old chain - the kernel uses
+            // vmul+vadd, not vfma, so the product rounds exactly as ggml_mul did. wk is a [C,1]
+            // view of the weight, i.e. per-channel gamma. VAE_DW_AXPY_OFF=1 restores the chain.
+            const bool axpy = getenv("VAE_DW_AXPY_OFF") == nullptr;
             for (int64_t k = 0; k < K; k++) {
                 struct ggml_tensor* xk = ggml_view_2d(ctx, xc, C, T_out, xc->nb[1], (size_t)k * xc->nb[1]);
                 struct ggml_tensor* wk = ggml_view_2d(ctx, ww, C, 1, ww->nb[1], (size_t)k * ww->nb[1]);
-                struct ggml_tensor* term = vae_abl_mul(ctx, xk, wk, "VAE_ABL_TAPS");
-                acc = (acc == nullptr) ? term : vae_abl_add(ctx, acc, term, "VAE_ABL_TAPS");
+                if (axpy && acc != nullptr) {
+                    acc = ggml_add_scaled(ctx, xk, acc, wk);        // acc + xk * wk
+                } else {
+                    struct ggml_tensor* term = vae_abl_mul(ctx, xk, wk, "VAE_ABL_TAPS");
+                    acc = (acc == nullptr) ? term : vae_abl_add(ctx, acc, term, "VAE_ABL_TAPS");
+                }
             }
             result = acc;   // [C, T_out]: the layout the block's residual uses
         } else {
@@ -572,6 +582,8 @@ struct ConvNeXtBlock {
 
         if (is_i8s) {
             x = ggml_add_scaled(ctx, x, residual, mixer_layer_scale);
+        } else if (getenv("VAE_LS_FUSE") != nullptr) {
+            x = ggml_add_scaled(ctx, x, residual, mixer_layer_scale);   // x*scale + residual, 1 pass
         } else {
             // F32 path: x = x * layer_scale + residual
             x = vae_abl_mul(ctx, x, mixer_layer_scale, "VAE_ABL_SCALE");
@@ -600,6 +612,8 @@ struct ConvNeXtBlock {
 
         if (is_i8s) {
             x = ggml_add_scaled(ctx, x, residual, ffn_layer_scale);
+        } else if (getenv("VAE_LS_FUSE") != nullptr) {
+            x = ggml_add_scaled(ctx, x, residual, ffn_layer_scale);     // x*scale + residual, 1 pass
         } else {
             x = vae_abl_mul(ctx, x, ffn_layer_scale, "VAE_ABL_SCALE");
             x = vae_abl_add(ctx, x, residual, "VAE_ABL_RESID");
