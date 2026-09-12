@@ -100,8 +100,9 @@
    "note": "2-speaker probe"
   },
   "twospk_overlap.wav": {
+   "cell": null,
    "md5": "e2957b9f514e504742ac24f8f4f32981",
-   "note": "blessed from device"
+   "note": "Exp609 overlapped-mix diarization probe (Speaker 0 + Speaker 1 expected)"
   },
   "twospk_v34.wav": {
    "md5": "d0cb6df4c923b8652b1b7836b963ad22",
