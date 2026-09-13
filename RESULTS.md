@@ -80,11 +80,11 @@ F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddin
 + **Q8_0 output head** + **concurrent acoustic/semantic encoders** (one thread each), 2 VAE pieces (PIECES=2 harness default).
 
 **RAM-lean tier (Exp641–643).** Same files, `--vae-pieces 13`, **default
-(concurrent) encoders** — 2.84 on the protocol clip, 2.78 on 69 s and 2.84 on
-138 s at 1.87–1.89 GB RSS (vs the p2 default: +2.3 % / +2.7 % / +1.8 % time for
+(concurrent) encoders** — 2.55 on the protocol clip, 2.50 on 69 s and 2.59 on
+138 s at 1.75–1.77 GB RSS post-int8 (Exp700; vs the p2 default: +3.7 % / +2.9 % / +3.6 % time for
 −350 MB). Long-form is clean at this granularity: the 138 s soak holds RSS flat
-(1888 MB over 47 windows, `majflt 0`) and its repetition structure matches the
-default's (210 vs 205 repeated 10-grams — the repeats are in the clip, not a
+(1753→1756 MB over 5.7 min, trend +0.48 MB/min, HWM 1765.9, `majflt 0`) and its repetition structure matches the
+default's (188 vs ~205 repeated 10-grams — the repeats are in the clip, not a
 loop), with 19 sentence-level wording diffs of the usual marginal class. Its
 accuracy is the gated 4.55 % **by byte-identity, not by inference**: a full
 40-utt gate at p13 (tag `leanp13c`) scored WER 4.55 % (S=29 D=1 I=3, H=696) with
