@@ -492,8 +492,12 @@ static struct ggml_tensor* vae_conv_1d_i8(
     // i.e. F16 write + F16 read + F32 write + F32 read vs F32 write + F32 read: strictly more
     // traffic UNLESS the memory system is latency-bound rather than bandwidth-bound. Untested form.
     const bool f16col = vae_abl("VAE_CONV_I8_F16COL");
+    // Exp720 arm: stage the im2col DIRECTLY as interleaved Q8_0 panels (new ggml forward), i.e.
+    // exactly the bytes the blocked gemm's in-kernel conversion would have produced. Removes the
+    // per-matmul conversion AND 3/4 of the staging bytes. Bit-identity is the acceptance test.
+    const bool q8col = vae_abl("VAE_CONV_I8_Q8COL");
     struct ggml_tensor* im2col = ggml_im2col(ctx, geom, x, s0, 0, p0, 0, d0, 0, false,
-                                             f16col ? GGML_TYPE_F16 : GGML_TYPE_F32);
+                                             q8col ? GGML_TYPE_Q8_0 : (f16col ? GGML_TYPE_F16 : GGML_TYPE_F32));
     struct ggml_tensor* col = ggml_reshape_2d(ctx, im2col, im2col->ne[0],
                                               im2col->ne[2] * im2col->ne[1]);
     if (f16col && !q8cast) {

@@ -410,3 +410,26 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   and the first case where the loop's own "parity" verdict on a declined option turned
   out regime-dependent AND wrong in the conservative direction. When re-checking a
   declined knob, test a SECOND DOMAIN, not just the canary.
+
+- Q8_0-INTERLEAVED IM2COL: BUILT, BIT-IDENTICAL, ZERO WIN (Exp720) - closes the LAST
+  priced speed item. Implemented ggml_compute_forward_im2col_q8_0 (panels of 4 columns
+  through the kernel's OWN quantize_q8_0_4x4 -> bit-identical BY CONSTRUCTION; verified:
+  protocol transcript byte-identical to the frozen reference) + builder ne0=k/32 for
+  Q8_0 dst + dispatch case + knob VAE_CONV_I8_Q8COL (default OFF, shipped path unchanged).
+  Speed: 5 interleaved reps = EXACT PARITY (2.3935-2.3973 vs base 2.3921-2.3965).
+  * WHY the ~2% was a phantom: the Q8CAST arm's speedup was never "skipping the
+    conversion" - a row-major Q8_0 src1 != vec_dot_type falls into the GENERIC llamafile
+    path (a different kernel), so that arm measured a KERNEL-SWITCH effect, not a
+    conversion cost. The real in-kernel quantize_mat_q8_0 is ~free: L1-resident panels,
+    vectorized, overlapping the dot stream's memory latency.
+  * Kept as tooling: if a future build stages conv activations as Q8_0, staging bytes
+    drop 4x (RAM-leaning, speed-neutral); the forward also documents the exact panel
+    layout contract of the blocked kernels (useful reference; the gemv-tail question is
+    settled: tail columns are read interleaved, hence zero-padded panels are correct).
+  * CONSEQUENCE: the speed board is now EMPTY BY MEASUREMENT, not by assumption - every
+    component priced (elementwise ~6%, conv dots 8.8% int8, conversion ~0, staging free,
+    LM at bandwidth ceiling, scheduling/granularity/defer/topology closed, declined knobs
+    re-adjudicated). Remaining gains need model/training changes or upstream kernels.
+  LESSON (measurement-artifact class, 6th instance): before pricing a "remove work X"
+  lever, verify the fast arm differs ONLY by X - the Q8CAST arm differed by the whole
+  kernel path. Decompose with all-legal arms (this run IS that decomposition).
