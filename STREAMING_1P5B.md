@@ -94,7 +94,7 @@ Build fingerprint on the phone: `libggml.so 40a1f284e75dbc3c180215267068c12e`,
 measurement: `./.auto/measure.sh` (VAE_FILE now defaults to `vae-encoder-convint8.gguf` and
 LM_FILE to `lm-q8head.gguf`; the script hash-checks both against the device and pushes on
 difference - before Exp689 it pushed neither, so an experiment could measure stale device bytes and
-report them as a result). 2 pieces is the harness default; the binary `--vae-pieces` flag itself
+report them as a result). 1 piece is the harness default (PIECES=1 since v4.0, Exp706; p2 is the documented fallback); the binary `--vae-pieces` flag itself
 defaults to 13. WER gate: `./.auto/eval40.sh <tag> 0 40` +
 `venv-vibe/bin/python .auto/score_hyp.py <tag>`; for paired output-equivalence use
 `.auto/compare_arms.py --gate hyp-A hyp-B eval-librispeech/refs.json`.
@@ -280,11 +280,11 @@ everything else stays F16.
 
 ### Final tier ladder (Exp525–542-era snapshot — SUPERSEDED)
 
-> **Superseded in v3.5** (protocol cells refreshed by Exp664, fused depthwise-tap kernel): the shipped
-default is PIECES=2 at RTF **~2.46** (v3.6 fused f32 depthwise-conv kernel −3.5 %, v3.7 layer-scale
+> **Superseded in v4.0** (whole-window pieces: PIECES=1 is −1.2 % with ZERO gate discordants, Exp706): the shipped
+default is PIECES=1 at RTF **~2.43** (v3.6 fused f32 depthwise-conv kernel −3.5 %, v3.7 layer-scale
 epilogue −1.1 %, v3.8 gelu+bias −0.8 %, **v3.9 blocked-int8 conv weights −3.0 % with the gate paired
 equivalent at McNemar p=1.0 - Exp690**)
-> (69 s 2.43, 138 s 2.50, RSS 2.12 GB, gate 4.38 %); the current ladder
+> (69 s 2.41, 138 s 2.48, RSS 2.46 GB, gate 4.51 % with 0/731 tokens differing from the p2 gate); the current ladder
 > lives in RESULTS.md. The table below (all on-device gated, 10 s protocol
 > `-t 2`/C0, 26-piece default) is preserved as history.
 
@@ -355,11 +355,12 @@ on the time axis: the deferred late pass captures the deep-layer batching
 benefit window-wide at ANY fine piece count, so per-piece overhead is all that
 is left — and the RAM driver is the *early-stage activation arena*, which scales
 with piece size. The measured map over the runnable set {1, 2, 13, 26}
-(non-divisors need a window-loop rework, Exp605) is p1 2.79 @ ~2.56 GB, p2 2.79
-@ 2.23 (default, time-optimal), p13 2.84 @ 1.88, p26 2.88 @ 1.84 — so p2 stays
-the speed default while p13 is the RAM sweet spot, costing +0.9 % on the 40-utt
-mean. p13/p26 produce identical output; p2 differs (40 vs 39 tokens) because
-the dw taps-vs-im2col branch is selected by piece size (Exp640).
+(non-divisors need a window-loop rework, Exp605) at v3.9 is p1 2.43 @ 2.46 GB
+(default, time-optimal), p2 2.46 @ 2.11 (fallback), p13 2.55 @ 1.75, p26 2.55 @ 1.72 — so p1 is
+the speed default while p13 is the RAM sweet spot. Output relations changed with the fusions:
+p1/p2 are byte-identical everywhere measured (protocol transcript hash-equal in 6+ reps;
+40/40 gate transcripts identical, b=0/c=0); p13 differs from p2 by 2 gate tokens (p=0.5). The old
+"p2 differs (40 vs 39 tokens)" sentence was the taps-vs-im2col era (Exp640) and no longer holds.
 
 Against the original baseline (12.24) the max-speed tier is **−65%**; against
 the pre-A78 loop best (6.52) it is −35%. The balanced tier dominates the fast

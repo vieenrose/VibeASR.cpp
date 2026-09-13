@@ -11,13 +11,13 @@ Baseline (original protocol): RTF ~12.4-13.3 on the 10 s slice.
 Goal direction: as far below baseline as honest engineering goes (RTF < 1 is
 believed unreachable without retraining; do NOT chase it by cheating).
 
-## Current bands (A78 codegen build, 10 s protocol, -t2/C0, pieces 2 = default; v3.8 stack incl. the fused f32 depthwise-conv kernel (Exp670), fused layer-scale+residual (Exp671) and fused gelu+bias (Exp673))
+## Current bands (A78 codegen build, 10 s protocol, -t2/C0, PIECES=1 = default since v4.0 (p1 −1.2 % vs p2, zero gate discordants, Exp706); v3.9 stack incl. the fused f32 depthwise-conv kernel (Exp670), fused layer-scale+residual (Exp671) and fused gelu+bias (Exp673))
 | tier | env | band | readings |
 |---|---|---|---|
 | F16 accuracy-first | `VAE_FILE=vae-encoder-f16.gguf` | ~4.77 (deferred late stages) | 4.7705 (Exp555; was 5.3362) |
 | BALANCED | `VAE_FILE=vae-encoder-q4x4ffn.gguf` + LM Q4_K_M | ~4.16 (deferred late stages) | 4.1649 (Exp555; was 4.4007) |
 | FAST-LM v2 | `VAE_FILE=vae-encoder-f16.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) | ~5.21 | 5.2138 (tokens 42), WER 4.41% |
-| **MAX-SPEED v3.9 (DEFAULT, p2)** | `VAE_FILE=vae-encoder-convint8.gguf LM_FILE=lm-q8head.gguf` (Q4_0_4x4 bulk, q6_K embeddings, Q8_0 head) + the v3.4 VAE stack (concurrent encoders + deferred deep stages + lifetime buffers + PIECES=2 + zero-copy weights + [C,T] blocks) + the v3.6-v3.8 fusions (dw-conv1d kernel, layer-scale add_scaled, gelu+bias) + **v3.9 blocked-int8 CONV weights** | **~2.46** | Protocol 2.4644 (paired 3+3 reps vs the F16-conv build: every int8 rep below every ref rep); VAE 16.5 s; decode 3.6 s; RSS 2.12 GB; load 1.2-1.4 s; **40-utt gate WER 4.51%, 1 token of 731 vs the frozen reference (discordants 0 vs 1, McNemar p=1.0)** (tag convint8b; 40-utt mean 2.7524) - output-equivalent. F16-conv file `vae-encoder-q4x4ffn.gguf` stays as the reference/accuracy-first VAE. |
+| **MAX-SPEED v4.0 (DEFAULT, p1)** | `VAE_FILE=vae-encoder-convint8.gguf LM_FILE=lm-q8head.gguf` (Q4_0_4x4 bulk, q6_K embeddings, Q8_0 head) + the v3.4 VAE stack (concurrent encoders + deferred deep stages + lifetime buffers + PIECES=1 + zero-copy weights + [C,T] blocks) + the v3.6-v3.8 fusions (dw-conv1d kernel, layer-scale add_scaled, gelu+bias) + **v3.9 blocked-int8 CONV weights** | **~2.43** | Protocol 2.4304 (clean p2/p1/p1/p2 interleave: every p1 rep below every p2 rep, all byte-identical); VAE 16.2-16.3 s; RSS 2.46 GB; **40-utt gate ZERO discordant tokens of 731 vs the p2 gate (b=0/c=0, McNemar p=1.0)** (tag gatep1; 40-utt mean 2.7109) - identical, not merely equivalent. p2 stays as the documented fallback (+1.2 % time, -344 MB). F16-conv file `vae-encoder-q4x4ffn.gguf` stays as the reference/accuracy-first VAE. |
 | Q8 anchor | `VAE_FILE=vae-encoder-q8_0mixed.gguf` | 6.12-6.15 | 6.1204/6.1520/6.1659 |
 | Q4 | `VAE_FILE=vae-encoder-q4ffn.gguf` | ~6.48 | 6.4776 |
 | ultra-lean (superseded) | `VAE_FILE=vae-encoder-q4ffn.gguf PIECES=26` | ~6.61 | 6.6066 |

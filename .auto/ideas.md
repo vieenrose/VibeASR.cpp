@@ -222,3 +222,23 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   unchanged file. The scorer (explicit argv paths) was unaffected; grep -oE on each
   file is the trustworthy check. Same class as Exp648's whole-file-vs-marker trap:
   verify WHAT a tool read before believing a diff.
+
+- GRANULARITY REOPENED AND RE-CLOSED AT v4.0 (Exp706): p1 beats p2 by -1.2% with
+  ZERO gate discordants, so the default flipped p2 -> p1. Evidence: clean p2/p1/p1/p2
+  interleave (p2 2.4609/2.4575, p1 2.4335/2.4272 - every p1 rep below every p2 rep,
+  thermal flat 36.5-36.6, all 4 transcripts byte-identical f8205302) plus 2 earlier
+  reps the same direction; 40-utt gate at p1 vs p2 reference: b=0/c=0 of 731 tokens
+  (McNemar p=1.0, tag gatep1, mean 2.7109 vs 2.7524) - IDENTICAL, the strongest gate
+  in loop history. Full p1 ladder row measured same-session (17 s 2.3898, 69 s 2.4124,
+  138 s 2.4766, all token-identical to p2). Likely mechanism (structural, not isolated):
+  p1 launches half the matmul/im2col nodes over the same audio, and every blocked-conv
+  node pays an internal F32->Q8_0 from_float conversion - so per-node overhead scales
+  with piece count while bytes don't. The old "p2 differs (40 vs 39 tokens)" sentence
+  was the taps-vs-im2col era and is retired: p1/p2 identical everywhere, p13 differs
+  by 2 gate tokens (p=0.5). Cost of the flip: +344 MB RSS (2.46 GB, still phone-safe);
+  p2 stays the documented fallback. Flip mechanics done in one pass: tier.env,
+  measure.sh/bench PIECES default, eval40 default, audit green (64), ladder row, tier
+  table, map sentence. LESSON: the Exp643 "ties p2, +335 MB, do not re-sweep" closure
+  was priced pre-fusions/pre-int8 - any closure whose mechanism involves per-node costs
+  must be re-swept after an op-level change alters node costs. The conv-int8 internal
+  conversion is exactly such a change.

@@ -19,7 +19,7 @@ TAG=${1:-a78}; START=${2:-0}; COUNT=${3:-40}
 VAE_FILE=${VAE_FILE:-vae-encoder-convint8.gguf}
 LM_FILE=${LM_FILE:-lm-q8head.gguf}
 THREADS=${THREADS:-2}; MASK=${MASK:-C0}
-PIECES=${PIECES:-2}
+PIECES=${PIECES:-1}
 MODELS_DIR=${MODELS_DIR:-$(cd "$(dirname "$0")/.." && pwd)/../models-streaming}
 OUT=../eval-librispeech/hyp-$TAG
 mkdir -p "$OUT"

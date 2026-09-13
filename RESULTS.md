@@ -41,7 +41,8 @@ regenerated audio must hash to `984e60b14cfe…` to be the same probe).
 | **max-speed-lean (`--vae-pieces 13`, concurrent — Exp643, conv-int8 Exp690)** | 1.75 GB | **2.55** | **2.48** | **2.50** | **2.81** | **4.79 %**† | **1.75 GB** |
 | _same, 26 pieces (−32 MB, +1.3 % time, identical output)_ | 1.82 GB | _2.88_ ‡ | — | _2.83_ ‡ | _3.20_ ‡ | _4.55 % (tag `leanp26c`)_ | _1.84 GB_ |
 | **whole-file / server path** (Exp578/579) | — | — | live set **188-313 MB** for 6-10 s files | — | — | — | — |
-| **max-speed (shipped, v3.9 — `VAE_FILE=vae-encoder-convint8.gguf`, blocked-int8 conv weights, Exp690)** | 2.11 GB | **2.46** | **2.41** | **2.43** | **2.75** | **4.51 %** | 2.12 GB |
+| **max-speed (shipped, v4.0 — PIECES=1, Exp706)** | 2.46 GB | **2.43** | **2.39** | **2.41** | **2.71** | **4.51 %** | 2.46 GB |
+| _same tier at PIECES=2 (previous default)_ | 2.11 GB | _2.46_ | _2.41_ | _2.43_ | _2.75_ | _4.51 %_ | _2.12 GB_ |
 | _same tier with F16 conv weights (`VAE_FILE=vae-encoder-q4x4ffn.gguf`, the reference build)_ | 2.2 GB | _2.54_ | _2.47_ | _2.50_ | _2.82_ | _4.41 %_ | _2.23 GB_ |
 
 Gate cells re-measured at v3.9 with corrected harness defaults (Exp694): shipped tier 40-utt mean
