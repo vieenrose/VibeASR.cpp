@@ -53,7 +53,7 @@ stamp in each `hyp-*/run-info.log` is what proved that, and every pre-existing g
 correctly. `.auto/tier.env` plus the audit now make that class of mistake fail loudly.
 | _last resort: p26 + `VAE_SEQ_ENCODERS=1` (sequential encoders)_ | 1.82 GB | _3.19_ | — | _3.13_ | — | _4.55 %_ | _1.82 GB_ |
 | balanced (clean zh transcripts) | 1.9 GB | 4.44 | — | 4.64 | — | 4.82 % | 2.00 GB |
-| accuracy-first (VAE F16) | 2.5 GB | 5.35 | — | 5.62 | 6.58 | 4.55 % | 2.95 GB |
+| accuracy-first (VAE F16, 10 s + RSS re-measured Exp702) | 2.5 GB | 4.34 | — | 5.62 | 6.58 | 4.55 % (EN gate only — the Q4_K_M LM emits repetition-class artifacts on zh: "Y Y boys"/letter-soup on the 10 s clip with EITHER VAE, while the shipped 4x4+q8head LM is clean; same class as Exp499's Y-voice note, so this tier's accuracy claim covers English read speech, not zh) | 3.07 GB |
 | _original configuration (session start)_ | 2.5 GB | _6.52_ | — | — | _6.58_ | _4.55 %_ | _2.99 GB_ |
 
 > ° Measured before the Exp670 depthwise-conv1d path became the default; scale by ~0.965.
