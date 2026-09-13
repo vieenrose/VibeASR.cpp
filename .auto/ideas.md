@@ -160,3 +160,15 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   multispk probe (14.4% -> 27.8% with 5 deletions). What was declined was auto-select
   by length (inapplicable to streaming); the mechanism itself is now measured and loses
   on this stack. Its value was diagnostic (see the diarization root cause above).
+
+- GATE-SET PROVENANCE LEDGER (Exp699, full sweep of eval-librispeech/hyp-*/): 30 sets
+  predate the Exp617 run-info.log stamp (a78, ctblock, defer5, dwtaps, f16a78, geluquick,
+  q5head, head4x4, lm4x4*, xwin, ...): usable as DISTANCES only, never as single-variable
+  effects - the docs already carry that caveat on the resolution-limit row, verified still
+  accurate. Partial sets exist and are correctly UNCITED anywhere: hyp-conv1d66 n=29 (the
+  crashed Exp666 gate - superseded by dwchk68/dwfix69/convint8b), hyp-dwct67 n=8, hyp-dwft69
+  n=18, hyp-p13im2chk n=2, hyp-f16load/lm4x4/p13chk n=5, hyp-par3 n=3. All SHIP decisions
+  rest on stamped n=40 single-variable pairs (gate645, gelb673, lsfuse671, dwchk68, dwfix69,
+  leanp13c/t, leanp26c, convint8b, lean694); unstamped sets support only declines (safe
+  direction) and historical distances. No doc repair needed. Re-run this sweep if a new
+  accuracy claim is ever built on an old hyp dir.
