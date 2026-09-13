@@ -355,3 +355,14 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   identical hashes across supposedly-different arms. Rule: before trusting an arm,
   show the flag actually reaches the binary (grep the invoked command line once);
   env-name guesses are for env-gated knobs only.
+
+- v4.1 BEHAVIORAL SUITE COMPLETED (Exp716, the partial Exp712 run finished): 48 kHz
+  stereo -> coherent zh with the DOCUMENTED 'YyY' proper-noun quirk of the 4x4 LM
+  (Exp499 class, not a regression); twospk_overlap -> Speaker 0 x4 + Speaker 1 x2
+  (Exp609 holds at v4.1); twospk sequential -> single tag (closed Exp650 behavior).
+  Silence/noise/music were done at Exp712. Anchor 2.3912 byte-identical.
+  The audit caught its first real FAIL on its own this iteration: Exp715's rebuild
+  left the device with the OLD binary (the probes used AUDIO=, which skips the push),
+  i.e. the two-speaker probe above ran on the pre-Exp715 binary - functionally
+  identical here (that change is default-inert), and the audit's sync check is exactly
+  what turned a silent-stale arm into a loud one. Pushed; 64/64 green.
