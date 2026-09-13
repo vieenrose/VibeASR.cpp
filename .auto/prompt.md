@@ -17,11 +17,11 @@ believed unreachable without retraining; do NOT chase it by cheating).
 | F16 accuracy-first | `VAE_FILE=vae-encoder-f16.gguf` | ~4.77 (deferred late stages) | 4.7705 (Exp555; was 5.3362) |
 | BALANCED | `VAE_FILE=vae-encoder-q4x4ffn.gguf` + LM Q4_K_M | ~4.16 (deferred late stages) | 4.1649 (Exp555; was 4.4007) |
 | FAST-LM v2 | `VAE_FILE=vae-encoder-f16.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) | ~5.21 | 5.2138 (tokens 42), WER 4.41% |
-| **MAX-SPEED v3.9 (DEFAULT, p2)** | `VAE_FILE=vae-encoder-convint8.gguf LM_FILE=lm-q8head.gguf` (Q4_0_4x4 bulk, q6_K embeddings, Q8_0 head) + the v3.4 VAE stack (concurrent encoders + deferred deep stages + lifetime buffers + PIECES=2 + zero-copy weights + [C,T] blocks) + the v3.6-v3.8 fusions (dw-conv1d kernel, layer-scale add_scaled, gelu+bias) + **v3.9 blocked-int8 CONV weights** | **~2.46** | Protocol 2.4644 (paired 3+3 reps vs the F16-conv build: every int8 rep below every ref rep); VAE 16.5 s; decode 3.6 s; RSS 2.12 GB; load 1.2-1.4 s; **40-utt gate WER 4.38%, paired vs the frozen reference 2-vs-1 discordant tokens, McNemar p=1.0** (tag convint8) - output-equivalent. F16-conv file `vae-encoder-q4x4ffn.gguf` stays as the reference/accuracy-first VAE. |
+| **MAX-SPEED v3.9 (DEFAULT, p2)** | `VAE_FILE=vae-encoder-convint8.gguf LM_FILE=lm-q8head.gguf` (Q4_0_4x4 bulk, q6_K embeddings, Q8_0 head) + the v3.4 VAE stack (concurrent encoders + deferred deep stages + lifetime buffers + PIECES=2 + zero-copy weights + [C,T] blocks) + the v3.6-v3.8 fusions (dw-conv1d kernel, layer-scale add_scaled, gelu+bias) + **v3.9 blocked-int8 CONV weights** | **~2.46** | Protocol 2.4644 (paired 3+3 reps vs the F16-conv build: every int8 rep below every ref rep); VAE 16.5 s; decode 3.6 s; RSS 2.12 GB; load 1.2-1.4 s; **40-utt gate WER 4.51%, 1 token of 731 vs the frozen reference (discordants 0 vs 1, McNemar p=1.0)** (tag convint8b; 40-utt mean 2.7524) - output-equivalent. F16-conv file `vae-encoder-q4x4ffn.gguf` stays as the reference/accuracy-first VAE. |
 | Q8 anchor | `VAE_FILE=vae-encoder-q8_0mixed.gguf` | 6.12-6.15 | 6.1204/6.1520/6.1659 |
 | Q4 | `VAE_FILE=vae-encoder-q4ffn.gguf` | ~6.48 | 6.4776 |
 | ultra-lean (superseded) | `VAE_FILE=vae-encoder-q4ffn.gguf PIECES=26` | ~6.61 | 6.6066 |
-| MAX-SPEED-LEAN (p13) | `VAE_FILE=vae-encoder-convint8.gguf LM_FILE=lm-q8head.gguf PIECES=13` | **~2.55** | Protocol 2.5501, **RSS 1752 MB**, tokens 39-40; 69 s / 40-utt mean not yet re-measured on this stack (pre-Exp690: 2.78 / 3.1526). Gate: output-equivalent to the p2 tier (1 token of 731, McNemar p=1.0, tags leanp13c/leanp13t). The old seq-mode recipe (`PIECES=26 EXTRA_ENV=VAE_SEQ_ENCODERS=1`) is a LAST RESORT - at fine pieces concurrency costs ~30 MB and buys -11% |
+| MAX-SPEED-LEAN (p13) | `PIECES=13` (files as default tier) | **~2.55** | Protocol 2.5501; 17 s 2.48; 69 s 2.50; **40-utt mean 2.8136**; **RSS 1752 MB**. Gate WER 4.79 %, 2 tokens of 731 from the shipped tier (p=0.5) - output-equivalent. The old seq-mode recipe (`PIECES=26 EXTRA_ENV=VAE_SEQ_ENCODERS=1`) is a LAST RESORT - at fine pieces concurrency costs ~30 MB and buys -11% |
 | BALANCED-LEAN | `VAE_FILE=vae-encoder-q4x4ffn.gguf PIECES=26` | ~5.21 | 5.208 (69 s 4.9374, identical tokens, RSS 1.98 GB) |
 Old-build bands (6.49-6.59 Q8, 10.5 F16, 6.81 Q4, 7.06 ultra-lean) are DEAD.
 69 s equal-token: accuracy-first 5.6089 / balanced 4.8228 / max-speed 4.046.
@@ -37,6 +37,9 @@ MODEL ARTIFACTS: models-streaming/vae-encoder-convint8.gguf (DEFAULT since Exp69
   and lm-q4_0_4_4.gguf (llama-quantize --allow-requantize --token-embedding-type q6_K ... Q4_0_4_4).
   measure.sh now hash-checks VAE_FILE/LM_FILE against the device and pushes on difference, because an
   experiment used to be able to measure a stale device file and report it as a new result (Exp689).
+  `.auto/tier.env` declares the shipped tier (VAE_FILE/LM_FILE/PIECES) ONCE; audit_harness.py FAILS if
+  measure.sh, eval40.sh or this table drift from it (Exp694 found eval40's defaults three variables off
+  the tier, which made a gate measure a different system and print a plausible WER for it).
 
 ## Metrics
 - Sustained reference (Exp526, shipped tier + concurrent encoders, 138 s clip):

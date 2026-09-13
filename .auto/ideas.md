@@ -117,3 +117,13 @@
   garbage (1024 tokens vs 39) because it violates that contract. So the F32
   unfolding is the only supported staging and the ~2% the wrong arm shows is
   unreachable in this ggml. Do not re-probe staging variants.
+
+LESSON (Exp694, cost an invalid gate and a phantom +31% regression): a runner script's
+own defaults ARE the configuration of every run that passes no env. eval40.sh defaulted
+to VAE=vae-encoder-q8_0mixed, LM=streaming-lm-q4_k_m, PIECES=13 - three variables off the
+shipped tier - so the gate measured a different system and printed a plausible WER/RTF for
+it. Two rules: (1) READ THE STAMP (hyp-*/run-info.log) before believing any gate number;
+(2) keep the tier in ONE declaration (.auto/tier.env) and have the audit fail on drift -
+now implemented and negative-controlled (pointing tier.env at another VAE produces 2 FAILs).
+Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%, 1 token of
+731 from hyp-gate645 (p=1.0), 40-utt mean 2.7524; lean p13 2.8136, 2 tokens (p=0.5).
