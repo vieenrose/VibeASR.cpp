@@ -478,13 +478,29 @@ static struct ggml_tensor* vae_conv_1d_i8(
     //   * ggml_cast(F16 -> Q8_0) -> mul_mat-> runs but computes garbage: 1024 tokens vs the reference
     //     39, silently, since that path's asserts are compiled out on device. It is ~2% faster on
     //     vae_s, which is exactly why the hatch below is kept and labeled broken.
+    //   * F16 im2col + cast(F16->F32) -> mul_mat (VAE_CONV_I8_F16COL=1) -> CORRECT (byte-identical)
+    //     but EXACTLY PARITY (Exp715: 2.3900/2.3942 vs base 2.3831/2.3959, vae_s 15.9 both): the
+    //     halved staging bytes do not pay because the cast node adds back a write+read. Staging is
+    //     NOT the ~2% - what the broken Q8CAST arm was saving is the in-kernel quantize_mat_q8_0,
+    //     which needs the interleaved 4x4 layout no im2col/cast form produces (a ggml.c forward for
+    //     that layout + a correct pre-converted read path would be the only route; the current
+    //     pre-converted path misreads, silently). The 2% is priced at that surgery and no cheaper.
     const bool q8cast = vae_abl("VAE_CONV_I8_Q8CAST");
+    // Shipped route IS the direct-F32 staging (im2col writes F32, the blocked gemm converts it to
+    // interleaved Q8_0 in-kernel via quantize_mat_q8_0). The f16col arm halves the staging BYTES
+    // but adds an F32-cast node in front of the matmul (the blocked gemm asserts an F32 src1),
+    // i.e. F16 write + F16 read + F32 write + F32 read vs F32 write + F32 read: strictly more
+    // traffic UNLESS the memory system is latency-bound rather than bandwidth-bound. Untested form.
+    const bool f16col = vae_abl("VAE_CONV_I8_F16COL");
     struct ggml_tensor* im2col = ggml_im2col(ctx, geom, x, s0, 0, p0, 0, d0, 0, false,
-                                             q8cast ? GGML_TYPE_F16 : GGML_TYPE_F32);
+                                             f16col ? GGML_TYPE_F16 : GGML_TYPE_F32);
     struct ggml_tensor* col = ggml_reshape_2d(ctx, im2col, im2col->ne[0],
                                               im2col->ne[2] * im2col->ne[1]);
+    if (f16col && !q8cast) {
+        col = ggml_cast(ctx, col, GGML_TYPE_F32);           // blocked gemm requires an F32 src1
+    }
     if (vae_abl("VAE_ABL_CONV")) {   // same measurement-only substitution as the F16 path (Exp683)
-        struct ggml_tensor* f = q8cast ? ggml_cast(ctx, col, GGML_TYPE_F32) : col;
+        struct ggml_tensor* f = (q8cast || f16col) ? ggml_cast(ctx, col, GGML_TYPE_F32) : col;
         return ggml_view_2d(ctx, f, geom->ne[2], f->ne[1], f->nb[1], 0);
     }
     return ggml_mul_mat(ctx, w, q8cast ? ggml_cast(ctx, col, GGML_TYPE_Q8_0) : col);
