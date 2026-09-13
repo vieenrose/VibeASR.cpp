@@ -86,6 +86,9 @@ PY
   T=$(grep -oE 'tokens: [0-9]+' .auto/eval40_err.txt | head -1 | awk '{print $2}')
   [ -z "${R:-}" ] && { echo "FAILED parse $K"; exit 1; }
   echo "$i $K rtf=$R tok=$T"
+  # persist per-utterance RTF (Exp711: the mean was previously stdout-only and lost on
+  # interrupted/resumed runs - a gate's mean is a ladder cell, not a throwaway line)
+  echo "$i $K rtf=$R tok=$T" >> "$OUT/rtf.log" 2>/dev/null || true
   SUM=$(python3 -c "print($SUM+$R)"); N=$((N+1))
 done
 adb -s $DEV shell "rm -rf $RDIR/ls40" >/dev/null 2>&1

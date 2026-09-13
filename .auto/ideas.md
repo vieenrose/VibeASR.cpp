@@ -295,3 +295,19 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   regime-bound as perf claims. Re-run the matrix in one binary whenever the default
   path changes structurally (here: operating point p2->p1 AND encode path defer->
   piece-wise in the same stack).
+
+- LAST OPEN CELL FILLED (Exp711): lean p13 40-utt gate mean = 2.8187 (n=40, tag
+  lean711b, rtf.log persisted). Reproducibility proven in-build (lean711 vs lean711b
+  transcripts byte-identical across two full 40-utt runs). Paired vs shipped
+  (gatedef1): 2 discordant tokens of 731 (b=0/c=2, p=0.5, WER 4.51->4.79) - the same
+  lean-vs-default difference as every prior stack. CAVEAT recorded: lean711 BIN
+  (42524f05, post-Exp708 build) differs from gatedef1's (1ba9309a) - both ARE the v4.1
+  default config, but the pair is not single-variable; direction matches all archived
+  lean pairs, so the equivalence reading stands.
+  OBSERVATION worth knowing: the lean gap is +5.3% on the gate mean vs +5.4% on the
+  10 s protocol (2.52/2.39) - at v4.1 per-piece overhead scales with clip length again
+  (p13 = 13 pieces/window), UNLIKE the Exp646-era +0.9% on short clips. The lean tier
+  is now uniformly ~+5% at every length; its only claim remains 1.75 vs 2.37 GB.
+  HARNESS: eval40.sh now writes hyp-<tag>/rtf.log (per-utterance RTF had been
+  stdout-only - a gate mean was LOST on every interrupted/resumed run, which is how
+  this cell went stale twice).
