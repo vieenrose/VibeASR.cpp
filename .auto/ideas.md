@@ -127,3 +127,36 @@ it. Two rules: (1) READ THE STAMP (hyp-*/run-info.log) before believing any gate
 now implemented and negative-controlled (pointing tier.env at another VAE produces 2 FAILs).
 Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%, 1 token of
 731 from hyp-gate645 (p=1.0), 40-utt mean 2.7524; lean p13 2.8136, 2 tokens (p=0.5).
+
+- DIARIZATION COLLAPSE: ROOT CAUSE (user-requested debug, closes Exp648/650). The
+  "1 tag for 4 voices" on the canonical probe is the windowed streaming protocol, not a
+  dead feature and not quantization. Mechanism, each link evidenced:
+  (1) No speaker state crosses a window: vae_cache_reset per window
+  (demo/asr_streaming.cpp:475), the LM's cross-window history is text only, and no
+  speaker-embedding/clustering/voiceprint code exists in src/ or demo/ (grep for
+  xvector/dvector/cluster/cosine/spk_emb/voiceprint/EDA: empty). Chunk labels are
+  therefore numbered window-locally ("Speaker 0" = this window's first voice).
+  (2) A second tag needs two voices' contrast inside ONE window's acoustic embeddings.
+  Same file, same weights, same LM: windowed -> tags 0x12, attribution 0.567; --xwin
+  (only change: encoder carry, same chunk spans) -> tags 0,1,1,0,1,0,0,1,1,0,1,0,
+  attribution 0.294, tags 2/4. Transcripts: .auto/hyp-ms-windowed-v39.txt vs
+  hyp-ms-xwin-v39.txt. xwin also costs WER 14.4% -> 27.8% here, so carry is a
+  diagnostic, not a fix.
+  (3) All backlog observations follow: 100/1000 ms gaps use 3 tags (different
+  turn/window alignment -> different within-window contrast), overlapped mix splits
+  0/1 (two voices share windows), sequential twospk collapses (one voice per window),
+  accuracy-first tier got 2/4 on the same probe (F16 features render a leading sliver
+  just faithfully enough to cross the split threshold - configuration-coincidental).
+  A text-level feedback loop compounds it: windowed KV history is all "Speaker 0", an
+  in-context prior toward 0 (consistent with, not separately proven).
+  WHAT THE MODEL CANNOT DO in this protocol: stable cross-window speaker identity
+  (tags renumber window to window; xwin consistency 0.724). Fixing that needs
+  per-window speaker embeddings carried across windows = a model/architecture change,
+  still out of loop scope. The published probe card (eval-bilingual/publish/README.md)
+  now states this mechanism instead of "collapsed to a single tag".
+- --xwin AS A SPEED LEVER: CLOSED on the current stack (was -8.5% on shorts two years
+  ago). Paired A/B via .auto/measure_xwin.sh: protocol 2.4677/2.4596 -> 2.5448/2.5468
+  (+3.2% SLOWER), 17 s 2.412/2.413 -> 2.523/2.517 (+4.6%), and worse WER on the
+  multispk probe (14.4% -> 27.8% with 5 deletions). What was declined was auto-select
+  by length (inapplicable to streaming); the mechanism itself is now measured and loses
+  on this stack. Its value was diagnostic (see the diarization root cause above).
