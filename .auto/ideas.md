@@ -204,3 +204,21 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   after 2 arms (p2a 2.4616, p1a 2.4260 - consistent direction, still confounded).
   Needs a clean p2/p1/p1/p2 run before touching the granularity closure (p2 default)
   or the map sentence in STREAMING_1P5B.md.
+
+- v2 FOUR-ARM CHARACTERIZATION (autoresearch on the probe, NOT optimization - 85 ref
+  tokens cannot rank tiers; no code/weights changed on these numbers). Same clip:
+  shipped WER 25.9 % / attr 0.4235 / tags 4/4 (0,1,2,2,0,3,1,2,3,0);
+  xwin WER 20.0 % / attr 0.4286 / tags 5/4 (phantom 5th speaker);
+  accfirst WER 18.8 % / attr 0.4268 / tags 4/4;
+  lean-p13 WER 25.9 % / attr 0.4235 / tag-IDENTICAL to shipped.
+  READING: attribution is invariant (0.42-0.43) across carry, precision, and
+  granularity while numbering renumbers window-locally - separation on v2 is robust,
+  not config-coincidental, and no knob moves it (cross-window identity needs a model
+  change). WER varies 18.8-25.9 % (carry/precision help overlap word recognition), so
+  recognition and separation are independent axes - do not rank tiers by v2 WER.
+  Transcripts: .auto/hyp-msv2-{shipped,xwin,accfirst,leanp13}.txt.
+  CAUGHT MYSELF: a `$a`-in-double-quotes shell bug made one python probe read the xwin
+  file twice, printing a "changed" shipped sequence (incl. phantom Speaker 4s) on an
+  unchanged file. The scorer (explicit argv paths) was unaffected; grep -oE on each
+  file is the trustworthy check. Same class as Exp648's whole-file-vs-marker trap:
+  verify WHAT a tool read before believing a diff.
