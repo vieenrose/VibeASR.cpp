@@ -326,3 +326,17 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   is at least loud, not silent. Behavioral asset names live ONLY on device
   (silence5s/noise5s/song20s/proto48k_stereo) - the device_assets.json manifest covers
   cell-backing clips; extending it to behavioral probes is cheap if ever audited.
+
+- ATTRIBUTION RE-DERIVED @ v4.1 (Exp713, vae_s ablations on the shipped piece-wise
+  p1 graph, base 15.9 s): conv dots 8.8% (8.4 s at p2 era: 9.1%), bias adds 2.5%,
+  layer-scale 1.9%, residual 1.9%, dw taps (conv kernel) 1.9% - elementwise 6.2%
+  (was 7.8% at v3.9). PARTS SUM 1.4 s < union by ~0.3 s: after the three fusions the
+  remaining ops genuinely overlap (same cache lines touched by neighboring matmuls),
+  unlike Exp662's additive regime - do not expect additivity on this graph.
+  Structural corollary: piece-wise-at-p1 does NOT change deep-layer batching - the
+  late pass still batches window-wide (52 pieces), which is why defer-OFF's -1.2% is
+  pure staging/build cost and why the attribution barely moved across the two path
+  changes. The speed board is confirmed unchanged by measurement, not by assumption.
+  CORRECTION to Exp712's note: behavioral probe assets ARE hash-manifested
+  (device_assets.json carries silence5s/noise5s/song20s/proto48k_stereo/twospk* with
+  notes, and their device hashes match today) - no tooling gap, my note was wrong.
