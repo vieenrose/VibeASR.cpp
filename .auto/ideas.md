@@ -366,3 +366,15 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   i.e. the two-speaker probe above ran on the pre-Exp715 binary - functionally
   identical here (that change is default-inert), and the audit's sync check is exactly
   what turned a silent-stale arm into a loud one. Pushed; 64/64 green.
+
+- LEAN TIER LONG-FORM RAM CLAIM RE-VERIFIED @ v4.1 (Exp717): 138 s soak with the
+  lean recipe (PIECES=13 + defer ON): peak RSS 1766 MB, series ~1756-1808 MB flat,
+  majflt 0, 851 tokens (the documented lean long-form count), repetition screen 0
+  repeated 5-grams, RTF 2.5757 (4% above shipped's 2.4766 - consistent with the
+  uniform ~+4-5% lean gap at v4.1). The "sub-1.8 GB" tier claim holds at the current
+  stack. Protocol cells re-confirmed 2.52 (defer-ON verified via the correct --env
+  route this time); shipped anchor 2.3937/2.4012 in band.
+  SAMPLER POST-MORTEM: my first in-line series collected zero samples - a local
+  `while read` over a piped PID list whose $p expanded before the adb hop (the
+  Exp679 adb-argv trap, again). The exit-time peak_rss_mb + coarse polls answered
+  the question anyway; prefer rss_soak.py (it refuses to print an empty success).
