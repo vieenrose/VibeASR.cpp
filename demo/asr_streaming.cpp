@@ -479,11 +479,14 @@ int main(int argc, char ** argv) {
             // buffer; the deep stages then run ONCE for the whole window, which
             // turns the deep GEMVs into window-level GEMMs (measured on device:
             // VAE 26.0 -> 24.2 s, RTF -5%, RSS unchanged, transcript differs by
-            // one proper-noun token). VAE_DEFER_LATE=0 restores the piece-wise
-            // path; VAE_LATE_SPLIT overrides the stage split (default 6).
+            // one proper-noun token). VAE_DEFER_LATE=1 restores the deferred
+            // path (needed by fine granularity: at p13/p26 the deep layers are
+            // GEMV-shaped per piece, so window-batching wins ~5% - Exp708); the
+            // lean tier recipe sets it explicitly. VAE_LATE_SPLIT overrides the
+            // stage split (default 6).
             const char * defer_env = getenv("VAE_DEFER_LATE");
             const bool defer_late =
-                ((defer_env == nullptr) || (atoi(defer_env) > 0)) &&
+                ((defer_env != nullptr) && (atoi(defer_env) > 0)) &&
                 // RAM-lean mode keeps its single shared arena (both encoders on
                 // slot 0, sequential), which the deferred path does not use, so
                 // VAE_SEQ_ENCODERS=1 falls back to the piece-wise encode.

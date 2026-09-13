@@ -242,3 +242,19 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   was priced pre-fusions/pre-int8 - any closure whose mechanism involves per-node costs
   must be re-swept after an op-level change alters node costs. The conv-int8 internal
   conversion is exactly such a change.
+
+- DEFER-OFF AT p1 SHIPPED (Exp708, v4.1): VAE_DEFER_LATE default inverted to OFF.
+  Mechanism: at PIECES=1 a piece IS the whole window, so the deferred late pass
+  batches nothing - it only adds boundary-buffer staging (26->1 copies) and a second
+  graph build. Bracketed ON/OFF/OFF/ON interleave (thermal flat 36.5-36.6): OFF
+  2.3937/2.3927, ON 2.4207/2.4255 = -1.2%; vae_s 15.9 vs 16.2. Output BYTE-IDENTICAL
+  at p1 (hash f8205302 - the piece-wise path IS what produced the frozen reference at
+  p1) and the 40-utt gate has ZERO discordants of 731 (b=0/c=0, tag gatedef1, mean
+  ~2.677 vs 2.7109). Lean p13 is the exception and the docs now carry the flag
+  explicitly: defer is REQUIRED at fine granularity (measured ON 2.54 vs OFF 2.67 =
+  -5%, the deep layers are GEMV-shaped per piece there) - recipe is now
+  `PIECES=13 VAE_DEFER_LATE=1`. LESSON (same class as the Exp706 granularity
+  re-sweep): Exp639's "defer is a no-op at p2" was measured at p2 with the OLD
+  weight formats; at p1 with int8 convs the late pass is not a no-op but pure
+  overhead. A closure of the form "knob X is neutral" must name the regime it was
+  neutral IN, and be re-checked when the default point moves (here p2->p1 moved it).

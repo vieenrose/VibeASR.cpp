@@ -316,9 +316,11 @@ Note (Exp542): with concurrent encoders every tier carries the same two-arena
 footprint, so the balanced tier no longer has a RAM advantage over the shipped
 tier (both ~2.07 GB); its niche is now purely the clean zh transcript (the 4x4
 LM garbles rare/proper tokens, Exp499). RAM-constrained devices use the
-RAM-lean tier instead (`--vae-pieces 13`, encoders still concurrent): 2.84 on
-the protocol clip and 3.15 on the 40-utt mean at 1.88 GB (Exp643; the older
-`VAE_SEQ_ENCODERS=1` recipe is 3.19 @ 1.82 GB and strictly worse).
+RAM-lean tier instead (`--vae-pieces 13 VAE_DEFER_LATE=1`, encoders still
+concurrent): 2.54 on the protocol clip at 1.75 GB (Exp708; defer is REQUIRED at
+fine granularity - without it p13 pays 2.67 in the deep-layer GEMV regime). The
+old default (PIECES=13, no flags) predates the v4.0 defer rework and now runs
+piece-wise by default, so the flag must be set explicitly.
 
 With the corrected embedding the **max-speed tier Pareto-dominates the
 accuracy-first tier**: 28% faster on the 40-utt mean and 27.5% on the 69 s clip,
