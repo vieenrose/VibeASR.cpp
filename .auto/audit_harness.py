@@ -124,7 +124,47 @@ else:
         r = sh(f'adb -s {DEV} get-state 2>&1', timeout=30)
         (ok if 'device' in r.stdout else bad)(f"device {DEV} state: {r.stdout.strip()[:40]}")
 
-        # ---- 5. device inventory ----------------------------------------------
+        # ---- 4b. shipped-tier spec vs every runner's defaults -------------------------
+# Exp694: eval40.sh defaulted to VAE=vae-encoder-q8_0mixed, LM=streaming-lm-q4_k_m, PIECES=13 while the
+# shipped tier was something else, so a gate with no explicit env measured a DIFFERENT SYSTEM and printed
+# a plausible WER/RTF for it. One declaration, checked against every consumer.
+TIER = {}
+tp = os.path.join(HERE, 'tier.env')
+if not os.path.exists(tp):
+    bad("tier.env is missing - it must declare the shipped tier's VAE_FILE/LM_FILE/PIECES")
+else:
+    for line in open(tp, errors='ignore'):
+        line = line.strip()
+        if '=' in line and not line.startswith('#'):
+            k, v = line.split('=', 1)
+            TIER[k.strip()] = v.strip()
+    for k in ('VAE_FILE', 'LM_FILE', 'PIECES'):
+        if k not in TIER:
+            bad(f"tier.env does not declare {k}")
+    for s_ in ('measure.sh', 'eval40.sh'):
+        txt = open(os.path.join(HERE, s_), errors='ignore').read()
+        for k, want in TIER.items():
+            vals = re.findall(r'\{' + k + r':-([^}]*)\}', txt)
+            if not vals:
+                bad(f"{s_}: no default for {k} found - cannot verify it matches the shipped tier")
+            elif want not in vals:
+                bad(f"{s_}: {k} defaults to {sorted(set(vals))} but tier.env says '{want}' - "
+                    f"a run without explicit env measures a DIFFERENT SYSTEM")
+            elif len(set(vals)) > 1:
+                warn(f"{s_}: {k} has several distinct defaults in the file {sorted(set(vals))} - "
+                     f"make them consistent")
+        if TIER.get('VAE_FILE'):
+            ok(f"{s_} defaults match tier.env for {sorted(TIER)}")
+    pm = os.path.join(HERE, 'prompt.md')
+    if os.path.exists(pm) and TIER.get('VAE_FILE'):
+        t = open(pm, errors='ignore').read()
+        if TIER['VAE_FILE'] not in t:
+            bad(f"prompt.md never names the shipped VAE file ({TIER['VAE_FILE']}) - the tier table is "
+                f"stale prose that future sessions will follow")
+        else:
+            ok("prompt.md's tier table names the shipped VAE file")
+
+# ---- 5. device inventory ----------------------------------------------
         # derive the pushed-artifact list from measure.sh (the harness's own definition),
         # so the audit cannot drift from what actually gets pushed
         push = []
