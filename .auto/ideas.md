@@ -391,3 +391,22 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   RULE: after ANY structural flip, do a PRESENT-TENSE sweep ("current/shipped/default/
   today" x numbers), not just update the cells you remember - prose is what future
   sessions (and the runbook) follow. The ladder is necessary but not sufficient.
+
+- GELU_QUICK RE-ADJUDICATED AT v4.1 AND CLOSED ON EVIDENCE (Exp719). The Exp626/657
+  ruling ("no measurable accuracy cost; declined on WHICH tokens change; reopen only
+  with a second sample + repetition-free zh/long-form") was itself p2-era. Re-ran its
+  reopen condition at the current stack:
+  * zh canary (hotwords): now BYTE-IDENTICAL to default (the p2-era 'T T' token
+    doubling did not survive the v4.x stack) - the named objection had already gone.
+  * Second sample, zh held-out 468 tokens, paired: gelu_quick 17.95% vs default
+    14.74% = +3.2 pp, discordants 8/23, McNemar p=0.011, CI [+0.85,+5.56] pp.
+  => gelu_quick is CLOSED AS A REGRESSION, not as a parity-churn decline: on the hard
+  zh domain the tanh approximation measurably hurts; the canary was too small to see
+  it (identical!) - a warning that a byte-identity probe neither proves safety nor
+  detects harm at n≈40 tokens. The ~1% speed item stays declined with statistics now.
+  (Its v4.1 speed share is likely smaller than -2.8% anyway: two of the three gelu
+  sites are fused with bias since Exp673.)
+  METHOD: this is the paired-test rule (Exp655) applied to a KNOB rather than a tier -
+  and the first case where the loop's own "parity" verdict on a declined option turned
+  out regime-dependent AND wrong in the conservative direction. When re-checking a
+  declined knob, test a SECOND DOMAIN, not just the canary.
