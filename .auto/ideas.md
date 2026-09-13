@@ -340,3 +340,18 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   CORRECTION to Exp712's note: behavioral probe assets ARE hash-manifested
   (device_assets.json carries silence5s/noise5s/song20s/proto48k_stereo/twospk* with
   notes, and their device hashes match today) - no tooling gap, my note was wrong.
+
+- XWIN REGIME-CHECK @ v4.1 (Exp714, closed): --xwin now costs +6.2% on the protocol
+  (interleaved 2x: windowed 2.3966/2.3934, xwin 2.5410/2.5492, token counts equal)
+  vs +3.2% pre-defer-flip. Mechanism consistent with the defer story: the carry's
+  per-chunk splice cost scales with piece size, and p1 doubles the carried tensors;
+  removing the window-batched late pass did not help it. xwin stays a DIAGNOSTIC
+  (moves probe attribution) and server-path option, not a speed lever. Doc fixed:
+  STREAMING_1P5B.md still said "~8% faster on short clips" (a 500-run-era claim that
+  survived two contradicting measurements) - corrected in place.
+  SELF-CAUGHT TRAP (the Exp595-607 class again): my first 6-run sweep used env
+  XWIN=1, which nothing reads - xwin is the --xwin CLI flag via measure_xwin.sh -
+  so the whole "parity" table was the default arm twice. Tell: identical rtf AND
+  identical hashes across supposedly-different arms. Rule: before trusting an arm,
+  show the flag actually reaches the binary (grep the invoked command line once);
+  env-name guesses are for env-gated knobs only.

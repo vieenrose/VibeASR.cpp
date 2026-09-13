@@ -394,9 +394,12 @@ at RTF **3.45** (3.90 sequential -> 3.52 concurrent -> 3.45 with OMP off) with R
 second arena, no growth over 8 minutes, majflt 0) and the two halves of the
 transcript matching at 4.25% WER - identical to the pre-concurrency run, i.e.
 no thermal cliff, no memory growth, no context drift, and no threading
-instability over 36 chunks / 72 parallel encoder launches. `--xwin` (cross-window VAE carry) is ~8% faster on short
-clips but drifts (+11.5% WER) on 69 s — shorts-only opt-in, legacy windows
-default. The VAE runs at ~50% of DRAM roofline (Exp75: 72% of time in GEMM
+instability over 36 chunks / 72 parallel encoder launches. `--xwin` (cross-window VAE carry) is now ~6 % SLOWER
+on the protocol clip (re-measured at v4.1, Exp714: 2.55 vs 2.39 interleaved - it was -3.2 % pre-defer-flip;
+the carry's per-chunk splice cost scales with piece size, and p1 doubles it). It remains a useful DIAGNOSTIC
+(it moves diarization attribution on the multi-speaker probe) and a server-path option, not a speed lever.
+It drifts (+11.5 % WER) on 69 s as well, so auto-selection by length was declined twice - a product
+decision, not a loop protocol. The VAE runs at ~50% of DRAM roofline (Exp75: 72% of time in GEMM
 kernels, fusion ceiling ≈1.2×); remaining kernel upside needs fused NEON
 intrinsics, i.e. a 3rdparty change. **RTF < 1 on this phone class requires
 retraining** (QAT INT8 VAE and/or a smaller encoder+LM), not more porting.
