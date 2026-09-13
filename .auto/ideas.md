@@ -172,3 +172,10 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   leanp13c/t, leanp26c, convint8b, lean694); unstamped sets support only declines (safe
   direction) and historical distances. No doc repair needed. Re-run this sweep if a new
   accuracy claim is ever built on an old hyp dir.
+
+- HF PROBE CARD RE-UPLOAD: DONE. The corrected README.md (diarization root cause
+  instead of "collapsed to a single tag") was pushed to
+  hf.co/datasets/Luigi/bilingual-zh-en-multispk-probe as commit 6ef33879 (authenticated
+  as Luigi via the cached `hf` CLI token) and verified by re-downloading: the new
+  paragraph is live and the old sentence is gone. Exp696's "manual re-upload" note is
+  superseded - no push script was needed.
