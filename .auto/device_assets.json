@@ -51,6 +51,11 @@
    "md5": "8cfe49d397029db363d761f07d4e1c00",
    "note": "gap sweep 1000ms"
   },
+  "gate_ms_v2.wav": {
+   "cell": "v2 overlap diarization probe (user-requested redesign)",
+   "md5": "06e35a8c9be672ffc25f70fe849265ef",
+   "note": "v2 overlap probe, builder .auto/build_gate_ms_v2.py seed 650, manifest eval-bilingual/manifest_ms_v2.json"
+  },
   "holdout_en.wav": {
    "cell": "held-out CV-en watchdog",
    "md5": "feb62bf7c49a222f165151356f6aa398",

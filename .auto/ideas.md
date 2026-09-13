@@ -179,3 +179,28 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   as Luigi via the cached `hf` CLI token) and verified by re-downloading: the new
   paragraph is live and the old sentence is gone. Exp696's "manual re-upload" note is
   superseded - no push script was needed.
+
+- PROBE v2 BUILT, VALIDATED, PUBLISHED (user request, closes the diarization thread).
+  `eval-bilingual/gate_ms_v2.wav` (45 s, sha 3b9ef13d74819788): 3 overlap pairs
+  (2x zh S1xS2/S2xS1, 1x en S3xS4; B starts 2.0 s before A ends, 0.5/0.5 mix) + 4
+  sequential controls, same 4 voices as v1. Builder `.auto/build_gate_ms_v2.py`
+  (seed 650): per-pair pre-gap chosen by deterministic search so the first 1.5 s of
+  overlap provably sits in one window (asserted shared_window 7/11/14); pair clips
+  under RMS 0.03 level-matched to 0.05 (gain_db recorded, controls untouched);
+  per-turn fresh_clip flags (only S2's 3 clips are unseen - S1/S3/S4 pools are
+  exhausted, overlaps are novel audio regardless). Scorer self-test passes on the new
+  manifest (Exp654 rule). Validation on shipped tier: tags 4/4, attribution 0.424
+  (vs v1 0.567), WER 25.9 % (harder test, not a regression). Published to HF as
+  bilingual_multispk_v2_45s.wav + gold_v2.json/turns_v2.tsv/transcript_v2.txt with a
+  v2 card section (5 uploads). v1 files untouched. LESSONS: (1) --bless on the audit
+  manifest is DESTRUCTIVE (rewrote every entry, dropped cell/derived_from/
+  ignore_collision, turned a known-collision WARN into FAIL) - revert and add entries
+  surgically; (2) count clip pools WITH audio-on-disk and freshness BEFORE designing
+  turn counts (S1/S3/S4 pools hold 4/2/2, all v1-used); (3) a quiet pair member is a
+  loudness test, not a separation test - level-match and record gains.
+- OPEN (interrupted): p1-vs-p2 interleave at v3.9. Single reps suggested p1 2.4267
+  beats p2 2.4644 (-1.5%, 3x sigma) with byte-identical transcripts, but order was
+  fixed (p1 ran coolest) so thermal confound is open; the 4-arm interleave aborted
+  after 2 arms (p2a 2.4616, p1a 2.4260 - consistent direction, still confounded).
+  Needs a clean p2/p1/p1/p2 run before touching the granularity closure (p2 default)
+  or the map sentence in STREAMING_1P5B.md.
