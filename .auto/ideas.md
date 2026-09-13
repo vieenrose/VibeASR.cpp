@@ -258,3 +258,19 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   weight formats; at p1 with int8 convs the late pass is not a no-op but pure
   overhead. A closure of the form "knob X is neutral" must name the regime it was
   neutral IN, and be re-checked when the default point moves (here p2->p1 moved it).
+
+- EXP709 LADDER REFRESH @ v4.1 (all cells re-measured with defer default OFF):
+  shipped 17 s 2.3550/2.3620 (hash-identical pair), 69 s 2.3940/2.3912 (446 tok),
+  138 s 2.4531 (877 tok, token-identical to every prior stack), RSS 2375-2389 MB
+  (-86 vs defer-ON: the boundary staging buffers are gone), anchor 2.3960
+  byte-identical. lean p13 defer-ON 2.5174 @ 1752 MB, 39 tokens, protocol hash
+  BYTE-IDENTICAL to the frozen reference (defer batching does not change numerics,
+  re-proven at p13). Gate mean cell for lean still predates v4.x (2.81, pre-fusion
+  era) - refresh only with a paired 40-utt run if a decision needs it.
+  HARNESS TRAP FOUND (mine): EXTRA_ENV reaches the DEVICE only via measure.sh --env;
+  a bare `env VAR=...` sets it host-side only, so a device-side knob (VAE_DEFER_LATE)
+  silently does nothing while host-side vars (PIECES) still work - the broken arm
+  printed empty metrics (d41d8cd9 = md5 of nothing) rather than wrong numbers, which
+  is the good outcome; audit_harness cannot see this class because it audits files,
+  not flag routing. Rule: device-side knobs go through --env, and always confirm the
+  first arm of a sweep printed METRIC lines.
