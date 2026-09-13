@@ -274,3 +274,24 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   is the good outcome; audit_harness cannot see this class because it audits files,
   not flag routing. Rule: device-side knobs go through --env, and always confirm the
   first arm of a sweep printed METRIC lines.
+
+- ROLLBACK MATRIX RE-DERIVED @ v4.1 (Exp710, one binary, 8 arms): costs vs the new
+  default 2.3964 - DW_CONV1D_OFF +5.1, LS_FUSE_OFF +1.2, GELU_BIAS_OFF +0.9,
+  DEFER_LATE +1.2, SEQ_ENCODERS +3.9, CT_OFF +21.3, all-hatches-off +23.2 %.
+  Output: every FAST/semantic-preserving hatch byte-identical to the frozen
+  reference. BUT the layout hatch is no longer output-neutral: VAE_DW_CT_OFF alone
+  and all-off both land on hash 55d7cc5f (38 tokens) - where Exp677 measured them
+  IDENTICAL at p2+defer. Isolating arm: VAE_SEQ_ENCODERS=1 (piece-wise, [C,T]
+  intact) is BYTE-IDENTICAL and 39 tokens => piece-wise mode is output-neutral AT
+  p1; the divergence is specifically dw-TAPS in the LEGACY [T,C] layout
+  (Exp640's taps-vs-im2col rounding, now visible at the default because defer-OFF
+  made the default piece-wise). The "encoder MODE is not output-neutral" claim of
+  Exp678 was regime-bound (p2+defer) and is retired at p1.
+  FIELD RUNBOOK at v4.1: safe byte-identical fallbacks = VAE_DEFER_LATE=1,
+  VAE_SEQ_ENCODERS=1, and each fusion's _OFF individually; VAE_DW_CT_OFF changes
+  the transcript (only for debugging the layout rework, not a rollback).
+  LESSON (4th regime-dependence find): Exp677's "rollback provably rolls back"
+  included an OUTPUT-equivalence claim per hatch - equivalence claims are as
+  regime-bound as perf claims. Re-run the matrix in one binary whenever the default
+  path changes structurally (here: operating point p2->p1 AND encode path defer->
+  piece-wise in the same stack).
