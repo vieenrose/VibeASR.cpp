@@ -311,3 +311,18 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   HARNESS: eval40.sh now writes hyp-<tag>/rtf.log (per-utterance RTF had been
   stdout-only - a gate mean was LOST on every interrupted/resumed run, which is how
   this cell went stale twice).
+
+- WATCHDOG @ v4.1 STRUCTURAL-PATH CHANGE (Exp712): p1 + defer-OFF change the encode
+  path without changing weights, so the generalization watchdog was due under the
+  Exp651 trigger ("path or weights change"), even though the 40-utt gate was already
+  b=0/c=0. Result: held-out CV-en 0.2636 and CV-zh-TW 0.1474 - IDENTICAL numbers to
+  v3.9 and PAIRED zero discordants on both (b=0/c=0, p=1.0, 220+468 tokens;
+  insertions equal too: en 11/11, zh 0/0). The v4.x regime changes are invisible off
+  corpus, exactly as the gate predicted. Transcripts .auto/hyp-holdout_{en,zh}-v41.txt.
+  Behavioral probes re-passed at v4.1 via device-side AUDIO= names: silence ->
+  [Silence], noise -> [Noise], music -> [Music] + one lyrics line (Exp625 behavior).
+  Scorer nit: score_mixed.py hardcodes gate_bilingual.ref.txt and CRASHES on the
+  holdout manifests - the holdout route is score_stream.py (per Exp651); the traceback
+  is at least loud, not silent. Behavioral asset names live ONLY on device
+  (silence5s/noise5s/song20s/proto48k_stereo) - the device_assets.json manifest covers
+  cell-backing clips; extending it to behavioral probes is cheap if ever audited.
