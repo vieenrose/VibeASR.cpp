@@ -347,10 +347,11 @@ Q4_K_M LM) does not truncate (46/45, 69/68) and is the best all-round tier:
 
 The **balanced-lean** variant (`--vae-pieces 26` on the same files) traded
 +1% (10 s) / +2.4% (69 s) RTF for −180 MB RSS at *identical* transcripts in the
-Exp542-era concurrent regime. The current RAM-lean tier is **p13 with the
-encoders left concurrent** (`--vae-pieces 13`, no env flags): 2.84 on the
-protocol clip, 2.78 on 69 s, 3.15 on the 40-utt mean, at 1.88 GB and WER 4.55 %
-with 40/40 transcripts identical to the p26 gate (Exp643/646).
+Exp542-era concurrent regime. The current RAM-lean tier is **p13, concurrent
+encoders, defer explicitly ON** (`--vae-pieces 13` + `VAE_DEFER_LATE=1` — required
+since v4.1, whose default is defer-OFF): 2.52 on the protocol clip, 2.58 on 138 s,
+2.82 on the 40-utt mean, at 1.75 GB and WER 4.79 % (2 tokens of 731 from the default
+tier, p = 0.5) — Exp643/708/711/717.
 
 That also corrected the earlier "finer splits lose" conclusion, which held only
 on the time axis: the deferred late pass captures the deep-layer batching

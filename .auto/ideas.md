@@ -378,3 +378,16 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   `while read` over a piped PID list whose $p expanded before the adb hop (the
   Exp679 adb-argv trap, again). The exit-time peak_rss_mb + coarse polls answered
   the question anyway; prefer rss_soak.py (it refuses to print an empty success).
+
+- SYSTEMATIC DOC-DRIFT SWEEP (Exp718, zero device time): present-tense grep across
+  RESULTS/STREAMING/prompt.md surfaced 6 stale passages that per-cell refreshes had
+  missed (the Exp714 xwin finding generalized into a sweep): prompt.md header
+  "Current best 5.96" (300-run era) -> 2.39 v4.1; RESULTS lean-tier paragraph (2.55/
+  2.50/2.59 + the RETIRED "+0.9% on shorts" story) -> v4.1 uniform +4-5% with the
+  defer flag in the recipe; gate-mean paragraph (3.1235 gate645-era as "current") ->
+  2.68 gatedef1 with gate645 labeled historical; lean mean 2.8136->2.8187 (lean711b);
+  STREAMING lean recipe ("no env flags", 2.84/2.78/3.15 @1.88) -> 2.52/2.58/2.82 @1.75
+  + VAE_DEFER_LATE=1 required; orphaned sentence deleted.
+  RULE: after ANY structural flip, do a PRESENT-TENSE sweep ("current/shipped/default/
+  today" x numbers), not just update the cells you remember - prose is what future
+  sessions (and the runbook) follow. The ladder is necessary but not sufficient.

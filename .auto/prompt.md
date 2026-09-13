@@ -5,9 +5,9 @@ Minimize inference RTF of `./asr_streaming` (VibeVoice-ASR-Streaming-1.5B:
 VAE + LM-Q4_K_M, `--vae-pieces 13`) on the connected OPPO phone
 (Dimensity 1300, 8 GB RAM, Android 13, arm64) via `adb`, CPU only.
 Baseline (original protocol): RTF ~12.4-13.3 on the 10 s slice.
-**Current best: 5.9593 (F16 leader tier, A78 codegen build) = -51%; Q8-mixed
-6.12-6.15; bands are for the -mcpu=cortex-a78 device build.** Old-build bands
-(6.49-6.59 Q8 anchor, 10.5 F16) and stale tier rows are kept only as history.
+**Current best: 2.39 (MAX-SPEED v4.1, p1 + defer-OFF + conv-int8) = -80.5%; RAM-lean
+v4.1 (p13 + defer ON) 2.52 @ 1.75 GB. Rows below marked F16/BALANCED/FAST-LM are
+DEAD tiers kept only as history.**
 Goal direction: as far below baseline as honest engineering goes (RTF < 1 is
 believed unreachable without retraining; do NOT chase it by cheating).
 

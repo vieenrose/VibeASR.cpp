@@ -48,7 +48,7 @@ regenerated audio must hash to `984e60b14cfe…` to be the same probe).
 
 Gate cells re-measured at v3.9 with corrected harness defaults (Exp694): shipped tier 40-utt mean
 **2.7524**, WER 4.51 %, differing from the frozen reference `hyp-gate645` by **1 token of 731**
-(discordants 0 vs 1, McNemar p=1.0 → output-equivalent); lean p13 mean **2.8136**, 2 tokens from the
+(discordants 0 vs 1, McNemar p=1.0 → output-equivalent); lean p13 mean **2.8187** (re-measured Exp711, 2 tokens from the
 shipped tier (p=0.5). The `°` estimate cells are gone. NOTE on provenance: two gates run earlier on
 Exp690 used `eval40.sh`'s then-stale defaults (Q4_K_M LM, 13 pieces) and are superseded by these — the
 stamp in each `hyp-*/run-info.log` is what proved that, and every pre-existing gate row above checks out
@@ -60,7 +60,7 @@ correctly. `.auto/tier.env` plus the audit now make that class of mistake fail l
 
 > ° Measured before the Exp670 depthwise-conv1d path became the default; scale by ~0.965.
 > The **17 s** column was re-measured in Exp675 on `chat17.wav` = a deterministic 17.0 s excerpt of `chat69.wav` (first 408,000 frames). The clip the old 17 s cells were taken on no longer exists: `chat.wav` and `chat69.wav` became byte-identical (both 3,311,576 B) when the 69 s clip was pushed, so the pre-Exp675 17 s numbers are not comparable to the new ones and were replaced, not rescaled. Length ladder is monotone and the lean/shipped gap is now consistent across all four lengths (+3.8 % to +4.4 %), which is the useful cross-check: per-piece overhead does not grow with clip length.
-> Re-measured on the current default: 10 s, 69 s (2.55), 138 s (2.62) and the 40-utt mean (2.88).
+> Re-measured on the current default (v4.1): 10 s 2.39, 17 s 2.36, 69 s 2.39, 138 s 2.45 and the 40-utt mean 2.68; lean 10 s 2.52, 138 s 2.58 (Exp709/717).
 
 > **The WER column is read-speech-only (Exp651, Exp653, Exp654).** Every number above is
 > LibriSpeech *test-clean*. On held-out consumer audio (Common Voice 17.0, CC0, never used
@@ -81,11 +81,13 @@ Shipped recipe: VAE `Q4_0_4x4` ffn linears (converter outtype `q4_0_4x4_ffn`) +
 F16 convs with an **F16 im2col** + LM `Q4_0_4x4` body with **q6_K token embeddings**
 + **Q8_0 output head** + **concurrent acoustic/semantic encoders** (one thread each), 2 VAE pieces (PIECES=2 harness default).
 
-**RAM-lean tier (Exp641–643).** Same files, `--vae-pieces 13`, **default
-(concurrent) encoders** — 2.55 on the protocol clip, 2.50 on 69 s and 2.59 on
-138 s at 1.75–1.77 GB RSS post-int8 (Exp700; vs the p2 default: +3.7 % / +2.9 % / +3.6 % time for
-−350 MB). Long-form is clean at this granularity: the 138 s soak holds RSS flat
-(1753→1756 MB over 5.7 min, trend +0.48 MB/min, HWM 1765.9, `majflt 0`) and its repetition structure matches the
+**RAM-lean tier (v4.1 recipe, Exp708/711/717).** Same files, `--vae-pieces 13
+VAE_DEFER_LATE=1` — the defer flag is now REQUIRED (defer is off by default since
+v4.1; without it p13 pays the L≈1 deep-GEMV cost: 2.67) — 2.52 on the protocol clip,
+2.82 on the 40-utt mean and 2.58 on 138 s at 1.75 GB RSS (uniform +4–5 % vs the
+default across every length at this stack, unlike the +0.9 %-on-shorts era of Exp646).
+Long-form is clean at this granularity: the 138 s soak holds RSS flat
+(peak 1766 MB, series ~1756–1808 MB, `majflt 0`, Exp717) and its repetition structure matches the
 default's (188 vs ~205 repeated 10-grams — the repeats are in the clip, not a
 loop), with 19 sentence-level wording diffs of the usual marginal class. Its
 accuracy is the gated 4.55 % **by byte-identity, not by inference**: a full
@@ -103,12 +105,13 @@ measures a no-op there.
 arithmetic mean of the per-utterance phone RTF over the 40-utt gate set
 (`.auto/eval40.sh`; short utterances pay window amortization), **not** a clip
 cell — it sits above the 10 s number by construction. The shipped tier measures
-**3.1235** (tag `gate645`); the cell previously carried the 10 s value by
-mistake, and the era table's 3.91 was the same quantity pre-optimization. On
-this axis the lean tier costs only **+0.9 %** over the default (3.1526, tag
-`leanp13t`, median 2.91) versus +1.8 % on the 10 s protocol clip — the per-piece
-overhead that granularity buys does not scale with clip length, so on typical
-short utterances the ~350 MB saving is nearly free.
+**2.68** (tag `gatedef1`, v4.1; the historical `gate645` read 3.1235 on the pre-v4
+stack); the cell once carried the 10 s value by mistake, and the era table's 3.91 was
+the same quantity pre-optimization. On this axis the lean tier costs **+5.3 %** over
+the default (2.8187, tag `lean711b`) — matching its +5.4 % on the 10 s protocol clip.
+(Retired note: the Exp646-era +0.9 %-on-shorts reading held under the p2/defer stack;
+at v4.1 the per-piece overhead scales with window count again and the lean gap is
+uniform ~+4–5 % at every length — the ~350 MB saving is no longer nearly free.)
 
 † Verified, not inferred: `leanp13c` = WER 4.55 % with 40/40 transcripts
 byte-identical to the `leanp26c` gate set. The invariance is expected because
