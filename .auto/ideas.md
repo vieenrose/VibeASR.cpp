@@ -433,3 +433,15 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   LESSON (measurement-artifact class, 6th instance): before pricing a "remove work X"
   lever, verify the fast arm differs ONLY by X - the Q8CAST arm differed by the whole
   kernel path. Decompose with all-legal arms (this run IS that decomposition).
+
+- POST-SURGERY GATE REGRESSION (Exp721): Exp720 changed ggml's SHARED im2col
+  builder/dispatch, so the default path needed the 40-utt regression test (the
+  protocol hash only covers one clip). Fresh gate (tag gate721, stamped BIN
+  3e3cc40a = post-surgery): ZERO discordants vs the frozen reference (b=0/c=0,
+  p=1.0), S/D/I identical to gatedef1/gatep1/convint8b, gate mean 2.6758 (= 2.6768
+  pre-surgery, 0.04% off). The ggml surgery is confirmed inert on the default path
+  across 40 acoustic conditions.
+  SCORER-CONVENTION NOTE: score_hyp.py's jiwer path reports 4.82% for the shipped
+  tier's current output while the paired hybrid-tokenizer tool reports 4.51% for the
+  IDENTICAL outputs (both stable per-tag) - the ladder quotes the hybrid convention
+  (per Exp656). Quote the tokenizer with any WER; never mix conventions in one row.
