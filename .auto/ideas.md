@@ -208,7 +208,15 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   is the LM prefill (ne11=26/31), which is granularity-independent, and the VAE-side tail
   differentiates nothing. Honest statement: finer pieces re-stream stage weights per piece and pay
   their own graph build/launch, at p2 twice per window. The v3.9 -> v4.2 widening (-1.2% -> -3.2%)
-  has no verified cause; do not write a story for it without another 2x2. p1 stays the default; p13+defer-ON reproduces the lean cell (2.531 vs the
+  has no verified cause; do not write a story for it without another 2x2.
+  PARTIAL ATTRIBUTION (Exp773b, same-session 2x2 over pieces x conv precision, 3 reps):
+  gap(int8 convs) = +3.0% (2.3799 -> 2.4501), gap(F16 convs) = +1.9% (2.4739 -> 2.5221), so ~1 pp of
+  the gap is the int8 conv path's PER-PIECE cost (geometry carrier + right-pad + F32 staging, paid
+  again at each piece) and ~2% is intrinsic per-piece overhead. The v3.9 -1.2% figure is weak data
+  (aborted interleave, single reps), so the "widening" is largely a correction of that number, not
+  a regression. Note p2+F16-conv emits 40 tokens vs 39 in the other three cells - the conv-precision
+  difference reaches the transcript at p2 but not at p1 (the shipped tier is paired-equivalent,
+  McNemar p=1.0). p1 stays the default; p13+defer-ON reproduces the lean cell (2.531 vs the
   documented 2.54). p26 defer-OFF emits 38 tokens vs 39 elsewhere - output is not granularity-neutral
   in the GEMV regime (defer-ON at p26 returns to 39).
   HARNESS BUG FOUND DOING THIS: run_rtf_multi.sh hardcoded VAE_FILE=vae-encoder-q4x4ffn.gguf, i.e.
