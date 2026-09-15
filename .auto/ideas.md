@@ -565,3 +565,12 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   bounded - thermal/session drift on the launch-heavy path remains the suspicion.
   Neither changes any decision; the thread is closed pending the standing trigger
   (lean conv >1.9 s or total >2.58).
+
+- LEAN ELEVATION EPISODE CLOSED AS TRANSIENT (Exp744): defer-on lean returned
+  2.5277 (vae 17.2, hash-identical, RSS 1752) - back inside the 2.52 cell after 4
+  elevated reps (2.5458-2.5604) with NO code/config change in between. Verdict: a
+  transient device-state episode (~2 sessions), not a regime change; the thermal/
+  session-drift suspicion is now the confirmed shape (appears and clears
+  spontaneously, shipped tier unaffected throughout). The 2.52 cell never moved.
+  Standing guidance unchanged: sub-2%-of-tier wobbles on the secondary tier with
+  clean hashes get a watch flag and a re-check, never cell churn.
