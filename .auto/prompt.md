@@ -67,7 +67,11 @@ bench, emits `METRIC name=value` lines. Env: `VAE_FILE=`, `LM_FILE=`,
 `./.auto/checks.sh` — post-run transcript sanity (auto-runs on passing runs).
 `./.auto/eval40.sh <tag> <start> <count>` + `.auto/score_hyp.py <tag>` — the
 on-device 40-utt WER gate (chunkable/resumable; any codegen change invalidates
-the previous gate, re-run with a new tag). `./.auto/pgo.sh <vae>` — PGO
+the previous gate, re-run with a new tag). STAMP-FIRST RULE (Exp734): after
+invoking eval40, read `hyp-<tag>/run-info.log` BEFORE the run proceeds — env
+routing is split (PIECES is host-side, EXTRA_ENV forwards device-side knobs),
+so a forgotten EXTRA_ENV silently measures the wrong config for 9 min per half.
+`./.auto/pgo.sh <vae>` — PGO
 train/use cycle (tested, no gain; kept for reproducibility).
 
 ## Files in Scope
