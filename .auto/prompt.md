@@ -40,6 +40,9 @@ MODEL ARTIFACTS: models-streaming/vae-encoder-convint8.gguf (DEFAULT since Exp69
   `.auto/tier.env` declares the shipped tier (VAE_FILE/LM_FILE/PIECES) ONCE; audit_harness.py FAILS if
   measure.sh, eval40.sh or this table drift from it (Exp694 found eval40's defaults three variables off
   the tier, which made a gate measure a different system and print a plausible WER for it).
+  Because the session workDir is not the git root, the tool's discard-revert is a silent
+  no-op: audit_harness.py check 3b FAILs on any dirty tracked file between runs, and every
+  discard must be followed by `git -C VibeASR.cpp status --porcelain` (Exp759).
 
 ## Metrics
 - Sustained reference (Exp526, shipped tier + concurrent encoders, 138 s clip):
@@ -781,6 +784,11 @@ train/use cycle (tested, no gain; kept for reproducibility).
   RTF 12.33 vs 12.24 (+0.7%, noise). Compiler tuning exhausted. NOTE: tool
   auto-revert/auto-commit cannot reach this nested repo (operates in parent
   cwd) — ALL reverts and keep-commits must be done manually in VibeASR.cpp.
+  Asymmetry that matters (Exp759): the COMMIT failure prints loudly, the REVERT
+  does not — index.ts:2446 ignores git's exit code, so a discard would print
+  "reverted" and leave the code in place. audit_harness.py check 3b now FAILs on
+  any dirty tracked file between runs; after every discard/crash, verify
+  `git -C VibeASR.cpp status --porcelain` yourself, not the tool's message.
 - ggml CPU-backend executor vs legacy reference path: 1.06x desktop / 0.98x
   phone, bit-exact. REMOVED (dead code). Do not revisit without new evidence.
 - `GGML_ARM_DOTPROD=ON` rebuild: 0% (LM decode is bandwidth-bound). Kept out of

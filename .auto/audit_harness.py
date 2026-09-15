@@ -107,6 +107,31 @@ for s in scripts:
 if not any('NOT tracked' in f for f in fails):
     ok(f"all {len(scripts)} harness scripts are tracked in git")
 
+# ---- 3b. tree cleanliness between runs (Exp759).
+# pi-autoresearch reverts a discard with `git checkout -- .` executed at the SESSION
+# workDir (extensions/pi-autoresearch/index.ts:2446, cwd=workDir). Here the session
+# workDir is the PARENT of this repo and is not a git repository at all - which is why
+# every log_experiment prints "git add failed (exit 128): not a git repository". The
+# commit failure is loud, but the REVERT is not: pi.exec's exit code is never checked
+# there, so a discard prints "Git: reverted changes" while nothing was reverted, and the
+# discarded code would survive into every later measurement. Dirty tracked source between
+# runs therefore means that bug has fired.
+WD = os.path.dirname(ROOT)
+inside_repo = sh(f'cd "{WD}" && git rev-parse --show-toplevel 2>/dev/null').stdout.strip()
+r = sh(f'cd "{ROOT}" && git status --porcelain')
+dirty = [ln[3:] for ln in r.stdout.splitlines()
+         if ln.strip() and not ln[3:].lstrip('"').startswith('.auto/')]
+if dirty:
+    bad(f"tracked files are DIRTY between runs: {dirty[:6]} - auto-revert cannot protect "
+        f"you (session workDir {WD} is "
+        f"{'not a git repo' if not inside_repo else 'not the repo root'}); revert or "
+        f"commit in {ROOT} before trusting any measurement")
+elif not inside_repo:
+    ok(f"tree clean; NOTE auto-commit/auto-revert are inert here (workDir {WD} is not a "
+       f"git repo) - commit discards manually in {ROOT}")
+else:
+    ok("tree clean between runs")
+
 # ---- 4. config-source consistency ---------------------------------------------
 measure = open(os.path.join(HERE, 'measure.sh'), errors='ignore').read()
 dev_m = re.search(r'^DEV=(\S+)', measure, re.M)
