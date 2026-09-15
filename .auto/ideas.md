@@ -524,3 +524,16 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
     use sparingly (~every 10 rounds).
   * Exp737 heartbeat: no sync events, no co-runner, 2.4012 byte-identical.
   No ° cells, no open caveats, no stale ledger entries remain after this write.
+
+- LEAN DEFER-PATH WATCH (Exp739-740): three consecutive defer-ON lean reps elevated
+  +1.2-1.6% (2.5604/2.5472/2.5497, mean 2.5524) vs the 2.52 cell, across rested/idle
+  states (batt 29.5-30.6, 0 co-runners, majflt 0), all hash-identical. LOCALIZED by
+  the very next runs: shipped p1 2.4003 EXACT and defer-OFF lean 2.6712 EXACT vs its
+  2.673 reference - so the elevation sits in the DEFER-ON late pass specifically,
+  not in launch count, global device state, or thermal (coolest run still elevated).
+  Mechanism unknown; candidates are late-pass staging/build costs shifting with
+  allocator state, but that is speculation. PROPORTION: secondary tier, clean hashes,
+  +1.3% changes no decision (tier exists for 1.75 GB) - the 2.52 cell STANDS, no
+  churn on 3 reps. TRIGGER: if defer-on lean stays elevated next session, run the
+  VAE_ABL sweep on the lean path to localize within the late pass (vae_s delta is
+  the discriminant, never rtf).
