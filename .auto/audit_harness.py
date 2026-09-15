@@ -340,6 +340,33 @@ print("frozen references present: "
       + ', '.join(f for f in sorted(os.listdir(HERE)) if f.startswith('ref') and f.endswith('.txt'))
       + f"; gate refs.json: {'found' if os.path.exists(os.path.join(refs_dir, 'refs.json')) else 'MISSING'}")
 
+# ---- 8. ledger coherence (Exp770: the ledger is split in two halves and the loop prompt points at
+# the STALE archive half. A session that reads only the prompt path resurrects closed work - it cost
+# runs 769-770, which re-ran a converter experiment the live half had already closed.)
+live = os.path.join(HERE, 'ideas.md')
+archive = os.path.join(ROOT, '..', '.auto', 'ideas.md')
+log = os.path.join(ROOT, '..', '.auto', 'log.jsonl')
+if os.path.exists(log) and os.path.exists(live):
+    runs = [int(m) for m in re.findall(r'"run":\s*(\d+)', open(log, encoding='utf-8', errors='replace').read())]
+    newest = max(runs) if runs else 0
+    cited = [int(n) for n in re.findall(r'Exp(\d{3})', open(live, encoding='utf-8', errors='replace').read())]
+    gap = newest - (max(cited) if cited else 0)
+    if gap > 12:
+        bad(f"LIVE ledger is {gap} runs behind the log (newest run {newest}, newest citation "
+            f"Exp{max(cited) if cited else 0}) - closed axes will look open")
+    else:
+        ok(f"live ledger current (newest run {newest}, newest citation Exp{max(cited)})")
+    if os.path.exists(archive):
+        if 'POINTER (Exp770' not in open(archive, encoding='utf-8', errors='replace').read():
+            bad("archive ledger half lacks the POINTER header - a session reading the prompt path "
+                "alone will not know the live half exists")
+        else:
+            ok("archive ledger half carries the cross-reference pointer")
+    else:
+        warn("archive ledger half not found at ../.auto/ideas.md (fine if it was merged)")
+else:
+    warn("ledger coherence not checked (missing live ledger or loop log)")
+
 # ---- report -------------------------------------------------------------------
 print(f"harness audit: {len(oks)} checks passed, {len(warns)} warnings, {len(fails)} failures\n")
 if '--verbose' in sys.argv:
