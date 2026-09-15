@@ -290,7 +290,10 @@ static struct ggml_tensor* ggml_nn_rms_norm(
     if (x->type == GGML_TYPE_I8_S) {
         x = ggml_rms_norm_scaled(ctx, x, gamma, 1e-5f);
     } else {
-        x = ggml_rms_norm(ctx, x, 1e-5f);
+        // VAE_ABL_NORM (measurement-only, Exp779): RMS_NORM is 53 nodes / 490 MB per graph build
+        // and has never been priced in time. Skipping it keeps every shape, so the timing is a true
+        // ceiling; the output is INVALID by design (same convention as VAE_ABL_CONV, Exp683).
+        x = vae_abl("VAE_ABL_NORM") ? x : ggml_rms_norm(ctx, x, 1e-5f);
         x = vae_abl_mul(ctx, x, gamma, "VAE_ABL_SCALE");
     }
     
@@ -767,7 +770,15 @@ struct ConvNeXtBlock {
             // reshape/mul_mat sequence at the call site is NOT equivalent. The gelu-approximation
             // knob is deliberately excluded above: VAE_GELU_QUICK must keep its own path.
             x = ggml_nn_linear(ctx, x, ffn_fc1_weight, ffn_fc1_bias, /*apply_bias=*/false);
-            x = ggml_gelu_bias(ctx, x, ffn_fc1_bias);
+            // VAE_ABL_GELU (measurement-only): gelu is the largest single byte-mover in the shipped
+            // graph (26 nodes / 980 MB = 17% of bytes per build, Exp778 profile). Fusing it into the
+            // fc1 matmul's epilogue is the only way to remove that pass, so price it before asking
+            // about touching mul_mat. Output INVALID by design.
+            // The substitute is the linear output ITSELF (no new node): an earlier version wrapped it
+            // in ggml_view_2d, and the view's non-default strides then tripped
+            // GGML_ASSERT(ggml_are_same_shape) inside the block's add_scaled - i.e. the ablation arm,
+            // not the shipped path, was invalid (a repeat of the Exp763/764 knob-bug class).
+            if (!vae_abl("VAE_ABL_GELU")) x = ggml_gelu_bias(ctx, x, ffn_fc1_bias);
         } else {
             x = ggml_nn_linear(ctx, x, ffn_fc1_weight, ffn_fc1_bias);
             // Upstream trains exact erf GELU (ACT2FN["gelu"]); the tanh approx
