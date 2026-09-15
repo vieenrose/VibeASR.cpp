@@ -585,3 +585,20 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   (2.4621 ≈ 2.46); the mechanism note in STREAMING_1P5B.md already encodes the
   regime (defer valuable iff pieces are GEMV-shaped), which this confirms from
   the other side.
+
+- AUTO-REVERT IS A SILENT NO-OP AT A NON-REPO WORKDIR (Exp759, harness integrity).
+  pi-autoresearch/index.ts:2446 reverts discards with `git checkout -- .` at cwd =
+  the SESSION workDir (/home/user/vibe-asr-streaming-1p5b), which is the PARENT of
+  the actual repo (VibeASR.cpp/) and not a git repo. The COMMIT half raises
+  (that is the "git add failed (exit 128)" line on every log_experiment here); the
+  REVERT half never checks git's exit code, so it prints "Git: reverted changes"
+  while reverting nothing. Consequence: a discard/crash would leave the discarded
+  code in the tree and every subsequent measurement would be silently of the
+  discarded variant. Nothing was ever lost (zero discards this session, and
+  Exp1-era notes already mandated manual commits), but the failure was UNMONITORED.
+  FIX SHIPPED: audit_harness check 3b FAILs on any dirty tracked file between runs
+  and names the cause; negative-controlled by planting an src/vae.cpp edit (1 FAIL)
+  and restoring (66/66). RULE: after any discard/crash, check
+  `git -C VibeASR.cpp status --porcelain` yourself - the tool's message is not
+  evidence. Generalizes: an "auto-" safety net must be observed FAILING before you
+  trust it succeeding (Exp660's rule, aimed at the harness itself this time).
