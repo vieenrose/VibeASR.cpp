@@ -290,11 +290,23 @@ static struct ggml_tensor* ggml_nn_rms_norm(
     if (x->type == GGML_TYPE_I8_S) {
         x = ggml_rms_norm_scaled(ctx, x, gamma, 1e-5f);
     } else {
-        // VAE_ABL_NORM (measurement-only, Exp779): RMS_NORM is 53 nodes / 490 MB per graph build
-        // and has never been priced in time. Skipping it keeps every shape, so the timing is a true
-        // ceiling; the output is INVALID by design (same convention as VAE_ABL_CONV, Exp683).
-        x = vae_abl("VAE_ABL_NORM") ? x : ggml_rms_norm(ctx, x, 1e-5f);
-        x = vae_abl_mul(ctx, x, gamma, "VAE_ABL_SCALE");
+        // VAE_ABL_NORM (measurement-only, Exp779): RMS_NORM is 53 nodes / 490 MB per graph build.
+        // Skipping it keeps every shape, so the timing is a true ceiling; output INVALID by design.
+        //
+        // VAE_NORM_FUSE_OFF=1 restores the norm-then-mul form. The f32 path used to run rms_norm and a
+        // SEPARATE ggml_mul for gamma (4 tensor passes); ggml_rms_norm_gamma folds the gain in, which is
+        // bit-identical because it is the same two f32 multiplies in the same order.
+        // NOTE for future ablation runs: with the fold active there IS no separate scale node, so
+        // VAE_ABL_SCALE legitimately removes nothing - its Exp783 0.30 s is already inside the norm's
+        // cost here. Reading either knob as "this op is free" after the fold is the stale-knob error
+        // that has misled this loop five times.
+        if (!vae_abl("VAE_ABL_NORM")) {
+            bool fuse = gamma && gamma->type == GGML_TYPE_F32 && ggml_is_contiguous(gamma)
+                     && !getenv("VAE_NORM_FUSE_OFF");
+            x = fuse ? ggml_rms_norm_gamma(ctx, x, gamma, 1e-5f)
+                     : ggml_rms_norm(ctx, x, 1e-5f);
+            if (!fuse) x = vae_abl_mul(ctx, x, gamma, "VAE_ABL_SCALE");
+        }
     }
     
     return x;
