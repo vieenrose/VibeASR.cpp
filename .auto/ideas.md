@@ -739,3 +739,18 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
     VAE_FILE/LM_FILE env (from bench_device.sh), a serial taken from measure.sh's DEV= line, and assets
     at ../eval-bilingual. Inventing a path silently targets a directory that may not exist, and an
     unqualified adb command is wrong the moment a second device appears.
+
+- FOURTH FUSION SHIPPED: ONE-PASS FUSED GELU+BIAS (Exp781, v4.3) - protocol 2.38 -> 2.29-2.32 (-2.8 %
+  paired), VAE 15.87 -> 15.0 s (-5.3 %), gate mean 2.6641 -> 2.5742 with **40/40 byte-identical**
+  transcripts (b=0/c=0 of 731, p=1.0), lean p13 2.54 -> 2.44, RSS unchanged. What was wrong: the Exp673
+  "fused" gelu_bias still looped the row TWICE (f32 add into dst, then gelu in place) = 4 tensor passes
+  where 2 suffice. Priced first with the new VAE_ABL_GELU knob: gelu was 13.3 % of VAE seconds, 4x the
+  next elementwise item and the largest non-matmul item since v3.6-v3.8. Negative control that decided
+  the design: batching four table gathers in flight is PARITY (vae_s 15.9 both), so the cost is traffic,
+  NOT the 128 KB table's gather latency - my Exp780 mechanism guess was wrong while its rate math (233
+  Melem/s/core) was right. Sixth occurrence of "price the op before choosing the fix".
+  OPEN NOW: (1) elementwise attribution is stale again (5th time) - re-derive VAE_ABL_*; gelu should now
+  read ~6-8 % and rms_norm (4.1 %) is the top item, and rms_norm_scaled already exists at block level;
+  (2) lean 40-utt mean carries a scaled value marked ° - re-run it (~40 min) when convenient; (3) the
+  hatches were re-audited for THIS stack (Exp677-style) never since Exp710 - costs of DW_CONV1D_OFF /
+  LS_FUSE_OFF / GELU_BIAS_OFF / GGML_GELU_BATCH_OFF / M2_OFF at v4.3 are unmeasured.

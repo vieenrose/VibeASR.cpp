@@ -5,8 +5,8 @@ Minimize inference RTF of `./asr_streaming` (VibeVoice-ASR-Streaming-1.5B:
 VAE + LM-Q4_K_M, `--vae-pieces 13`) on the connected OPPO phone
 (Dimensity 1300, 8 GB RAM, Android 13, arm64) via `adb`, CPU only.
 Baseline (original protocol): RTF ~12.4-13.3 on the 10 s slice.
-**Current best: 2.38 (MAX-SPEED v4.2, p1 + defer-OFF + conv-int8 + m2 tail kernel) = -80.6 %; RAM-lean
-v4.2 (p13 + defer ON) 2.54 @ 1.75 GB. Rows below marked F16/BALANCED/FAST-LM are
+**Current best: 2.29 (MAX-SPEED v4.3, p1 + defer-OFF + conv-int8 + m2 tail kernel + one-pass fused gelu) = -81.3 %; RAM-lean
+v4.3 (p13 + defer ON) 2.44 @ 1.75 GB. Rows below marked F16/BALANCED/FAST-LM are
 DEAD tiers kept only as history.**
 Goal direction: as far below baseline as honest engineering goes (RTF < 1 is
 believed unreachable without retraining; do NOT chase it by cheating).
@@ -17,11 +17,11 @@ believed unreachable without retraining; do NOT chase it by cheating).
 | F16 accuracy-first | `VAE_FILE=vae-encoder-f16.gguf` | ~4.77 (deferred late stages) | 4.7705 (Exp555; was 5.3362) |
 | BALANCED | `VAE_FILE=vae-encoder-q4x4ffn.gguf` + LM Q4_K_M | ~4.16 (deferred late stages) | 4.1649 (Exp555; was 4.4007) |
 | FAST-LM v2 | `VAE_FILE=vae-encoder-f16.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) | ~5.21 | 5.2138 (tokens 42), WER 4.41% |
-| **MAX-SPEED v4.2 (DEFAULT, p1, defer default OFF)** | `VAE_FILE=vae-encoder-convint8.gguf LM_FILE=lm-q8head.gguf` (Q4_0_4x4 bulk, q6_K embeddings, Q8_0 head) + the v3.4 VAE stack (concurrent encoders + lifetime buffers + PIECES=1 + zero-copy weights + [C,T] blocks; deferred deep stages now OPT-IN - at p1 they are pure overhead, Exp708) + the v3.6-v3.8 fusions (dw-conv1d kernel, layer-scale add_scaled, gelu+bias) + **v3.9 blocked-int8 CONV weights** + **v4.2 two-column tail GEMV** (one weight pass for the ne11%4 leftovers, byte-identical, Exp765/766) | **~2.38** | Protocol 2.38 (m2 reps 2.3727/2.3790/2.3759, all byte-identical to the frozen reference); 17 s 2.36, 69 s 2.38, 138 s 2.44 (Exp767); RSS 2.37 GB; **40-utt gate ZERO discordant tokens of 731 vs the frozen reference (b=0/c=0, p=1.0)** (tag gatem2; 40-utt mean 2.664). Piece-wise is the path that produced the frozen reference, so identity-proven. |
+| **MAX-SPEED v4.3 (DEFAULT, p1, defer default OFF)** | `VAE_FILE=vae-encoder-convint8.gguf LM_FILE=lm-q8head.gguf` (Q4_0_4x4 bulk, q6_K embeddings, Q8_0 head) + the v3.4 VAE stack (concurrent encoders + lifetime buffers + PIECES=1 + zero-copy weights + [C,T] blocks; deferred deep stages now OPT-IN - at p1 they are pure overhead, Exp708) + the v3.6-v3.8 fusions (dw-conv1d kernel, layer-scale add_scaled, gelu+bias) + **v3.9 blocked-int8 CONV weights** + **v4.2 two-column tail GEMV** (one weight pass for the ne11%4 leftovers, byte-identical, Exp765/766) + **v4.3 one-pass fused gelu+bias** (the Exp673 fusion looped the row twice; the table lookup now happens inside the bias pass - 4 tensor passes -> 2, byte-identical, Exp781) | **~2.30** | Protocol 2.29-2.32 (2.3194/2.2995/2.3298/2.2922, all byte-identical to the frozen reference); 17 s 2.28, 69 s 2.32, 138 s 2.38 (Exp781); RSS 2.37 GB; **40-utt gate ZERO discordant tokens of 731 vs the frozen reference (b=0/c=0, p=1.0)** (tag gelufuse781, 40/40 byte-identical to gatem2; 40-utt mean 2.5742). Piece-wise is the path that produced the frozen reference, so identity-proven. |
 | Q8 anchor | `VAE_FILE=vae-encoder-q8_0mixed.gguf` | 6.12-6.15 | 6.1204/6.1520/6.1659 |
 | Q4 | `VAE_FILE=vae-encoder-q4ffn.gguf` | ~6.48 | 6.4776 |
 | ultra-lean (superseded) | `VAE_FILE=vae-encoder-q4ffn.gguf PIECES=26` | ~6.61 | 6.6066 |
-| MAX-SPEED-LEAN (p13) | `PIECES=13 EXTRA_ENV=VAE_DEFER_LATE=1` (files as default tier; defer is REQUIRED here - without it p13 pays 2.67) | **~2.54** | Protocol 2.54 (defer ON: 2.5382/2.5465; defer OFF 2.673 - the deep layers are GEMV-shaped per piece at p13); **RSS ~1.75 GB**. 40-utterance mean/RSS ladder cells predate the v4.x stack - the p13 vs p1 gap was -11% under the older stack. The old seq-mode recipe (`PIECES=26 EXTRA_ENV=VAE_SEQ_ENCODERS=1`) is a LAST RESORT |
+| MAX-SPEED-LEAN (p13) | `PIECES=13 EXTRA_ENV=VAE_DEFER_LATE=1` (files as default tier; defer is REQUIRED here - without it p13 pays 2.67) | **~2.44** | Protocol 2.44 (Exp781 2 reps 2.446/2.443 after the one-pass fused gelu; pre-fusion 2.54, defer ON 2.5382/2.5465; defer OFF 2.673 - the deep layers are GEMV-shaped per piece at p13); 17 s 2.42, 69 s 2.45; **RSS ~1.75 GB**. 40-utterance mean/RSS ladder cells predate the v4.x stack - the p13 vs p1 gap was -11% under the older stack. The old seq-mode recipe (`PIECES=26 EXTRA_ENV=VAE_SEQ_ENCODERS=1`) is a LAST RESORT |
 | BALANCED-LEAN | `VAE_FILE=vae-encoder-q4x4ffn.gguf PIECES=26` | ~5.21 | 5.208 (69 s 4.9374, identical tokens, RSS 1.98 GB) |
 Old-build bands (6.49-6.59 Q8, 10.5 F16, 6.81 Q4, 7.06 ultra-lean) are DEAD.
 69 s equal-token: accuracy-first 5.6089 / balanced 4.8228 / max-speed 4.046.
