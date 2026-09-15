@@ -510,3 +510,17 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   PROCEDURAL RULE (new, for me): after ANY eval40 invocation, FIRST read the new
   tag's run-info.log stamp before the run goes further - a 20-utt half costs 9 min,
   a stamp check costs 2 s. I paid 18 min twice for skipping it.
+
+- VERIFICATION SWEEP Exp731-737 (all keep, no shipped change; band 2.3965-2.4045):
+  * Exp731 ledger consolidation (the Exp724-730 sweep written into this record).
+  * Exp732 ladder completed: lean 17 s 2.51 / 69 s 2.51 fill the last ° cells;
+    uniformity (+5-6% all lengths) airtight; 69 s tier outputs diverge (432 vs 446
+    tok - early greedy flips cascade; per-cell tokens stated, not assumed).
+  * Exp733 storage+audit: /data 28%, 9 GB workdir (ample); audit 65/65 green.
+  * Exp734 lean equivalence now SINGLE-VARIABLE (same-BIN pair vs gate721:
+    b=0/c=2, p=0.5, mean 2.8247) - last accuracy caveat removed. Misrun priced
+    defer-off gate mean +6.3%; stamp-first rule promoted to prompt.md (Exp735).
+  * Exp736 guard validation: slice10b reproduces (+0.3%) - stable recurring guard,
+    use sparingly (~every 10 rounds).
+  * Exp737 heartbeat: no sync events, no co-runner, 2.4012 byte-identical.
+  No ° cells, no open caveats, no stale ledger entries remain after this write.
