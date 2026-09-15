@@ -445,3 +445,20 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   tier's current output while the paired hybrid-tokenizer tool reports 4.51% for the
   IDENTICAL outputs (both stable per-tag) - the ladder quotes the hybrid convention
   (per Exp656). Quote the tokenizer with any WER; never mix conventions in one row.
+
+- ASSERT-ARMED VERDICT ON THE Q8_0-IM2COL KNOB (Exp723, closes interrupted work):
+  an assert-armed (Debug, NDEBUG off) device binary was built and both paths run:
+  DEFAULT path = zero asserts, 39 tokens, transcript identical to the frozen ref
+  (timing 2.47 meaningless - Debug build). KNOB-ON (VAE_CONV_I8_Q8COL=1) path trips
+  GGML_ASSERT(view_src==NULL || ... <= ggml_nbytes) at ggml.c:4134: the interleaved
+  Q8_0 im2col tensor's ne[] undercounts its byte footprint, so the downstream
+  reshape/view reads out of bounds. Invisible in Release (assert compiled out; the
+  arena happened to be big enough) - which is exactly why the Exp720 parity runs
+  looked clean. VERDICT: the knob is downgraded from "kept as tooling" to
+  ASSERT-DIRTY - do not ship or build on it without fixing the tensor-size contract
+  (ne0 must satisfy BOTH the panel layout AND ggml_nbytes accounting; the
+  interrupted (k/32)*4 attempt was reverted unvalidated). The shipped default path
+  is proven assert-clean, which was the safety question that mattered.
+  HYGIENE: the interrupted session left the ggml submodule dirty + 123 MB build dir
+  + scratch logs; all reverted/removed, setup_assert.sh committed as a tool with a
+  corrected usage note (measure.sh has no BIN override).
