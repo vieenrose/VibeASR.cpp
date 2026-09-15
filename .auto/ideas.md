@@ -834,3 +834,19 @@ guard slice10b (2.41, tracks the protocol across 4 rotations) | audit_harness (6
 Instruments to reach for BEFORE any device ladder: `.auto/mm_shape_micro` (kernel/shape cost, ~1 min) and
 `VAE_ABL_*` / `VAE_*_OFF` knobs (op cost). Both resolved everything this session. Reminder: ablation
 knobs go stale when a fusion deletes the node they ablate - rewire them in the same commit (6 instances).
+
+- HOLDING PATTERN FOR STEADY STATE (written at Exp796, 792 runs, best 2.26). The loop is past the point
+  where ideas are plentiful, so the value now comes from *disciplined* verification, not from inventing
+  levers. Rotate deliberately and say which rung you are on:
+    1. anchor (byte-identity + rate) - cheap, catches regressions and thermal drift;
+    2. tier rotation (lean / guard slice / long clips) - catches tier-local drift;
+    3. instruments (mm_shape_micro, VAE_ABL sweep, census) - re-price a documented item with CURRENT
+       code, since every share in the ledger is a snapshot that a later fusion silently invalidates;
+    4. integrity (audit_harness, rollback ladder, robustness set, gate regression) - the loop's own
+       tooling has been the source of more wrong answers than the model has.
+  Anti-patterns observed in this loop's own history: (a) re-deriving a fact that a source comment
+  already records (Exp792 - the comment at vae.cpp:299 documented the stale ABL_SCALE); (b) trusting an
+  ablation whose node a fusion deleted; (c) asserting from a truncated view (head -20, cut -c1-140);
+  (d) shipping a knob whose semantics were never proven by an output change (Exp764's SKIP_TAIL).
+  Before reviving ANY old idea, check the snapshot above and the archive half - three axes (granularity,
+  piece pipelining, thread counts) look re-openable and are not.
