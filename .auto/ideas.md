@@ -749,8 +749,16 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   the design: batching four table gathers in flight is PARITY (vae_s 15.9 both), so the cost is traffic,
   NOT the 128 KB table's gather latency - my Exp780 mechanism guess was wrong while its rate math (233
   Melem/s/core) was right. Sixth occurrence of "price the op before choosing the fix".
-  OPEN NOW: (1) elementwise attribution is stale again (5th time) - re-derive VAE_ABL_*; gelu should now
-  read ~6-8 % and rms_norm (4.1 %) is the top item, and rms_norm_scaled already exists at block level;
+  OPEN NOW (attribution RE-DERIVED in Exp782, so item (1) is closed): conv 1.45 s (9.7% of VAE) |
+  gelu-fused residue 1.20 (8.0%) | rms_norm 0.60 (4.0%) | bias 0.40 (2.7%) | scale+resid 0.30 (2.0%).
+  Cross-check: gelu's ablation delta fell 2.1 -> 1.2 s, exactly the 0.85 s of vae_s the fusion saved.
+  The one item still above the bar is a fused f32 rms_norm+gamma (2.6% of RTF) - see below.
+  rms_norm is now the top elementwise item (4.0 % of VAE = 2.6 % of RTF): the f32 path runs
+  `ggml_rms_norm` and then a SEPARATE gamma MUL (vae.cpp:296-297) = 4 tensor passes where rms_norm_scaled
+  would do 2. rms_norm_scaled exists but `GGML_ASSERT(src0->type == GGML_TYPE_I8_S)` and its work buffer
+  is a full [n_elements] float_buf + per-thread absmax - so giving it an f32 path must request the work
+  buffer BY TYPE (the Exp578/664 segfault trap) or better, extend the f32 rms_norm compute to read an
+  optional gamma src and skip the separate mul entirely (no work buffer at all).
   (2) lean 40-utt mean carries a scaled value marked ° - re-run it (~40 min) when convenient; (3) the
   hatches were re-audited for THIS stack (Exp677-style) never since Exp710 - costs of DW_CONV1D_OFF /
   LS_FUSE_OFF / GELU_BIAS_OFF / GGML_GELU_BATCH_OFF / M2_OFF at v4.3 are unmeasured.
