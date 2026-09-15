@@ -358,9 +358,15 @@ on the time axis: the deferred late pass captures the deep-layer batching
 benefit window-wide at ANY fine piece count, so per-piece overhead is all that
 is left — and the RAM driver is the *early-stage activation arena*, which scales
 with piece size. The measured map over the runnable set {1, 2, 13, 26}
-(non-divisors need a window-loop rework, Exp605) at v3.9 is p1 2.43 @ 2.46 GB
-(default, time-optimal), p2 2.46 @ 2.11 (fallback), p13 2.55 @ 1.75, p26 2.55 @ 1.72 — so p1 is
-the speed default while p13 is the RAM sweet spot. Output relations changed with the fusions:
+(non-divisors need a window-loop rework, Exp605), re-swept at v4.2 (conv-int8 + m2) with 3-4
+interleaved reps per arm (Exp772), is **defer-OFF**: p1 **2.378** @ 2.37 GB (default,
+time-optimal), p2 2.454 @ 2.07 (+3.2 %, fallback), p26 2.707 @ 1.71 (+13.8 %); **defer-ON**:
+p13 2.531 @ 1.75 (the RAM-lean tier), p26 2.554 @ 1.72 — so p1 is the speed default while p13 is
+the RAM sweet spot. NOTE the p1-vs-p2 gap WIDENED from −1.2 % (v3.9) to −3.2 % (v4.2): at p2 a
+piece is 13 frames, so each FFN matmul runs 12 columns in the GEMM plus ONE leftover column that
+costs a full extra weight pass (no m2 pairing at an odd remainder), while at p1 the two leftover
+columns of 26 are paired by m2 into a single pass. Re-swept at v3.9 and v4.2 only — do not re-sweep
+without another cost-structure change. Output relations changed with the fusions:
 p1/p2 are byte-identical everywhere measured (protocol transcript hash-equal in 6+ reps;
 40/40 gate transcripts identical, b=0/c=0); p13 differs from p2 by 2 gate tokens (p=0.5). The old
 "p2 differs (40 vs 39 tokens)" sentence was the taps-vs-im2col era (Exp640) and no longer holds.

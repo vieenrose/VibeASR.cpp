@@ -198,12 +198,19 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   surgically; (2) count clip pools WITH audio-on-disk and freshness BEFORE designing
   turn counts (S1/S3/S4 pools hold 4/2/2, all v1-used); (3) a quiet pair member is a
   loudness test, not a separation test - level-match and record gains.
-- OPEN (interrupted): p1-vs-p2 interleave at v3.9. Single reps suggested p1 2.4267
-  beats p2 2.4644 (-1.5%, 3x sigma) with byte-identical transcripts, but order was
-  fixed (p1 ran coolest) so thermal confound is open; the 4-arm interleave aborted
-  after 2 arms (p2a 2.4616, p1a 2.4260 - consistent direction, still confounded).
-  Needs a clean p2/p1/p1/p2 run before touching the granularity closure (p2 default)
-  or the map sentence in STREAMING_1P5B.md.
+- CLOSED (Exp772, was "OPEN (interrupted): p1-vs-p2 interleave at v3.9"): re-swept on the v4.2
+  stack (conv-int8 + m2), 3-4 interleaved reps/arm with a same-sweep p1 control (2.3805):
+  defer-OFF p1 2.3784 / p2 2.4538 (+3.2%) / p26 2.7073 (+13.8%); defer-ON p13 2.5308 / p26 2.5537
+  (+0.9%). The old confounded single reps are moot and the gap is now EXPLAINED, not thermal: at p2
+  a piece is 13 frames so every FFN matmul ends with ONE leftover column = one full extra weight
+  pass (m2 pairs only even remainders), while at p1 (26 columns) the 2 leftover columns cost a
+  single paired pass. p1 stays the default; p13+defer-ON reproduces the lean cell (2.531 vs the
+  documented 2.54). p26 defer-OFF emits 38 tokens vs 39 elsewhere - output is not granularity-neutral
+  in the GEMV regime (defer-ON at p26 returns to 39).
+  HARNESS BUG FOUND DOING THIS: run_rtf_multi.sh hardcoded VAE_FILE=vae-encoder-q4x4ffn.gguf, i.e.
+  the pre-Exp690 F16-conv tier, so ANY sweep through it measured a non-shipping tier. It now parses
+  the tier from measure.sh and prints it (commit 6eb18cf). Rule: a sweep runner must derive the tier
+  from the benchmark script, never copy it. (6eb18cf)
 
 - v2 FOUR-ARM CHARACTERIZATION (autoresearch on the probe, NOT optimization - 85 ref
   tokens cannot rank tiers; no code/weights changed on these numbers). Same clip:
