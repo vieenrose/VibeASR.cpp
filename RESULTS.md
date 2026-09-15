@@ -38,7 +38,7 @@ regenerated audio must hash to `984e60b14cfe…` to be the same probe).
 
 | tier | files | 10 s | 17 s | 69 s | 40-utt mean | WER | RSS |
 |---|---|---|---|---|---|---|---|
-| **max-speed-lean (`--vae-pieces 13 VAE_DEFER_LATE=1`, Exp643/708/711)** | 1.75 GB | **2.52** | ° | ° | **2.82** | **4.79 %**† | **1.75 GB** |
+| **max-speed-lean (`--vae-pieces 13 VAE_DEFER_LATE=1`, Exp643/708/711/732)** | 1.75 GB | **2.52** | **2.51** | **2.51** | **2.82** | **4.79 %**† | **1.75 GB** |
 | _same, 26 pieces (−32 MB, +1.3 % time, identical output)_ | 1.82 GB | _2.88_ ‡ | — | _2.83_ ‡ | _3.20_ ‡ | _4.55 % (tag `leanp26c`)_ | _1.84 GB_ |
 | **whole-file / server path** (Exp578/579) | — | — | live set **188-313 MB** for 6-10 s files | — | — | — | — |
 | **max-speed (shipped, v4.1 — PIECES=1, defer default OFF, Exp708/709)** | 2.37 GB | **2.39** | **2.36** | **2.39** | **2.68** | **4.51 %** | 2.37 GB |

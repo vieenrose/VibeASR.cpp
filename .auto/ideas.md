@@ -486,3 +486,14 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   LESSON: the readable ledger had fallen 9 iterations behind JSONL (Exp714-721 were
   also thin here) - the ledger is what future sessions actually read, so batch-write
   it whenever several verification iterations accumulate.
+
+- LAST ° CELLS FILLED (Exp732): lean 17 s 2.5085 @108 tok, lean 69 s 2.5101 @432
+  tok (shipped: 2.36 @108, 2.39 @446). Gaps +6.3%/+5.0% - the uniformity claim
+  (+4-6% at every length) is now airtight across all four lengths. NOTE the 69 s
+  token divergence (432 vs 446): lean-vs-shipped CAN differ on long-form (a couple
+  of early greedy flips cascade), consistent with the 2-token gate difference - the
+  ladder states token counts per cell precisely so nobody mistakes tier outputs for
+  identical. No ° cells remain in either shipping tier's row.
+  HARNESS SELF-CATCH: my sweep loop ran bare measure.sh twice (39-tok default clip)
+  before the AUDIO= arms - the 39-tok tell caught it immediately (Exp709/714 rule:
+  confirm the first arm measured the intended clip). Wasted ~80 s, no bogus cells.
