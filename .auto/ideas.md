@@ -657,3 +657,30 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
     surgery on the nr=24-specific gemm) and m=3 single-pass for the initial pass
     (saves 1 more pass = 92 ms once per clip). Both below 2% alone; neither invalidates
     the m2.
+
+- LEDGER IS SPLIT IN TWO HALVES - READ BOTH (Exp770 harness finding). This file holds Exp685
+  onward; ../.auto/ideas.md (outside the repo, pointed at by the loop prompt) holds the long-form
+  archive through Exp684 and is otherwise STALE. A session that reads only the prompt path can
+  resurrect closed work - that is what happened in runs 769-770 (the archive's Exp684 "conv-int8
+  STILL TO DO" was superseded by Exp685-693, and the shipped default already IS the conv-int8 file).
+  A POINTER header was added to the archive half; keep new entries here (committed) and move only
+  durable cross-era lessons to the archive.
+
+- CONV-INT8 LAYOUT LINE CLOSED + TAIL-FUSION RE-SIZED TO 1.2% (Exp769/770).
+  * The converter is CORRECT; the earlier "PAIRING MISMATCH" verdict was a threshold artifact.
+    Q4_0's own bound is amax/15 = 0.0217 for the probed tensor; identity readback diff 0.0199 is
+    INSIDE it, and the decisive predicted-vs-kernel product test (product rebuilt from the probe's
+    own dequantized bytes) gives ratio 0.0045, explained by the probe's fp16-quantized selector
+    scale. Rule: never threshold a 4-bit tensor against an absolute error - against its type's
+    error bound.
+  * K/IC swap and OC-plane transpose both give garbage (10 tokens, VAE 24.2 s vs 17.1):
+    pass-through bytes were already right (quant4x4.cpp's header comment). No more transposes.
+  * fuse-GEMV-tail-into-GEMM ceiling = 1.2% RTF, not 1.8%: post-m2 the VAE tail is 0.2 s of 15.9 s
+    vae_s (3 pairs, whole tail skipped) + LM ne11=31 residual 92 ms => ~292 ms of 23.9 s. Below
+    bar by measurement. Re-open only if GGML_MM_DEBUG_SHAPES shows ne11 % 4 >= 3.
+  * KNOB BUG, 5th "wrong measurement" case: GGML_MM_SKIP_TAIL's Exp764 formula
+    ne11 - MIN(v, ne11%4) EQUALS the default for v >= ne11%4, so the first sweep ran no arm at all
+    and looked like parity. Fixed to (ne11 - ne11%4) + MIN(v, rem) (submodule 70d1bb58). Standing
+    rule: prove a knob fires by an OUTPUT change (39 -> 1024 tokens here) before interpreting it.
+  * RSS band settled: shipped-tier peak_rss = 2374.2-2375.1 MB across 34 runs; the 2.23 GB in old
+    notes is the F16-conv reference row. RESULTS.md needs no change.
