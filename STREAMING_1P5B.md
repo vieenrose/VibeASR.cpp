@@ -349,9 +349,9 @@ The **balanced-lean** variant (`--vae-pieces 26` on the same files) traded
 +1% (10 s) / +2.4% (69 s) RTF for −180 MB RSS at *identical* transcripts in the
 Exp542-era concurrent regime. The current RAM-lean tier is **p13, concurrent
 encoders, defer explicitly ON** (`--vae-pieces 13` + `VAE_DEFER_LATE=1` — required
-since v4.1, whose default is defer-OFF): 2.52 on the protocol clip, 2.58 on 138 s,
-2.82 on the 40-utt mean, at 1.75 GB and WER 4.79 % (2 tokens of 731 from the default
-tier, p = 0.5) — Exp643/708/711/717.
+since v4.1, whose default is defer-OFF): 2.54 on the protocol clip (n=3, warm-session read;
+same-session m2-OFF control 2.57), 2.58 on 138 s (pre-m2), 2.82 on the 40-utt mean (pre-m2),
+at 1.75 GB and WER 4.79 % (2 tokens of 731 from the default tier, p = 0.5) — Exp643/708/711/717/767.
 
 That also corrected the earlier "finer splits lose" conclusion, which held only
 on the time axis: the deferred late pass captures the deep-layer batching
@@ -403,6 +403,7 @@ transcript matching at 4.25% WER - identical to the pre-concurrency run, i.e.
 no thermal cliff, no memory growth, no context drift, and no threading
 instability over 36 chunks / 72 parallel encoder launches. `--xwin` (cross-window VAE carry) is now ~6 % SLOWER
 on the protocol clip (re-measured at v4.1, Exp714: 2.55 vs 2.39 interleaved - it was -3.2 % pre-defer-flip;
+reference now 2.38 at v4.2, sign unchanged;
 the carry's per-chunk splice cost scales with piece size, and p1 doubles it). It remains a useful DIAGNOSTIC
 (it moves diarization attribution on the multi-speaker probe) and a server-path option, not a speed lever.
 It drifts (+11.5 % WER) on 69 s as well, so auto-selection by length was declined twice - a product

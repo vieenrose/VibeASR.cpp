@@ -602,3 +602,58 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   `git -C VibeASR.cpp status --porcelain` yourself - the tool's message is not
   evidence. Generalizes: an "auto-" safety net must be observed FAILING before you
   trust it succeeding (Exp660's rule, aimed at the harness itself this time).
+
+- BLOCKED-INT8 GEMV TAIL: PRICED, THEN SHIPPED AS THE m2 KERNEL (Exp763-767, v4.2).
+  The loop's first hand-written CPU-kernel project in many iterations, and the only
+  accuracy-preserving speed lever left on the measured board.
+  * PRICING (Exp763): the vendored mul_mat runs gemm over ne11-ne11%4 columns, then ONE
+    gemv CALL PER LEFTOVER COLUMN, and ggml_gemv_q4_0_4x4_q8_0 walks all nb weight blocks
+    with the activation pointer fixed = one full src0 stream per leftover column.
+    VAE_MMSHAPES census hook (GGML_MM_DEBUG_SHAPES=1; note it needs VAE_GRAPH_STATS=1 too
+    or it prints nothing - the Exp631 silent-hook trap): every VAE FFN linear and the LM
+    prefill run at ne11=26 (2 tail cols); conv matmuls have huge L (208..41600, all %4==0,
+    no tail). Skip-tail knob (GGML_MM_SKIP_TAIL, default-inert) paired: VAE -1.4%, LM
+    prefill -16.6% = 965 ms/clip = 4.0% of RTF. A tail column costs 92 ms = exactly one
+    decode token (one 890 MB stream at 9.7 GB/s); the prefill GEMM is compute-bound at
+    ~78 GMAC/s (marginal column ~38 ms). Padding the frame axis to a multiple of 4
+    (graph-level, VAE FFN, output-exact) measured PARITY and was reverted - a padded gemm
+    column costs ~38 ms of compute, recovering only ~30 of the 185 ms tail.
+  * THE SKIP-ARM MYSTERY (Exp764, resolved by census not theorizing): skip=2 should have
+    been identical to control (tail_start = ne11-2 both ways) but produced garbage, and
+    skip=1 saved VAE time but zero prefill time. Cause, two parts: (1) the LM runs an
+    INITIAL 31-token pass (ne11=31, %4=3, 386 calls at exactly 1:4 vs the 1544 ne11=26
+    window-prefill calls), whose KV/prompt state skip=2 poisoned (tail_start 29 vs 28);
+    (2) garbage features -> 256 tok/window runaway decode -> thermal throttle inflates
+    the prefill PHASE timer itself. LESSON (Exp674 trap, new guise): in garbage arms even
+    phase timers lie - only vae_s is truly LM-independent (it matched predictions in EVERY
+    arm: skip=1 -95/-138 vs -112 predicted; skip=2 flat). Shape facts come from CLEAN runs.
+    Also fixed en route: the knob mapped GGML_MM_SKIP_TAIL=0 -> 1 (the '0 is not zero'
+    class, same as measure.sh's no-arg trap); semantics now N = skip N columns, 0 = off.
+    Correct tail accounting: LM windows 736 + LM initial 276 + VAE 225 = 1237 ms = 5.2%.
+  * THE KERNEL (Exp765): ggml_gemv_q4_0_4x4_q8_0_m2 - two activation columns per single
+    weight pass. Design for zero numeric risk: the block loop replays the single-column
+    sdot ladder twice per K block; the f16 scale product moved v16->v13 so the 8 derived
+    nibble vectors survive for column 1; all 16 sdot .inst encodings reused VERBATIM (no
+    hand-encoded bytes beyond proven ones); fallback = two single calls. Per-column
+    numerics identical by construction -> the protocol hash is a tripwire for dispatch
+    bugs, not a hope. Wired into the tail loop for >=2 remaining columns, gated to
+    GGML_TYPE_Q4_0_4_4 (the loop serves all blocked types), default ON with the
+    GGML_MM_M2_OFF=1 hatch. Composes with SKIP_TAIL (fires only when >=2 remain).
+  * MEASURED (Exp765/766): prefill -143 ms (2 reps, consistent), rtf ~-1.0%
+    (2.376 vs 2.396), 5/5 protocol runs byte-identical. Ceiling autopsy: the m2 pass
+    costs ~146 ms/window vs 91 for one gemv pass (1.6x) - the doubled sdot ladder is
+    issue-bound, so 2x work per pass yields only 1.25x; the 2.8% ceiling assumed a free
+    lunch. SHIPPED under the sub-2%-with-identity rule (q8head precedent): 40-utt gate
+    40/40 byte-identical, b=0/c=0 of 731 tokens, p=1.0 (tag gatem2, mean 2.6641).
+    Lean: same-session m2-ON 2.5414 (n=3) vs m2-OFF 2.5668 (n=2) = -1.0%, so no
+    lean regression; the 2.52->2.54 absolute move is the known +/-1% lean session wobble.
+  * LADDER (Exp767, v4.2): shipped 10 s 2.38 / 17 s 2.36 / 69 s 2.38 / 138 s 2.44 /
+    gate mean 2.66; lean 10 s 2.54 / 17 s 2.50 / 69 s 2.52 (lean mean 2.82 + lean 138 s
+    2.58 carried pre-m2). Harness footgun found refreshing: measure.sh --env forwards to
+    the DEVICE; PIECES is consumed by measure.sh itself, so lean arms need PIECES=13 in
+    the caller env (two p1+deferON misruns measured and discarded as void).
+  * STILL OPEN (priced, not started): fuse the tail INTO the gemm's own weight walk
+    (zero extra loads, +8% compute on a compute-bound kernel: est. ~1.8%, bigger asm
+    surgery on the nr=24-specific gemm) and m=3 single-pass for the initial pass
+    (saves 1 more pass = 92 ms once per clip). Both below 2% alone; neither invalidates
+    the m2.

@@ -5,8 +5,8 @@ Minimize inference RTF of `./asr_streaming` (VibeVoice-ASR-Streaming-1.5B:
 VAE + LM-Q4_K_M, `--vae-pieces 13`) on the connected OPPO phone
 (Dimensity 1300, 8 GB RAM, Android 13, arm64) via `adb`, CPU only.
 Baseline (original protocol): RTF ~12.4-13.3 on the 10 s slice.
-**Current best: 2.39 (MAX-SPEED v4.1, p1 + defer-OFF + conv-int8) = -80.5%; RAM-lean
-v4.1 (p13 + defer ON) 2.52 @ 1.75 GB. Rows below marked F16/BALANCED/FAST-LM are
+**Current best: 2.38 (MAX-SPEED v4.2, p1 + defer-OFF + conv-int8 + m2 tail kernel) = -80.6 %; RAM-lean
+v4.2 (p13 + defer ON) 2.54 @ 1.75 GB. Rows below marked F16/BALANCED/FAST-LM are
 DEAD tiers kept only as history.**
 Goal direction: as far below baseline as honest engineering goes (RTF < 1 is
 believed unreachable without retraining; do NOT chase it by cheating).
@@ -17,7 +17,7 @@ believed unreachable without retraining; do NOT chase it by cheating).
 | F16 accuracy-first | `VAE_FILE=vae-encoder-f16.gguf` | ~4.77 (deferred late stages) | 4.7705 (Exp555; was 5.3362) |
 | BALANCED | `VAE_FILE=vae-encoder-q4x4ffn.gguf` + LM Q4_K_M | ~4.16 (deferred late stages) | 4.1649 (Exp555; was 4.4007) |
 | FAST-LM v2 | `VAE_FILE=vae-encoder-f16.gguf LM_FILE=lm-q4_0_4_4.gguf` (q6_K emb) | ~5.21 | 5.2138 (tokens 42), WER 4.41% |
-| **MAX-SPEED v4.1 (DEFAULT, p1, defer default OFF)** | `VAE_FILE=vae-encoder-convint8.gguf LM_FILE=lm-q8head.gguf` (Q4_0_4x4 bulk, q6_K embeddings, Q8_0 head) + the v3.4 VAE stack (concurrent encoders + lifetime buffers + PIECES=1 + zero-copy weights + [C,T] blocks; deferred deep stages now OPT-IN - at p1 they are pure overhead, Exp708) + the v3.6-v3.8 fusions (dw-conv1d kernel, layer-scale add_scaled, gelu+bias) + **v3.9 blocked-int8 CONV weights** | **~2.39** | Protocol 2.39 (defer-OFF reps 2.3909/2.3924/2.3937/2.3960, all byte-identical to the frozen reference); 17 s 2.36, 69 s 2.39, 138 s 2.45 (Exp709, token-identical); RSS 2.37 GB (-86 MB vs defer-ON); **40-utt gate ZERO discordant tokens of 731 vs both the defer-ON p1 gate and the p2 gate (b=0/c=0)** (tag gatedef1; 40-utt mean 2.677). Piece-wise is the path that produced the frozen reference, so identity-proven. |
+| **MAX-SPEED v4.2 (DEFAULT, p1, defer default OFF)** | `VAE_FILE=vae-encoder-convint8.gguf LM_FILE=lm-q8head.gguf` (Q4_0_4x4 bulk, q6_K embeddings, Q8_0 head) + the v3.4 VAE stack (concurrent encoders + lifetime buffers + PIECES=1 + zero-copy weights + [C,T] blocks; deferred deep stages now OPT-IN - at p1 they are pure overhead, Exp708) + the v3.6-v3.8 fusions (dw-conv1d kernel, layer-scale add_scaled, gelu+bias) + **v3.9 blocked-int8 CONV weights** + **v4.2 two-column tail GEMV** (one weight pass for the ne11%4 leftovers, byte-identical, Exp765/766) | **~2.38** | Protocol 2.38 (m2 reps 2.3727/2.3790/2.3759, all byte-identical to the frozen reference); 17 s 2.36, 69 s 2.38, 138 s 2.44 (Exp767); RSS 2.37 GB; **40-utt gate ZERO discordant tokens of 731 vs the frozen reference (b=0/c=0, p=1.0)** (tag gatem2; 40-utt mean 2.664). Piece-wise is the path that produced the frozen reference, so identity-proven. |
 | Q8 anchor | `VAE_FILE=vae-encoder-q8_0mixed.gguf` | 6.12-6.15 | 6.1204/6.1520/6.1659 |
 | Q4 | `VAE_FILE=vae-encoder-q4ffn.gguf` | ~6.48 | 6.4776 |
 | ultra-lean (superseded) | `VAE_FILE=vae-encoder-q4ffn.gguf PIECES=26` | ~6.61 | 6.6066 |
