@@ -551,3 +551,17 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   gate unaffected, +1.3% on the secondary tier changes no decision; 2.52 cell stands.
   SHARPER TRIGGER: escalate only if lean conv share exceeds ~1.9 s or lean total
   exceeds 2.58 next session; the discriminant is lean+ABL_CONV vae_s, never rtf.
+
+- CONV-SHARING SCALING: p26 THIRD POINT REJECTS LINEAR SETUP SCALING (Exp742):
+  p26+deferON base vae 17.5, +ABL_CONV 15.9 => conv share 1.6 s, total 2.5557 @
+  1718.9 MB (re-validates the documented p26 tier row: 2.55 @ 1.72 GB).
+  Three-point pattern p1:1.4 / p13:1.7 / p26:1.6 REJECTS the per-node-setup-scales-
+  linearly candidate (predicted ~2.0 s at p26). Supported account instead:
+  GEMM-EFFICIENCY - identical conv MACs, but p1's whole-window im2col feeds large-L
+  GEMMs (~18% more efficient) while p13/p26 run small-L pieces; consistent with the
+  Exp678 shape-sensitivity and Exp681 rate-bound findings. So lean-vs-shipped conv
+  gap is STRUCTURAL (no drift), while the session-level lean total shift (+1.3%,
+  all granularities' totals stable except lean defer-ON) stays unexplained-but-
+  bounded - thermal/session drift on the launch-heavy path remains the suspicion.
+  Neither changes any decision; the thread is closed pending the standing trigger
+  (lean conv >1.9 s or total >2.58).
