@@ -462,3 +462,27 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   HYGIENE: the interrupted session left the ggml submodule dirty + 123 MB build dir
   + scratch logs; all reverted/removed, setup_assert.sh committed as a tool with a
   corrected usage note (measure.sh has no BIN override).
+
+- VERIFICATION SWEEP Exp724-730 (all keep, no shipped change; band 2.39-2.42):
+  * Exp724 lean-tier spaced verification: recipe reproduces its cell exactly
+    (2.5211 @ 1751.9 MB, 39 tok, byte-identical) - both tiers verified same-session.
+  * Exp725 provenance extension: all 5 post-Exp699 gate sets (gatep1/gatedef1/gate721/
+    lean711/lean711b) are n=40 + stamped - every ship rests on stamped pairs.
+  * Exp726 overfit guard (new recurring check): second same-domain 10 s slice
+    (slice10b, 55 tok, applause/audience) = 2.5353, sane transcript; VAE rate
+    identical (15.9 s), LM per-token 91 vs 95 ms/tok - no protocol-clip overfit.
+    NOT a primary-metric run (different clip/density); never rank against 2.39.
+  * Exp727 manifest hygiene: slice10b was already hash-manifested (hash matched
+    device) - note upgraded to record the guard role instead of re-blessing.
+  * Exp728 heartbeat: device idle, 2.3965 byte-identical.
+  * Exp729 long-form determinism: 138 s at current build = 877 tokens EXACT,
+    2.4551; only marginal-class diffs (contractions/punctuation) vs the Exp515-era
+    ref - expected across 200+ runs of stack changes (Exp644 doctrine). Archived as
+    .auto/hyp-138-v41.txt for same-stack checks.
+  * Exp730 pathology screen on that archive: 138 distinct repeated 10-grams, ALL
+    exactly x2, all genuine talk refrains - zero runaway. Method note: screen
+    includes Speaker labels, so absolute counts are not cross-method comparable;
+    verdict rests on max run length.
+  LESSON: the readable ledger had fallen 9 iterations behind JSONL (Exp714-721 were
+  also thin here) - the ledger is what future sessions actually read, so batch-write
+  it whenever several verification iterations accumulate.
