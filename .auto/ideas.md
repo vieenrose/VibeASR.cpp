@@ -652,11 +652,11 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
     2.58 carried pre-m2). Harness footgun found refreshing: measure.sh --env forwards to
     the DEVICE; PIECES is consumed by measure.sh itself, so lean arms need PIECES=13 in
     the caller env (two p1+deferON misruns measured and discarded as void).
-  * STILL OPEN (priced, not started): fuse the tail INTO the gemm's own weight walk
-    (zero extra loads, +8% compute on a compute-bound kernel: est. ~1.8%, bigger asm
-    surgery on the nr=24-specific gemm) and m=3 single-pass for the initial pass
-    (saves 1 more pass = 92 ms once per clip). Both below 2% alone; neither invalidates
-    the m2.
+  * CLOSED BY MEASUREMENT (Exp770), was "priced at ~1.8%": fusing the tail into the gemm's
+    own weight walk can only recover the POST-m2 residual = 0.2 s of VAE (vae_s with the whole
+    tail skipped, 3 pairs) + 92 ms of LM ne11=31 = ~292 ms = 1.2% of wall. Below the 2% bar, so
+    not attempted. m=3 single-pass is a subset of that (0.4%) and is likewise closed. Trigger to
+    revisit: a GGML_MM_DEBUG_SHAPES census showing ne11 % 4 >= 3.
 
 - LEDGER IS SPLIT IN TWO HALVES - READ BOTH (Exp770 harness finding). This file holds Exp685
   onward; ../.auto/ideas.md (outside the repo, pointed at by the loop prompt) holds the long-form

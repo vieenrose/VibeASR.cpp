@@ -14,7 +14,14 @@ DEV=${DEV:-$(grep -m1 '^DEV=' .auto/measure.sh | cut -d= -f2)}   # single source
 [ -n "$DEV" ] || { echo "ERROR: no device id (set DEV= or fix .auto/measure.sh)" >&2; exit 2; }
 RDIR=/data/local/tmp/vibeasr
 REPS=${1:-1}; shift
-DEF_ENV="LM_FILE=lm-q8head.gguf VAE_FILE=vae-encoder-q4x4ffn.gguf MASK=C0"
+# Tier defaults come from measure.sh, NOT from a copy of them here. The previous literal
+# (VAE_FILE=vae-encoder-q4x4ffn.gguf) was the pre-Exp690 F16-conv reference and silently made every
+# sweep through this runner measure a tier that no longer ships - same class as the stale-lib bug
+# check 5 guards against, but in the sweep harness instead of measure.sh.
+DEF_LM=$(grep -m1 '^LM_FILE=' .auto/measure.sh | sed -E 's/^[^:]*=\$\{LM_FILE:-([^}]*)\}.*/\1/')
+DEF_VAE=$(grep -m1 '^VAE_FILE=' .auto/measure.sh | sed -E 's/^[^:]*=\$\{VAE_FILE:-([^}]*)\}.*/\1/')
+[ -n "$DEF_LM" ] && [ -n "$DEF_VAE" ] || { echo "ERROR: could not parse model defaults from .auto/measure.sh" >&2; exit 2; }
+DEF_ENV="LM_FILE=$DEF_LM VAE_FILE=$DEF_VAE MASK=C0"
 # Freshness guard: this runner does NOT build, so sweeping after editing src/ silently
 # measures the old binary (Exp662 burned 12 runs that way). Refuse unless the binary is newer
 # than every source file.
@@ -30,6 +37,7 @@ TSV=.auto/multi-$$.tsv
 adb -s $DEV push .auto/bench_device.sh $RDIR/ >/dev/null 2>&1
 B=$(adb -s "$DEV" shell "dumpsys battery" | grep -oE 'temperature: [0-9]+' | grep -oE '[0-9]+' | head -1 | tr -d '\r')
 echo "note: batt_temp_c=$(python3 -c "print(round(${B:-0}/10,1))")"
+echo "note: tier from measure.sh = $DEF_LM + $DEF_VAE"
 
 for r in $(seq 1 "$REPS"); do
   for arm in "$@"; do
