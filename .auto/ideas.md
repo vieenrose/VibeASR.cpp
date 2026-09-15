@@ -787,3 +787,19 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
     doubles - because phase timers get thermally contaminated by runaway decode while vae_s stays
     exact. Rule: when a probe invalidates the output, vae_s remains trustworthy and LM-phase seconds
     do not (Exp674 generalized).
+
+- GEMV-TAIL AXIS CLOSED BY MEASUREMENT + CENSUS RECONCILED (Exp791). Two instruments disagreed and
+  both were right about different things, so the resolution is worth keeping:
+    * Direct skip (GGML_MM_SKIP_TAIL=1, 2 paired reps): removing *every* tail column saves 0.1 s of VAE
+      and 0.3 s of prefill = 0.4 s = 1.7% of the clip.
+    * Shape census (GGML_MM_DEBUG_SHAPES on a byte-identical run) models the same traffic as 8.5 GB =
+      1.31 s if every tail read reached DRAM.
+  Ratio 0.31: only about a third of the modelled tail traffic is real DRAM work, because a tail pass
+  immediately follows the gemm passes of the SAME call and the dominant tail tensors are 1.3-7.7 MB,
+  i.e. L3-resident. The big-k tensors that would miss L3 are decode (ne11=1) calls, which are not tails.
+  Shape inventory of the shipped build: ne11 = {1 (decode, 20k calls), 26 (LM window prefill + VAE FFN),
+  31 (LM initial pass)}. Only ne11=31 has a remainder >= 3, and it costs 0.2 s. So the ledger's reopen
+  condition ("an ne11 with remainder >= 3") is technically satisfied but moot - do not commission an m3
+  kernel or tail-fusion; the whole axis is 0.4 s.
+  RULE this adds: a traffic model over a shape census overstates cost whenever the re-read is
+  cache-resident. Price traffic claims with a skip/ablation, and use the census to explain the skip.
