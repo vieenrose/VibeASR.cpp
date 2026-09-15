@@ -762,3 +762,28 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   (2) lean 40-utt mean carries a scaled value marked ° - re-run it (~40 min) when convenient; (3) the
   hatches were re-audited for THIS stack (Exp677-style) never since Exp710 - costs of DW_CONV1D_OFF /
   LS_FUSE_OFF / GELU_BIAS_OFF / GGML_GELU_BATCH_OFF / M2_OFF at v4.3 are unmeasured.
+
+- ATTRIBUTION + THREE AXES CLOSED BY MEASUREMENT (Exp783, v4.3, base vae_s 15.0 / wall 23.0 s):
+    conv matmuls        1.45 s   9.7 % of VAE   (already blocked-int8 since v3.9 - no lever left)
+    gelu residue        1.20 s   8.0 %          (Exp673's fusion removed one round trip of three)
+    rms_norm             0.60 s   4.0 %  <- the ONE item above the bar as a fused f32 norm+gamma
+    bias adds            0.40 s   2.7 %          (needs a mul_mat epilogue)
+    scale + residual     0.30 s   2.0 %          (already fused, this is the irreducible write)
+  * GEMV-TAIL AXIS, CLOSED: with GGML_MM_SKIP_TAIL (semantics fixed: 0 = off, >0 = cap the tail) the
+    VAE's ENTIRE tail is 0.1 s of 15.0 (vae_s 15.0 vs 14.9-15.0, three pairs; the LM's ne11=31 tail is
+    ~92 ms by census arithmetic). So the whole "fuse the tail into the gemm" project tops out near
+    1.2 % of RTF, not the 1.8-2.8 % carried in the ledger from pre-m2 arithmetic - BELOW the bar.
+    My arithmetic-based 3.2 % estimate was wrong (4th "measurement you meant" case): it assumed each
+    leftover column costs a full 92 ms token-equivalent stream, but with m2 paired the VAE's 2-column
+    tail already shares one pass and the measured residual is 6x smaller than the model.
+  * SHAPE CURVE (built into .auto/mm_shape_micro, device run): the blocked kernel delivers 20.4 GMAC/s
+    at ne11=26 on ONE thread and 38.6 on two, saturating at 23.3 / 43.9. So the "VAE runs at ~25 GMAC/s
+    vs a 40-45 microbench" residual - unexplained since Exp551 - was a THREAD-ACCOUNTING artifact: the
+    old microbench number was two threads and the in-graph number one. Per core the kernel is at its
+    ceiling; the VAE's remaining time is the non-matmul traffic in the table above. Reuse the curve to
+    price any proposed shape/batching change in a minute instead of a ladder.
+  * LM AT THE KERNEL CEILING (paired tail-skips): skipping the LM's tail cuts prefill 4.3 -> 4.0 s but
+    makes the LM emit garbage (1024 tokens), and in that state prefill stays EXACTLY 4.0 while rtf
+    doubles - because phase timers get thermally contaminated by runaway decode while vae_s stays
+    exact. Rule: when a probe invalidates the output, vae_s remains trustworthy and LM-phase seconds
+    do not (Exp674 generalized).
