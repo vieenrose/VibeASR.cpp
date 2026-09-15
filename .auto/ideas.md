@@ -537,3 +537,17 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   churn on 3 reps. TRIGGER: if defer-on lean stays elevated next session, run the
   VAE_ABL sweep on the lean path to localize within the late pass (vae_s delta is
   the discriminant, never rtf).
+
+- LEAN CONV SHARE MEASURED SEPARATELY (Exp741, closes Exp740 trigger): same-session
+  paired ablations - shipped+ABL_CONV vae 14.5 (base 15.9 => conv 1.4 s, reproduces
+  Exp713's 8.8% exactly: shipped conv share did NOT move) vs lean+ABL_CONV vae 15.7
+  (base 17.4 => conv 1.7 s). The +0.3 s lean elevation sits ENTIRELY inside the conv
+  share arithmetic. IRREDUCIBLE AMBIGUITY (stated, not hidden): lean conv was never
+  measured separately before, so "conv share drifted 1.4->1.7" and "conv was always
+  1.7 on p13 (13x the per-node im2col+conversion launches) while non-conv drifted"
+  both fit - the leading structural candidate is per-NODE conversion setup scaling
+  with piece count (Exp720 proved per-BYTE conversion free; per-call setup was never
+  priced). Recorded as lean conv share = 1.7 s (new cell). No action: hashes clean,
+  gate unaffected, +1.3% on the secondary tier changes no decision; 2.52 cell stands.
+  SHARPER TRIGGER: escalate only if lean conv share exceeds ~1.9 s or lean total
+  exceeds 2.58 next session; the discriminant is lean+ABL_CONV vae_s, never rtf.
