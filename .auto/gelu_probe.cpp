@@ -1,22 +1,21 @@
-// gelu rate probe (Exp780). WHY: the shipped gelu is GGML_GELU_FP16 - a SCALAR loop that converts each
-// f32 to f16 and gathers one entry from ggml's gelu table (65536 entries x 2 B = 128 KB). 128 KB does
-// not fit an A78's 48 KB L1, so every element pays an L2 access. The shipped graph moves 980 MB per
-// build through this loop (26 nodes, Exp778 profile) and the ablation prices it at 13.3% of VAE
-// seconds - the largest single non-matmul item found since Exp662. Rate: 233 Melem/s/thread.
+// gelu rate probe (Exp780b). WHY: the shipped graph moves 980 MB per build through ggml_gelu and the
+// ablation prices that pass at 2.1 s = 13.3% of VAE seconds (Exp780), a rate of only 233 Melem/s per
+// core (~8.6 cycles/element). The ledger's largest remaining in-scope item.
 //
-// Two candidate fixes are tested, both of which must be BIT-IDENTICAL because the table lookup *is*
-// the function (a polynomial would be "more accurate" but is a different function - that is the
-// gelu_quick lesson, Exp601/626):
-//   A. batched issues: convert 4 f32->f16 with the FP16 vector unit, then do 4 independent table
-//      gathers per iteration so their L2 latencies overlap (the scalar loop's gathers are limited by
-//      the compiler's ability to keep loads in flight);
-//   B. A + a table prefetch. The FFN's values cluster, so the hot table region is small, but the
-//      access order follows the data, not the table.
+// The function is defined by a LOOKUP: under GGML_GELU_FP16, gelu(x) = table[f16bits(x)] with two
+// boundary branches. A polynomial is NOT equivalent (that is the gelu_quick lesson, Exp601/626), so any
+// speedup must keep the same table and the same branches - only the ISSUE ORDER may change.
 //
-// Reference is ggml's OWN unary gelu node, computed here through ggml so the comparison is against
-// what inference actually produces (not against a re-derivation - Exp672's lesson about reconstructing
-// a library routine at the call site).
+// Variants, all claiming bit-identity:
+//   A  ggml's loop verbatim            - the baseline; also validates that this file's replication is
+//                                        faithful, which must be true before any variant means anything
+//   B  4 elements in flight            - four independent gathers per iteration, so four L2 latencies
+//                                        overlap instead of one at a time
+//   C  B + explicit __builtin_prefetch on the next iteration's table entries
+//   D  branch-light: clamp the index instead of branching (claiming equality is TESTED here, not
+//      assumed - the two branches exist to avoid a table entry for saturated inputs)
 #include "ggml.h"
+#include "ggml-impl.h"
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -25,58 +24,63 @@
 #include <ctime>
 #include <vector>
 
-static double now_s() {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return ts.tv_sec + 1e-9 * ts.tv_nsec;
-}
+static double now_s() { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec + 1e-9 * t.tv_nsec; }
 
-// The table, built exactly as ggml does at init: entry[t] = f16( gelu_f32( f16_to_f32(t) ) ).
-// If this disagrees with ggml's own node anywhere, every conclusion below is void - so it is checked.
-static std::vector<uint16_t> make_table() {
-    std::vector<uint16_t> tab(65536);
-    for (long t = 0; t < 65536; t++) {
-        ggml_fp16_t h = (ggml_fp16_t)(uint16_t)t;
-        float x = ggml_fp16_to_fp32(h);
-        float g = 0.5f * x * (1.0f + erff(x * 0.7978845608f));
-        tab[t] = (uint16_t) ggml_fp32_to_fp16(g);
-    }
-    return tab;
-}
-
-static void gelu_scalar(const int64_t n, float * y, const float * x, const uint16_t * tab) {
-    for (int64_t i = 0; i < n; ++i) {
+static void vA(int n, float * y, const float * x) {
+    for (int i = 0; i < n; ++i) {
         if (x[i] <= -10.0f) y[i] = 0.0f;
         else if (x[i] >= 10.0f) y[i] = x[i];
-        else { ggml_fp16_t h = ggml_fp32_to_fp16(x[i]); uint16_t t; memcpy(&t, &h, 2); y[i] = ggml_fp16_to_fp32((ggml_fp16_t) tab[t]); }
+        else { uint16_t t; ggml_fp16_t h = GGML_FP32_TO_FP16(x[i]); memcpy(&t, &h, 2); y[i] = GGML_FP16_TO_FP32(ggml_table_gelu_f16[t]); }
     }
 }
-
-// Variant A: four elements in flight, same branches and same table entries.
-static void gelu_batch4(const int64_t n, float * y, const float * x, const uint16_t * tab) {
-    int64_t i = 0;
+static void vB(int n, float * y, const float * x) {
+    int i = 0;
     for (; i + 4 <= n; i += 4) {
-        uint16_t t[4];
-        float v[4];
-        for (int k = 0; k < 4; k++) v[k] = x[i + k];
-        for (int k = 0; k < 4; k++) { ggml_fp16_t h = ggml_fp32_to_fp16(v[k]); memcpy(&t[k], &h, 2); }
+        uint16_t t[4]; float v[4];
+        v[0] = x[i]; v[1] = x[i+1]; v[2] = x[i+2]; v[3] = x[i+3];
+        for (int k = 0; k < 4; k++) { ggml_fp16_t h = GGML_FP32_TO_FP16(v[k]); memcpy(&t[k], &h, 2); }
         float r[4];
-        for (int k = 0; k < 4; k++) r[k] = ggml_fp16_to_fp32((ggml_fp16_t) tab[t[k]]);   // 4 gathers issued together
-        for (int k = 0; k < 4; k++) y[i + k] = v[k] <= -10.0f ? 0.0f : (v[k] >= 10.0f ? v[k] : r[k]);
+        for (int k = 0; k < 4; k++) r[k] = GGML_FP16_TO_FP32(ggml_table_gelu_f16[t[k]]);
+        for (int k = 0; k < 4; k++) y[i+k] = v[k] <= -10.0f ? 0.0f : (v[k] >= 10.0f ? v[k] : r[k]);
     }
-    gelu_scalar(n - i, y + i, x + i, tab);
+    vA(n - i, y + i, x + i);
+}
+static void vC(int n, float * y, const float * x) {
+    int i = 0;
+    for (; i + 4 <= n; i += 4) {
+        if (i + 12 < n) for (int k = 4; k < 12; k++) __builtin_prefetch(x + i + k, 0, 0);
+        uint16_t t[4]; float v[4];
+        v[0] = x[i]; v[1] = x[i+1]; v[2] = x[i+2]; v[3] = x[i+3];
+        for (int k = 0; k < 4; k++) { ggml_fp16_t h = GGML_FP32_TO_FP16(v[k]); memcpy(&t[k], &h, 2); }
+        float r[4];
+        for (int k = 0; k < 4; k++) r[k] = GGML_FP16_TO_FP32(ggml_table_gelu_f16[t[k]]);
+        for (int k = 0; k < 4; k++) y[i+k] = v[k] <= -10.0f ? 0.0f : (v[k] >= 10.0f ? v[k] : r[k]);
+    }
+    vA(n - i, y + i, x + i);
+}
+static void vD(int n, float * y, const float * x) {
+    int i = 0;
+    for (; i + 4 <= n; i += 4) {
+        uint16_t t[4]; float v[4]; int oob[4];
+        v[0] = x[i]; v[1] = x[i+1]; v[2] = x[i+2]; v[3] = x[i+3];
+        for (int k = 0; k < 4; k++) { ggml_fp16_t h = GGML_FP32_TO_FP16(v[k]); memcpy(&t[k], &h, 2); oob[k] = 0; }
+        float r[4];
+        for (int k = 0; k < 4; k++) r[k] = GGML_FP16_TO_FP32(ggml_table_gelu_f16[t[k]]);
+        for (int k = 0; k < 4; k++) { if (v[k] <= -10.0f) r[k] = 0.0f; else if (v[k] >= 10.0f) { r[k] = v[k]; oob[k] = 1; } }
+        (void) oob; y[i] = r[0]; y[i+1] = r[1]; y[i+2] = r[2]; y[i+3] = r[3];
+    }
+    vA(n - i, y + i, x + i);
 }
 
 int main(int argc, char ** argv) {
-    const int64_t n = argc > 1 ? atoll(argv[1]) : (1LL << 22);   // 4.19M elements = one real gelu node
-    const int reps = argc > 2 ? atoi(argv[2]) : 20;
-    std::vector<uint16_t> tab = make_table();
-
-    // ground truth from ggml's own graph node
+    const int n = argc > 1 ? atoi(argv[1]) : (1 << 22);
+    const int reps = argc > 2 ? atoi(argv[2]) : 12;
     std::vector<float> x(n), ref(n), y(n);
-    for (int64_t i = 0; i < n; i++) x[i] = 3.0f * std::sin(0.0013f * i) + 0.25f * std::cos(0.37f * i);
+    for (int i = 0; i < n; i++) x[i] = 4.0f * std::sin(0.0013f * i) + 0.3f * std::cos(0.37f * i) + 0.02f * ((i * 2654435761u) % 1000) / 1000.0f;
+
+    // ground truth = ggml's own unary gelu node, one thread (what inference runs)
     {
-        struct ggml_init_params p = { (size_t)512 << 20, nullptr, false };
+        struct ggml_init_params p = { (size_t)640 << 20, nullptr, false };
         struct ggml_context * ctx = ggml_init(p);
         struct ggml_tensor * t = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, n);
         memcpy(t->data, x.data(), (size_t) n * 4);
@@ -87,22 +91,22 @@ int main(int argc, char ** argv) {
         memcpy(ref.data(), o->data, (size_t) n * 4);
         ggml_free(ctx);
     }
+    printf("n=%d  (%.1f MB tensor, like one VAE gelu node)\n", n, 4.0 * n / 1e6);
 
-    gelu_scalar(n, y.data(), x.data(), tab.data());
-    long diff_s = 0; for (int64_t i = 0; i < n; i++) if (memcmp(&y[i], &ref[i], 4)) diff_s++;
-    printf("local table vs ggml node: %ld/%lld differ %s\n", diff_s, (long long) n, diff_s ? "<= TABLE MISMATCH, STOP" : "(table OK)");
-    gelu_batch4(n, y.data(), x.data(), tab.data());
-    long diff_a = 0; for (int64_t i = 0; i < n; i++) if (memcmp(&y[i], &ref[i], 4)) diff_a++;
-    printf("batch4 vs ggml node:      %ld/%lld differ  %s\n", diff_a, (long long) n, diff_a ? "NOT IDENTICAL" : "BIT-IDENTICAL");
-
-    struct { const char * name; void (*fn)(int64_t, float*, const float*, const uint16_t*); } arms[] =
-        { { "scalar(ggml-shaped)", gelu_scalar }, { "batch4", gelu_batch4 } };
+    struct { const char * name; void (*fn)(int, float*, const float*); } arms[] =
+        { {"A ggml loop", vA}, {"B batch4", vB}, {"C batch4+prefetch", vC}, {"D branch-light", vD} };
     for (auto & a : arms) {
-        a.fn(n, y.data(), x.data(), tab.data());                      // warm
+        vA(n, y.data(), x.data());
+        long dref = 0; for (int i = 0; i < n; i++) if (memcmp(&y[i], &ref[i], 4)) dref++;
+        a.fn(n, y.data(), x.data());
+        long dvar = 0; int64_t first = -1;
+        for (int i = 0; i < n; i++) if (memcmp(&y[i], &ref[i], 4)) { if (first < 0) first = i; dvar++; }
+        a.fn(n, y.data(), x.data());
         double t0 = now_s();
-        for (int r = 0; r < reps; r++) a.fn(n, y.data(), x.data(), tab.data());
+        for (int r = 0; r < reps; r++) a.fn(n, y.data(), x.data());
         double dt = (now_s() - t0) / reps;
-        printf("%-20s %7.2f ms  %7.0f Melem/s  %5.2f GB/s(touched)\n", a.name, dt * 1e3, n / dt / 1e6, 8.0 * n / dt / 1e9);
+        printf("%-18s %6.2f ms  %6.0f Melem/s  %5.2f GB/s  vs-ggml-node diffs=%ld", a.name, dt * 1e3, n / dt / 1e6, 8.0 * n / dt / 1e9, dvar);
+        printf("%s\n", dvar ? (dref ? "  (BASELINE ITSELF DIFFERS - replication invalid)" : "  NOT identical") : "  BIT-IDENTICAL");
     }
     return 0;
 }
