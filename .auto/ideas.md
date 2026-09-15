@@ -574,3 +574,14 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   spontaneously, shipped tier unaffected throughout). The 2.52 cell never moved.
   Standing guidance unchanged: sub-2%-of-tier wobbles on the secondary tier with
   clean hashes get a watch flag and a re-check, never cell churn.
+
+- DEFER AT p2 RE-CHECKED, EXP639 HOLDS (Exp746): p2 with defer-OFF (current default)
+  = 2.4621, vae 16.5, RSS 2071.5, hash-identical - i.e. PARITY vs the documented
+  p2-defer-ON 2.46 row. So the defer story has a granularity boundary INSIDE the
+  coarse regime: p2 (2 pieces) batching-benefit ≈ staging-cost (tie, both eras),
+  p1 (1 piece) zero-benefit < cost (-1.2%). Exp639's p2 verdict is the one
+  neutral-knob closure that SURVIVED the int8 era intact - worth noting because
+  every other closure from that era broke. The p2 fallback row needs no update
+  (2.4621 ≈ 2.46); the mechanism note in STREAMING_1P5B.md already encodes the
+  regime (defer valuable iff pieces are GEMV-shaped), which this confirms from
+  the other side.
