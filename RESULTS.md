@@ -38,7 +38,7 @@ regenerated audio must hash to `984e60b14cfe…` to be the same probe).
 
 | tier | files | 10 s | 17 s | 69 s | 40-utt mean | WER | RSS |
 |---|---|---|---|---|---|---|---|
-| **max-speed-lean (`--vae-pieces 13 VAE_DEFER_LATE=1`, Exp643/708/711/732/766/781/784/785)** | 1.75 GB | **2.41** | **2.39** | **2.41** | **2.69**° | **4.79 %**† | **1.75 GB** |
+| **max-speed-lean (`--vae-pieces 13 VAE_DEFER_LATE=1`, Exp643/708/711/732/766/781/784/785/786)** | 1.75 GB | **2.41** | **2.39** | **2.41** | **2.70** | **4.79 %**† | **1.75 GB** |
 | _same, 26 pieces (−32 MB, +1.3 % time, identical output)_ | 1.82 GB | _2.88_ ‡ | — | _2.83_ ‡ | _3.20_ ‡ | _4.55 % (tag `leanp26c`)_ | _1.84 GB_ |
 | **whole-file / server path** (Exp578/579) | — | — | live set **188-313 MB** for 6-10 s files | — | — | — | — |
 | **max-speed (shipped, v4.4 — v4.2 + fused gelu+bias + fused rms_norm·gamma, Exp708/709/765/766/781/784/785)** | 2.37 GB | **2.26** | **2.25** | **2.28** | **2.54** | **4.51 %** | 2.37 GB |
@@ -60,9 +60,7 @@ correctly. `.auto/tier.env` plus the audit now make that class of mistake fail l
 
 > ° Measured before the Exp670 depthwise-conv1d path became the default; scale by ~0.965.
 > The **17 s** column was re-measured in Exp675 on `chat17.wav` = a deterministic 17.0 s excerpt of `chat69.wav` (first 408,000 frames). The clip the old 17 s cells were taken on no longer exists: `chat.wav` and `chat69.wav` became byte-identical (both 3,311,576 B) when the 69 s clip was pushed, so the pre-Exp675 17 s numbers are not comparable to the new ones and were replaced, not rescaled. Length ladder is monotone and the lean/shipped gap is now consistent across all four lengths (+5–6 % at v4.2, was +3.8–4.4 % at v3.8), which is the useful cross-check: per-piece overhead does not grow with clip length.
-> Re-measured on the current default (**v4.4**, five fusions + m2 kernel): shipped tier 10 s **2.26**, 17 s **2.25**, 69 s **2.28**, 138 s **2.35**, 40-utt mean **2.5415** (tag `norm784`: **40/40 byte-identical** to both `gelufuse781` and the frozen `gatem2` - b=0/c=0 of 731 tokens, McNemar p=1.0 in both pairs, WER 4.51 %); lean tier 10 s **2.41**, 17 s **2.39**, 69 s **2.41**, 138 s **2.47** (2 reps each, RSS 1752-1766 MB, all majflt 0). Token counts are unchanged at every length (39/108/446/877 shipped), so the two fusions are output-neutral end to end, not just on the protocol clip. ° = lean 40-utt mean carried from the pre-fusion gate and corrected by the measured tier delta; re-run to confirm.
-
-> **The WER column is read-speech-only (Exp651, Exp653, Exp654).** Every number above is
+> Re-measured on the current default (**v4.4**, five fusions + m2 kernel): shipped tier 10 s **2.26**, 17 s **2.25**, 69 s **2.28**, 138 s **2.35**, 40-utt mean **2.5415** (tag `norm784`: **40/40 byte-identical** to both `gelufuse781` and the frozen `gatem2` - b=0/c=0 of 731 tokens, McNemar p=1.0 in both pairs, WER 4.51 %); lean tier 10 s **2.41**, 17 s **2.39**, 69 s **2.41**, 138 s **2.47** (2 reps each, RSS 1752-1766 MB, all majflt 0). Token counts are unchanged at every length (39/108/446/877 shipped), so the two fusions are output-neutral end to end, not just on the protocol clip. All ° cells are now gone: the lean 40-utt mean was measured at v4.4 (tag `leannorm785`, 2.7001)..** Every number above is
 > LibriSpeech *test-clean*. On held-out consumer audio (Common Voice 17.0, CC0, never used
 > by this loop) the shipped tier scores **29.6 %** (English, 220 tokens) and **16.0 %**
 > (zh-TW, 468 tokens), so a WER from this ladder must carry the qualifier “read speech”.
@@ -115,8 +113,7 @@ the default (2.8187, tag `lean711b`) — matching its +5.4 % on the 10 s protoco
 at v4.1 the per-piece overhead scales with window count again and the lean gap is
 uniform ~+5–6 % at every length — the ~350 MB saving is no longer nearly free.)
 
-† Verified, not inferred: `leanp13c` = WER 4.55 % with 40/40 transcripts
-byte-identical to the `leanp26c` gate set. The invariance is expected because
+† Verified, not inferred: re-measured at v4.4 (tag `leannorm785`) WER **4.79 %**, and paired against the shipped tier's gate output it differs by **2 tokens of 731** (discordants 0/2, McNemar p=0.5) - output-equivalent on the current stack, where the older `leanp13c` reading of 4.55 % came from a pre-int8-conv build. Gate-set determinism re-proven across the fusions. The invariance is expected because
 the early stages are exact under the streaming-cache invariant; the dw
 taps-vs-F16-im2col branch (Exp640) is selected by piece size, which is why
 p13/p26 agree with each other and differ from p2 (40 vs 39 tokens on the
