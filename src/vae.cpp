@@ -1311,9 +1311,65 @@ static void vae_probe_int8_weights(struct vae_model* model) {
             fprintf(stderr, "(%g vs %g) ", yd[(size_t)i * pm + j], ggml_fp16_to_fp32(rd16[(size_t)j * pk + i]));
         }
         fprintf(stderr, "\n");
-        fprintf(stderr, "[I8CMP] conv vs source: max|diff|=%.6g  max|w|=%.6g  ratio=%.4f  -> %s\n", worst, scale,
-                scale ? worst / scale : 0.0,
-                worst / (scale ? scale : 1) < 0.05 ? "BYTES MATCH (bug is in the graph)" : "BYTES DO NOT MATCH (converter)");
+        fprintf(stderr, "[I8CMP] conv vs source: max|diff|=%.6g  max|w|=%.6g  bound amax/15=%.6g  -> %s\n", worst,
+                scale, scale / 15.0,
+                worst <= scale / 15.0 * 1.15 ? "WITHIN Q4 ROUNDING (bytes correct)" : "EXCEEDS Q4 BOUND (converter)");
+    }
+    // Same-activation convolution A/B (Exp768): identity readback only proves the quantized
+    // elements are plausible; this tests the actual im2col row pairing. The picked tensor is
+    // acoustic downsample layer 1: IC=32, K=row/IC=4. Both products use the SAME F32 im2col;
+    // only the weight representation differs. This avoids any Python layout model and runs on
+    // the ARM reader that inference uses.
+    if (ref && pk == 128 && pm == 64) {
+        const int64_t ic = 32, k = pk / ic, tlen = 9;
+        struct ggml_tensor* geom2 = ggml_new_tensor_3d(ctx, GGML_TYPE_F16, k, ic, pm);
+        geom2->data = g_vae_geom_dummy;
+        struct ggml_tensor* xa = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, tlen, ic);
+        float* xd = (float*) xa->data;
+        for (int64_t c = 0; c < ic; c++) for (int64_t t = 0; t < tlen; t++)
+            xd[c * tlen + t] = 0.03f * (float)(((c * 11 + t * 7) % 29) - 14);
+        struct ggml_tensor* ci = ggml_im2col(ctx, geom2, xa, 1, 0, 0, 0, 1, 0, false, GGML_TYPE_F32);
+        struct ggml_tensor* cc = ggml_reshape_2d(ctx, ci, ci->ne[0], ci->ne[2] * ci->ne[1]);
+        struct ggml_tensor* wf = ggml_new_tensor_2d(ctx, GGML_TYPE_F16, pk, pm);
+        memcpy(wf->data, rbuf.data(), (size_t) pk * pm * sizeof(ggml_fp16_t));
+        struct ggml_tensor* yq = ggml_mul_mat(ctx, wq, cc);
+        struct ggml_tensor* yf = ggml_mul_mat(ctx, wf, cc);
+        struct ggml_cgraph* gab = ggml_new_graph(ctx);
+        ggml_build_forward_expand(gab, yq); ggml_build_forward_expand(gab, yf);
+        if (ggml_graph_compute_with_ctx(ctx, gab, 1) == GGML_STATUS_SUCCESS) {
+            const float* aq = (const float*) yq->data; const float* af = (const float*) yf->data;
+            double worst = 0, norm = 0;
+            for (int64_t i = 0; i < yq->ne[0] * yq->ne[1]; i++) {
+                worst = fmax(worst, fabs((double) aq[i] - af[i])); norm = fmax(norm, fabs((double) af[i]));
+            }
+            // VERDICT CALIBRATION (Exp769 follow-up): a Q4_0 weight is NOT expected to reproduce an
+            // F16 product. Per-element bound is amax/15 (0.0217 for this tensor); a 128-term dot with
+            // |x|<=0.42 gives a random-walk estimate sqrt(128)*0.42*0.0217/sqrt(3) ~ 0.06 and a
+            // worst case of 1.17. The 0.033 observed was therefore NEVER evidence of mispairing -
+            // an absolute threshold on this ratio is meaningless at 4 bits.
+            // The decisive test is instead PREDICTED vs ACTUAL: rebuild the product from the
+            // identity-readback bytes (got[], which are the kernel's own dequantization) and compare
+            // to what the kernel produced. ~0 difference PROVES the kernel pairs contracting index r
+            // with im2col row r exactly as the identity readback does - i.e. converter and kernel
+            // agree, and any end-to-end garbage must come from the GRAPH (geometry/padding/cache).
+            const float* cd = (const float*) cc->data;
+            const int64_t cols = yq->ne[1];
+            double pmax = 0, anorm = 0;
+            for (int64_t t = 0; t < cols; t++)
+                for (int64_t j = 0; j < pm; j++) {
+                    double acc = 0;
+                    for (int64_t r = 0; r < pk; r++) acc += (double) cd[t * pk + r] * got[(size_t) r * pm + j];
+                    pmax = fmax(pmax, fabs(acc - (double) aq[j + t * pm]));
+                    anorm = fmax(anorm, fabs((double) aq[j + t * pm]));
+                }
+            fprintf(stderr, "[I8CMP] predicted-vs-kernel product: max|diff|=%.6g max|q4|=%.6g ratio=%.4g -> %s\n",
+                    pmax, anorm, anorm ? pmax / anorm : 0.0,
+                    (anorm && pmax / anorm < 1e-3) ? "PAIRING PROVEN CORRECT (garbage is in the graph)"
+                                                   : "PAIRING DIFFERS FROM READBACK");
+            fprintf(stderr, "[I8CMP] same-im2col conv A/B: max|diff|=%.6g max|f16|=%.6g ratio=%.4f"
+                            " (Q4 rounding-scale est ~0.06: NOT a pairing test)\n",
+                    worst, norm, norm ? worst / norm : 0.0);
+        } else fprintf(stderr, "[I8CMP] same-im2col conv A/B compute FAILED\n");
     }
     // control read-back: same mechanism, bytes made by the same quantizer call the converter uses
     {
