@@ -461,6 +461,10 @@ int main(int argc, char ** argv) {
         n_windows = n_chunks;  // for the summary line below
     } else
     for (int w = 0; w < n_windows; w++) {
+        // LATENCY_TRACE=1: per-window leaves of the latency tree (ms, cumulative
+        // counters differenced). Zero cost when unset; measurement only.
+        const double vae_prev = vae_ms, lm_prev = lm_ms;
+        const double pre_prev = g_prefill_ms, dec_prev = g_decode_ms;
         int start = w * HOP_SAMPLES;
         int avail = std::min(WINDOW_SAMPLES, n_samples - start);
         if (avail <= 0) break;
@@ -632,6 +636,11 @@ int main(int argc, char ** argv) {
         }
         full_text += text;
         total_tokens += (int)chunk_ids.size();
+        if (getenv("LATENCY_TRACE") != nullptr)
+            fprintf(stderr, "LT w=%d vae=%.0f prefill=%.0f decode=%.0f tok=%d sum=%.0f\n",
+                    w + 1, vae_ms - vae_prev, g_prefill_ms - pre_prev,
+                    g_decode_ms - dec_prev, (int)chunk_ids.size(),
+                    (vae_ms - vae_prev) + (lm_ms - lm_prev));
         printf("[%d/%d] %s\n", w + 1, n_windows, text.c_str());
         fflush(stdout);
     }
