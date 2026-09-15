@@ -364,6 +364,12 @@ the speed default while p13 is the RAM sweet spot. Output relations changed with
 p1/p2 are byte-identical everywhere measured (protocol transcript hash-equal in 6+ reps;
 40/40 gate transcripts identical, b=0/c=0); p13 differs from p2 by 2 gate tokens (p=0.5). The old
 "p2 differs (40 vs 39 tokens)" sentence was the taps-vs-im2col era (Exp640) and no longer holds.
+Deferred-vs-piece-wise has a granularity boundary inside the coarse regime too (Exp746):
+at p1 defer-OFF wins −1.2 % (batching nothing, pure staging cost), at p2 it ties
+(2.4621 vs 2.46, both eras - Exp639's verdict is the one pre-int8 closure that
+survived), at p13 defer-ON wins −5 % (deep layers GEMV-shaped per piece). Rule of
+thumb: defer pays iff pieces are GEMV-shaped; at GEMM-shaped pieces it ties (p2)
+or costs (p1).
 
 Against the original baseline (12.24) the max-speed tier is **−65%**; against
 the pre-A78 loop best (6.52) it is −35%. The balanced tier dominates the fast
