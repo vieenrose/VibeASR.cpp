@@ -497,3 +497,16 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   HARNESS SELF-CATCH: my sweep loop ran bare measure.sh twice (39-tok default clip)
   before the AUDIO= arms - the 39-tok tell caught it immediately (Exp709/714 rule:
   confirm the first arm measured the intended clip). Wasted ~80 s, no bogus cells.
+
+- LEAN EQUIVALENCE NOW SINGLE-VARIABLE (Exp734): fresh lean gate at the current
+  build (tag lean734b, BIN 3e3cc40a = same as gate721, PIECES the ONLY variable):
+  b=0/c=2 of 731, p=0.5, mean 2.8247 - the Exp711 cross-BIN caveat is REMOVED, the
+  equivalence verdict stands cleanly.
+  FREE BYPRODUCT (misrun, kept honestly): lean734-nodefer (p13 WITHOUT defer - I
+  forgot EXTRA_ENV, then repeated the mistake on the retry half before the stamp
+  check caught it; FOURTH sighting of the flag-routing trap, this time purely
+  procedural) gates at mean 3.0049 = +6.3% vs defer-on - the gate-mean price of
+  defer at p13, consistent with protocol +5.2%.
+  PROCEDURAL RULE (new, for me): after ANY eval40 invocation, FIRST read the new
+  tag's run-info.log stamp before the run goes further - a 20-utt half costs 9 min,
+  a stamp check costs 2 s. I paid 18 min twice for skipping it.
