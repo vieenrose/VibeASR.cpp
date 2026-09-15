@@ -419,6 +419,6 @@ VAE pieces: 1 x 83200 samples (26 frames each) [streaming cache]
 
 
 ========================================
- Audio: 137.97s | chunks: 48 | tokens: 877 | RTF: 2.3744
- load: 1.2s | VAE: 176.9s (ac 176.8s, sem 176.7s) | LM: 150.7s (prefill 60.7s, decode 90.0s) | total: 329.9s
+ Audio: 137.97s | chunks: 48 | tokens: 877 | RTF: 2.3450
+ load: 1.2s | VAE: 172.9s (ac 172.8s, sem 172.7s) | LM: 150.6s (prefill 60.6s, decode 90.0s) | total: 325.9s
 ========================================
