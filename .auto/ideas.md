@@ -803,3 +803,34 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
   kernel or tail-fusion; the whole axis is 0.4 s.
   RULE this adds: a traffic model over a shape census overstates cost whenever the re-read is
   cache-resident. Price traffic claims with a skip/ablation, and use the census to explain the skip.
+
+## v4.4 STEADY-STATE SNAPSHOT (Exp785-795) — read this first after a compaction
+
+Speed board: EMPTY BY MEASUREMENT. Nothing in scope is above the 2% bar.
+  - Rate budget (Exp785): blocked-int8 kernel = 20.4 GMAC/s/core at the VAE's ne11=26 (~23 asymptotic);
+    the shipped VAE runs 392 GMac/clip in 14.6 s = 26.7 GMAC/s = 65% of the 2-thread ceiling, and
+    80-87% of the matmul-only ceiling once non-matmul traffic is excluded. The "25 vs 40-45 GMAC/s"
+    mystery that was open since Exp551 is CLOSED: 40-45 was a two-thread reading.
+  - Elementwise residue (Exp791/792): bias adds ~3.1% of VAE seconds, rms_norm ~2.4%, everything else
+    <=1.4%. Five fusions shipped (dw-conv1d, add_scaled, gelu+bias, gelu-table fold, norm+gamma fold).
+  - GEMV tail (Exp791): whole axis = 0.4 s = 1.7%. ne11 is only ever 1 / 26 / 31. Traffic models over
+    a shape census OVERSTATE cost because a tail pass re-reads L3-resident bytes: price traffic claims
+    with a skip, use the census to explain the skip.
+  - Bias epilogue: 1.7% of RTF, below bar, and needs the mul_mat row loops - do not open.
+  - split=5 (Exp794): parity on the lean tier (3 reps, +19 MB, byte-identical). The Exp565 -0.9% is
+    pre-conv-int8. No third rung between the tiers.
+
+Ladder (v4.4, ALL cells measured, no estimates): shipped 2.26/2.25/2.28/2.35 + gate mean 2.5406 @ 2.37 GB;
+lean p13+defer 2.41/2.39/2.41/2.47 + gate mean 2.7001 @ 1.75 GB. Lean is output-equivalent (2/731, p=0.5).
+
+Rollback ladder (Exp793, one binary): DW_CONV1D_OFF +5.6% | GELU_BIAS_OFF +4.8% | LS_FUSE_OFF +1.5% |
+NORM_FUSE_OFF +1.5%. NOTE: Exp677's GELU_BIAS_OFF cost (+1.7%) was 3x stale - Exp781 moved gelu's table
+lookup into that pass. Fallback order by cost: norm_fuse, ls_fuse (cheap) then gelu_bias, dw_conv1d.
+
+Verification rotation (all green at v4.4): anchor (hash 25b53ca2fc20, 39 tok) | lean tier | overfit
+guard slice10b (2.41, tracks the protocol across 4 rotations) | audit_harness (69 checks) | 40-utt gate
+(40/40 byte-identical to hyp-gatem2 AND hyp-norm784) | rollback ladder | robustness set (Exp676/677).
+
+Instruments to reach for BEFORE any device ladder: `.auto/mm_shape_micro` (kernel/shape cost, ~1 min) and
+`VAE_ABL_*` / `VAE_*_OFF` knobs (op cost). Both resolved everything this session. Reminder: ablation
+knobs go stale when a fusion deletes the node they ablate - rewire them in the same commit (6 instances).
