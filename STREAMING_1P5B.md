@@ -362,11 +362,12 @@ with piece size. The measured map over the runnable set {1, 2, 13, 26}
 interleaved reps per arm (Exp772), is **defer-OFF**: p1 **2.378** @ 2.37 GB (default,
 time-optimal), p2 2.454 @ 2.07 (+3.2 %, fallback), p26 2.707 @ 1.71 (+13.8 %); **defer-ON**:
 p13 2.531 @ 1.75 (the RAM-lean tier), p26 2.554 @ 1.72 — so p1 is the speed default while p13 is
-the RAM sweet spot. NOTE the p1-vs-p2 gap WIDENED from −1.2 % (v3.9) to −3.2 % (v4.2): at p2 a
-piece is 13 frames, so each FFN matmul runs 12 columns in the GEMM plus ONE leftover column that
-costs a full extra weight pass (no m2 pairing at an odd remainder), while at p1 the two leftover
-columns of 26 are paired by m2 into a single pass. Re-swept at v3.9 and v4.2 only — do not re-sweep
-without another cost-structure change. Output relations changed with the fusions:
+the RAM sweet spot. The p1-vs-p2 gap WIDENED from −1.2 % (v3.9) to −3.2 % (v4.2). The tail kernel is
+NOT the explanation (measured same-sweep: `GGML_MM_M2_OFF=1` costs +0.7 % at p1 and +0.8 % at p2 —
+equal, so it is the LM's prefill that benefits, not the VAE's piece shape). What remains is the
+per-piece cost of a finer split: each piece re-streams the stage weights and re-runs its own graph
+build/launches, and at p2 that happens twice per window. Re-swept at v3.9 and v4.2 only — do not
+re-sweep without another cost-structure change. Output relations changed with the fusions:
 p1/p2 are byte-identical everywhere measured (protocol transcript hash-equal in 6+ reps;
 40/40 gate transcripts identical, b=0/c=0); p13 differs from p2 by 2 gate tokens (p=0.5). The old
 "p2 differs (40 vs 39 tokens)" sentence was the taps-vs-im2col era (Exp640) and no longer holds.

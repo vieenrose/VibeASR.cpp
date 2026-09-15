@@ -201,10 +201,14 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
 - CLOSED (Exp772, was "OPEN (interrupted): p1-vs-p2 interleave at v3.9"): re-swept on the v4.2
   stack (conv-int8 + m2), 3-4 interleaved reps/arm with a same-sweep p1 control (2.3805):
   defer-OFF p1 2.3784 / p2 2.4538 (+3.2%) / p26 2.7073 (+13.8%); defer-ON p13 2.5308 / p26 2.5537
-  (+0.9%). The old confounded single reps are moot and the gap is now EXPLAINED, not thermal: at p2
-  a piece is 13 frames so every FFN matmul ends with ONE leftover column = one full extra weight
-  pass (m2 pairs only even remainders), while at p1 (26 columns) the 2 leftover columns cost a
-  single paired pass. p1 stays the default; p13+defer-ON reproduces the lean cell (2.531 vs the
+  (+0.9%). The old confounded single reps are moot; the gap is real and reproducible, but its
+  MECHANISM CLAIM WAS FALSIFIED by Exp773: the story was "m2 pairs only even remainders, so p2's
+  odd leftover column costs a full extra weight pass while p1's 2 leftovers take one paired pass".
+  A same-sweep 2x2 with GGML_MM_M2_OFF=1 costs +0.7% at p1 AND +0.8% at p2 - EQUAL, so m2's benefit
+  is the LM prefill (ne11=26/31), which is granularity-independent, and the VAE-side tail
+  differentiates nothing. Honest statement: finer pieces re-stream stage weights per piece and pay
+  their own graph build/launch, at p2 twice per window. The v3.9 -> v4.2 widening (-1.2% -> -3.2%)
+  has no verified cause; do not write a story for it without another 2x2. p1 stays the default; p13+defer-ON reproduces the lean cell (2.531 vs the
   documented 2.54). p26 defer-OFF emits 38 tokens vs 39 elsewhere - output is not granularity-neutral
   in the GEMV regime (defer-ON at p26 returns to 39).
   HARNESS BUG FOUND DOING THIS: run_rtf_multi.sh hardcoded VAE_FILE=vae-encoder-q4x4ffn.gguf, i.e.
