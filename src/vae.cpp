@@ -1633,11 +1633,20 @@ static void vae_graph_stats_dump(struct ggml_cgraph* gf, const char* phase) {
     struct Row { size_t bytes = 0; size_t count = 0; double macs = 0.0; };
     std::map<std::string, Row> by_op;
     size_t total = 0;
+    size_t view_bytes = 0;      // stride-only nodes, reported for reference and NOT added to total
     double total_macs = 0.0;
     const bool shapes = getenv("VAE_MMSHAPES") != nullptr;
     const int n_nodes = ggml_graph_n_nodes(gf);
     for (int i = 0; i < n_nodes; i++) {
         struct ggml_tensor* node = ggml_graph_node(gf, i);
+        // Views cost NO traffic: they only rewrite strides. Counting their nbytes (dst + both srcs,
+        // often a 2.6 GB activation relayed twice) made RESHAPE look like 31% of the VAE's bytes and
+        // hid what the graph actually moves. Excluded here and reported separately as 'views (free)'.
+        if (node->op == GGML_OP_RESHAPE || node->op == GGML_OP_PERMUTE || node->op == GGML_OP_VIEW ||
+            node->op == GGML_OP_TRANSPOSE) {
+            view_bytes += ggml_nbytes(node);
+            continue;
+        }
         size_t b = ggml_nbytes(node);
         for (int s = 0; s < GGML_MAX_SRC; s++) {
             if (node->src[s]) b += ggml_nbytes(node->src[s]);
