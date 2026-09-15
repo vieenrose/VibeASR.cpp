@@ -58,6 +58,17 @@ if command -v adb >/dev/null 2>&1; then
   fi
 fi
 
+# Exp759: the research tool's discard-revert runs `git checkout -- .` at the SESSION workDir, which
+# is the parent of this repo and not a git repo, and it never checks git's exit code - so a discard
+# prints "reverted" while leaving the discarded edit in place, and every later number would be of
+# the discarded variant. A dirty tracked tree at measurement time is that bug having fired.
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DIRTY=$( { git -C "$REPO" status --porcelain -- . ':(exclude).auto' 2>/dev/null; } || true )
+if [ -n "$DIRTY" ]; then
+  echo "WARNING: repo has uncommitted source edits - a discarded experiment may have survived (tool auto-revert cannot reach $REPO). Revert manually unless intentional:" >&2
+  printf '%s\n' "$DIRTY" | head -3 >&2
+fi
+
 if [ "$SKIP_BUILD" != 1 ]; then
 cmake --build build-android --target asr_streaming -j20 > .auto/last_build.log 2>&1 || { tail -n 20 .auto/last_build.log; exit 1; }
 adb -s $DEV push build-android/bin/asr_streaming $RDIR/ > /dev/null 2>&1 || exit 1
