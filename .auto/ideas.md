@@ -707,3 +707,35 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
     rule: prove a knob fires by an OUTPUT change (39 -> 1024 tokens here) before interpreting it.
   * RSS band settled: shipped-tier peak_rss = 2374.2-2375.1 MB across 34 runs; the 2.23 GB in old
     notes is the F16-conv reference row. RESULTS.md needs no change.
+
+- GELU IS THE LARGEST REMAINING NON-MATMUL ITEM: 13.3% OF VAE SECONDS (Exp780, VAE_ABL_GELU knob).
+  Five paired reps on the shipped stack: vae_s 15.8/15.9 base vs 13.7 with the gelu node removed =
+  2.1 s, about 8.8% of RTF. That is 4x the next-largest elementwise item re-measured in the same sweep
+  (rms_norm 4.1%, bias adds 2.5%, scale+resid 1.9%), and it SURVIVED all three shipped fusions because
+  Exp673 fused the bias INTO gelu rather than removing the pass. Derived rate: 980 MB per graph build =
+  122.5M elements written, x8 builds per 10 s clip = 980M elements in 2.1 s = 467 Melem/s aggregate,
+  233 Melem/s per core - far below what a streaming NEON op achieves (6-10 GB/s), so gelu is NOT
+  traffic-bound on this path; something in the loop's per-element work is slow.
+  HYPOTHESIS (not yet measured): ggml_vec_gelu_f32 under GGML_GELU_FP16 is a SCALAR loop that converts
+  each f32 to f16 and gathers one entry from ggml's gelu table (65536 x 2 B = 128 KB, larger than the
+  A78's 48 KB L1), so every element pays an L2 access. If true, the fix is issuing several table lookups
+  per iteration (their latencies overlap) - NOT replacing the table with a polynomial, because the table
+  IS the function and Exp601/626 already settled what gelu_approximation costs in churn.
+  NEXT: a standalone gelu microbench (host first, then device) that separates gather latency from math
+  and proves bit-identity of a batched variant before any timing claim. Ceiling is 13.3% of VAE = ~8.8%
+  of RTF if the loop's rate were free, so even a 2x improvement there is ~4%, above the 2% bar.
+  METHOD NOTES from the same iteration, both cost time and both are harness rules:
+  * LONG CLIPS ARE SATURATED - the pipelining question is now closed by DIRECT measurement, not by
+    Exp533's 2-stream proxy: device-side /proc sampling of a 138 s run gives 1.96 of 2.0 cores busy,
+    flat across 66 intervals (min 1.73 during model load, max 1.97, 662.7 CPU-s over 338.9 s wall).
+    There is no idle core time for window/phase overlap on long clips either.
+  * That measurement also RETRACTED two claims I had made earlier today from a 400 s clip whose run
+    reported rtf=2.4688 while the binary's own line said "RTF: 0.971" and "449.85 s" for 462.86 s of
+    audio - internally inconsistent, so both of its findings (long-clip F16 convs +34%, and "1.03 cores
+    busy") are withdrawn; the asset and its directory were later reclaimed by the device, which is how
+    an unfalsifiable measurement survives. Long clips must be run through measure.sh --clip (host file,
+    blessed) and the asset must be in device_assets.json before a documented cell rests on it.
+  * AD-HOC DEVICE COMMANDS must use the harness's own paths: RDIR=/data/local/tmp/vibeasr with
+    VAE_FILE/LM_FILE env (from bench_device.sh), a serial taken from measure.sh's DEV= line, and assets
+    at ../eval-bilingual. Inventing a path silently targets a directory that may not exist, and an
+    unqualified adb command is wrong the moment a second device appears.
