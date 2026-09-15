@@ -350,8 +350,8 @@ The **balanced-lean** variant (`--vae-pieces 26` on the same files) traded
 Exp542-era concurrent regime. The current RAM-lean tier is **p13, concurrent
 encoders, defer explicitly ON** (`--vae-pieces 13` + `VAE_DEFER_LATE=1` — required
 since v4.1, whose default is defer-OFF): 2.54 on the protocol clip (n=3, warm-session read;
-same-session m2-OFF control 2.57), 2.58 on 138 s (pre-m2), 2.82 on the 40-utt mean (pre-m2),
-at 1.75 GB and WER 4.79 % (2 tokens of 731 from the default tier, p = 0.5) — Exp643/708/711/717/767.
+same-session m2-OFF control 2.57), **2.47 on 138 s** and **2.70 on the 40-utt mean** (both re-measured
+at v4.4, Exp786/789), at 1.75 GB and WER 4.79 % (2 tokens of 731 from the default tier, p = 0.5) — Exp643/708/711/717/767/786/789.
 
 That also corrected the earlier "finer splits lose" conclusion, which held only
 on the time axis: the deferred late pass captures the deep-layer batching
@@ -362,7 +362,11 @@ with piece size. The measured map over the runnable set {1, 2, 13, 26}
 interleaved reps per arm (Exp772), is **defer-OFF**: p1 **2.378** @ 2.37 GB (default,
 time-optimal), p2 2.454 @ 2.07 (+3.2 %, fallback), p26 2.707 @ 1.71 (+13.8 %); **defer-ON**:
 p13 2.531 @ 1.75 (the RAM-lean tier), p26 2.554 @ 1.72 — so p1 is the speed default while p13 is
-the RAM sweet spot. The p1-vs-p2 gap is ~3 % on the shipping config; a same-session 2×2 (Exp773)
+the RAM sweet spot. `VAE_LATE_SPLIT=5` on this tier is **parity, not a win** (3 interleaved reps 2.425 vs 2.424 at
++19 MB, byte-identical output, Exp794): the −0.9 % recorded for it in Exp565 predates conv-int8, and
+at p13 a piece is already 8 frames, so the deferred stage sat in the GEMM regime before the boundary
+moved — there is nothing left for it to batch. split=6 stays the default and no third rung exists
+between the shipping tiers. The p1-vs-p2 gap is ~3 % on the shipping config; a same-session 2×2 (Exp773)
 puts it at +3.0 % with int8 convs and +1.9 % with F16 convs, so roughly 1 pp of it is the int8 conv
 path's per-piece cost (paid twice per window when pieces are finer), and the blocked-tail kernel is
 NOT a factor (`GGML_MM_M2_OFF=1` costs +0.7 % at p1 and +0.8 % at p2 — equal, so it is the LM's
