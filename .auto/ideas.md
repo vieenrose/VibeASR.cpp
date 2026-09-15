@@ -671,11 +671,15 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
     2.58 carried pre-m2). Harness footgun found refreshing: measure.sh --env forwards to
     the DEVICE; PIECES is consumed by measure.sh itself, so lean arms need PIECES=13 in
     the caller env (two p1+deferON misruns measured and discarded as void).
-  * CLOSED BY MEASUREMENT (Exp770), was "priced at ~1.8%": fusing the tail into the gemm's
-    own weight walk can only recover the POST-m2 residual = 0.2 s of VAE (vae_s with the whole
-    tail skipped, 3 pairs) + 92 ms of LM ne11=31 = ~292 ms = 1.2% of wall. Below the 2% bar, so
-    not attempted. m=3 single-pass is a subset of that (0.4%) and is likewise closed. Trigger to
-    revisit: a GGML_MM_DEBUG_SHAPES census showing ne11 % 4 >= 3.
+  * CLOSED, HEADROOM ~0 (Exp770 measured it at 1.2%; Exp774 shows that 1.2% is NOT recoverable):
+    the tail pass is not an EXTRA walk over the weights - a 4-column-panel kernel needs
+    ceil(26/4) = 7 passes for 26 columns, and m2's tail pass is one of those 7, so "fusing the tail
+    into the gemm's own weight walk" cannot remove a pass; it could only recover the unused 2 of 4
+    column slots in the last panel (ALU, not traffic). Cross-check on the pass-bound model: 1 of 7
+    passes of the FFN would be ~1.13 s of the VAE, but skipping the whole tail measured 0.2 s
+    (ratio 0.18), so the VAE is not pass-bound either - consistent with Exp681 (kernel-rate-bound).
+    And no wider panel exists to exploit: ggml_gemm_q4_0_4x8_q8_0 also uses ncols_interleaved = 4.
+    m=3 single-pass is likewise closed (the ne11=31 remainder costs 1 pass either way).
 
 - LEDGER IS SPLIT IN TWO HALVES - READ BOTH (Exp770 harness finding). This file holds Exp685
   onward; ../.auto/ideas.md (outside the repo, pointed at by the loop prompt) holds the long-form
