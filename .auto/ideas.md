@@ -874,3 +874,20 @@ knobs go stale when a fusion deletes the node they ablate - rewire them in the s
   quantized by the window grid - so RTF-vs-length curves are staircases, not curves. Any RTF comparison
   between clips must state the window count, not just the seconds (grid3 at 9.33 s and win3 at 10.00 s
   have IDENTICAL VAE work: 4 windows).
+
+- LATENCY TREE CLOSED TO THE MILLISECOND (Exp806) + ONE ARTIFICIAL WIN DECLINED. Per-window trace on
+  the shipped p1 config sums to 22.53 s against measured gen_s 22.53 s - there is NO unaccounted
+  component anywhere in the pipeline. Components against MEASURED ceilings (not models):
+      VAE matmul  at the blocked-int8 rate ceiling (20.4 GMAC/s/core at ne11=26)
+      VAE elementwise  ~6.4% of VAE seconds remains (bias/norm/resid singles, all sub-bar)
+      LM prefill  flat 1.06 s per window - content-independent by construction (26 rows)
+      LM decode   93 ms/token = one full weight stream at the 6-7 GB/s bandwidth ceiling
+  The ONLY slack found is a 316 ms window-1 VAE premium (1.4% of wall), a one-time page-in.
+  DECLINED ON INTEGRITY GROUNDS, not on size: putting a warm-up window at load time would move that
+  316 ms into load_s, which the metric excludes (rtf = gen_s/duration). Total time-to-first-result for
+  a user would be unchanged, so it is measurement relocation, not optimization. If the product ever
+  wants it, the honest framing is 'first-token latency after model load', and it should be measured as
+  such - NOT claimed as an RTF improvement. Any future session that finds this 1.4% should re-read this
+  entry before shipping it.
+  GENERALIZATION: because the metric excludes load, any change that moves work from gen_s to load_s is
+  an artifact. Check the metric boundary before believing any new 'win'.
