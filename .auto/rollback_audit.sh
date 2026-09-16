@@ -49,7 +49,8 @@ done
 
 echo
 echo "arm           mean_rtf   vs_default   tokens   transcript_identity"
-base=${SUM[default]}
+base=$(python3 -c "print(${SUM[default]:-1}/${N[default]:-1})")   # MEAN, not the raw sum (Exp814: the
+                                                                                                                   # first version divided by the sum and printed -50% for every arm)
 for a in "${ARMS[@]}"; do
   name=${a%%|*}
   mean=$(python3 -c "print(f'{${SUM[$name]}/${N[$name]}:.4f}')")
