@@ -24,6 +24,10 @@
    "md5": "15a1b22cb539098a943529a2d357a20c",
    "note": "behavioral-watchdog clip, mirrored host-side at Exp800 (was device-only and overwritable)"
   },
+  "HOST .auto/assets/slice10b_24k.wav": {
+   "cell": "overfit-guard slice, mirrored host-side so a device overwrite cannot pass unnoticed",
+   "md5": "80964ff28c2123038761343ff894255f"
+  },
   "HOST .auto/assets/song20s.wav": {
    "md5": "1c755097ca3d1a89ac022bbe338a8804",
    "note": "behavioral-watchdog clip, mirrored host-side at Exp800 (was device-only and overwritable)"
@@ -115,6 +119,7 @@
    "note": "silence probe"
   },
   "slice10b_24k.wav": {
+   "cell": "overfit-guard slice (protocol-independent second clip)",
    "md5": "80964ff28c2123038761343ff894255f",
    "note": "second-slice overfit guard (Exp726: 2.5353 @ 55 tok, sane transcript, VAE rate identical to protocol)"
   },
