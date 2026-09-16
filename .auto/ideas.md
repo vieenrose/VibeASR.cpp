@@ -912,3 +912,38 @@ knobs go stale when a fusion deletes the node they ablate - rewire them in the s
   distance is a DIFFERENT quantity from compare_arms' McNemar b/c (correctness discordants) - the map
   answers "same system?", compare_arms answers "better?". The docstring says so because conflating them
   would look like a contradiction of the ledger.
+
+- THE DECODE LENGTH TERM, AND WHY THE LADDER RISES WITH CLIP LENGTH (Exp811 - first externally-supplied
+  lever in many runs; a peer loop running this model on a Jetson reported decode = 0.362 ms + 27.9 us x
+  position, linear out to 4096 positions).
+  * Fitted on MY device from the per-window trace of the 138 s clip (48 windows, 877 tokens, positions
+    70..1284): ms/token = 88.2 + 0.022 x position, R2=0.78, slope 22.0 +/- 3.4 us/position. The law
+    reproduces total decode to 1.1% (90.1 predicted vs 89.1 s measured), so it is not a curve fit artifact.
+  * The per-position coefficient is within 1.3x of the GPU's (22.0 vs 27.9 us) while my intercept is 240x
+    higher (88 ms weight stream vs 0.36 ms). => the length term is per-boundary WORK, not traffic: KV is
+    28 KB/position (28 layers x 2 KV heads x 128 dim x 2 x f16) = 4.4 us/position at the 6.5 GB/s streaming
+    rate, and the measured 22 us is 5x that. Attention FLOPs are 172 KFLOP/position = 7.8 GFLOP/s at 22 us,
+    so roughly half the term is compute, which no KV quantization can remove.
+  * SIZE: 0.2% of RTF on the protocol clip (positions <= 88) but 4.0% on the 138 s clip. The measured ladder
+    rises exactly +4.0% from 10 s to 138 s, and VAE/wall is flat at every length (Exp803), so THIS TERM IS
+    THE LADDER'S LENGTH GRADIENT. A previously unexplained number, closed.
+  * CORRECTION TO A CLOSED AXIS: Exp563 closed KV q8_0 with "the KV read is <1 ms/token at ~500 positions".
+    Measured, it is ~11 ms/token there - about 10x the estimate. The axis stays closed FOR THE METRIC, but
+    for the right reason (the protocol prefix is short), not because KV reads are cheap. If long-form
+    sessions ever matter to the product, --kv-type q8_0 is the lever (peer measured 112 -> 29.75 MiB at
+    n_ctx 4096, needs flash-attn on their GQA model, rtf flat, and IT CHANGES OUTPUT) and it must be judged
+    on long clips + an accuracy gate, never on the protocol clip.
+  * DO NOT extrapolate my 22 us/position beyond ~1300 positions: bin-local slopes were 17.4/22.5/25.1, i.e.
+    mildly convex, so the true law may be linear + a small quadratic. The peer's linearity is validated on
+    their hardware only.
+  * INSTRUMENT NOTE from the peer, checked rather than accepted: phase timers measure WHO WAITS. My
+    per-window pipeline is strictly sequential on CPU and the tree closes to the millisecond, so
+    prefill_s/decode_s ARE exclusive here; the warning applies to my ac_s/sem_s pair (both read 14.7 s =
+    wall, because the two encoder chains run concurrently) - never price from those two.
+- CENSUS KNOB DOUBLE-COUNTS WITH >1 THREAD (Exp811, found by the 1-vs-2-thread cross-check).
+  GGML_MM_DEBUG_MACS increments inside ggml_compute_forward_mul_mat, which each worker thread enters to
+  process its own row slice, so at -t 2 every split matmul is counted TWICE at full size: total 864 GMac
+  at -t 2 vs 626 GMac at -t 1, with the ne11=1 (decode) bucket exactly halved (134 -> 67) and the ne11>=128
+  bucket unchanged. The correct per-clip MAC volume is the SINGLE-THREAD census (626 GMac). A future fix is
+  to increment only when params->ith == 0. Until then, never quote the -t 2 census total, and note that any
+  GMAC/s figure derived from it is ~1.4x too high (864/626).

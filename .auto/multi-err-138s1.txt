@@ -417,56 +417,56 @@ Windows: 48 (window=83200 hop=70400)
 
 VAE pieces: 1 x 83200 samples (26 frames each) [streaming cache]
 
-LT w=1 vae=3922 prefill=1053 decode=1833 tok=21 sum=6808
-LT w=2 vae=3589 prefill=1056 decode=1256 tok=14 sum=5901
-LT w=3 vae=3586 prefill=1069 decode=1017 tok=11 sum=5672
-LT w=4 vae=3589 prefill=1070 decode=1441 tok=16 sum=6100
-LT w=5 vae=3599 prefill=1078 decode=2572 tok=29 sum=7249
-LT w=6 vae=3586 prefill=1092 decode=1981 tok=22 sum=6660
-LT w=7 vae=3595 prefill=1096 decode=1898 tok=21 sum=6589
-LT w=8 vae=3563 prefill=1116 decode=2093 tok=23 sum=6772
-LT w=9 vae=3583 prefill=1118 decode=2547 tok=28 sum=7248
-LT w=10 vae=3575 prefill=1126 decode=1502 tok=16 sum=6203
-LT w=11 vae=3587 prefill=1137 decode=1513 tok=16 sum=6238
-LT w=12 vae=3588 prefill=1148 decode=536 tok=5 sum=5272
-LT w=13 vae=3576 prefill=1152 decode=2890 tok=31 sum=7617
-LT w=14 vae=3586 prefill=1162 decode=1174 tok=12 sum=5922
-LT w=15 vae=3589 prefill=1165 decode=2000 tok=21 sum=6755
-LT w=16 vae=3567 prefill=1177 decode=2291 tok=24 sum=7034
-LT w=17 vae=3577 prefill=1181 decode=1574 tok=16 sum=6333
-LT w=18 vae=3583 prefill=1187 decode=1384 tok=14 sum=6154
-LT w=19 vae=3576 prefill=1199 decode=1494 tok=15 sum=6269
-LT w=20 vae=3597 prefill=1202 decode=2523 tok=26 sum=7323
-LT w=21 vae=3594 prefill=1218 decode=1593 tok=16 sum=6406
-LT w=22 vae=3584 prefill=1241 decode=1509 tok=15 sum=6333
-LT w=23 vae=3597 prefill=1234 decode=2559 tok=26 sum=7389
-LT w=24 vae=3588 prefill=1243 decode=2012 tok=20 sum=6842
-LT w=25 vae=3590 prefill=1250 decode=1818 tok=18 sum=6658
-LT w=26 vae=3601 prefill=1264 decode=671 tok=6 sum=5536
-LT w=27 vae=3596 prefill=1271 decode=963 tok=9 sum=5830
-LT w=28 vae=3575 prefill=1272 decode=2544 tok=25 sum=7391
-LT w=29 vae=3585 prefill=1287 decode=2650 tok=26 sum=7522
-LT w=30 vae=3593 prefill=1300 decode=1964 tok=19 sum=6857
-LT w=31 vae=3620 prefill=1306 decode=2771 tok=27 sum=7697
-LT w=32 vae=3599 prefill=1311 decode=2897 tok=28 sum=7807
-LT w=33 vae=3584 prefill=1323 decode=1697 tok=16 sum=6605
-LT w=34 vae=3570 prefill=1329 decode=1901 tok=18 sum=6801
-LT w=35 vae=3582 prefill=1336 decode=1226 tok=11 sum=6143
-LT w=36 vae=3588 prefill=1348 decode=1624 tok=15 sum=6560
-LT w=37 vae=3564 prefill=1356 decode=2660 tok=25 sum=7580
-LT w=38 vae=3593 prefill=1367 decode=1324 tok=12 sum=6285
-LT w=39 vae=3590 prefill=1381 decode=3089 tok=29 sum=8061
-LT w=40 vae=3572 prefill=1379 decode=2074 tok=19 sum=7025
-LT w=41 vae=3580 prefill=1386 decode=1971 tok=18 sum=6936
-LT w=42 vae=3576 prefill=1397 decode=1457 tok=13 sum=6431
-LT w=43 vae=3591 prefill=1402 decode=1250 tok=11 sum=6243
-LT w=44 vae=3600 prefill=1413 decode=1898 tok=17 sum=6912
-LT w=45 vae=3575 prefill=1419 decode=1480 tok=13 sum=6474
-LT w=46 vae=3591 prefill=1426 decode=2436 tok=22 sum=7453
-LT w=47 vae=3576 prefill=1434 decode=2029 tok=18 sum=7039
-LT w=48 vae=3578 prefill=1436 decode=534 tok=4 sum=5548
+LT w=1 vae=4373 prefill=1074 decode=1875 tok=21 sum=7322
+LT w=2 vae=3579 prefill=1067 decode=1274 tok=14 sum=5919
+LT w=3 vae=3603 prefill=1074 decode=1034 tok=11 sum=5711
+LT w=4 vae=3588 prefill=1086 decode=1474 tok=16 sum=6149
+LT w=5 vae=3598 prefill=1089 decode=2591 tok=29 sum=7278
+LT w=6 vae=3600 prefill=1102 decode=2010 tok=22 sum=6713
+LT w=7 vae=3607 prefill=1110 decode=1945 tok=21 sum=6662
+LT w=8 vae=3581 prefill=1118 decode=2113 tok=23 sum=6813
+LT w=9 vae=3611 prefill=1121 decode=2601 tok=28 sum=7333
+LT w=10 vae=3598 prefill=1132 decode=1513 tok=16 sum=6243
+LT w=11 vae=3621 prefill=1147 decode=1526 tok=16 sum=6294
+LT w=12 vae=3598 prefill=1154 decode=544 tok=5 sum=5296
+LT w=13 vae=3608 prefill=1163 decode=2911 tok=31 sum=7683
+LT w=14 vae=3603 prefill=1168 decode=1183 tok=12 sum=5954
+LT w=15 vae=3592 prefill=1176 decode=2014 tok=21 sum=6782
+LT w=16 vae=3596 prefill=1184 decode=2304 tok=24 sum=7084
+LT w=17 vae=3591 prefill=1196 decode=1584 tok=16 sum=6372
+LT w=18 vae=3585 prefill=1203 decode=1407 tok=14 sum=6194
+LT w=19 vae=3602 prefill=1208 decode=1550 tok=15 sum=6361
+LT w=20 vae=3584 prefill=1224 decode=2546 tok=26 sum=7354
+LT w=21 vae=3592 prefill=1224 decode=1610 tok=16 sum=6426
+LT w=22 vae=3604 prefill=1236 decode=1538 tok=15 sum=6379
+LT w=23 vae=3603 prefill=1243 decode=2594 tok=26 sum=7439
+LT w=24 vae=3596 prefill=1251 decode=2010 tok=20 sum=6856
+LT w=25 vae=3594 prefill=1257 decode=1827 tok=18 sum=6677
+LT w=26 vae=3593 prefill=1348 decode=685 tok=6 sum=5627
+LT w=27 vae=3581 prefill=1270 decode=981 tok=9 sum=5832
+LT w=28 vae=3577 prefill=1283 decode=2543 tok=25 sum=7403
+LT w=29 vae=3589 prefill=1294 decode=2678 tok=26 sum=7561
+LT w=30 vae=3607 prefill=1322 decode=1980 tok=19 sum=6908
+LT w=31 vae=3595 prefill=1310 decode=2787 tok=27 sum=7692
+LT w=32 vae=3607 prefill=1326 decode=2898 tok=28 sum=7831
+LT w=33 vae=3597 prefill=1336 decode=1713 tok=16 sum=6647
+LT w=34 vae=3599 prefill=1342 decode=1922 tok=18 sum=6863
+LT w=35 vae=3596 prefill=1342 decode=1213 tok=11 sum=6150
+LT w=36 vae=3602 prefill=1357 decode=1622 tok=15 sum=6582
+LT w=37 vae=3594 prefill=1359 decode=2817 tok=25 sum=7771
+LT w=38 vae=3663 prefill=1369 decode=1342 tok=12 sum=6375
+LT w=39 vae=3610 prefill=1351 decode=3110 tok=29 sum=8071
+LT w=40 vae=3591 prefill=1393 decode=2085 tok=19 sum=7069
+LT w=41 vae=3595 prefill=1393 decode=1983 tok=18 sum=6972
+LT w=42 vae=3590 prefill=1415 decode=1471 tok=13 sum=6476
+LT w=43 vae=3595 prefill=1410 decode=1265 tok=11 sum=6270
+LT w=44 vae=3591 prefill=1425 decode=1909 tok=17 sum=6926
+LT w=45 vae=3591 prefill=1424 decode=1488 tok=13 sum=6502
+LT w=46 vae=3590 prefill=1433 decode=2472 tok=22 sum=7495
+LT w=47 vae=3586 prefill=1441 decode=2032 tok=18 sum=7059
+LT w=48 vae=3593 prefill=1459 decode=538 tok=4 sum=5590
 
 ========================================
- Audio: 137.97s | chunks: 48 | tokens: 877 | RTF: 2.3228
- load: 1.2s | VAE: 172.4s (ac 172.3s, sem 172.2s) | LM: 148.0s (prefill 59.9s, decode 88.1s) | total: 322.8s
+ Audio: 137.97s | chunks: 48 | tokens: 877 | RTF: 2.3408
+ load: 2.6s | VAE: 173.4s (ac 173.3s, sem 173.2s) | LM: 149.5s (prefill 60.4s, decode 89.1s) | total: 327.4s
 ========================================
