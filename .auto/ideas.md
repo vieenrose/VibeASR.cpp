@@ -1,4 +1,30 @@
 - CONV-INT8: BUILT AND NOT WORKING, INACTIVE BY DEFAULT (Exp685). Everything the design needed is in
+SHAPE-RATE GAP IN THE VAE'S EARLY STAGES: LOOKED LIKE THE BIGGEST LEVER IN YEARS, WAS A
+MICROBENCH ARTIFACT (Exp812/813). Two-run arc, worth keeping because both halves are reusable.
+  * Exp812 (the finding): the MAC census (GGML_MM_DEBUG_MACS, now with a params->ith==0 guard - it
+    double-counted per thread before that) says a 10 s clip is 626.1 GMac of blocked-int8 matmul, and
+    52% of it (324.6 GMac, 328 calls) sits at ne11 >= 128, i.e. the VAE's early stages run matmuls over
+    up to 83,200 columns with as few as 32 rows. A CONSTANT-MAC sweep (340.8 MMAC, trading rows against
+    columns) measured 9.07 GMAC/s at 32x83,200 vs 21.49 at 2048x1,300 -> a 2.4x "shape penalty", and the
+    census's own shapes showed the same monotone trend. Read as: column-tile the GEMM, maybe -20% RTF.
+  * Exp813 (the correction): price it IN-GRAPH instead of from a microbench. GGML_MM_SKIP_BIG=1 returns
+    before the gemm for ne11 >= 128 (output garbage ON PURPOSE; vae_s is LM-independent, Exp674/682).
+    Result: vae_s 14.7 -> 7.2 s, so that bucket IS 7.5 s = 51% of VAE seconds. But 324.6 GMac / 7.5 s =
+    43.3 GMAC/s aggregate = 21.6 per core, which is EXACTLY the kernel's best cache-friendly rate. There
+    is no shape penalty in-graph, so column tiling buys nothing. The microbench's gap came from (a) the
+    F32->Q8_0 conversion inside its timed region (the conv path feeds Q8_0 im2col directly) and (b) a
+    freshly allocated 10 MB src1 per call (cold), and the shipped path neither does.
+  * RULE (generalizes): a microbench measures the BENCH as much as the kernel. Before commissioning work
+    on any rate gap, price the same MACs IN-GRAPH with a skip/substitution knob and divide. Microbench
+    curves are for ranking shapes against each other, never for absolute attribution.
+  * PLACEMENT LESSON (cost two dead arms): the gemm() call sits ABOVE the census/tail section in
+    ggml_compute_forward_mul_mat, so a skip placed after it removes only tail columns - with ne11 % 4 == 0
+    that is literally nothing, and both A/B arms printed the same 39 tokens. Proof a measurement knob
+    fires is a CHANGE IN OUTPUT (here 39 -> 12 tokens); without that check I would have "measured parity"
+    twice on an arm that never ran (4th occurrence of this class after Exp764/798/804).
+  * Rate budget is now complete and closes the loop's oldest number: VAE 14.7 s = 7.5 s wide-column bucket
+    at kernel ceiling + the rest; the LM's prefill is at kernel rate and decode at bandwidth. Nothing in
+    the CPU path is below its measured ceiling.
   the tree and nothing ships: converter (.auto/conv_int8.py + quant4x4.cpp), runtime path
   (vae_conv_1d_i8 + metadata-only geometry carrier + K=row/IC kernel-size derivation), auto-detected
   from the weight layout so an F16 file takes the old path (default transcript byte-identical).
