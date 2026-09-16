@@ -891,3 +891,24 @@ knobs go stale when a fusion deletes the node they ablate - rewire them in the s
   entry before shipping it.
   GENERALIZATION: because the metric excludes load, any change that moves work from gen_s to load_s is
   an artifact. Check the metric boundary before believing any new 'win'.
+
+- OUTPUT-EQUIVALENCE MAP OF EVERY ARCHIVED GATE SET (Exp810, .auto/equiv_map.py -> .auto/equiv-map.md;
+  host-only, 0.4 s, zero device time). Paired token distance of all 66 usable hyp-* sets from hyp-gate791
+  (the v4.4 reference). Findings:
+  * 9 sets are BYTE-IDENTICAL to today's output: convint8b, gatep1, gatedef1, gatem2, gate721, gate778,
+    gelufuse781, norm784, lean734-nodefer. Those span the ENTIRE shipped lineage (conv-int8 -> p1 -> m2 ->
+    gelu-table fold -> norm-gamma fold), i.e. every speedup since conv-int8 has now been confirmed
+    output-preserving by 9 independent 40-utt runs - the strongest accuracy statement the loop has, and it
+    cost no device time.
+  * The cheap precision knobs separate cleanly: q2_K 69 tokens, q3_K_M 31, head4x4 14, gelu_quick 14,
+    lm4x4 18 - all real text changes; whereas every fused-kernel/ layout change sits at 4 (the marginal
+    class) or 0.
+  * hyp-convint8 differs by 20 but hyp-convint8b is identical: the first conv-int8 gate run was a different
+    (pre-fix) configuration. When a pair disagrees, check which one is stamped.
+  METHODOLOGY, learned the hard way in this run: (a) never reimplement the tokeniser - an ad-hoc version
+  produced distances 2-4x too large and contradicted the ledger until I imported compare_arms' own
+  gate_streams; (b) do NOT call compare_gate() in a loop - it runs a 20 000-sample bootstrap, so 66 calls
+  exceeded a 300 s timeout; reuse its stream builder and do one LCS per set instead; (c) raw token-presence
+  distance is a DIFFERENT quantity from compare_arms' McNemar b/c (correctness discordants) - the map
+  answers "same system?", compare_arms answers "better?". The docstring says so because conflating them
+  would look like a contradiction of the ledger.

@@ -1,0 +1,398 @@
+{
+"hyp-a78": {
+"b": 10,
+"c": 10,
+"dist": 20,
+"stamped": false
+},
+"hyp-aco": {
+"b": 633,
+"c": 652,
+"dist": 1285,
+"stamped": false
+},
+"hyp-alloc2": {
+"b": 3,
+"c": 4,
+"dist": 7,
+"stamped": false
+},
+"hyp-allocp26": {
+"b": 3,
+"c": 4,
+"dist": 7,
+"stamped": false
+},
+"hyp-axpy64g": {
+"b": 2,
+"c": 3,
+"dist": 5,
+"stamped": true
+},
+"hyp-axpyneon64": {
+"b": 2,
+"c": 2,
+"dist": 4,
+"stamped": true
+},
+"hyp-convint8": {
+"b": 10,
+"c": 10,
+"dist": 20,
+"stamped": true
+},
+"hyp-convint8b": {
+"b": 0,
+"c": 0,
+"dist": 0,
+"stamped": true
+},
+"hyp-cpp": {
+"b": 782,
+"c": 9,
+"dist": 791,
+"stamped": false
+},
+"hyp-ctblock": {
+"b": 2,
+"c": 2,
+"dist": 4,
+"stamped": false
+},
+"hyp-defer": {
+"b": 2,
+"c": 2,
+"dist": 4,
+"stamped": false
+},
+"hyp-defer5": {
+"b": 3,
+"c": 4,
+"dist": 7,
+"stamped": false
+},
+"hyp-dw670": {
+"b": 2,
+"c": 2,
+"dist": 4,
+"stamped": true
+},
+"hyp-dwchk68": {
+"b": 2,
+"c": 2,
+"dist": 4,
+"stamped": true
+},
+"hyp-dwfix69": {
+"b": 2,
+"c": 2,
+"dist": 4,
+"stamped": true
+},
+"hyp-dwtaps": {
+"b": 3,
+"c": 4,
+"dist": 7,
+"stamped": false
+},
+"hyp-f16a78": {
+"b": 11,
+"c": 12,
+"dist": 23,
+"stamped": false
+},
+"hyp-f16im": {
+"b": 2,
+"c": 2,
+"dist": 4,
+"stamped": false
+},
+"hyp-finalp26": {
+"b": 2,
+"c": 2,
+"dist": 4,
+"stamped": false
+},
+"hyp-gate613": {
+"b": 2,
+"c": 2,
+"dist": 4,
+"stamped": false
+},
+"hyp-gate645": {
+"b": 2,
+"c": 2,
+"dist": 4,
+"stamped": true
+},
+"hyp-gate694p13": {
+"b": 10,
+"c": 10,
+"dist": 20,
+"stamped": true
+},
+"hyp-gate694p2": {
+"b": 8,
+"c": 9,
+"dist": 17,
+"stamped": true
+},
+"hyp-gate721": {
+"b": 0,
+"c": 0,
+"dist": 0,
+"stamped": true
+},
+"hyp-gate778": {
+"b": 0,
+"c": 0,
+"dist": 0,
+"stamped": true
+},
+"hyp-gatedef1": {
+"b": 0,
+"c": 0,
+"dist": 0,
+"stamped": true
+},
+"hyp-gatem2": {
+"b": 0,
+"c": 0,
+"dist": 0,
+"stamped": true
+},
+"hyp-gatep1": {
+"b": 0,
+"c": 0,
+"dist": 0,
+"stamped": true
+},
+"hyp-gelb673": {
+"b": 2,
+"c": 2,
+"dist": 4,
+"stamped": true
+},
+"hyp-gelufuse781": {
+"b": 0,
+"c": 0,
+"dist": 0,
+"stamped": true
+},
+"hyp-geluquick": {
+"b": 7,
+"c": 7,
+"dist": 14,
+"stamped": false
+},
+"hyp-head4x4": {
+"b": 6,
+"c": 8,
+"dist": 14,
+"stamped": false
+},
+"hyp-latealloc": {
+"b": 3,
+"c": 4,
+"dist": 7,
+"stamped": false
+},
+"hyp-lean694": {
+"b": 2,
+"c": 3,
+"dist": 5,
+"stamped": true
+},
+"hyp-lean711": {
+"b": 2,
+"c": 3,
+"dist": 5,
+"stamped": true
+},
+"hyp-lean711b": {
+"b": 2,
+"c": 3,
+"dist": 5,
+"stamped": true
+},
+"hyp-lean734-nodefer": {
+"b": 0,
+"c": 0,
+"dist": 0,
+"stamped": true
+},
+"hyp-lean734b": {
+"b": 2,
+"c": 3,
+"dist": 5,
+"stamped": true
+},
+"hyp-leannorm785": {
+"b": 2,
+"c": 3,
+"dist": 5,
+"stamped": true
+},
+"hyp-leanp13c": {
+"b": 4,
+"c": 4,
+"dist": 8,
+"stamped": true
+},
+"hyp-leanp13t": {
+"b": 4,
+"c": 4,
+"dist": 8,
+"stamped": true
+},
+"hyp-leanp13u": {
+"b": 4,
+"c": 4,
+"dist": 8,
+"stamped": true
+},
+"hyp-leanp26c": {
+"b": 4,
+"c": 4,
+"dist": 8,
+"stamped": true
+},
+"hyp-leanseq": {
+"b": 3,
+"c": 3,
+"dist": 6,
+"stamped": false
+},
+"hyp-leanv34": {
+"b": 2,
+"c": 2,
+"dist": 4,
+"stamped": false
+},
+"hyp-lm4x4_40": {
+"b": 9,
+"c": 9,
+"dist": 18,
+"stamped": false
+},
+"hyp-lm4x4e": {
+"b": 4,
+"c": 4,
+"dist": 8,
+"stamped": false
+},
+"hyp-lm4x4im": {
+"b": 9,
+"c": 9,
+"dist": 18,
+"stamped": false
+},
+"hyp-lsfuse671": {
+"b": 2,
+"c": 2,
+"dist": 4,
+"stamped": true
+},
+"hyp-max4x4": {
+"b": 4,
+"c": 5,
+"dist": 9,
+"stamped": false
+},
+"hyp-max4x4e": {
+"b": 2,
+"c": 2,
+"dist": 4,
+"stamped": false
+},
+"hyp-norm784": {
+"b": 0,
+"c": 0,
+"dist": 0,
+"stamped": true
+},
+"hyp-omp_off": {
+"b": 2,
+"c": 2,
+"dist": 4,
+"stamped": false
+},
+"hyp-q2k": {
+"b": 33,
+"c": 36,
+"dist": 69,
+"stamped": false
+},
+"hyp-q3km": {
+"b": 13,
+"c": 18,
+"dist": 31,
+"stamped": false
+},
+"hyp-q5head": {
+"b": 4,
+"c": 5,
+"dist": 9,
+"stamped": false
+},
+"hyp-q8head": {
+"b": 2,
+"c": 2,
+"dist": 4,
+"stamped": false
+},
+"hyp-q8leg": {
+"b": 12,
+"c": 11,
+"dist": 23,
+"stamped": false
+},
+"hyp-q8xwin": {
+"b": 12,
+"c": 15,
+"dist": 27,
+"stamped": false
+},
+"hyp-shipped": {
+"b": 2,
+"c": 2,
+"dist": 4,
+"stamped": false
+},
+"hyp-t2": {
+"b": 12,
+"c": 11,
+"dist": 23,
+"stamped": false
+},
+"hyp-vae4x4": {
+"b": 10,
+"c": 11,
+"dist": 21,
+"stamped": false
+},
+"hyp-vaeq4": {
+"b": 12,
+"c": 14,
+"dist": 26,
+"stamped": false
+},
+"hyp-vaeq8": {
+"b": 12,
+"c": 11,
+"dist": 23,
+"stamped": false
+},
+"hyp-xwin": {
+"b": 10,
+"c": 13,
+"dist": 23,
+"stamped": false
+},
+"hyp-zerocopy": {
+"b": 3,
+"c": 4,
+"dist": 7,
+"stamped": false
+}
+}
