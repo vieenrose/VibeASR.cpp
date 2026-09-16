@@ -850,3 +850,27 @@ knobs go stale when a fusion deletes the node they ablate - rewire them in the s
   (d) shipping a knob whose semantics were never proven by an output change (Exp764's SKIP_TAIL).
   Before reviving ANY old idea, check the snapshot above and the archive half - three axes (granularity,
   piece pipelining, thread counts) look re-openable and are not.
+
+- TAIL-PADDING WASTE, NOW MEASURED AS A FUNCTION OF CLIP LENGTH (Exp803). The window is 83,200 samples
+  with hop 70,400 (OVERLAPPING), so windows(n) = 1 + ceil((n - 83200)/70400) and the VAE encodes
+  windows x 83,200 samples regardless of how much is real. Five clips (83,200 / 166,400 / 224,000 /
+  240,000 / 294,400 samples) give vae_s = 0.30 + 3.60 x windows, i.e. **the VAE's cost is per WINDOW,
+  3.6 s each, essentially independent of how much of the window is real audio.**
+  Consequence: a real streaming engine would flush the partial final window instead of encoding a
+  padded one. The saving is (1 - tail_fraction) x 3.6 s, which is length-dependent:
+      gate utterance 3.7 s : 2.80 s = 38.9% of VAE time   (18.4% of wall)
+      protocol 10 s        : 2.35 s = 16.3% of VAE time   (10.5% of wall)
+      69 s                 : 2.01 s =  2.3%               ( 2.1% of wall)
+      138 s                : 0.42 s =  0.2%               ( 0.2% of wall)
+  WHY THIS IS NOT A LOOP EXPERIMENT: the gain is an artifact of the metric clip being short. Shipping
+  it to move the protocol number would be textbook benchmark overfitting (a 10% "win" that is 0.2% on
+  real long-form audio), and it is a semantics change anyway - the model would see a shorter final
+  window, so it needs its own accuracy gate. It also explains a standing puzzle: the 40-utt gate mean
+  (2.54) sits ABOVE the 10 s protocol number because short utterances each pay a whole extra window.
+  PRODUCT ACTION if short-clip latency ever matters: implement the short final flush (VAE encode of a
+  short tail + LM prefill of the matching fewer rows), gated on accuracy. Estimated -10% protocol /
+  -18% per-utterance latency, ~0% on long-form.
+  Measurement hygiene worth keeping: vae_s is a *per-run total of VAE wall time*, and clip length is
+  quantized by the window grid - so RTF-vs-length curves are staircases, not curves. Any RTF comparison
+  between clips must state the window count, not just the seconds (grid3 at 9.33 s and win3 at 10.00 s
+  have IDENTICAL VAE work: 4 windows).
