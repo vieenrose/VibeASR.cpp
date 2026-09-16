@@ -114,6 +114,11 @@ static double g_decode_ms = 0.0;
 static double g_ac_ms = 0.0;
 static double g_sem_ms = 0.0;
 
+// Census phase hook, defined in ggml.c (Exp816). Declared here rather than in a header because it is a
+// measurement instrument, not API: it lets the MAC census attribute blocked-int8 MACs to the SAME spans as
+// the phase timers below, so a per-phase rate is measured rather than derived from a parameter count.
+extern "C" void ggml_mm_set_phase(int);
+
 static double now_ms() {
     struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
     return ts.tv_sec * 1000.0 + ts.tv_nsec / 1e6;
@@ -181,11 +186,13 @@ static int emit_chunk(llama_context * lctx, llama_sampler * smpl, llama_model * 
                       int & pos, double & lm_ms, int & total_tokens, std::string & full_text,
                       int show_idx, int show_total) {
     double t0 = now_ms();
+    ggml_mm_set_phase(2);   // lm_prefill - same span as the g_prefill_ms timer below (Exp816 phase census)
     llama_token t_start = TOK_SPEECH_START, t_end = TOK_SPEECH_END, t_tce = TOK_TEXT_CHUNK_END;
     if ((pos = feed_token(lctx, t_start, pos)) < 0) return -1;
     if ((pos = feed_embeds(lctx, frames, FRAMES_PER_WINDOW, n_embd, pos, n_batch)) < 0) return -1;
     if ((pos = feed_token(lctx, t_end, pos)) < 0) return -1;
     g_prefill_ms += now_ms() - t0;
+    ggml_mm_set_phase(3);   // lm_decode
     llama_token tok = llama_sampler_sample(smpl, lctx, -1);
     llama_sampler_accept(smpl, tok);
     double tdec = now_ms();
@@ -199,6 +206,7 @@ static int emit_chunk(llama_context * lctx, llama_sampler * smpl, llama_model * 
     }
     if ((pos = feed_token(lctx, t_tce, pos)) < 0) return -1;
     g_decode_ms += now_ms() - tdec;
+    ggml_mm_set_phase(0);   // outside any measured phase (sampling/detokenize still happen, unattributed)
     lm_ms += now_ms() - t0;
     std::string text = detokenize(model, chunk_ids);
     for (int s = 0; s < n_strip; s++) {
@@ -221,6 +229,7 @@ static int encode_frames(vae_context_t * vae_ctx, vae_cache_t * vcache,
     static const int SUB_SAMPLES = 6400;  // 2 frames; divides window/hop/tail
     if (nsamp % SUB_SAMPLES != 0) return -1;
     double t0 = now_ms();
+    ggml_mm_set_phase(1);   // vae - both encoder chains run under this phase
     int got = 0;
     for (int off = 0; off < nsamp; off += SUB_SAMPLES) {
         float * af = afe + (got * acoustic_dim);
@@ -235,6 +244,7 @@ static int encode_frames(vae_context_t * vae_ctx, vae_cache_t * vcache,
         got += 2;
     }
     vae_ms += now_ms() - t0;
+    ggml_mm_set_phase(0);
     return (got == want_frames) ? got : -1;
 }
 
@@ -346,6 +356,7 @@ int main(int argc, char ** argv) {
     llama_kv_cache_clear(lctx);
     int pos = 0;
     double tpre = now_ms();
+    ggml_mm_set_phase(2);   // lm_prefill (the one-time prompt pass; ne11=31 in the census)
     {
         int done = 0, n = (int)prompt_ids.size();
         while (done < n) {
@@ -364,6 +375,7 @@ int main(int argc, char ** argv) {
         }
     }
     g_prefill_ms += now_ms() - tpre;
+    ggml_mm_set_phase(0);
 
     // ---- windows ----
     int n_samples = (int)audio.samples.size();
@@ -472,6 +484,9 @@ int main(int argc, char ** argv) {
         if (avail < WINDOW_SAMPLES) memset(window.data() + avail, 0, (WINDOW_SAMPLES - avail) * sizeof(float));
 
         double t0 = now_ms();
+        ggml_mm_set_phase(1);   // vae: the shipped loop's own span (Exp816). NOTE the first attempt hooked
+                                // emit_chunk/piece-wise helpers, which the shipped path does not call, and the
+                                // census then printed everything as phase=idle - the output-change rule again.
         if (vcache) {
             // Piece-wise encode with carried conv state (reset per window =
             // upstream cold-window parity). Pieces are 3200-multiples, so every
@@ -605,6 +620,7 @@ int main(int argc, char ** argv) {
                 speech_emb[f * n_embd + d] = afe[f * acoustic_dim + d] + sfe[f * semantic_dim + d];
 
         t0 = now_ms();
+        ggml_mm_set_phase(2);   // lm_prefill (shipped inline path)
         llama_token t_start = TOK_SPEECH_START, t_end = TOK_SPEECH_END, t_tce = TOK_TEXT_CHUNK_END;
         if ((pos = feed_token(lctx, t_start, pos)) < 0) { fprintf(stderr, "sp_start failed\n"); return 1; }
         if ((pos = feed_embeds(lctx, speech_emb.data(), FRAMES_PER_WINDOW, n_embd, pos, params.n_batch)) < 0) {
@@ -612,6 +628,7 @@ int main(int argc, char ** argv) {
         }
         if ((pos = feed_token(lctx, t_end, pos)) < 0) { fprintf(stderr, "sp_end failed\n"); return 1; }
         g_prefill_ms += now_ms() - t0;
+        ggml_mm_set_phase(3);   // lm_decode
         double tdec = now_ms();
         llama_token tok = llama_sampler_sample(smpl, lctx, -1);
         llama_sampler_accept(smpl, tok);
@@ -627,6 +644,7 @@ int main(int argc, char ** argv) {
         // always end the cache on text_chunk_end (upstream invariant)
         if ((pos = feed_token(lctx, t_tce, pos)) < 0) { fprintf(stderr, "tce failed\n"); return 1; }
         g_decode_ms += now_ms() - tdec;
+        ggml_mm_set_phase(0);
         lm_ms += now_ms() - t0;
 
         std::string text = detokenize(model, chunk_ids);

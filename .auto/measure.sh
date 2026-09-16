@@ -71,7 +71,20 @@ fi
 
 if [ "$SKIP_BUILD" != 1 ]; then
 cmake --build build-android --target asr_streaming -j20 > .auto/last_build.log 2>&1 || { tail -n 20 .auto/last_build.log; exit 1; }
-adb -s $DEV push build-android/bin/asr_streaming $RDIR/ > /dev/null 2>&1 || exit 1
+fi
+# Exp816 FIX - the binary push used to live INSIDE the SKIP_BUILD gate above, which made SKIP_BUILD=1 mean
+# "do not build AND do not deploy". The asymmetry hid it: the libs below are pushed on md5 difference
+# regardless, so a change split across ggml and demo/src reached the phone only in its library half and
+# measured the PREVIOUS binary for everything compiled into the executable. That is exactly how the Exp816
+# phase census printed 100% phase=idle: the setter existed in libggml.so, the calls never left the host.
+# Now: always sync the binary, by md5 like the libs, so a no-op sync costs one hash comparison.
+BINM=$(md5sum build-android/bin/asr_streaming | awk '{print $1}')
+BIND=$(adb -s $DEV shell "md5sum $RDIR/asr_streaming 2>/dev/null" | awk '{print $1}' | tr -d '\r')
+if [ "$BIND" != "$BINM" ]; then
+  adb -s $DEV push build-android/bin/asr_streaming $RDIR/ > /dev/null 2>&1 || { echo "ERROR: push failed" >&2; exit 1; }
+  # Verify, do not trust: adb reports success for a push that a busy-text file silently refused.
+  G=$(adb -s $DEV shell "md5sum $RDIR/asr_streaming 2>/dev/null" | awk '{print $1}' | tr -d '\r')
+  [ "$G" = "$BINM" ] || { echo "ERROR: binary still differs after push ($G != $BINM) - a running process may hold it" >&2; exit 1; }
 fi
 # The binary is dynamically linked against libggml/libllama: pushing only the
 # executable silently leaves a stale ggml on the device, so any ggml-side change
