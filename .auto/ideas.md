@@ -1,4 +1,24 @@
 - CONV-INT8: BUILT AND NOT WORKING, INACTIVE BY DEFAULT (Exp685). Everything the design needed is in
+
+ROLLBACK AUDIT REFRESHED, AND A HATCH THAT DOES NOTHING (Exp814). The Exp677/787 runbook costs were 3
+versions stale, so all arms were re-run in one binary with a committed tool (.auto/rollback_audit.sh) that
+prints, per arm, BOTH the rtf cost and the per-window transcript hash. Costs vs default 2.2565:
+DW_CONV1D_OFF +5.7 | GELU_BIAS_OFF +5.0 | GELU_BATCH_OFF +3.8 | LS_FUSE_OFF +1.6 | NORM_FUSE_OFF +1.4 |
+MM_M2_OFF +0.9 | fusions-all-off +14.1 (reproduces Exp787's +13.8 to 0.3 pp). Every fusion arm byte-
+identical (55ac39b635cb, 39 tok), so the stack is still output-equivalent to the pre-change path measured
+IN ONE BUILD. Two runbook corrections:
+  * VAE_DW_AXPY_OFF is a NO-OP on the shipped path (+0.1%), because the Exp670 conv1d kernel does not use
+    the tap chain that the hatch disables. It only fires together with VAE_DW_CONV1D_OFF, where it costs
+    +2.8% (2.4266 -> 2.4936, VAE 15.7 -> 17.0 s). A hatch that guards a superseded path is not a rollback
+    path - check what the CURRENT default actually executes before documenting a hatch's cost.
+  * VAE_CT_BLOCK_OFF (revert the channels-first block layout) is +22.8% and NOT output-preserving at p1:
+    38 tokens, different hash, because the legacy layout also drops the dw conv off the conv1d kernel onto
+    taps/im2col - Exp640's rounding mechanism showing up at the shipped granularity, not just on lean p26.
+    So Exp787's "every arm identical including all-off" stands for the FUSION hatches, but any arm that
+    includes the LAYOUT revert changes the text (+31.3%, 2.9630) and needs its own gate, not a hash check.
+  * Tool bug worth remembering: the first version divided each arm's mean by the control arm's SUM, so every
+    delta read ~-50%. Same class as Exp660's over-claiming self-check - a tool that prints plausible numbers
+    is not a tool that is right. Prove the control arm's delta is 0.0% before believing a table.
 SHAPE-RATE GAP IN THE VAE'S EARLY STAGES: LOOKED LIKE THE BIGGEST LEVER IN YEARS, WAS A
 MICROBENCH ARTIFACT (Exp812/813). Two-run arc, worth keeping because both halves are reusable.
   * Exp812 (the finding): the MAC census (GGML_MM_DEBUG_MACS, now with a params->ith==0 guard - it
