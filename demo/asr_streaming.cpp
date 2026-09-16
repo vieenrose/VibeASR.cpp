@@ -399,7 +399,14 @@ int main(int argc, char ** argv) {
         // tokens), so the gate stays closed there - see vae_stream_cache::single_piece_window.
         const char * denv = getenv("VAE_DEFER_LATE");
         const bool defer_now = (denv != nullptr) && (atoi(denv) > 0) && (getenv("VAE_SEQ_ENCODERS") == nullptr);
-        vae_cache_set_whole_window(vcache, (params.vae_pieces == 1 && !defer_now) ? 1 : 0);
+        // Exp825: --xwin is excluded too. The carry mode never resets the cache per window, so a site's cold
+        // build (window 1, where the fast path fires) rolls a history that later CARRY builds read - and the
+        // host-side roll is not what the materialized [hist | x] tensor would have left there. Measured: with
+        // the fast path on, --xwin emits 37 tokens vs 39 with VAE_DW_LPAD_OFF=1, i.e. this option's documented
+        // characterization (Exp648/714 attribution & WER) was silently measuring a different system since
+        // v4.5. Excluding carry restores the pre-Exp821 output exactly (hash 5f08cd0af04f).
+        vae_cache_set_whole_window(vcache,
+            (params.vae_pieces == 1 && !defer_now && !params.xwin) ? 1 : 0);
     }
     const int piece_samples = WINDOW_SAMPLES / params.vae_pieces;
     const int piece_frames = FRAMES_PER_WINDOW / params.vae_pieces;

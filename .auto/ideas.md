@@ -1,3 +1,38 @@
+--xwin RE-PRICED AT v4.5 + EXP821's GATE WAS INCOMPLETE (Exp825, a real correctness fix to a documented option).
+  * SPEED CLAIM, CLOSED: --xwin (cross-window VAE carry) is a COST at every length, interleaved 2x2:
+      10 s  2.1900 windowed -> 2.3789 xwin  (+8.6%)
+      17 s  2.1832           -> 2.3744      (+8.8%)
+     138 s  2.2794           -> 2.3772      (+4.3%)
+    So the two-year-old "-8.5 % on shorts" note is dead, and there is no length regime where carry is faster.
+    It also emits MORE tokens (115 vs 108 at 17 s; 886 vs 877 at 138 s) and its accuracy was already measured
+    worse (WER 14.4 -> 27.8 on the multispk probe, Exp648). It stays a DIAGNOSTIC for diarization, not an option.
+    Why the gap shrinks with length: carry advances contiguously (encodes 70400 samples per hop) while the
+    windowed protocol re-encodes 83200 per hop, so carry's VAE work per audio second is ~15 % lower and that
+    offset grows with clip length; the per-hop splice cost (below) is length-independent.
+  * CORRECTNESS FIX (correction to Exp821's shipped scope, not a speed change): the fast path was offered in
+    CARRY mode. The gate was `pieces == 1 && !defer` - it never considered --xwin, and the xwin loop reuses the
+    same cache. Consequence: since v4.5, --xwin was silently measuring a different system than the one Exp648/714
+    characterized. Proof it was real: VAE_DW_LPAD_OFF=1 moves the xwin arm 37 -> 39 tokens, and after adding
+    `&& !params.xwin` the xwin arm reproduces the pre-Exp821 output exactly (hash 5f08cd0af04f, 0 fast-path
+    sites). Mechanism: with carry, a site's only COLD build is hop 1, and the host-side history roll there is
+    not what the materialized [hist | x] tensor would have left for the following hops - the same non-neutrality
+    class as the lean tier (Exp823), now with a clean second instance. RULE: "output-neutral" gates must
+    enumerate the *cache lifecycle* modes (per-window reset | carry | deferred late pass), not just granularity.
+  * PAD ASYMMETRY ACCOUNTED FOR: with the fast path disabled in both arms the xwin gap drops to +6.8 %
+    (2.2567 -> 2.4099), i.e. ~1.8 pp of today's xwin penalty is precisely Exp821's free cold start on the
+    windowed side (windowed pays 0 splice nodes per window at p1; carry materializes 26 per hop).
+  * THREE HARNESS/INSTRUMENT BUGS FOUND IN ONE ITERATION (all "silent, not loud"):
+    1. measure_xwin.sh had NO EXTRA_ENV support - `adb shell` does not inherit the local environment, so my
+       first mechanism test measured the same binary twice (identical hashes gave it away; 6th instance of the
+       knob-that-does-not-fire class: LM_FILE Exp799, SKIP_TAIL Exp764, THREADS Exp808, xwin Exp825).
+    2. measure_xwin.sh did not sync the BINARY (only models) = Exp816's bug class, second instance. This made a
+       CORRECT fix look inert; the fix only showed up after measure.sh happened to push the new binary. Now
+       md5-compares build-android/bin/asr_streaming, pushes and re-verifies.
+    3. My Exp823 trace used a function-local `static std::map` in the concurrent encoder path with a comment
+       CLAIMING thread-locality - i.e. the Exp669 race, reintroduced in a diagnostic. Fixed to thread_local;
+       the shared map had been under-reporting firings 4x (26 lines instead of 26 sites x 4 windows x 2 chains
+       = 208, which now checks out arithmetically).
+
 ROLLBACK AUDIT REFRESHED AT v4.5 (Exp824, runbook product-safety item; .auto/rollback_audit.sh, 11 arms x 2 reps,
 all in ONE build so no thermal/provenance assumption). Default 2.1881. Cost of turning EACH hatch off:
   dw_conv1d +8.6%  | gelu_bias +6.7% | gelu_batch +4.2% | dw_lpad +3.3% | norm_fuse +1.9% | ls_fuse +1.5%

@@ -216,7 +216,9 @@ static struct ggml_tensor * vae_cached_concat(
         if (lpad_out != nullptr && !vae_abl("VAE_DW_LPAD_OFF") &&
             (cache->single_piece_window || lpad_force_ok)) {
             if (getenv("VAE_LPAD_TRACE") != nullptr) {
-                static std::map<std::string, int> seen;   // one line per site, per thread (Exp669 rule: not shared)
+                // thread_local IS required here: a plain function-local static is process-wide, and both
+                // encoder chains call this -> concurrent std::map insert = the Exp669 race, reintroduced.
+                static thread_local std::map<std::string, int> seen;
                 if (seen[key]++ == 0) {
                     fprintf(stderr, "[LPAD] %s P=%lld T=%lld dim=%d warm_before=%d zeros_head=%lld\n", key.c_str(),
                             (long long)P, (long long)lpad_T, time_dim, slot.warm ? 1 : 0,
