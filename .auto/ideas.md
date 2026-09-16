@@ -1,4 +1,25 @@
 
+PAD PRICED AS TRAFFIC, AND IT SPLITS 26/8 - THE BIG HALF IS A KERNEL I OWN (Exp820, analysis-only).
+VAE_GRAPH_STATS on the shipped tier: PAD = 327.3 MB per graph build, n=34, and 0.73 s of chain time for
+2.62 GB/clip = 3.6 GB/s of dst bytes (~7.2 GB/s counting the read-back) = streaming bandwidth. So PAD is
+memory WORK, not contention noise - the prize is at the high end of Exp819's bracket, ~3.2% of RTF.
+  * SITE SPLIT from the same dump: IM2COL n=8 + CONV1D n=26 = PAD n=34, i.e. EVERY conv splices and
+    26 of 34 splices feed ggml_conv1d_dw_f32 - the depthwise kernel I wrote in Exp666/670 - while 8 feed
+    vendored im2col (the route Exp819 measured dead via im2col_asym).
+  * QUEUED NEXT EXPERIMENT (no vendored im2col needed): add a left-pad (zeros) parameter to my dw kernel and
+    skip the cold-path splice for dw sites. Bit-identity argument is the strong kind: the taps beyond the
+    tensor edge multiply zero, and at the shipped p1 every site is COLD (every piece is a window head), so
+    hist is zeros by definition - the padded tensor is exactly "read with an out-of-range index treated as
+    zero". Acceptance = protocol transcript hash, then the gate mean; do not trust rtf alone (-DNDEBUG).
+    First measure the byte split by consumer (PAD bytes on dw vs non-dw sites) so the expected win is known
+    before building - guessing from site count is not evidence.
+  * PATH NOTE worth remembering: at the shipped tier the stats label reads "piecewise", because p1 + defer OFF
+    means one piece = the whole window, so the early/late split passes (forward_early/forward_late) do NOT
+    execute in the shipping config - they are the lean tier's path (p13/p26 + VAE_DEFER_LATE=1). Any note in
+    this ledger about "the late pass batches the deep layers window-wide" is a lean-tier statement. The conv
+    helper is shared by both paths, so a dw-side fix lands in both.
+
+
 PAD (SPLICES) IS WORTH ~3.2% NOT 2.2% - AND THE CHEAP ROUTE TO IT IS DEAD (Exp819, discard).
   * ARITHMETIC CORRECTION to Exp818: the two encoder chains run one per core, so a chain's own elapsed IS the
     VAE's wall (14.64 s), and node time is 2x wall only because the two chains overlap. PAD is 0.73 s of that
