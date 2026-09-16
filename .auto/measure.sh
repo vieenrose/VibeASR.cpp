@@ -85,14 +85,17 @@ done
 adb -s $DEV push .auto/bench_device.sh $RDIR/ > /dev/null 2>&1 || exit 1
 
 [ -n "${EXTRA_ENV:-}" ] && echo "note: forwarding EXTRA_ENV='$EXTRA_ENV' to the device"
-# FIX (Exp798): these assignments used to be unconditional, so a knob passed through EXTRA_ENV with the
-# same name (LM_FILE=..., VAE_FILE=...) was silently overridden by this line - both A/B arms then ran the
-# SAME model and the sweep's "parity" meant the knob never fired (the Exp764 failure class). Honour an
-# EXTRA_ENV assignment by dropping our copy of that variable; bench_device.sh still defaults them.
-_e=${EXTRA_ENV:-}; _lm=""; _vf=""
+# FIX (Exp798, extended Exp808): these assignments used to be unconditional, so a knob passed through
+# EXTRA_ENV with the same name (LM_FILE=..., THREADS=..., MASK=...) was silently overridden by this line -
+# both A/B arms then ran the SAME configuration and the sweep's "parity" meant the knob never fired (the
+# Exp764 failure class). Honour an EXTRA_ENV assignment by dropping our copy of that variable; bench_device.sh
+# still defaults them.
+_e=${EXTRA_ENV:-}; _lm=""; _vf=""; _mk=""; _th=""
 case " $_e " in *" LM_FILE="*) ;; *) _lm="LM_FILE=${LM_FILE:-lm-q8head.gguf} ";; esac
 case " $_e " in *" VAE_FILE="*) ;; *) _vf="VAE_FILE=$VAE_FILE ";; esac
-adb -s $DEV shell "$_e $_lm$_vf MASK=${MASK:-C0} THREADS=${THREADS:-2} sh $RDIR/bench_device.sh ${AUDIO} ${THREADS:-2} ${PIECES:-1} loop" > .auto/last_run.txt 2>&1 || exit 1
+case " $_e " in *" MASK="*)    ;; *) _mk="MASK=${MASK:-C0} ";; esac
+case " $_e " in *" THREADS="*) ;; *) _th="THREADS=${THREADS:-2} ";; esac
+adb -s $DEV shell "$_e $_lm$_vf$_mk$_th sh $RDIR/bench_device.sh ${AUDIO} ${THREADS:-2} ${PIECES:-1} loop" > .auto/last_run.txt 2>&1 || exit 1
 cat .auto/last_run.txt | tail -n 2
 adb -s $DEV pull $RDIR/out-loop.log .auto/last_out.txt > /dev/null 2>&1
 adb -s $DEV pull $RDIR/err-loop.log .auto/last_err.txt > /dev/null 2>&1

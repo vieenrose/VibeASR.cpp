@@ -4,7 +4,11 @@ cd /data/local/tmp/vibeasr
 export LD_LIBRARY_PATH=.
 LM_FILE=${LM_FILE:-streaming-lm-q4_k_m.gguf}
 VAE_FILE=${VAE_FILE:-vae-encoder-f16.gguf}
-taskset ${MASK:-C0} ./asr_streaming --vae-model ./$VAE_FILE --lm-model ./$LM_FILE --audio "$1" -t "$2" --vae-pieces "$3" > "out-$4.log" 2> "err-$4.log" &
+# $2 (threads) may be overridden by THREADS in the environment, which is how measure.sh forwards a
+# deliberate A/B (Exp808): otherwise the positional argument silently won and a -t sweep measured the
+# same configuration in both arms. Same convention as LM_FILE/VAE_FILE/MASK above.
+TH=${THREADS:-$2}
+taskset ${MASK:-C0} ./asr_streaming --vae-model ./$VAE_FILE --lm-model ./$LM_FILE --audio "$1" -t "$TH" --vae-pieces "$3" > "out-$4.log" 2> "err-$4.log" &
 PID=$!
 echo $PID > "pid-$4.txt"
 MAJ0=$(awk '{print $12}' /proc/$PID/stat 2>/dev/null)
