@@ -1,3 +1,27 @@
+BEHAVIORAL CONTRACT WATCHDOG SHIPPED AS A TOOL, 11/11 PASS AT v4.5 (Exp826, .auto/behavior_watch.sh).
+Until now the product-contract set was run AD HOC per era (Exp676/800) with nothing committed, so nothing
+enforced it - and Exp821 is exactly the change type that could break it silently (the dw conv now applies its
+OWN causal left pad, i.e. behaviour at tensor EDGES changed). The script honors tier.env, syncs binary+models
+by md5, refuses to run if ps is broken or a co-runner is alive, and negative-controls itself:
+  .auto/behavior_watch.sh --selftest  -> plants tokens==999999 on every probe, MUST report failures (it does,
+  11/11), so a green run means something (Exp660 rule).
+Result at v4.5: silence->[Silence] (8 tok), noise->[Noise], music->[Music], 48 kHz STEREO transcribes (38 tok),
+sub-piece short36 graceful (16 tok), twospk_overlap SPLITS speakers (73 tok), twospk one-tag (CLOSED Exp650),
+and the ladder token canaries 39/108/446/877 exactly (10/17/69/138 s).
+LONG-RUN MEMORY at v4.5: 138 s run sampled -> peak_rss 2191.3 MB, majflt 0, completed with RTF 2.2781 / 877
+tokens (ladder-consistent) -> no leak signal from the pad-removal graph.
+SHELL/LAUNCH TRAPS (cost two wasted runs; both are "silent, not loud"):
+  1. `cd repo && LAUNCH &` parses as `(cd && LAUNCH) &` - the PARENT shell never changed directory, so every
+     later command (python3 .auto/..., $DEV) ran in the workDir with an EMPTY DEV. My orphan check then
+     reported "0 alive" vacuously. Rule: background a SUBSHELL `( cd x && y & )`, or better, never background
+     a chain that assigns variables other commands depend on; and make any idle/alive probe distinguish
+     "adb failed" from "no process" (require >=20 ps rows before believing IDLE).
+  2. Launching a device run as `adb shell "nohup ... </dev/null >f 2>&1 &"` is UNRELIABLE: of two attempts one
+     ran to completion (soak2.txt, RTF line present) and one died with its adb session leaving a 30 KB PARTIAL
+     transcript and NO RTF line. A sampler attached to the dead process would happily report a phantom. Rule:
+     drive long runs through the harness in a local background job (keeps an adb client attached), and always
+     require the completion marker (RTF line) before trusting any sampled series.
+
 --xwin RE-PRICED AT v4.5 + EXP821's GATE WAS INCOMPLETE (Exp825, a real correctness fix to a documented option).
   * SPEED CLAIM, CLOSED: --xwin (cross-window VAE carry) is a COST at every length, interleaved 2x2:
       10 s  2.1900 windowed -> 2.3789 xwin  (+8.6%)
