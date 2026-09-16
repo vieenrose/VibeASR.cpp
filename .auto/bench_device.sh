@@ -12,15 +12,22 @@ taskset ${MASK:-C0} ./asr_streaming --vae-model ./$VAE_FILE --lm-model ./$LM_FIL
 PID=$!
 echo $PID > "pid-$4.txt"
 MAJ0=$(awk '{print $12}' /proc/$PID/stat 2>/dev/null)
+MIN0=$(awk '{print $10}' /proc/$PID/stat 2>/dev/null)   # Exp815: minor faults = pages first-touched
 PEAK=0; HWM=0
+MIN=$MIN0; MAJ=$MAJ0   # Exp815 FIX: sampled INSIDE the loop. Both counters used to be read AFTER `wait`,
+                       # by which time /proc/$PID is gone, awk prints nothing, ${VAR:-0} makes it 0, and the
+                       # delta becomes 0 - MAJ0 (or a negative MIN0, which is how I caught it: minflt_delta=-1598).
+                       # So `majflt 0` in every historical log meant UNREADABLE, not "no major faults". The
+                       # long-run claims that quote majflt (Exp679/797) need re-verification with this build.
 while kill -0 $PID 2>/dev/null; do
   ST=$(cat /proc/$PID/status 2>/dev/null)
+  S=$(cat /proc/$PID/stat 2>/dev/null)
   RSS=$(echo "$ST" | grep VmRSS | awk '{print $2}')
   HW=$(echo "$ST" | grep VmHWM | awk '{print $2}')
   if [ -n "$RSS" ] && [ "$RSS" -gt "$PEAK" ]; then PEAK=$RSS; fi
   if [ -n "$HW" ] && [ "$HW" -gt "$HWM" ]; then HWM=$HW; fi
+  if [ -n "$S" ]; then MIN=$(echo "$S" | awk '{print $10}'); MAJ=$(echo "$S" | awk '{print $12}'); fi
   sleep 0.5
 done
-MAJ1=$(awk '{print $12}' /proc/$PID/stat 2>/dev/null)
 wait $PID; EC=$?
-echo "exit=$EC peak_kb=$PEAK hwm_kb=$HWM majflt_delta=$(( ${MAJ1:-0} - ${MAJ0:-0} ))"
+echo "exit=$EC peak_kb=$PEAK hwm_kb=$HWM majflt_delta=$(( ${MAJ:-0} - ${MAJ0:-0} )) minflt_delta=$(( ${MIN:-0} - ${MIN0:-0} ))"

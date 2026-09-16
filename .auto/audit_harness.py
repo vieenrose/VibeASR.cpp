@@ -77,13 +77,24 @@ for s in scripts:
 
 # ---- 2. host paths referenced by scripts ---------------------------------------
 PATH_RE = re.compile(r'(?<![\w/.])((?:\./)?[\w\.\-\$\{\}]+/[\w\.\-\$\{\}]+\.(?:sh|py|json|gguf|wav|txt|md|log|tsv))')
+DEVICE_PATHS = {}
+_RDIR = '/data/local/tmp/vibeasr'
 SKIP_PREFIX = ('/data', '/proc', '/sys', '/system', '/tmp', '$RDIR', '${RDIR}', '.auto/multi-', '.auto/last_')
 seen = set()
 for s in scripts:
     txt = open(os.path.join(HERE, s), errors='ignore').read()
+    # Scripts that drive the PHONE binary reference files that live in $RDIR on the device, not in the repo.
+    # Declared with a `# DEVICE_PATHS: name1 name2` marker so (a) the host-path check below does not cry wolf
+    # (Exp815 printed 3 FAILs for exactly that) and (b) section 3c can assert they exist where they are
+    # actually used - a driver whose model file disappeared would otherwise silently run the wrong tier.
+    dcl = re.search(r'^\s*#\s*DEVICE_PATHS:\s*(.+)$', txt, re.M)
+    if dcl:
+        DEVICE_PATHS.setdefault(s, set()).update(dcl.group(1).split())
     for m in PATH_RE.finditer(txt):
         rel = m.group(1)
         rel = rel[2:] if rel.startswith('./') else rel   # NB: lstrip('./') would eat '.auto' -> 'auto'
+        if rel in DEVICE_PATHS.get(s, set()):
+            continue        # declared as a DEVICE-side artifact (see the DEVICE_PATHS marker) - checked in 3c
         if rel.startswith(SKIP_PREFIX) or '$' in rel or '{' in rel:
             continue
         key = (s, rel)
@@ -97,6 +108,18 @@ for s in scripts:
             bad(f"missing path referenced by {s}: {rel}")
 if not any('missing path' in f for f in fails):
     ok(f"all {len(seen)} host paths referenced by harness scripts exist")
+
+# ---- 3c. declared DEVICE-side artifacts exist on the phone (Exp815)
+_d = re.search(r'^DEV=(\S+)', open(os.path.join(HERE, 'measure.sh'), errors='ignore').read(), re.M)
+DEV3 = _d.group(1) if _d else None
+_dev_paths = sorted({p for v in DEVICE_PATHS.values() for p in v})
+if _dev_paths and DEV3 and '--skip-device' not in sys.argv:
+    listing = sh(f'adb -s {DEV3} shell "ls {_RDIR}"').stdout.split()
+    missing = [p for p in _dev_paths if p not in listing]
+    for p in missing:
+        bad(f"declared DEVICE_PATHS entry is absent on the phone: {p}")
+    if not missing:
+        ok(f"all {len(_dev_paths)} declared device-side artifacts present on {DEV3}")
 
 # ---- 3. git tracking (an untracked harness file can be deleted by an auto-revert)
 r = sh(f'cd "{ROOT}" && git ls-files .auto')
