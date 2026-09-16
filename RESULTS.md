@@ -60,7 +60,20 @@ correctly. `.auto/tier.env` plus the audit now make that class of mistake fail l
 
 > ° Measured before the Exp670 depthwise-conv1d path became the default; scale by ~0.965.
 > The **17 s** column was re-measured in Exp675 on `chat17.wav` = a deterministic 17.0 s excerpt of `chat69.wav` (first 408,000 frames). The clip the old 17 s cells were taken on no longer exists: `chat.wav` and `chat69.wav` became byte-identical (both 3,311,576 B) when the 69 s clip was pushed, so the pre-Exp675 17 s numbers are not comparable to the new ones and were replaced, not rescaled. Length ladder is monotone and the lean/shipped gap is now consistent across all four lengths (+5–6 % at v4.2, was +3.8–4.4 % at v3.8), which is the useful cross-check: per-piece overhead does not grow with clip length.
-> Re-measured on the current default (**v4.4**, five fusions + m2 kernel): shipped tier 10 s **2.26**, 17 s **2.25**, 69 s **2.28**, 138 s **2.35**, 40-utt mean **2.5415** (tag `norm784`: **40/40 byte-identical** to both `gelufuse781` and the frozen `gatem2` - b=0/c=0 of 731 tokens, McNemar p=1.0 in both pairs, WER 4.51 %); lean tier 10 s **2.41**, 17 s **2.39**, 69 s **2.41**, 138 s **2.47** (2 reps each, RSS 1752-1766 MB, all majflt 0). Token counts are unchanged at every length (39/108/446/877 shipped), so the two fusions are output-neutral end to end, not just on the protocol clip. All ° cells are now gone: the lean 40-utt mean was measured at v4.4 (tag `leannorm785`, 2.7001)..** Every number above is
+> Re-measured on the current default (**v4.4**, five fusions + m2 kernel): shipped tier 10 s **2.26**, 17 s **2.25**, 69 s **2.28**, 138 s **2.35**, 40-utt mean **2.5415** (tag `norm784`: **40/40 byte-identical** to both `gelufuse781` and the frozen `gatem2` - b=0/c=0 of 731 tokens, McNemar p=1.0 in both pairs, WER 4.51 %); lean tier 10 s **2.41**, 17 s **2.39**, 69 s **2.41**, 138 s **2.47** (2 reps each, RSS 1752-1766 MB, all majflt 0). Token counts are unchanged at every length (39/108/446/877 shipped), so the two fusions are output-neutral end to end, not just on the protocol clip. All ° cells are now gone: the lean 40-utt mean was measured at v4.4 (tag `leannorm785`, 2.7001).
+>
+> **Provenance note on `majflt 0` (Exp815):** every `majflt` quoted anywhere in this file before v4.4 came from
+> a counter that was read *after* the process was reaped, so it was structurally 0 and proved nothing. The
+> harness is fixed (counters sampled while the process is alive) and the claim re-verified on a working
+> instrument: 138 s soak → `majflt_delta 0`, `minflt_delta 995,675` (4.08 GB touched), RSS 2446 MB, so the
+> no-thrash / no-leak conclusion now rests on a measurement. `minflt` is a useful new column: 315.1 k pages
+> on the 10 s protocol clip (±0.01 % over reps), of which ~200 k belong to model load and ~29 k re-fault per
+> window - the mechanism behind the +317 ms window-1 VAE premium, which is page-in of the mmap'd weights
+> (majflt 0, so no I/O). It cannot be reduced, only moved into load time: this kernel exposes no THP
+> (`/sys/kernel/mm/transparent_hugepage` absent, 4 KB pages), so pre-touching is a **time-to-first-token**
+> improvement (~317 ms), not an RTF one.
+>
+> Every RTF and WER number in this ladder is
 > LibriSpeech *test-clean*. On held-out consumer audio (Common Voice 17.0, CC0, never used
 > by this loop) the shipped tier scores **29.6 %** (English, 220 tokens) and **16.0 %**
 > (zh-TW, 468 tokens), so a WER from this ladder must carry the qualifier “read speech”.

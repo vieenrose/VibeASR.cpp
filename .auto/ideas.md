@@ -1,5 +1,26 @@
 - CONV-INT8: BUILT AND NOT WORKING, INACTIVE BY DEFAULT (Exp685). Everything the design needed is in
 
+THE 316 ms WINDOW-1 PREMIUM IS PAGE-IN, AND THE LOOP'S majflt METRIC WAS A TAUTOLOGY (Exp815).
+Three things in one iteration, all instrument work:
+  * BUG: bench_device.sh read minflt/majflt from /proc/PID/stat AFTER `wait`, so /proc/PID was gone, awk
+    printed nothing, ${VAR:-0} made it 0, and majflt_delta printed 0 FOREVER. Adding minflt exposed it as
+    -1598. Every "majflt 0" this loop ever reported (both RSS soaks, every ladder row) meant UNREADABLE.
+    Re-verified on the fixed instrument: 138 s soak majflt 0 / minflt 995,675 / RSS 2446 MB, so the
+    no-thrash/no-leak conclusion survives - now as evidence. RULE: a metric that has never been observed
+    nonzero is unproven; plant a case that must move it (here: touch more memory = longer clip).
+  * CLOSED with mechanism: LT trace in one run gives vae 3907/3581/3600/3590 ms -> +317 ms window-1
+    premium; ~204k of the run's ~304k minor faults fall in that window (820 MB of first-touched pages, all
+    page-cache hits, majflt 0) at ~1.6 us/fault. THP does not exist on this kernel, so the only lever is
+    pre-touch at load, which MOVES the cost into load_s - forbidden as a metric move by Exp806's rule, and
+    recorded instead as a product-side TTFT win of ~317 ms at zero RTF change.
+  * RE-ARMED IDEA (Exp156's "revisit only with a discriminating probe" - the probe now exists): ~29k faults
+    RE-FAULTED per window (RSS sawtooth 2353<->2374 MB) = ~170 ms per protocol clip, ~0.8%. Price it with
+    the fault series before any code; the 138 s run shows only 14k/window, so it shrinks with length and is
+    probably not worth a persistent arena. .auto/fault_run.sh + .auto/fault_sample.sh do this in one run.
+  * AUDIT: a DEVICE_PATHS marker + check 3c (declared device artifacts must exist on the phone), because my
+    new drivers tripped 3 false "missing path" FAILs. Check 3c guards a real failure mode: a driver whose
+    model file disappeared silently measures another tier (Exp772/694 class).
+
 ROLLBACK AUDIT REFRESHED, AND A HATCH THAT DOES NOTHING (Exp814). The Exp677/787 runbook costs were 3
 versions stale, so all arms were re-run in one binary with a committed tool (.auto/rollback_audit.sh) that
 prints, per arm, BOTH the rtf cost and the per-window transcript hash. Costs vs default 2.2565:
