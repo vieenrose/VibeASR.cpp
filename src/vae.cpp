@@ -88,8 +88,16 @@ struct vae_stream_slot {
 
 struct vae_stream_cache {
     std::map<std::string, vae_stream_slot> slots;
-    struct Tap { std::string key; struct ggml_tensor * xh = nullptr; struct ggml_tensor * x = nullptr; int64_t P = 0; int dim = 0; };
+    // padded=false: Exp821, the concat node was skipped (cold site, kernel does the left pad), so the tap must
+    // derive the new history from x plus the implicit zeros instead of reading the padded tensor.
+    struct Tap { std::string key; struct ggml_tensor * xh = nullptr; struct ggml_tensor * x = nullptr; int64_t P = 0; int dim = 0; bool padded = true; };
     std::vector<Tap> taps;     // recorded per forward build, consumed post-compute
+    // Exp821: gate for the in-kernel causal left pad. It is output-neutral only where the history this build's
+    // tap rolls is NEVER read back - true when the whole window is one piece and no deferred late pass rolls
+    // the same slots (histories are cleared per window by vae_cache_reset). Measured otherwise: at p1 six runs
+    // byte-identical, at p13+defer-ON the transcript changed (38 vs 39 tokens), so the fast path stays OFF
+    // there until that interaction is understood. Config, so vae_cache_reset must not clear it.
+    bool single_piece_window = false;
     // Host-fed tensors (the [hist|zeros] staging buffers of the concat sites).
     // Under the lifetime allocator their data does not exist during the graph
     // build, so the write is deferred to a Fill record consumed by the caller
@@ -147,7 +155,8 @@ static struct ggml_tensor * vae_cached_concat(
     struct ggml_tensor * x,
     int64_t P,
     vae_stream_cache * cache,
-    int time_dim = 0) {
+    int time_dim = 0,
+    int64_t * lpad_out = nullptr) {
     std::string key = "s" + std::to_string(cache->next_id++);
     vae_stream_slot & slot = cache->slots[key];  // default-constructed if new
     if (!slot.warm) {
@@ -191,6 +200,19 @@ static struct ggml_tensor * vae_cached_concat(
             fprintf(stderr, "[CACHE_SKIP] %s cold head: returning pad_ext directly (P=%lld)\n",
                     key.c_str(), (long long)P);
         }
+        // Exp821: a cold site's history is ALL ZEROS, so [hist | x] is just a left zero-pad - which the depthwise
+        // conv1d kernel can do for free by starting its tap loop later (ggml_conv1d_dw_ct_lp). Returning x
+        // unpadded deletes the pad node outright: 0.73 s per chain, and 75% of those bytes feed the dw kernel
+        // (PAD-by-consumer: 123.1 of 164 MB). Only offered when the caller can consume the left pad, i.e. from
+        // the conv1d-kernel branch, and the tap is told to roll the history from x plus zeros. At the shipped
+        // p1 every site is cold (one piece per window), so this covers the whole dw share of the splice cost.
+        if (lpad_out != nullptr && cache->single_piece_window && !vae_abl("VAE_DW_LPAD_OFF")) {
+            vae_stream_cache::Tap tap;
+            tap.key = key; tap.xh = x; tap.x = x; tap.P = P; tap.dim = time_dim; tap.padded = false;
+            cache->taps.push_back(tap);
+            *lpad_out = P;
+            return x;
+        }
         vae_stream_cache::Tap tap;
         tap.key = key; tap.xh = xp; tap.x = x; tap.P = P; tap.dim = time_dim;
         cache->taps.push_back(tap);
@@ -232,7 +254,31 @@ static void vae_cache_update(vae_stream_cache * cache) {
             fprintf(stderr, "[CACHE_UPDATE] %s NULL data!\n", tap.key.c_str());
         } else {
             float * xhd = (float *)xh->data;
-            if (tap.dim == 0) {
+            if (!tap.padded) {
+                // New history = the last P columns of the IMPLICIT [zeros(P) | x] (the pad node does not
+                // exist). Column T+k of that tensor is zero while T+k < P, else x[T+k-P], so the first
+                // max(0, P-T) history entries are zero and the rest is a contiguous run of x's tail.
+                const int64_t T    = (tap.dim == 0) ? xh->ne[0] : xh->ne[1];
+                const int64_t nz   = tap.P > T ? tap.P - T : 0;              // leading zeros
+                const int64_t copy = tap.P - nz;                             // entries coming from x
+                const int64_t src  = T - tap.P + nz;                         // == max(0, T - P)
+                if (tap.dim == 0) {
+                    const int64_t N = xh->ne[0];
+                    const int64_t nch = xh->ne[1] * xh->ne[2] * xh->ne[3];
+                    for (int64_t c = 0; c < nch; c++) {
+                        std::fill(slot.hist.data() + c * tap.P, slot.hist.data() + c * tap.P + nz, 0.0f);
+                        memcpy(slot.hist.data() + c * tap.P + nz, xhd + c * N + src, (size_t)copy * sizeof(float));
+                    }
+                } else {
+                    const int64_t C = xh->ne[0];
+                    for (int64_t c = 0; c < C; c++) {
+                        std::fill(slot.hist.data() + c * tap.P, slot.hist.data() + c * tap.P + nz, 0.0f);
+                        for (int64_t k = 0; k < copy; k++) {
+                            slot.hist[c * tap.P + nz + k] = xhd[src + k * C];
+                        }
+                    }
+                }
+            } else if (tap.dim == 0) {
                 for (int64_t c = 0; c < nch; c++) {
                     memcpy(slot.hist.data() + c * tap.P, xhd + c * n0 + (n0 - tap.P),
                            (size_t)tap.P * sizeof(float));
@@ -590,9 +636,17 @@ static struct ggml_tensor* ggml_nn_conv_1d_dw(
         // transposed): time is ne[1], so cache concat and padding go along dim 1.
         const bool ct_in = (x->ne[2] == 1) && (w->ne[1] == 1) && (w->ne[3] == 1) &&
                            (x->ne[0] == w->ne[2]) && (x->ne[1] > 2 * w->ne[0]);
+        // Exp821: enumerate the route to ggml_conv1d_dw_ct BEFORE the splice, because only that route can
+        // consume an implicit left pad. If lp survives to any other branch (tap chain, im2col fallback) the
+        // result would be silently wrong - those branches need the padded tensor to exist - so this predicate
+        // must stay the exact complement of the kernel branch's condition below.
+        const bool kernel_route = ct_in && stride == 1 && dilation == 1 && b != NULL &&
+                                  !vae_abl("VAE_DW_CT_OFF") && !vae_abl("VAE_DW_CONV1D_OFF") &&
+                                  !vae_abl("VAE_ABL_TAPS") && !vae_abl("VAE_DW_LPAD_OFF");
         if (cache != nullptr && padding > 0 && x->type == GGML_TYPE_F32) {
-            x = vae_cached_concat(ctx, x, padding, cache, ct_in ? 1 : 0);
-            padding = 0;
+            int64_t lp = 0;
+            x = vae_cached_concat(ctx, x, padding, cache, ct_in ? 1 : 0, kernel_route ? &lp : nullptr);
+            padding = (int)lp;   // 0 unless the pad node was deleted; then the kernel left-pads by lp
         } else if (padding > 0) {
             x = ct_in ? ggml_pad_ext(ctx, x, 0, 0, padding, 0, 0, 0, 0, 0)
                       : ggml_pad_ext(ctx, x, padding, 0, 0, 0, 0, 0, 0, 0);
@@ -618,7 +672,9 @@ static struct ggml_tensor* ggml_nn_conv_1d_dw(
             struct ggml_tensor* ww = ggml_permute(ctx, w, 1, 2, 0, 3);                   // [C, K]
             ww = ggml_cont(ctx, ww);
             if (ww->type != GGML_TYPE_F32) ww = ggml_cast(ctx, ww, GGML_TYPE_F32);
-            const int64_t T_out = xc->ne[1] - (K - 1);
+            // +padding: with the pad node deleted, padding carries the implicit left pad (Exp821) and the
+            // output length must stay what it was with the materialised [hist | x] tensor.
+            const int64_t T_out = xc->ne[1] + padding - (K - 1);
             if (getenv("VAE_DW_DEBUG") != nullptr) {
                 static int dbg = 0;
                 if (dbg++ < 4) {
@@ -646,7 +702,7 @@ static struct ggml_tensor* ggml_nn_conv_1d_dw(
                 // passes instead of ~3K, i.e. Exp665's 9.0% tap cost -> ~1.5%. Bit-identical to
                 // the tap chain by construction (ascending k, product rounded before each add,
                 // no fma) - Exp666.
-                result = ggml_conv1d_dw_ct(ctx, ww, xc);   // [C, T_out]
+                result = ggml_conv1d_dw_ct_lp(ctx, ww, xc, padding);   // [C, T_out]
             } else {
             struct ggml_tensor* acc = nullptr;
             // ONE fused pass per tap instead of mul-then-add (Exp662 priced the tap chain at
@@ -1655,6 +1711,7 @@ static size_t vae_model_max_nodes(const vae_model_t* model) {
 static void vae_graph_stats_dump(struct ggml_cgraph* gf, const char* phase) {
     struct Row { size_t bytes = 0; size_t count = 0; double macs = 0.0; };
     std::map<std::string, Row> by_op;
+    size_t pad_fed[2] = {0, 0}, pad_fed_n[2] = {0, 0};   // [0]=via im2col (general convs) [1]=via CONV1D (dw)
     size_t total = 0;
     size_t view_bytes = 0;      // stride-only nodes, reported for reference and NOT added to total
     double total_macs = 0.0;
@@ -1694,11 +1751,22 @@ static void vae_graph_stats_dump(struct ggml_cgraph* gf, const char* phase) {
                         (long long)node->ne[0], (long long)node->ne[1], (long long)node->ne[2], (long long)node->ne[3]);
             }
         }
+        // Exp821: attribute the streaming-cache PAD nodes to their CONSUMER without touching any call site.
+        // A conv's src[1] IS the tensor the splice produced, so summing it over IM2COL gives the pad bytes
+        // feeding the general convs and over CONV1D the ones feeding the depthwise kernel. That split decides
+        // where the ~3.2% lives: the dw half is a parameter in a kernel I own, the im2col half died in Exp819.
+        // If the two buckets sum to the PAD row's bytes, the attribution is confirmed (1:1 producer:consumer).
+        if ((node->op == GGML_OP_IM2COL || node->op == GGML_OP_CONV1D) && node->src[1]) {
+            pad_fed[node->op == GGML_OP_CONV1D ? 1 : 0] += ggml_nbytes(node->src[1]);
+            pad_fed_n[node->op == GGML_OP_CONV1D ? 1 : 0] += 1;
+        }
         auto& e = by_op[key];
         e.bytes += b; e.count += 1; e.macs += macs;
         total += b; total_macs += macs;
     }
     fprintf(stderr, "[VAE_STATS:%s] nodes=%d total=%.1f MB macs=%.2f G\n", phase, n_nodes, total / 1e6, total_macs / 1e9);
+    fprintf(stderr, "[VAE_STATS:%s] PAD-by-consumer  ->im2col %9.1f MB (n=%zu)   ->dwconv %9.1f MB (n=%zu)\n",
+            phase, pad_fed[0] / 1e6, pad_fed_n[0], pad_fed[1] / 1e6, pad_fed_n[1]);
     for (auto& kv : by_op) {
         fprintf(stderr, "[VAE_STATS:%s] %-16s n=%4zu bytes=%9.1f MB %5.1f%%  macs=%9.3f G\n",
                 phase, kv.first.c_str(), kv.second.count, kv.second.bytes / 1e6,
@@ -2471,6 +2539,14 @@ int32_t vae_encode_acoustic(
 
 vae_cache_t* vae_cache_new(void) {
     return new vae_cache_t();
+}
+
+void vae_cache_set_whole_window(vae_cache_t* cache, int on) {
+    // Exp821: see vae_stream_cache::single_piece_window. Set by the streaming demo, the only caller that knows
+    // both the piece count and whether the deferred late pass will run.
+    if (cache == nullptr) return;
+    cache->acoustic.single_piece_window = on != 0;
+    cache->semantic.single_piece_window = on != 0;
 }
 
 void vae_cache_free(vae_cache_t* cache) {

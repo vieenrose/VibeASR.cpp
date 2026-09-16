@@ -392,6 +392,15 @@ int main(int argc, char ** argv) {
     // semantics of the legacy full-window encode, but the deep stages still get
     // their window-level pass.
     vae_cache_t * vcache = (params.vae_pieces >= 1) ? vae_cache_new() : nullptr;
+    {   // Exp821: the depthwise kernel can absorb the conv's causal left pad instead of the graph materialising
+        // [hist | x] (-3.2% RTF, -183 MB RSS at the shipped tier, transcript byte-identical over 6 runs). It is
+        // output-neutral only when no later build in the window reads the history this build rolls: one piece
+        // per window AND no deferred late pass. At p13+defer-ON it changed the lean transcript (38 vs 39
+        // tokens), so the gate stays closed there - see vae_stream_cache::single_piece_window.
+        const char * denv = getenv("VAE_DEFER_LATE");
+        const bool defer_now = (denv != nullptr) && (atoi(denv) > 0) && (getenv("VAE_SEQ_ENCODERS") == nullptr);
+        vae_cache_set_whole_window(vcache, (params.vae_pieces == 1 && !defer_now) ? 1 : 0);
+    }
     const int piece_samples = WINDOW_SAMPLES / params.vae_pieces;
     const int piece_frames = FRAMES_PER_WINDOW / params.vae_pieces;
     fprintf(stderr, "VAE pieces: %d x %d samples (%d frames each)%s\n\n",

@@ -58,6 +58,11 @@ vae_cache_t* vae_cache_new(void);
 void vae_cache_free(vae_cache_t* cache);
 void vae_cache_reset(vae_cache_t* cache);  // clear all histories (call per window)
 
+// Exp821: declare that each encode call covers a WHOLE window (one piece, no deferred late pass) - the only
+// regime where carrying a conv's causal left pad into the depthwise kernel instead of materialising
+// [hist | x] cannot change the output. Default OFF; the streaming demo turns it on for --vae-pieces 1.
+void vae_cache_set_whole_window(vae_cache_t* cache, int on);
+
 // Piece-wise encode with carried conv state. n_samples should be a multiple
 // of 3200 (grid alignment at every strided layer). First piece after reset
 // behaves exactly like the uncached call. Returns frames, or -1 on error.

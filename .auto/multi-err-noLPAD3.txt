@@ -1,0 +1,432 @@
+========================================
+ VibeASR.cpp - Streaming ASR (1.5B)
+========================================
+  VAE: ./vae-encoder-convint8.gguf
+  LM:  ./lm-q8head.gguf
+  Audio: stream_10s_24k.wav
+  Threads: 2
+
+[audio_io] Loaded: stream_10s_24k.wav (10.00s, 240000 samples @ 24000 Hz)
+Audio: 10.00s, 240000 samples
+VAE dims: acoustic=1536 semantic=1536
+llama_model_loader: loaded meta data with 23 key-value pairs and 339 tensors from ./lm-q8head.gguf (version GGUF V3 (latest))
+llama_model_loader: Dumping metadata keys/values. Note: KV overrides do not apply in this output.
+llama_model_loader: - kv   0:                       general.architecture str              = qwen2
+llama_model_loader: - kv   1:                               general.name str              = models-streaming
+llama_model_loader: - kv   2:                           qwen2.vocab_size u32              = 151936
+llama_model_loader: - kv   3:                       qwen2.context_length u32              = 65536
+llama_model_loader: - kv   4:                     qwen2.embedding_length u32              = 1536
+llama_model_loader: - kv   5:                          qwen2.block_count u32              = 28
+llama_model_loader: - kv   6:                  qwen2.feed_forward_length u32              = 8960
+llama_model_loader: - kv   7:                 qwen2.rope.dimension_count u32              = 128
+llama_model_loader: - kv   8:                 qwen2.attention.head_count u32              = 12
+llama_model_loader: - kv   9:              qwen2.attention.head_count_kv u32              = 2
+llama_model_loader: - kv  10:               tokenizer.ggml.add_bos_token bool             = true
+llama_model_loader: - kv  11:     qwen2.attention.layer_norm_rms_epsilon f32              = 0.000001
+llama_model_loader: - kv  12:                       qwen2.rope.freq_base f32              = 1000000.000000
+llama_model_loader: - kv  13:                          general.file_type u32              = 33
+llama_model_loader: - kv  14:                       tokenizer.ggml.model str              = gpt2
+llama_model_loader: - kv  15:                      tokenizer.ggml.tokens arr[str,151936]  = ["!", "\"", "#", "$", "%", "&", "'", ...
+llama_model_loader: - kv  16:                      tokenizer.ggml.scores arr[f32,151936]  = [0.000000, 0.000000, 0.000000, 0.0000...
+llama_model_loader: - kv  17:                  tokenizer.ggml.token_type arr[i32,151936]  = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...
+llama_model_loader: - kv  18:                      tokenizer.ggml.merges arr[str,151387]  = ["Ġ Ġ", "ĠĠ ĠĠ", "i n", "Ġ t",...
+llama_model_loader: - kv  19:                tokenizer.ggml.eos_token_id u32              = 151643
+llama_model_loader: - kv  20:            tokenizer.ggml.padding_token_id u32              = 151643
+llama_model_loader: - kv  21:                    tokenizer.chat_template str              = {%- if tools %}\n    {{- '<|im_start|>...
+llama_model_loader: - kv  22:               general.quantization_version u32              = 2
+llama_model_loader: - type  f32:  141 tensors
+llama_model_loader: - type q8_0:    1 tensors
+llama_model_loader: - type q6_K:    1 tensors
+llama_model_loader: - type q4_0_4x4:  196 tensors
+llm_load_vocab: missing pre-tokenizer type, using: 'default'
+llm_load_vocab:                                             
+llm_load_vocab: ************************************        
+llm_load_vocab: GENERATION QUALITY WILL BE DEGRADED!        
+llm_load_vocab: CONSIDER REGENERATING THE MODEL             
+llm_load_vocab: ************************************        
+llm_load_vocab:                                             
+llm_load_vocab: control token: 151935 '<dummy00267>' is not marked as EOG
+llm_load_vocab: control token: 151934 '<dummy00266>' is not marked as EOG
+llm_load_vocab: control token: 151933 '<dummy00265>' is not marked as EOG
+llm_load_vocab: control token: 151932 '<dummy00264>' is not marked as EOG
+llm_load_vocab: control token: 151930 '<dummy00262>' is not marked as EOG
+llm_load_vocab: control token: 151929 '<dummy00261>' is not marked as EOG
+llm_load_vocab: control token: 151927 '<dummy00259>' is not marked as EOG
+llm_load_vocab: control token: 151923 '<dummy00255>' is not marked as EOG
+llm_load_vocab: control token: 151922 '<dummy00254>' is not marked as EOG
+llm_load_vocab: control token: 151920 '<dummy00252>' is not marked as EOG
+llm_load_vocab: control token: 151917 '<dummy00249>' is not marked as EOG
+llm_load_vocab: control token: 151915 '<dummy00247>' is not marked as EOG
+llm_load_vocab: control token: 151914 '<dummy00246>' is not marked as EOG
+llm_load_vocab: control token: 151911 '<dummy00243>' is not marked as EOG
+llm_load_vocab: control token: 151907 '<dummy00239>' is not marked as EOG
+llm_load_vocab: control token: 151903 '<dummy00235>' is not marked as EOG
+llm_load_vocab: control token: 151901 '<dummy00233>' is not marked as EOG
+llm_load_vocab: control token: 151899 '<dummy00231>' is not marked as EOG
+llm_load_vocab: control token: 151898 '<dummy00230>' is not marked as EOG
+llm_load_vocab: control token: 151897 '<dummy00229>' is not marked as EOG
+llm_load_vocab: control token: 151896 '<dummy00228>' is not marked as EOG
+llm_load_vocab: control token: 151895 '<dummy00227>' is not marked as EOG
+llm_load_vocab: control token: 151894 '<dummy00226>' is not marked as EOG
+llm_load_vocab: control token: 151893 '<dummy00225>' is not marked as EOG
+llm_load_vocab: control token: 151891 '<dummy00223>' is not marked as EOG
+llm_load_vocab: control token: 151883 '<dummy00215>' is not marked as EOG
+llm_load_vocab: control token: 151880 '<dummy00212>' is not marked as EOG
+llm_load_vocab: control token: 151879 '<dummy00211>' is not marked as EOG
+llm_load_vocab: control token: 151878 '<dummy00210>' is not marked as EOG
+llm_load_vocab: control token: 151877 '<dummy00209>' is not marked as EOG
+llm_load_vocab: control token: 151875 '<dummy00207>' is not marked as EOG
+llm_load_vocab: control token: 151870 '<dummy00202>' is not marked as EOG
+llm_load_vocab: control token: 151869 '<dummy00201>' is not marked as EOG
+llm_load_vocab: control token: 151868 '<dummy00200>' is not marked as EOG
+llm_load_vocab: control token: 151865 '<dummy00197>' is not marked as EOG
+llm_load_vocab: control token: 151864 '<dummy00196>' is not marked as EOG
+llm_load_vocab: control token: 151863 '<dummy00195>' is not marked as EOG
+llm_load_vocab: control token: 151862 '<dummy00194>' is not marked as EOG
+llm_load_vocab: control token: 151861 '<dummy00193>' is not marked as EOG
+llm_load_vocab: control token: 151859 '<dummy00191>' is not marked as EOG
+llm_load_vocab: control token: 151858 '<dummy00190>' is not marked as EOG
+llm_load_vocab: control token: 151857 '<dummy00189>' is not marked as EOG
+llm_load_vocab: control token: 151856 '<dummy00188>' is not marked as EOG
+llm_load_vocab: control token: 151854 '<dummy00186>' is not marked as EOG
+llm_load_vocab: control token: 151853 '<dummy00185>' is not marked as EOG
+llm_load_vocab: control token: 151852 '<dummy00184>' is not marked as EOG
+llm_load_vocab: control token: 151850 '<dummy00182>' is not marked as EOG
+llm_load_vocab: control token: 151849 '<dummy00181>' is not marked as EOG
+llm_load_vocab: control token: 151848 '<dummy00180>' is not marked as EOG
+llm_load_vocab: control token: 151845 '<dummy00177>' is not marked as EOG
+llm_load_vocab: control token: 151843 '<dummy00175>' is not marked as EOG
+llm_load_vocab: control token: 151842 '<dummy00174>' is not marked as EOG
+llm_load_vocab: control token: 151841 '<dummy00173>' is not marked as EOG
+llm_load_vocab: control token: 151840 '<dummy00172>' is not marked as EOG
+llm_load_vocab: control token: 151838 '<dummy00170>' is not marked as EOG
+llm_load_vocab: control token: 151836 '<dummy00168>' is not marked as EOG
+llm_load_vocab: control token: 151835 '<dummy00167>' is not marked as EOG
+llm_load_vocab: control token: 151833 '<dummy00165>' is not marked as EOG
+llm_load_vocab: control token: 151830 '<dummy00162>' is not marked as EOG
+llm_load_vocab: control token: 151826 '<dummy00158>' is not marked as EOG
+llm_load_vocab: control token: 151823 '<dummy00155>' is not marked as EOG
+llm_load_vocab: control token: 151820 '<dummy00152>' is not marked as EOG
+llm_load_vocab: control token: 151818 '<dummy00150>' is not marked as EOG
+llm_load_vocab: control token: 151816 '<dummy00148>' is not marked as EOG
+llm_load_vocab: control token: 151815 '<dummy00147>' is not marked as EOG
+llm_load_vocab: control token: 151813 '<dummy00145>' is not marked as EOG
+llm_load_vocab: control token: 151812 '<dummy00144>' is not marked as EOG
+llm_load_vocab: control token: 151811 '<dummy00143>' is not marked as EOG
+llm_load_vocab: control token: 151807 '<dummy00139>' is not marked as EOG
+llm_load_vocab: control token: 151806 '<dummy00138>' is not marked as EOG
+llm_load_vocab: control token: 151805 '<dummy00137>' is not marked as EOG
+llm_load_vocab: control token: 151802 '<dummy00134>' is not marked as EOG
+llm_load_vocab: control token: 151794 '<dummy00126>' is not marked as EOG
+llm_load_vocab: control token: 151792 '<dummy00124>' is not marked as EOG
+llm_load_vocab: control token: 151791 '<dummy00123>' is not marked as EOG
+llm_load_vocab: control token: 151784 '<dummy00116>' is not marked as EOG
+llm_load_vocab: control token: 151782 '<dummy00114>' is not marked as EOG
+llm_load_vocab: control token: 151780 '<dummy00112>' is not marked as EOG
+llm_load_vocab: control token: 151779 '<dummy00111>' is not marked as EOG
+llm_load_vocab: control token: 151778 '<dummy00110>' is not marked as EOG
+llm_load_vocab: control token: 151776 '<dummy00108>' is not marked as EOG
+llm_load_vocab: control token: 151774 '<dummy00106>' is not marked as EOG
+llm_load_vocab: control token: 151773 '<dummy00105>' is not marked as EOG
+llm_load_vocab: control token: 151772 '<dummy00104>' is not marked as EOG
+llm_load_vocab: control token: 151769 '<dummy00101>' is not marked as EOG
+llm_load_vocab: control token: 151764 '<dummy00096>' is not marked as EOG
+llm_load_vocab: control token: 151762 '<dummy00094>' is not marked as EOG
+llm_load_vocab: control token: 151758 '<dummy00090>' is not marked as EOG
+llm_load_vocab: control token: 151757 '<dummy00089>' is not marked as EOG
+llm_load_vocab: control token: 151755 '<dummy00087>' is not marked as EOG
+llm_load_vocab: control token: 151752 '<dummy00084>' is not marked as EOG
+llm_load_vocab: control token: 151749 '<dummy00081>' is not marked as EOG
+llm_load_vocab: control token: 151748 '<dummy00080>' is not marked as EOG
+llm_load_vocab: control token: 151745 '<dummy00077>' is not marked as EOG
+llm_load_vocab: control token: 151743 '<dummy00075>' is not marked as EOG
+llm_load_vocab: control token: 151741 '<dummy00073>' is not marked as EOG
+llm_load_vocab: control token: 151740 '<dummy00072>' is not marked as EOG
+llm_load_vocab: control token: 151737 '<dummy00069>' is not marked as EOG
+llm_load_vocab: control token: 151736 '<dummy00068>' is not marked as EOG
+llm_load_vocab: control token: 151735 '<dummy00067>' is not marked as EOG
+llm_load_vocab: control token: 151734 '<dummy00066>' is not marked as EOG
+llm_load_vocab: control token: 151733 '<dummy00065>' is not marked as EOG
+llm_load_vocab: control token: 151732 '<dummy00064>' is not marked as EOG
+llm_load_vocab: control token: 151731 '<dummy00063>' is not marked as EOG
+llm_load_vocab: control token: 151728 '<dummy00060>' is not marked as EOG
+llm_load_vocab: control token: 151724 '<dummy00056>' is not marked as EOG
+llm_load_vocab: control token: 151719 '<dummy00051>' is not marked as EOG
+llm_load_vocab: control token: 151718 '<dummy00050>' is not marked as EOG
+llm_load_vocab: control token: 151717 '<dummy00049>' is not marked as EOG
+llm_load_vocab: control token: 151715 '<dummy00047>' is not marked as EOG
+llm_load_vocab: control token: 151713 '<dummy00045>' is not marked as EOG
+llm_load_vocab: control token: 151711 '<dummy00043>' is not marked as EOG
+llm_load_vocab: control token: 151707 '<dummy00039>' is not marked as EOG
+llm_load_vocab: control token: 151697 '<dummy00029>' is not marked as EOG
+llm_load_vocab: control token: 151696 '<dummy00028>' is not marked as EOG
+llm_load_vocab: control token: 151695 '<dummy00027>' is not marked as EOG
+llm_load_vocab: control token: 151689 '<dummy00021>' is not marked as EOG
+llm_load_vocab: control token: 151688 '<dummy00020>' is not marked as EOG
+llm_load_vocab: control token: 151683 '<dummy00015>' is not marked as EOG
+llm_load_vocab: control token: 151682 '<dummy00014>' is not marked as EOG
+llm_load_vocab: control token: 151677 '<dummy00009>' is not marked as EOG
+llm_load_vocab: control token: 151674 '<dummy00006>' is not marked as EOG
+llm_load_vocab: control token: 151673 '<dummy00005>' is not marked as EOG
+llm_load_vocab: control token: 151672 '<dummy00004>' is not marked as EOG
+llm_load_vocab: control token: 151671 '<dummy00003>' is not marked as EOG
+llm_load_vocab: control token: 151668 '<|audio_eos|>' is not marked as EOG
+llm_load_vocab: control token: 151666 '<|AUDIO|>' is not marked as EOG
+llm_load_vocab: control token: 151659 '<|fim_prefix|>' is not marked as EOG
+llm_load_vocab: control token: 151657 '<tool_call>' is not marked as EOG
+llm_load_vocab: control token: 151655 '<|image_pad|>' is not marked as EOG
+llm_load_vocab: control token: 151653 '<|vision_end|>' is not marked as EOG
+llm_load_vocab: control token: 151652 '<|vision_start|>' is not marked as EOG
+llm_load_vocab: control token: 151651 '<|quad_end|>' is not marked as EOG
+llm_load_vocab: control token: 151649 '<|box_end|>' is not marked as EOG
+llm_load_vocab: control token: 151648 '<|box_start|>' is not marked as EOG
+llm_load_vocab: control token: 151646 '<|object_ref_start|>' is not marked as EOG
+llm_load_vocab: control token: 151644 '<|im_start|>' is not marked as EOG
+llm_load_vocab: control token: 151670 '<dummy00002>' is not marked as EOG
+llm_load_vocab: control token: 151908 '<dummy00240>' is not marked as EOG
+llm_load_vocab: control token: 151722 '<dummy00054>' is not marked as EOG
+llm_load_vocab: control token: 151660 '<|fim_middle|>' is not marked as EOG
+llm_load_vocab: control token: 151693 '<dummy00025>' is not marked as EOG
+llm_load_vocab: control token: 151703 '<dummy00035>' is not marked as EOG
+llm_load_vocab: control token: 151900 '<dummy00232>' is not marked as EOG
+llm_load_vocab: control token: 151712 '<dummy00044>' is not marked as EOG
+llm_load_vocab: control token: 151766 '<dummy00098>' is not marked as EOG
+llm_load_vocab: control token: 151800 '<dummy00132>' is not marked as EOG
+llm_load_vocab: control token: 151661 '<|fim_suffix|>' is not marked as EOG
+llm_load_vocab: control token: 151647 '<|object_ref_end|>' is not marked as EOG
+llm_load_vocab: control token: 151921 '<dummy00253>' is not marked as EOG
+llm_load_vocab: control token: 151746 '<dummy00078>' is not marked as EOG
+llm_load_vocab: control token: 151819 '<dummy00151>' is not marked as EOG
+llm_load_vocab: control token: 151730 '<dummy00062>' is not marked as EOG
+llm_load_vocab: control token: 151905 '<dummy00237>' is not marked as EOG
+llm_load_vocab: control token: 151872 '<dummy00204>' is not marked as EOG
+llm_load_vocab: control token: 151690 '<dummy00022>' is not marked as EOG
+llm_load_vocab: control token: 151685 '<dummy00017>' is not marked as EOG
+llm_load_vocab: control token: 151910 '<dummy00242>' is not marked as EOG
+llm_load_vocab: control token: 151721 '<dummy00053>' is not marked as EOG
+llm_load_vocab: control token: 151881 '<dummy00213>' is not marked as EOG
+llm_load_vocab: control token: 151786 '<dummy00118>' is not marked as EOG
+llm_load_vocab: control token: 151892 '<dummy00224>' is not marked as EOG
+llm_load_vocab: control token: 151699 '<dummy00031>' is not marked as EOG
+llm_load_vocab: control token: 151692 '<dummy00024>' is not marked as EOG
+llm_load_vocab: control token: 151676 '<dummy00008>' is not marked as EOG
+llm_load_vocab: control token: 151702 '<dummy00034>' is not marked as EOG
+llm_load_vocab: control token: 151831 '<dummy00163>' is not marked as EOG
+llm_load_vocab: control token: 151654 '<|vision_pad|>' is not marked as EOG
+llm_load_vocab: control token: 151851 '<dummy00183>' is not marked as EOG
+llm_load_vocab: control token: 151809 '<dummy00141>' is not marked as EOG
+llm_load_vocab: control token: 151761 '<dummy00093>' is not marked as EOG
+llm_load_vocab: control token: 151650 '<|quad_start|>' is not marked as EOG
+llm_load_vocab: control token: 151884 '<dummy00216>' is not marked as EOG
+llm_load_vocab: control token: 151860 '<dummy00192>' is not marked as EOG
+llm_load_vocab: control token: 151886 '<dummy00218>' is not marked as EOG
+llm_load_vocab: control token: 151720 '<dummy00052>' is not marked as EOG
+llm_load_vocab: control token: 151714 '<dummy00046>' is not marked as EOG
+llm_load_vocab: control token: 151687 '<dummy00019>' is not marked as EOG
+llm_load_vocab: control token: 151828 '<dummy00160>' is not marked as EOG
+llm_load_vocab: control token: 151753 '<dummy00085>' is not marked as EOG
+llm_load_vocab: control token: 151804 '<dummy00136>' is not marked as EOG
+llm_load_vocab: control token: 151798 '<dummy00130>' is not marked as EOG
+llm_load_vocab: control token: 151738 '<dummy00070>' is not marked as EOG
+llm_load_vocab: control token: 151783 '<dummy00115>' is not marked as EOG
+llm_load_vocab: control token: 151847 '<dummy00179>' is not marked as EOG
+llm_load_vocab: control token: 151925 '<dummy00257>' is not marked as EOG
+llm_load_vocab: control token: 151882 '<dummy00214>' is not marked as EOG
+llm_load_vocab: control token: 151832 '<dummy00164>' is not marked as EOG
+llm_load_vocab: control token: 151716 '<dummy00048>' is not marked as EOG
+llm_load_vocab: control token: 151763 '<dummy00095>' is not marked as EOG
+llm_load_vocab: control token: 151904 '<dummy00236>' is not marked as EOG
+llm_load_vocab: control token: 151871 '<dummy00203>' is not marked as EOG
+llm_load_vocab: control token: 151888 '<dummy00220>' is not marked as EOG
+llm_load_vocab: control token: 151754 '<dummy00086>' is not marked as EOG
+llm_load_vocab: control token: 151759 '<dummy00091>' is not marked as EOG
+llm_load_vocab: control token: 151775 '<dummy00107>' is not marked as EOG
+llm_load_vocab: control token: 151801 '<dummy00133>' is not marked as EOG
+llm_load_vocab: control token: 151797 '<dummy00129>' is not marked as EOG
+llm_load_vocab: control token: 151887 '<dummy00219>' is not marked as EOG
+llm_load_vocab: control token: 151827 '<dummy00159>' is not marked as EOG
+llm_load_vocab: control token: 151796 '<dummy00128>' is not marked as EOG
+llm_load_vocab: control token: 151916 '<dummy00248>' is not marked as EOG
+llm_load_vocab: control token: 151889 '<dummy00221>' is not marked as EOG
+llm_load_vocab: control token: 151834 '<dummy00166>' is not marked as EOG
+llm_load_vocab: control token: 151902 '<dummy00234>' is not marked as EOG
+llm_load_vocab: control token: 151679 '<dummy00011>' is not marked as EOG
+llm_load_vocab: control token: 151680 '<dummy00012>' is not marked as EOG
+llm_load_vocab: control token: 151912 '<dummy00244>' is not marked as EOG
+llm_load_vocab: control token: 151725 '<dummy00057>' is not marked as EOG
+llm_load_vocab: control token: 151686 '<dummy00018>' is not marked as EOG
+llm_load_vocab: control token: 151765 '<dummy00097>' is not marked as EOG
+llm_load_vocab: control token: 151824 '<dummy00156>' is not marked as EOG
+llm_load_vocab: control token: 151787 '<dummy00119>' is not marked as EOG
+llm_load_vocab: control token: 151799 '<dummy00131>' is not marked as EOG
+llm_load_vocab: control token: 151837 '<dummy00169>' is not marked as EOG
+llm_load_vocab: control token: 151658 '</tool_call>' is not marked as EOG
+llm_load_vocab: control token: 151918 '<dummy00250>' is not marked as EOG
+llm_load_vocab: control token: 151678 '<dummy00010>' is not marked as EOG
+llm_load_vocab: control token: 151931 '<dummy00263>' is not marked as EOG
+llm_load_vocab: control token: 151691 '<dummy00023>' is not marked as EOG
+llm_load_vocab: control token: 151669 '<dummy00001>' is not marked as EOG
+llm_load_vocab: control token: 151866 '<dummy00198>' is not marked as EOG
+llm_load_vocab: control token: 151817 '<dummy00149>' is not marked as EOG
+llm_load_vocab: control token: 151821 '<dummy00153>' is not marked as EOG
+llm_load_vocab: control token: 151710 '<dummy00042>' is not marked as EOG
+llm_load_vocab: control token: 151777 '<dummy00109>' is not marked as EOG
+llm_load_vocab: control token: 151760 '<dummy00092>' is not marked as EOG
+llm_load_vocab: control token: 151739 '<dummy00071>' is not marked as EOG
+llm_load_vocab: control token: 151844 '<dummy00176>' is not marked as EOG
+llm_load_vocab: control token: 151913 '<dummy00245>' is not marked as EOG
+llm_load_vocab: control token: 151822 '<dummy00154>' is not marked as EOG
+llm_load_vocab: control token: 151705 '<dummy00037>' is not marked as EOG
+llm_load_vocab: control token: 151846 '<dummy00178>' is not marked as EOG
+llm_load_vocab: control token: 151795 '<dummy00127>' is not marked as EOG
+llm_load_vocab: control token: 151768 '<dummy00100>' is not marked as EOG
+llm_load_vocab: control token: 151700 '<dummy00032>' is not marked as EOG
+llm_load_vocab: control token: 151909 '<dummy00241>' is not marked as EOG
+llm_load_vocab: control token: 151771 '<dummy00103>' is not marked as EOG
+llm_load_vocab: control token: 151684 '<dummy00016>' is not marked as EOG
+llm_load_vocab: control token: 151928 '<dummy00260>' is not marked as EOG
+llm_load_vocab: control token: 151704 '<dummy00036>' is not marked as EOG
+llm_load_vocab: control token: 151751 '<dummy00083>' is not marked as EOG
+llm_load_vocab: control token: 151855 '<dummy00187>' is not marked as EOG
+llm_load_vocab: control token: 151839 '<dummy00171>' is not marked as EOG
+llm_load_vocab: control token: 151770 '<dummy00102>' is not marked as EOG
+llm_load_vocab: control token: 151810 '<dummy00142>' is not marked as EOG
+llm_load_vocab: control token: 151744 '<dummy00076>' is not marked as EOG
+llm_load_vocab: control token: 151701 '<dummy00033>' is not marked as EOG
+llm_load_vocab: control token: 151789 '<dummy00121>' is not marked as EOG
+llm_load_vocab: control token: 151867 '<dummy00199>' is not marked as EOG
+llm_load_vocab: control token: 151756 '<dummy00088>' is not marked as EOG
+llm_load_vocab: control token: 151726 '<dummy00058>' is not marked as EOG
+llm_load_vocab: control token: 151829 '<dummy00161>' is not marked as EOG
+llm_load_vocab: control token: 151808 '<dummy00140>' is not marked as EOG
+llm_load_vocab: control token: 151906 '<dummy00238>' is not marked as EOG
+llm_load_vocab: control token: 151656 '<|video_pad|>' is not marked as EOG
+llm_load_vocab: control token: 151706 '<dummy00038>' is not marked as EOG
+llm_load_vocab: control token: 151825 '<dummy00157>' is not marked as EOG
+llm_load_vocab: control token: 151814 '<dummy00146>' is not marked as EOG
+llm_load_vocab: control token: 151750 '<dummy00082>' is not marked as EOG
+llm_load_vocab: control token: 151767 '<dummy00099>' is not marked as EOG
+llm_load_vocab: control token: 151785 '<dummy00117>' is not marked as EOG
+llm_load_vocab: control token: 151709 '<dummy00041>' is not marked as EOG
+llm_load_vocab: control token: 151790 '<dummy00122>' is not marked as EOG
+llm_load_vocab: control token: 151727 '<dummy00059>' is not marked as EOG
+llm_load_vocab: control token: 151665 '<|text_chunk_end|>' is not marked as EOG
+llm_load_vocab: control token: 151708 '<dummy00040>' is not marked as EOG
+llm_load_vocab: control token: 151885 '<dummy00217>' is not marked as EOG
+llm_load_vocab: control token: 151742 '<dummy00074>' is not marked as EOG
+llm_load_vocab: control token: 151876 '<dummy00208>' is not marked as EOG
+llm_load_vocab: control token: 151781 '<dummy00113>' is not marked as EOG
+llm_load_vocab: control token: 151924 '<dummy00256>' is not marked as EOG
+llm_load_vocab: control token: 151694 '<dummy00026>' is not marked as EOG
+llm_load_vocab: control token: 151919 '<dummy00251>' is not marked as EOG
+llm_load_vocab: control token: 151723 '<dummy00055>' is not marked as EOG
+llm_load_vocab: control token: 151667 '<|audio_bos|>' is not marked as EOG
+llm_load_vocab: control token: 151873 '<dummy00205>' is not marked as EOG
+llm_load_vocab: control token: 151890 '<dummy00222>' is not marked as EOG
+llm_load_vocab: control token: 151874 '<dummy00206>' is not marked as EOG
+llm_load_vocab: control token: 151788 '<dummy00120>' is not marked as EOG
+llm_load_vocab: control token: 151729 '<dummy00061>' is not marked as EOG
+llm_load_vocab: control token: 151698 '<dummy00030>' is not marked as EOG
+llm_load_vocab: control token: 151803 '<dummy00135>' is not marked as EOG
+llm_load_vocab: control token: 151675 '<dummy00007>' is not marked as EOG
+llm_load_vocab: control token: 151926 '<dummy00258>' is not marked as EOG
+llm_load_vocab: control token: 151681 '<dummy00013>' is not marked as EOG
+llm_load_vocab: control token: 151747 '<dummy00079>' is not marked as EOG
+llm_load_vocab: control token: 151793 '<dummy00125>' is not marked as EOG
+llm_load_vocab: special tokens cache size = 293
+llm_load_vocab: token to piece cache size = 0.9341 MB
+llm_load_print_meta: format           = GGUF V3 (latest)
+llm_load_print_meta: arch             = qwen2
+llm_load_print_meta: vocab type       = BPE
+llm_load_print_meta: n_vocab          = 151936
+llm_load_print_meta: n_merges         = 151387
+llm_load_print_meta: vocab_only       = 0
+llm_load_print_meta: n_ctx_train      = 65536
+llm_load_print_meta: n_embd           = 1536
+llm_load_print_meta: n_layer          = 28
+llm_load_print_meta: n_head           = 12
+llm_load_print_meta: n_head_kv        = 2
+llm_load_print_meta: n_rot            = 128
+llm_load_print_meta: n_swa            = 0
+llm_load_print_meta: n_embd_head_k    = 128
+llm_load_print_meta: n_embd_head_v    = 128
+llm_load_print_meta: n_gqa            = 6
+llm_load_print_meta: n_embd_k_gqa     = 256
+llm_load_print_meta: n_embd_v_gqa     = 256
+llm_load_print_meta: f_norm_eps       = 0.0e+00
+llm_load_print_meta: f_norm_rms_eps   = 1.0e-06
+llm_load_print_meta: f_clamp_kqv      = 0.0e+00
+llm_load_print_meta: f_max_alibi_bias = 0.0e+00
+llm_load_print_meta: f_logit_scale    = 0.0e+00
+llm_load_print_meta: n_ff             = 8960
+llm_load_print_meta: n_expert         = 0
+llm_load_print_meta: n_expert_used    = 0
+llm_load_print_meta: causal attn      = 1
+llm_load_print_meta: pooling type     = 0
+llm_load_print_meta: rope type        = 2
+llm_load_print_meta: rope scaling     = linear
+llm_load_print_meta: freq_base_train  = 1000000.0
+llm_load_print_meta: freq_scale_train = 1
+llm_load_print_meta: n_ctx_orig_yarn  = 65536
+llm_load_print_meta: rope_finetuned   = unknown
+llm_load_print_meta: ssm_d_conv       = 0
+llm_load_print_meta: ssm_d_inner      = 0
+llm_load_print_meta: ssm_d_state      = 0
+llm_load_print_meta: ssm_dt_rank      = 0
+llm_load_print_meta: ssm_dt_b_c_rms   = 0
+llm_load_print_meta: model type       = ?B
+llm_load_print_meta: model ftype      = Q4_0_4_4
+llm_load_print_meta: model params     = 1.78 B
+llm_load_print_meta: model size       = 1.10 GiB (5.30 BPW) 
+llm_load_print_meta: general.name     = models-streaming
+llm_load_print_meta: BOS token        = 11 ','
+llm_load_print_meta: EOS token        = 151643 '<|endoftext|>'
+llm_load_print_meta: EOT token        = 151645 '<|im_end|>'
+llm_load_print_meta: PAD token        = 151643 '<|endoftext|>'
+llm_load_print_meta: LF token         = 148848 'ÄĬ'
+llm_load_print_meta: FIM PRE token    = 151659 '<|fim_prefix|>'
+llm_load_print_meta: FIM SUF token    = 151661 '<|fim_suffix|>'
+llm_load_print_meta: FIM MID token    = 151660 '<|fim_middle|>'
+llm_load_print_meta: FIM PAD token    = 151662 '<|fim_pad|>'
+llm_load_print_meta: FIM REP token    = 151663 '<|repo_name|>'
+llm_load_print_meta: FIM SEP token    = 151664 '<|file_sep|>'
+llm_load_print_meta: EOG token        = 151643 '<|endoftext|>'
+llm_load_print_meta: EOG token        = 151645 '<|im_end|>'
+llm_load_print_meta: EOG token        = 151662 '<|fim_pad|>'
+llm_load_print_meta: EOG token        = 151663 '<|repo_name|>'
+llm_load_print_meta: EOG token        = 151664 '<|file_sep|>'
+llm_load_print_meta: max token length = 256
+llm_load_tensors: ggml ctx size =    0.15 MiB
+llm_load_tensors:        CPU buffer size =  1122.44 MiB
+.................................................................
+llama_new_context_with_model: n_ctx      = 4096
+llama_new_context_with_model: n_batch    = 512
+llama_new_context_with_model: n_ubatch   = 512
+llama_new_context_with_model: flash_attn = 0
+llama_new_context_with_model: freq_base  = 1000000.0
+llama_new_context_with_model: freq_scale = 1
+llama_kv_cache_init:        CPU KV buffer size =   112.00 MiB
+llama_new_context_with_model: KV self size  =  112.00 MiB, K (f16):   56.00 MiB, V (f16):   56.00 MiB
+llama_new_context_with_model:        CPU  output buffer size =     0.58 MiB
+llama_new_context_with_model:        CPU compute buffer size =   299.75 MiB
+llama_new_context_with_model: graph nodes  = 986
+llama_new_context_with_model: graph splits = 1
+LM n_embd=1536 n_vocab=151936
+Prompt: 31 tokens
+Windows: 4 (window=83200 hop=70400)
+
+VAE pieces: 1 x 83200 samples (26 frames each) [streaming cache]
+
+[VAE_ABL] VAE_DW_LPAD_OFF is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_DW_LPAD_OFF is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_DW_LPAD_OFF is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_DW_LPAD_OFF is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_DW_LPAD_OFF is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_DW_LPAD_OFF is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_DW_LPAD_OFF is ON - output is INVALID, timing ceiling only
+[VAE_ABL] VAE_DW_LPAD_OFF is ON - output is INVALID, timing ceiling only
+
+========================================
+ Audio: 10.00s | chunks: 4 | tokens: 39 | RTF: 2.2585
+ load: 1.2s | VAE: 14.7s (ac 14.7s, sem 14.7s) | LM: 7.9s (prefill 4.3s, decode 3.6s) | total: 24.9s
+========================================
