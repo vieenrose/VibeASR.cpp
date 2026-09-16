@@ -1,3 +1,30 @@
+
+PAD (SPLICES) IS WORTH ~3.2% NOT 2.2% - AND THE CHEAP ROUTE TO IT IS DEAD (Exp819, discard).
+  * ARITHMETIC CORRECTION to Exp818: the two encoder chains run one per core, so a chain's own elapsed IS the
+    VAE's wall (14.64 s), and node time is 2x wall only because the two chains overlap. PAD is 0.73 s of that
+    14.64 s chain elapsed, and both chains' PADs run at the same time, so removing it takes ~0.73 s off the
+    22.5 s clip = 3.2% of RTF, not the 2.2% I wrote (I divided by the chain count twice). Honest bracket:
+    Exp678 shows one chain alone runs 9.2 s vs 14.6 s concurrent, so part of PAD's 0.73 s is bandwidth
+    contention rather than work; if only the work part is recoverable the prize is ~1.8-3.2%. Either way it is
+    the largest single in-scope item known, so it IS worth vendored effort - unlike everything else left.
+  * THE CHEAP ROUTE, MEASURED DEAD: build [hist | x] implicitly by letting the conv's im2col do the causal
+    left-pad, so the padded tensor never materialises. The fork already has ggml_im2col_asym(lp0, rp0, ...) and
+    the shipped splice always calls the conv with padding=0, so swapping ggml_im2col -> ggml_im2col_asym with
+    lp0=0, rp0=0 should have been byte-identical by construction. IT IS NOT: 1024 tokens (runaway), transcript
+    50c4bcca8522 vs 55ac39b635cb, vae_s unchanged at 14.5. So the two builders disagree on this geometry even
+    with zero padding - asym's read offset / column order differs from plain im2col's. Do NOT use
+    ggml_im2col_asym as a drop-in; do not "fix" it by trying lp0=P directly (a builder that disagrees at P=0
+    will not agree at P>0). Reverted; anchor 2.2571 byte-identical.
+  * WHAT WOULD ACTUALLY WORK (queued, ~30 lines in vendored ggml, in scope per Exp663): add left-padding to
+    ggml_compute_forward_im2col_f32 itself (dst zero-filled over the pad columns, reads shifted by lp) and an
+    lp-carrying builder, then in vae_cached_concat's COLD branch (which is EVERY splice at the shipped p1,
+    since every piece is a window head) return x unpadded, keep padding for the conv, and let the cache tap
+    read the last P columns of x - legal because the pad is left-only, so x's tail == the padded tensor's tail.
+    Validate on host first: ggml has tests/ and -DNDEBUG on device turns a shape mistake into garbage silently
+    (Exp667), which is exactly the failure mode this probe just produced on device.
+  * Why it is still not free: the pad region's zeros still get written, just inside im2col's own buffer, so
+    the recoverable part is the padded tensor's write + the conv's read of it, not the whole 0.73 s.
+
 - CONV-INT8: BUILT AND NOT WORKING, INACTIVE BY DEFAULT (Exp685). Everything the design needed is in
 
 THE VAE, TIMED PER OP AT LAST - AND PAD (THE SPLICES) IS A 2.2% LEVER, NOT A CLOSED ONE (Exp818).
