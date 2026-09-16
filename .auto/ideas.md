@@ -1,3 +1,21 @@
+ROLLBACK AUDIT REFRESHED AT v4.5 (Exp824, runbook product-safety item; .auto/rollback_audit.sh, 11 arms x 2 reps,
+all in ONE build so no thermal/provenance assumption). Default 2.1881. Cost of turning EACH hatch off:
+  dw_conv1d +8.6%  | gelu_bias +6.7% | gelu_batch +4.2% | dw_lpad +3.3% | norm_fuse +1.9% | ls_fuse +1.5%
+  | mm_m2 +0.8% | dw_axpy +0.0% | ct_block +25.4% (38 tok, DIFFERS = system change) | ALL_OFF +34.9% (differs)
+  * 9 of 11 arms are BYTE-IDENTICAL (hash 55ac39b635cb) => the v4.5 fusion+kernel+m2 stack is output-equivalent
+    to its own pre-change path measured in one build - the strongest equivalence statement this loop can make.
+  * COUPLING A RUNBOOK MUST STATE: VAE_DW_CONV1D_OFF rose +5.7% (v4.4) -> +8.6%, because Exp821's causal left
+    pad lives INSIDE that kernel, so reverting the kernel also reverts the pad absorption. Same reason
+    gelu_bias rose +5.0% -> +6.7% (Exp781 folded the table lookup into it). A runbook quoting per-hatch costs
+    must re-run this audit after every fusion, not reuse old numbers.
+  * VAE_DW_AXPY_OFF reproduces +0.0% -> still inert on the shipped path (Exp814's finding holds at v4.5); the
+    safe pairing is DW_CONV1D_OFF alone.
+  * NEW ARM "stack_off" (added to the script): all fusions off but the [C,T] layout KEPT = +22.1% (2.6717 /
+    2.6762, byte-identical). Use THAT as "what the fusion stack buys"; ALL_OFF conflates it with a layout
+    revert. Exp814's ALL_OFF=+14.1% is superseded and was internally inconsistent (cheaper than ct_block
+    alone at +22.8%), which means several fusions are inert or counterproductive inside the legacy layout -
+    composition effect, recorded, not worth archaeology.
+
 LEAN-TIER LEFT PAD: CLOSED ON VALUE, AND MY EQUIVALENCE ARGUMENT IS WRONG THERE (Exp823, last open speed question).
   * VALUE: forcing the fast path at the lean tier (p13 + defer ON) measures 2.4004 -> 2.3713 = -1.2% (1 rep;
     P<=T variant 2.3767). BELOW THE 2% SHIP BAR, so the project is not worth its risk even if correctness were

@@ -21,10 +21,12 @@ ARMS=(
   "norm_fuse|VAE_NORM_FUSE_OFF=1"      # Exp784 gamma fold into rms_norm -> rms_norm + separate mul
   "gelu_batch|GGML_GELU_BATCH_OFF=1"   # Exp781 one-pass gelu+bias table -> two-pass loop
   "ls_fuse|VAE_LS_FUSE_OFF=1"          # Exp671 layer-scale+residual add_scaled -> mul then add
+  "dw_lpad|VAE_DW_LPAD_OFF=1"         # Exp821 left pad inside the dw conv1d kernel -> explicit splice node
   "dw_axpy|VAE_DW_AXPY_OFF=1"          # Exp664 fused dw-tap axpy -> per-tap mul+add chain
   "mm_m2|GGML_MM_M2_OFF=1"             # Exp765 two-column GEMV tail -> one column per weight pass
   "ct_block|VAE_CT_BLOCK_OFF=1"        # Exp586 channels-first block layout -> [T,C] legacy path
-  "ALL_OFF|VAE_DW_CONV1D_OFF=1 VAE_GELU_BIAS_OFF=1 VAE_NORM_FUSE_OFF=1 GGML_GELU_BATCH_OFF=1 VAE_LS_FUSE_OFF=1 VAE_DW_AXPY_OFF=1 GGML_MM_M2_OFF=1 VAE_CT_BLOCK_OFF=1"
+  "stack_off|VAE_DW_CONV1D_OFF=1 VAE_GELU_BIAS_OFF=1 VAE_NORM_FUSE_OFF=1 GGML_GELU_BATCH_OFF=1 VAE_LS_FUSE_OFF=1 VAE_DW_AXPY_OFF=1 GGML_MM_M2_OFF=1 VAE_DW_LPAD_OFF=1"  # Exp824: the honest "what does the fusion stack buy" arm - everything EXCEPT the layout revert, so it stays output-preserving
+  "ALL_OFF|VAE_DW_CONV1D_OFF=1 VAE_GELU_BIAS_OFF=1 VAE_NORM_FUSE_OFF=1 GGML_GELU_BATCH_OFF=1 VAE_LS_FUSE_OFF=1 VAE_DW_AXPY_OFF=1 GGML_MM_M2_OFF=1 VAE_DW_LPAD_OFF=1 VAE_CT_BLOCK_OFF=1"
 )
 
 declare -A SUM N HASH TOK
