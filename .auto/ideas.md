@@ -1,3 +1,23 @@
+LEAN-TIER LEFT PAD: CLOSED ON VALUE, AND MY EQUIVALENCE ARGUMENT IS WRONG THERE (Exp823, last open speed question).
+  * VALUE: forcing the fast path at the lean tier (p13 + defer ON) measures 2.4004 -> 2.3713 = -1.2% (1 rep;
+    P<=T variant 2.3767). BELOW THE 2% SHIP BAR, so the project is not worth its risk even if correctness were
+    solved. DECISION: the gate stays (fast path = one-piece windows with no deferred late pass); the lean
+    tier's documented cells are unchanged. This is why the tier ladder did not move.
+  * HYPOTHESIS 1 - the roll's leading-zeros branch, the only case that cannot occur at p1 - is REFUTED by
+    construction: VAE_DW_LPAD_FORCE=2 (offer the fast path only where P <= T) gives output byte-identical to
+    unrestricted FORCE=1, and the new site trace shows every firing site already has zeros_head=0
+    (15 sites, P=7, T=6400/3200/1600 = stage 0-2 early-pass sites at the sample grid).
+  * THE DIVERGENCE IS NOT MARGINAL-CLASS: the two lean transcripts differ in WORDS ("dilation" vs
+    "diversation", plus a comma migrating across a chunk boundary), i.e. the features really do differ. So the
+    "taps beyond the edge multiply zero, so deleting the pad is exact" argument does NOT extend to the
+    split/deferred path as implemented. Untested next suspect (only worth it if the lean tier ever matters):
+    forward_early resets cache->next_id per build, so early-pass site i and late-pass site i share a slot key;
+    my host-side roll writes [zeros | x tail] into that shared slot where the old code rolled the materialized
+    padded tensor, and for a slot that is warm-by-collision those are not the same object.
+  * Diagnostic knobs added, inert by default (shipped tier re-verified 3x byte-identical, 2.1874-2.1914):
+    VAE_DW_LPAD_FORCE=1 (offer at any granularity) / =2 (only where P <= T), VAE_LPAD_TRACE=1 (one line per
+    site: P, T, dim, warm_before, zeros_head). Reuse the trace before ever revisiting this.
+
 MUL_MAT EPILOGUE FUSION: BUILT, PROVEN CORRECT, AND MEASURED SLOWER AT EVERY TILE SIZE (Exp822, discard).
 gelu was the largest non-matmul item at v4.5 (1.38 s per chain = 6% of wall, 5.7 GB/s so traffic-bound), and
 Exp781 had already fused its bias, so the only route left was to compute it where the data is produced. I

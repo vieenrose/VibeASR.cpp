@@ -206,7 +206,23 @@ static struct ggml_tensor * vae_cached_concat(
         // (PAD-by-consumer: 123.1 of 164 MB). Only offered when the caller can consume the left pad, i.e. from
         // the conv1d-kernel branch, and the tap is told to roll the history from x plus zeros. At the shipped
         // p1 every site is cold (one piece per window), so this covers the whole dw share of the splice cost.
-        if (lpad_out != nullptr && cache->single_piece_window && !vae_abl("VAE_DW_LPAD_OFF")) {
+        // Exp823 diagnostic gate: VAE_DW_LPAD_FORCE=1 offers the fast path at ANY granularity, =2 offers it
+        // only where P <= T (so the roll below never needs its leading-zeros branch, which is the case that
+        // cannot occur at the shipped p1 and is the prime suspect for Exp821's one-token lean divergence).
+        int64_t lpad_T = (time_dim == 0) ? x->ne[0] : x->ne[1];
+        const char * lpad_force_env = getenv("VAE_DW_LPAD_FORCE");
+        const bool   lpad_force_ok  = lpad_force_env != nullptr &&
+                                      (atoi(lpad_force_env) >= 2 ? P <= lpad_T : true);
+        if (lpad_out != nullptr && !vae_abl("VAE_DW_LPAD_OFF") &&
+            (cache->single_piece_window || lpad_force_ok)) {
+            if (getenv("VAE_LPAD_TRACE") != nullptr) {
+                static std::map<std::string, int> seen;   // one line per site, per thread (Exp669 rule: not shared)
+                if (seen[key]++ == 0) {
+                    fprintf(stderr, "[LPAD] %s P=%lld T=%lld dim=%d warm_before=%d zeros_head=%lld\n", key.c_str(),
+                            (long long)P, (long long)lpad_T, time_dim, slot.warm ? 1 : 0,
+                            (long long)(P > lpad_T ? P - lpad_T : 0));
+                }
+            }
             vae_stream_cache::Tap tap;
             tap.key = key; tap.xh = x; tap.x = x; tap.P = P; tap.dim = time_dim; tap.padded = false;
             cache->taps.push_back(tap);
