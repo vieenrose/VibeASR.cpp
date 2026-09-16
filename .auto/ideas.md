@@ -1,3 +1,29 @@
+MUL_MAT EPILOGUE FUSION: BUILT, PROVEN CORRECT, AND MEASURED SLOWER AT EVERY TILE SIZE (Exp822, discard).
+gelu was the largest non-matmul item at v4.5 (1.38 s per chain = 6% of wall, 5.7 GB/s so traffic-bound), and
+Exp781 had already fused its bias, so the only route left was to compute it where the data is produced. I
+built it properly: ggml_mul_mat_gelu_bias (op_params flag + src[2] bias), the GEMM called per COLUMN TILE with
+the epilogue applied to the tile, the ne11%4 tail columns covered separately, and the fusion constructed
+INSIDE ggml_nn_linear per Exp673's prescription.
+  * CORRECTNESS: transcript BYTE-IDENTICAL (55ac39b635cb) and the gelu node disappears from the graph, so the
+    column tiling and the 4x4 layout reasoning (interleave is along weight ROWS, Exp770) are validated.
+  * SPEED: 2.2775 vs the 2.1849 baseline = +4.2% SLOWER. Tile sweep: 4 -> 2.3142, 16 -> 2.2775, 64 -> 2.2914,
+    256 -> 2.2890, 1024 -> 2.2993 (vae_s 15.3 / 14.9 / 15.0 / 15.0 / 15.0). A shallow optimum exists but
+    nothing approaches the baseline, so this is not a tuning problem.
+  * MECHANISM (node timer made it visible, since it attributes epilogue work to MUL_MAT's span): MUL_MAT went
+    9.77 -> 12.01 s/chain (+2.24 s) while gelu's 1.38 s vanished = net +0.86 s/chain, matching vae_s 14.0 ->
+    14.9. So the elementwise passes are NOT redundant traffic: as a separate node they run while nothing is
+    streaming weights, whereas 2 passes per tile interleaved into the GEMM's column loop evict the weight panel
+    the GEMM is streaming through L2 - and this VAE's GEMMs are weight-bandwidth-bound (Exp681/785).
+  * RULE (generalizes, and it is the reason to revert rather than tune): elementwise-into-GEMM fusion loses on
+    a bandwidth-bound GEMM. The five shipped fusions all fused ELEMENTWISE-with-ELEMENTWISE (bias+gelu,
+    scale+residual, gamma+norm, dw taps), which works because both sides touch the same activations; none of
+    them pushed work into a weight-streaming loop. Therefore DO NOT pursue the epilogue route for the other
+    elementwise items either - bias adds (0.50 s), ADD_SCALED (0.43), CONT (0.51) are now closed by this
+    mechanism, not merely "below bar".
+  * Reverted in both repos (auto-revert is unavailable from the workDir). v4.5 anchor re-verified: 2.1874,
+    vae_s 14.0, byte-identical. If a future model makes the VAE GEMMs compute-bound rather than
+    weight-bound, this design is written down and byte-identical, so it becomes worth re-testing.
+
 SHIPPED v4.5 (Exp821): DEPTHWISE KERNEL ABSORBS THE CONV'S CAUSAL LEFT PAD, -3.2% RTF AND -183 MB RSS.
 The splice's ggml_pad_ext node is gone at depthwise conv sites: ggml_conv1d_dw_ct_lp(w, x, lp) puts the pad in
 op_params[0] and each output column starts its tap loop at the first in-range tap. WHY BIT-IDENTICAL (stated
