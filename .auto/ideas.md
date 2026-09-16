@@ -1,3 +1,28 @@
+SHIPPED v4.5 (Exp821): DEPTHWISE KERNEL ABSORBS THE CONV'S CAUSAL LEFT PAD, -3.2% RTF AND -183 MB RSS.
+The splice's ggml_pad_ext node is gone at depthwise conv sites: ggml_conv1d_dw_ct_lp(w, x, lp) puts the pad in
+op_params[0] and each output column starts its tap loop at the first in-range tap. WHY BIT-IDENTICAL (stated
+correctly, unlike the ASI's garbled first draft): the taps that disappeared read columns that were ZEROS in
+the materialised [zeros(P) | x], so their products were w*0 = +-0, and 0.0f + a == a exactly - the ascending-k
+accumulate ladder from Exp666/670 is untouched. Verified: protocol hash unchanged, 40/40 gate transcripts
+byte-identical (b=0/c=0 of 731, p=1.0), token counts unchanged at 17/69/138 s. Costs no accuracy anywhere the
+fast path runs.
+  * THE SCOPE RULE THAT MADE IT SHIPPABLE: "bit-identical by construction" was tested on BOTH tiers, and the
+    lean tier (p13 + VAE_DEFER_LATE=1) DISAGREED - 38 vs 39 tokens, hash 941d088403fc. So the fast path is
+    offered only when no later build in the window can read the history this build rolls, i.e. one piece per
+    window AND no deferred late pass (vae_cache_set_whole_window, set by the demo). OPEN QUESTION worth ~3% on
+    the lean tier: cold-site skip + my host-side history roll must diverge somewhere in the deferred/late-pass
+    slot sharing. Diagnose with the node timer + PAD-by-consumer on the lean path, not by re-reasoning.
+  * Instrument that made this tractable: PAD-by-consumer attribution in vae_graph_stats_dump (a conv's src[1]
+    IS the splice output, so bytes split by consumer with no call-site edits; self-validates because the two
+    buckets sum to PAD's dst bytes: 40.9 + 123.1 = 164 MB). It is how the im2col half (~0.8%, dead per Exp819)
+    was separated from the dw half (2.4%, alive here) BEFORE writing code.
+  * False positive worth remembering: the dw shape-model checker aborted on every lp>0 node because its model
+    assumed no pad - caught only because that checker runs unconditionally (Exp668's rule paying off again).
+  * TRIGGER FIRED: granularity's documented reopen condition (a per-piece cost change) fired asymmetrically -
+    p1 got the pad removed, p2/p13/p26 cannot (their windows are multi-piece), so the p1-vs-p2 gap should now
+    read ~6% instead of ~3%. Only worth a re-sweep if a p1-vs-p2 RAM decision matters; p13/p26 ratios are
+    unaffected (none of them can take the fast path).
+
 
 PAD PRICED AS TRAFFIC, AND IT SPLITS 26/8 - THE BIG HALF IS A KERNEL I OWN (Exp820, analysis-only).
 VAE_GRAPH_STATS on the shipped tier: PAD = 327.3 MB per graph build, n=34, and 0.73 s of chain time for
