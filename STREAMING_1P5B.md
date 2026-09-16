@@ -362,7 +362,12 @@ with piece size. The measured map over the runnable set {1, 2, 13, 26}
 interleaved reps per arm (Exp772), is **defer-OFF**: p1 **2.378** @ 2.37 GB (default,
 time-optimal), p2 2.454 @ 2.07 (+3.2 %, fallback), p26 2.707 @ 1.71 (+13.8 %); **defer-ON**:
 p13 2.531 @ 1.75 (the RAM-lean tier), p26 2.554 @ 1.72 — so p1 is the speed default while p13 is
-the RAM sweet spot. `VAE_LATE_SPLIT=5` on this tier is **parity, not a win** (3 interleaved reps 2.425 vs 2.424 at
+the RAM sweet spot. **Those absolutes predate v4.5** (Exp821 moved p1 to 2.18 and its RSS to 2.19 GB), and
+the shift is *asymmetric by construction*: the in-kernel conv left pad only fires when a window is a single
+piece with no deferred late pass, so p1 gained ~3 % while p2/p13/p26 did not — which widens the p1-vs-p2 gap
+from ~3 % to ~6 % and re-arms this axis under its own documented trigger (a per-piece cost-structure change).
+Re-sweep only if a p1-vs-p2 RAM decision ever matters; the ratios among the fine counts (p13/p26) are
+unaffected because none of them can take the fast path. `VAE_LATE_SPLIT=5` on this tier is **parity, not a win** (3 interleaved reps 2.425 vs 2.424 at
 +19 MB, byte-identical output, Exp794): the −0.9 % recorded for it in Exp565 predates conv-int8, and
 at p13 a piece is already 8 frames, so the deferred stage sat in the GEMM regime before the boundary
 moved — there is nothing left for it to batch. split=6 stays the default and no third rung exists

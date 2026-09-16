@@ -3,11 +3,11 @@
 ========================================
   VAE: ./vae-encoder-convint8.gguf
   LM:  ./lm-q8head.gguf
-  Audio: chat138.wav
+  Audio: chat69.wav
   Threads: 2
 
-[audio_io] Loaded: chat138.wav (137.97s, 3311352 samples @ 24000 Hz)
-Audio: 137.97s, 3311352 samples
+[audio_io] Loaded: chat69.wav (68.99s, 1655676 samples @ 24000 Hz)
+Audio: 68.99s, 1655676 samples
 VAE dims: acoustic=1536 semantic=1536
 llama_model_loader: loaded meta data with 23 key-value pairs and 339 tensors from ./lm-q8head.gguf (version GGUF V3 (latest))
 llama_model_loader: Dumping metadata keys/values. Note: KV overrides do not apply in this output.
@@ -413,12 +413,12 @@ llama_new_context_with_model: graph nodes  = 986
 llama_new_context_with_model: graph splits = 1
 LM n_embd=1536 n_vocab=151936
 Prompt: 31 tokens
-Windows: 48 (window=83200 hop=70400)
+Windows: 24 (window=83200 hop=70400)
 
 VAE pieces: 1 x 83200 samples (26 frames each) [streaming cache]
 
 
 ========================================
- Audio: 137.97s | chunks: 48 | tokens: 877 | RTF: 2.2789
- load: 1.2s | VAE: 165.7s (ac 165.6s, sem 165.4s) | LM: 148.7s (prefill 60.2s, decode 88.4s) | total: 316.8s
+ Audio: 68.99s | chunks: 24 | tokens: 446 | RTF: 2.2196
+ load: 1.2s | VAE: 83.1s (ac 83.0s, sem 83.0s) | LM: 70.0s (prefill 27.7s, decode 42.3s) | total: 155.4s
 ========================================

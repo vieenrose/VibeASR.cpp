@@ -1013,7 +1013,9 @@ Speed board: EMPTY BY MEASUREMENT. Nothing in scope is above the 2% bar.
   - split=5 (Exp794): parity on the lean tier (3 reps, +19 MB, byte-identical). The Exp565 -0.9% is
     pre-conv-int8. No third rung between the tiers.
 
-Ladder (v4.4, ALL cells measured, no estimates): shipped 2.26/2.25/2.28/2.35 + gate mean 2.5406 @ 2.37 GB;
+Ladder (v4.5, ALL cells measured, no estimates): shipped 2.18/2.18/2.22/2.28 + gate mean 2.4456 @ 2.19 GB
+  (Exp821 in-kernel conv left pad: -3.2% protocol, -183 MB RSS, 40/40 byte-identical; lean tier UNCHANGED because the
+   fast path is gated to one-piece windows with no deferred late pass - at p13+defer the transcript shifted by 1 token);
 lean p13+defer 2.41/2.39/2.41/2.47 + gate mean 2.7001 @ 1.75 GB. Lean is output-equivalent (2/731, p=0.5).
 
 Rollback ladder (Exp793, one binary): DW_CONV1D_OFF +5.6% | GELU_BIAS_OFF +4.8% | LS_FUSE_OFF +1.5% |
