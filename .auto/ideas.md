@@ -1,3 +1,30 @@
+WALL-CLOCK TREE CLOSED END TO END + THE METRIC'S BLIND SPOT IS NOW NAMED (Exp827).
+  * INSIDE THE METRIC (v4.5, after Exp821 deleted graph nodes - the reason to re-close it): the per-window trace
+    sums to vae 13.99 + prefill 4.28 + decode 3.61 = 21.88 s, and gen_s = rtf x duration = 2.1880 x 10 = 21.88 s.
+    EXACT. No unaccounted work inside the measured window, on the current stack.
+  * WALL = 24.2 s = load 1.2 + 1.12 UNNAMED + gen 21.88. The 1.12 s is the ONE-TIME SYSTEM-PROMPT PREFILL
+    (31 rows; demo/asr_streaming.cpp:358-377 runs it before gen_start, so it is outside gen_s but inside g_prefill_ms;
+    LT deltas exclude it because pre_prev is taken after it). Corroborated by rate arithmetic: 31 x 1.75 GMac/row
+    at the measured 21.2 GMAC/s/core ~= 1.3 s. So the whole wall is accounted for by three named components.
+  * CLAIM RULE: any end-to-end / throughput / TTFT statement must use 24.2 s for a 10 s clip = 2.42x realtime,
+    NOT the ladder's 2.19. The ~2.3 s one-time cost matters most on short audio (a 5 s clip: ~11 s gen + 2.3 s =
+    17 % of wall), which is exactly the regime the 40-utt gate set lives in.
+  * PRODUCT-SIDE ITEM, DELIBERATELY NOT A LOOP EXPERIMENT: the prompt prefill and window 1's LM prefill are two
+    sequential weight streams. They can be ONE batch (contiguous causal positions; the audio embeddings already
+    exist before window 1's LM call), which removes one duplicate pass over the LM weights: wall -~1.0 s per clip,
+    but gen_s +~0.14 s. So the loop's metric would REGRESS while real latency improves. Recorded, not done:
+    a speed loop must neither move work OUT of the measured window (that is cheating - Exp806's page-in ruling)
+    nor accept work INTO it to buy wall clock. If the product ever wants it, it is an LM-loop change plus a
+    prompt/KV position check, and it should be judged on end-to-end wall time, not on rtf.
+  * GUARD BOARD CURRENT (anti-overfit): guard slice 2.3226 (2 reps, 55 tokens, identical counts) vs protocol
+    2.1896 -> +6.1 %. Across the v4.4 -> v4.5 ships the guard moved -2.7 % against the protocol's -2.8 % (within
+    0.1 pp), 5 consecutive tracked changes, zero protocol-specific-tuning signal. Provenance note: AUDIO=<name>
+    is honoured by measure.sh (device-side name) and it prints 'note: audio=...' - quoted, per the Exp648 rule.
+  * INSTRUMENT QUIRK (do not explain away): one run emitted ZERO 'LT ' lines with EXTRA_ENV="LATENCY_TRACE=1",
+    while a later run carrying the same env emitted 4 - transport itself then proven by 208 LPAD lines in the
+    same file. Standing rule re-confirmed: a silent trace proves nothing until a knob that MUST print is shown
+    printing in the same run.
+
 BEHAVIORAL CONTRACT WATCHDOG SHIPPED AS A TOOL, 11/11 PASS AT v4.5 (Exp826, .auto/behavior_watch.sh).
 Until now the product-contract set was run AD HOC per era (Exp676/800) with nothing committed, so nothing
 enforced it - and Exp821 is exactly the change type that could break it silently (the dw conv now applies its
