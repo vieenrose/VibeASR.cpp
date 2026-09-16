@@ -1,3 +1,30 @@
+TAIL-FLUSH PRIZE RE-PRICED WITH THE LM HALF: 13.5 % ON THE PROTOCOL CLIP, ~13 % ON SHORT CLIPS (Exp828).
+The ledger's version of this lever was "16.3 % of VAE time" (Exp803) - a VAE-only view that undercounts, because
+the padded frames also occupy LM prefill rows. Re-derived on the current stack, 5 clips (4/4/4/6/24 windows):
+  FIT: vae_s = 0.21 + 3.45 x windows  (predicted 14.01 / 14.01 / 14.01 / 20.91 / 83.01 vs measured
+       14.0 / 14.0 / 14.0 / 20.9 / 83.0). Per-window cost fell 3.60 -> 3.45 with Exp821's pad removal, so this
+       model must be re-fitted after any graph change, not reused.
+  Per-window LM prefill = 1.07 s (LT trace: 4.28 s over 4 windows).
+  PRIZE = pf_last x (3.45 + 1.07), where pf_last = padded fraction of the FINAL window = (83200 - real)/83200:
+     protocol 10 s  pf 0.653 -> 2.95 s = 13.5 % of gen   (VAE-only view would have claimed 10.3 %)
+     chat17         pf 0.327 -> 1.48 s =  4.0 %
+     chat69         pf 0.560 -> 2.53 s =  1.7 %
+  pf is essentially frac(length/hop), i.e. clip-dependent and roughly uniform, so for arbitrary short clips
+  E[pf] ~ 0.5 -> E[saving] ~ 2.26 s per clip; on the gate set's ~16.6 s mean that is ~13 %. THIS IS NOW THE
+  LARGEST KNOWN LEVER BY AN ORDER OF MAGNITUDE (every CPU-kernel item left is <= 2 %).
+WHY IT IS STILL NOT AN OPTIMIZATION: the final window would carry 9 real frames instead of 26 - a change to the
+model's input contract, which this loop has always classified as a task/semantics decision, not a speedup.
+FEASIBILITY IS BETTER THAN THE LEDGER SUGGESTS: the xwin branch already encodes a 22-frame window
+(encode_frames(..., want=HOP_SAMPLES=70400), demo:459-471), so the encoder DOES accept frame counts other than
+26; the real blocker is downstream - the demo's chunk/LM path is written against FRAMES_PER_WINDOW constants.
+ACCURACY RISK IS NARROWER THAN IT SOUNDS: Exp554 established all late ops are causal or pointwise, so trailing
+zeros do NOT alter the real frames' features; the only change is that the final chunk's LM input loses the
+padded frames - which today may be feeding silence-driven insertions (Exp658: 2.1 insertions/1k on clean audio).
+So it is testable with the existing 40-utt gate + paired token test, and could plausibly IMPROVE insertions.
+STATUS: not attempted; scope decision surfaced to the user (Exp828). If attempted: env-gated prototype, price
+speed on protocol + gate mean, gate WER with compare_arms.py, and never describe it as a general speedup without
+the length dependence (13.5 % at 10 s, 1.7 % at 69 s).
+
 WALL-CLOCK TREE CLOSED END TO END + THE METRIC'S BLIND SPOT IS NOW NAMED (Exp827).
   * INSIDE THE METRIC (v4.5, after Exp821 deleted graph nodes - the reason to re-close it): the per-window trace
     sums to vae 13.99 + prefill 4.28 + decode 3.61 = 21.88 s, and gen_s = rtf x duration = 2.1880 x 10 = 21.88 s.
