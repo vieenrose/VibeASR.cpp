@@ -1,5 +1,33 @@
 - CONV-INT8: BUILT AND NOT WORKING, INACTIVE BY DEFAULT (Exp685). Everything the design needed is in
 
+THE VAE, TIMED PER OP AT LAST - AND PAD (THE SPLICES) IS A 2.2% LEVER, NOT A CLOSED ONE (Exp818).
+GGML_OP_TIME=1 times every node on thread 0 by op type and phase. The VAE budget now CLOSES: node time
+29.28 s / 2 chains = 14.64 s against vae_s 14.7 s (+0.06 s of launch/barrier/alloc overhead, so nothing is
+missing). Per chain of 14.7 s:
+    MUL_MAT 9.82 (67%)  UNARY/gelu 1.49  PAD 0.73  RMS_NORM 0.53  CONT 0.49  ADD 0.48  ADD_SCALED 0.42
+    IM2COL 0.34  CONV1D(dw) 0.34   [RESHAPE/VIEW/CPY ~0 - views are free, as the byte profile said]
+  Cross-validation with the independent ablations (VAE_ABL_*): gelu 1.49 vs 1.20, bias ADD 0.48 vs 0.40,
+  ADD_SCALED 0.42 vs 0.30, RMS_NORM 0.53 vs 0.60, dw 0.34 vs ~0.15-0.3. Same shape, ablations LOWER, exactly
+  as predicted (removing an op does not remove the traffic its neighbours still cause). Two instruments, one
+  answer - so Exp817's "~5.5 s unexplained" is now ~4.9 s measured, and the VAE is 67% matmul / 33% ops.
+  * NEW LEVER, ABOVE BAR: PAD = 0.73 s/chain = 2.2% of RTF, 5% of VAE. The ledger had splices CLOSED (Exp501)
+    because making the [hist|zeros] staging buffer persistent bought 0% - but that removed only the memset,
+    not the copy: PAD is 272 node executions/clip of the streaming-cache concat, and it is the 3rd largest
+    non-matmul item. Re-open with a concrete alternative: write into a pre-offset destination (or fuse the
+    splice into the consumer) instead of pad-then-add. This is a graph-level change in vae.cpp, in scope.
+  * Also newly visible: CONT 0.49 s (1.5% RTF) - contiguous copies the graph does not need; worth a look after
+    PAD, same character of change.
+  * INSTRUMENT CAVEAT (do not quote prefill op shares yet): lm_prefill reports MORE node time than its wall -
+    5.31 vs 4.3 s at -t2 and 10.16 vs 8.1 s at -t1 - so thread-0 node spans exceed the phase span. Decode and
+    VAE are consistent (3.43 vs 3.6; 6.50 vs 6.6 at -t1), so it is specific to how the prefill span is timed:
+    most likely some of the prefill's graph work runs outside g_prefill_ms (lazy logits at sample time), which
+    would make prefill's 4.3 s an UNDER-count and its node sum the truth. Test by moving the phase setter to
+    bracket the sampler call before believing either number.
+  * LESSON: a [GGML_OP_COUNT][4] accumulator indexed as [phase][op] is a silent transpose - it reported 38 s
+    in every phase under shifted op names. The check that caught it costs one line: per-phase node time must
+    be <= that phase's wall seconds / its chain count, and .auto/optime_report.py now asserts it (plus prints
+    phase=idle so a truncated read cannot fake an absence, the Exp817 trap).
+
 THE VAE'S NON-MATMUL BUCKET IS ~5.5 s, NOT ~1 s - THE LEDGER'S "ELEMENTWISE IS AT THE FLOOR" WAS OVER-READ
 (Exp817). Made the census type-complete (every MUL_MAT by src0 type, inside the Exp816 phase attribution) to
 test whether the unattributed VAE time was hidden F16 matmul. It is not, and the arithmetic is now sharp:
