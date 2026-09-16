@@ -1,5 +1,33 @@
 - CONV-INT8: BUILT AND NOT WORKING, INACTIVE BY DEFAULT (Exp685). Everything the design needed is in
 
+THE VAE'S NON-MATMUL BUCKET IS ~5.5 s, NOT ~1 s - THE LEDGER'S "ELEMENTWISE IS AT THE FLOOR" WAS OVER-READ
+(Exp817). Made the census type-complete (every MUL_MAT by src0 type, inside the Exp816 phase attribution) to
+test whether the unattributed VAE time was hidden F16 matmul. It is not, and the arithmetic is now sharp:
+  * VAE total 388.48 GMac = q4_0_4x4 387.789 + f16 0.692 (24 calls). lm_prefill 185.14 = 181.991 + f16 0.115
+    + q8_0 3.034; lm_decode 66.41 = 56.338 q4_0_4x4 + 10.035 q8_0 (the head) + f16 0.040 (attention, 2408
+    calls). The q4_0_4x4 column equals the MAC census to the digit, so the new counter is validated.
+  * Paired skip GGML_MM_SKIP_F16=1 (fires: 39 -> 1024 tokens): vae_s 14.7 -> 14.6. So F16 matmul is ~0.1 s
+    and "quantize the remaining F16 matmuls" is CLOSED by measurement, as is any attention-precision idea for
+    speed (40 GMac of F16 across the whole clip).
+  * So VAE 14.7 s = 7.5 s wide-column blocked matmul (measured, Exp813) + ~1.55 s narrow blocked (63.1 GMac
+    at the ne11=26 ceiling rate - rate-derived, so +-1 s) + ~0.1 s f16 + ~5.5 s of everything else. The fused
+    ops I have priced (gelu 1.2 + rms_norm 0.6 + bias 0.4 + scale/resid 0.3) account for ~2.5 s of that 5.5,
+    leaving ~3 s in the dw conv kernel, im2col, splices/PAD, contiguous copies and launch overhead.
+  * WHAT THIS CORRECTS: the ledger says "elementwise residue ~7% of VAE, at the noise-resolved floor". That
+    was the SUM OF THE OPS MEASURED, not the size of the non-matmul bucket. Two instruments disagree about
+    the composition - the byte profile says 4.7 GB of tensor traffic per early-pass build (x8 builds/clip =
+    ~37 GB, which at streaming bandwidth IS ~5 s), while op ablations account for ~2.5 s. Both can be true
+    only if a lot of that traffic is absorbed by cache, which is exactly what needs measuring.
+  * QUEUED INSTRUMENT (the one thing that settles it): per-NODE TIME inside the graph compute under an env
+    flag (clock_gettime around each node's compute, aggregate by op type, default off). Bytes per op are
+    already known; seconds per op is the missing half, and it is the only way to apportion the 5.5 s without
+    abverting one op at a time (which under-counts, because removing an op does not remove the traffic the
+    surviving ops cause). Budget it: 1 build + 1 run, and it re-prices every "nothing left" claim above 2%.
+  * PROCESS LESSON (3rd occurrence, after Exp609/676): I spent a build "fixing" a census that printed only
+    phase=lm_decode - because run_experiment truncates output and the other two phases were above the cut.
+    The instrument was fine. To assert absence, print the full list or a count; and make dumps print the
+    zero bucket (phase=idle is now included for exactly this reason).
+
 SKIP_BUILD=1 DID NOT DEPLOY THE BINARY (Exp816) - read this before trusting any code-change measurement.
 measure.sh had `adb push build-android/bin/asr_streaming` INSIDE the `if SKIP_BUILD != 1` block, while the
 two libraries are pushed on md5 difference unconditionally. Consequence: a change under src/ or demo/
