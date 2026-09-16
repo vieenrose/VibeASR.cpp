@@ -107,6 +107,18 @@ for s in scripts:
 if not any('NOT tracked' in f for f in fails):
     ok(f"all {len(scripts)} harness scripts are tracked in git")
 
+# ---- 3c. executable bit (Exp809). A harness script can be tracked and syntactically fine and still be
+# unrunnable: run_rtf_multi.sh came back as mode 100644 after a rewrite, so the paired-sweep path printed
+# 'Permission denied' and, because most call sites piped output away, looked like a silent no-op run.
+for s in scripts:
+    if not s.endswith('.sh'):
+        continue          # .py files are always invoked as `python3 x.py`; the exec bit is irrelevant
+    p = os.path.join(HERE, s)
+    if not os.access(p, os.X_OK):
+        bad(f"harness script is not executable (chmod +x and commit the mode): .auto/{s}")
+if not any('not executable' in f for f in fails):
+    ok("all shell harness scripts are executable")
+
 # ---- 3b. tree cleanliness between runs (Exp759).
 # pi-autoresearch reverts a discard with `git checkout -- .` executed at the SESSION
 # workDir (extensions/pi-autoresearch/index.ts:2446, cwd=workDir). Here the session
