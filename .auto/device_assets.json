@@ -8,6 +8,34 @@
    "md5": "6ef3b025cff9c4fe7576db6768f57af7",
    "note": "blessed from device"
   },
+  "HOST .auto/assets/noise5s.wav": {
+   "md5": "16d1a595d8eef3ef912037bb77f3d684",
+   "note": "behavioral-watchdog clip, mirrored host-side at Exp800 (was device-only and overwritable)"
+  },
+  "HOST .auto/assets/proto48k_stereo.wav": {
+   "md5": "9e3276a5b6138f7508cf17fcb33b1e93",
+   "note": "behavioral-watchdog clip, mirrored host-side at Exp800 (was device-only and overwritable)"
+  },
+  "HOST .auto/assets/short36.wav": {
+   "md5": "2d37df93d2c1b4abd2786ca45d45b468",
+   "note": "behavioral-watchdog clip, mirrored host-side at Exp800 (was device-only and overwritable)"
+  },
+  "HOST .auto/assets/silence5s.wav": {
+   "md5": "15a1b22cb539098a943529a2d357a20c",
+   "note": "behavioral-watchdog clip, mirrored host-side at Exp800 (was device-only and overwritable)"
+  },
+  "HOST .auto/assets/song20s.wav": {
+   "md5": "1c755097ca3d1a89ac022bbe338a8804",
+   "note": "behavioral-watchdog clip, mirrored host-side at Exp800 (was device-only and overwritable)"
+  },
+  "HOST .auto/assets/twospk.wav": {
+   "md5": "bd9bb22c3e209833cd4ccca852d52a71",
+   "note": "behavioral-watchdog clip, mirrored host-side at Exp800 (was device-only and overwritable)"
+  },
+  "HOST .auto/assets/twospk_overlap.wav": {
+   "md5": "e2957b9f514e504742ac24f8f4f32981",
+   "note": "behavioral-watchdog clip, mirrored host-side at Exp800 (was device-only and overwritable)"
+  },
   "chat.wav": {
    "cell": "STALE: overwritten by the chat69 push (Exp675) - not used by any cell",
    "ignore_collision": true,

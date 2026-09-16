@@ -252,6 +252,19 @@ if '--skip-device' not in sys.argv:
         sys.exit(0)
     if os.path.exists(MANIFEST):
         man = json.load(open(MANIFEST))['assets']
+        # Keys prefixed 'HOST ' point at host-tracked copies (behavioral-watchdog clips that used to live
+        # only on the device, where any later experiment could overwrite them - Exp800). Everything else is
+        # a device-side name. Feed each class to its own hasher; a HOST key must never reach adb.
+        host = {k: man.pop(k) for k in [x for x in man if x.startswith('HOST ')]}
+        for k, v in host.items():
+            rel = k[len('HOST '):]
+            if not os.path.exists(rel):
+                (bad if v.get('cell') else warn)(f"host asset {rel} is missing")
+            elif hashlib.md5(open(rel, 'rb').read()).hexdigest() != v.get('md5'):
+                bad(f"host asset {rel} md5 != blessed {v.get('md5')}"
+                    + (f" (cell: {v['cell']})" if v.get('cell') else ''))
+            else:
+                ok(f"host asset {os.path.basename(rel)} hash matches manifest")
         names = list(man)
         got = sh('adb -s ' + DEV + ' shell "md5sum ' + ' '.join(f'{RDIR}/{n}' for n in names)
                  + ' 2>/dev/null"', timeout=300).stdout
