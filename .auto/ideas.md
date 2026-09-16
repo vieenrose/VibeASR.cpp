@@ -1,5 +1,27 @@
 - CONV-INT8: BUILT AND NOT WORKING, INACTIVE BY DEFAULT (Exp685). Everything the design needed is in
 
+SKIP_BUILD=1 DID NOT DEPLOY THE BINARY (Exp816) - read this before trusting any code-change measurement.
+measure.sh had `adb push build-android/bin/asr_streaming` INSIDE the `if SKIP_BUILD != 1` block, while the
+two libraries are pushed on md5 difference unconditionally. Consequence: a change under src/ or demo/
+measured with SKIP_BUILD=1 ran the PREVIOUS binary, while a change under 3rdparty/llama.cpp took effect.
+The asymmetry is what hid it - and it hid it for exactly one run, the phase census, which printed
+`phase=idle` for all 626 GMac. Per the standing rule (prove a knob fires by an OUTPUT change), an inert
+instrument is not a null result, so I went looking instead of writing "phases are indistinguishable":
+device binary 2,209,680 B / 09:36 vs host 2,210,128 B / 12:45.
+  * FIX: measure.sh now always syncs the binary by md5 and verifies it after push (adb can report success
+    while a busy-text file refuses the write). Rule for the loop: after editing src/ or demo/, either run
+    measure.sh WITHOUT SKIP_BUILD=1, or trust the new sync - and treat "the numbers look the same" as no
+    evidence that your change is in the artifact.
+  * WHAT THE INSTRUMENT THEN SHOWED (per-phase RATES, first measurement-grade version; phase sum equals the
+    total to 0.001 GMac, which is the internal consistency check): lm_prefill 182.0 GMac / 4.3 s = 42.3
+    GMAC/s aggregate = 21.2/core -> AT the blocked-int8 ceiling. This RETIRES Exp779's "prefill 7.62
+    GMac/window = 15.2 GMAC/s", ~5x low: right conclusion (prefill is not the remaining time), wrong basis.
+    lm_decode 56.3 GMac over 39 tokens = 1.44 GMac/token = 811 MB at 93 ms = 8.7 GB/s ~ 81% of the 10.8
+    GB/s two-thread ceiling (Exp523). vae 387.8 GMac / 14.7 s with 324.6 GMac in the wide bucket at ceiling.
+  * CAVEAT so nobody subtracts their way to a false conclusion: the census counts ONLY blocked-int8
+    matmuls. vae_s minus (census MACs / ceiling rate) is an upper bound on (non-matmul + F16 matmul), not a
+    measurement of elementwise cost - the measured elementwise number stays ~7% (Exp791/792).
+
 THE 316 ms WINDOW-1 PREMIUM IS PAGE-IN, AND THE LOOP'S majflt METRIC WAS A TAUTOLOGY (Exp815).
 Three things in one iteration, all instrument work:
   * BUG: bench_device.sh read minflt/majflt from /proc/PID/stat AFTER `wait`, so /proc/PID was gone, awk
