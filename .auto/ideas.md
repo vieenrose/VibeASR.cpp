@@ -1385,3 +1385,32 @@ knobs go stale when a fusion deletes the node they ablate - rewire them in the s
   bucket unchanged. The correct per-clip MAC volume is the SINGLE-THREAD census (626 GMac). A future fix is
   to increment only when params->ith == 0. Until then, never quote the -t 2 census total, and note that any
   GMAC/s figure derived from it is ~1.4x too high (864/626).
+
+## Exp830 (v4.6 lean tier + three integrity findings) — DONE AND SHIPPED
+
+**Flush now works under VAE_DEFER_LATE (RAM-lean tier).** Lean 2.40 -> **2.12** (−11.5 %) at 1.75 GB;
+17/69/138 s = 2.29/2.37/2.42; gate mean 2.70 -> **2.14**; hybrid WER 4.65 % vs shipped 4.38 %, paired
+b=0/c=2 of 731 (p=0.5) = output-equivalent. Shipped tier untouched (1.9278). Three assumptions had to die:
+ * the boundary is at the LATE-SPLIT stage, so its frames-per-piece (ashape[0] = 16 at p13 for a 2-frame
+   piece) is DOWNsampled relative to the audio grid - frames present cannot be computed as want/3200; the
+   full-window size is tpiece*pieces, derived at piece 0, and buffers are allocated there then packed down
+   to the frames actually present (a few KB per channel);
+ * the late pass's return value is OUTPUT frames (26), not boundary frames (208);
+ * `win_frames` was only updated by the non-deferred branch, so the deferred branch kept assuming 26.
+
+**Integrity findings (class: silent, not loud):**
+ 1. `score_hyp.py <bad-tag>` silently scored a DIFFERENT set (the tag defaults to "a78"). Now refuses on an
+    empty or partial set; negative-controlled (`score_hyp.py hyp-flusht` -> REFUSING). This made an
+    acceptance number irreproducible (4.68 vs 4.38) and cost an hour of archaeology - the pair
+    `hyp-flusht829` (real) vs `hyp-flusht` (typo) is why the ledger must quote directory names, not tags.
+ 2. `compare_arms.py --gate` takes THREE args (dirA dirB refs.json) with paths relative to the repo ROOT
+    (`../eval-librispeech/...`). With two args / wrong prefix it does not fail cleanly. Any paired test must
+    echo its own file counts before its verdict is trusted.
+ 3. `ps -A -o PID,STATE,RSS,NAME` is **invalid on this device's toybox** ("ps: bad -o"), and a failing
+    idleness check reads exactly like an idle device. Use `ps -A -o NAME` (what measure.sh uses) or
+    `ps -A | grep asr_streaming`.
+ 4. Ladder doc bug: the table had no 138 s column, so every secondary row's 138 s value sat under the
+    "40-utt mean" header - Exp645's clobbering, recurring. Fixed structurally (column added, rows re-aligned).
+
+Still open after v4.6: RSS soak on the flushed graph (last one v4.5); `--xwin` under the flush (untested
+pairing); the rollback audit re-run with the 9th `flush_off` arm (tool updated, not yet re-run).
