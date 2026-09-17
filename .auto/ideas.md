@@ -1734,3 +1734,18 @@ of an anti-overfit guard and worth stating: the guard's job is to move WITH the 
    (Exp842 measured lean-batched 2.0535) - the accuracy evidence for that is already complete.
  * Harness note: `run_rtf_multi`'s clip field with a bogus local path (`.auto/../chat17.wav`) fails as a device
    path and the arm reports FAILED - loud, good. The 17 s clip's device name is `chat17.wav`.
+
+## Exp846 — LEAN-BATCH DECISION DOSSIER COMPLETE (quantified on real audio; still a product call, not shipped)
+
+ * **Tiers AS SHIPPED are output-equivalent on real zh audio**: shipped p1 (batched) vs lean p13+defer (unbatched)
+   on 468 Common Voice zh-TW tokens = **b=0 / c=0, bootstrap CI exactly [0,0], WER 15.38 % both**. So Exp845's
+   finding that lean now costs +11.8 % is bought with genuinely identical text on real audio - the parity argument
+   is not a documentation artifact.
+ * **If lean got the batch**: b=2 / c=1 of 468, McNemar p=1.0, CI [-0.43, +1.07] pp, and the batched arm is
+   slightly BETTER (15.17 % vs 15.38 %). Price: -2.6 % RTF on that tier (gap +11.8 % -> ~+9 %).
+ * So the trade is exactly: **2.6 % on a non-metric tier**, in exchange for moving the cross-tier difference on
+   real audio from "provably zero" to "3 tokens in 468, statistically indistinguishable", plus one synthetic
+   canary token on the protocol clip. Recommendation: keep as-is while both tiers ship; enable if the lean tier
+   becomes the product default, in which case re-measure its 4-length ladder.
+ * Shipped tier's zh held-out transcript is now archived (`hyp-stream/zh846-shipped-p1.txt`) - the reference that
+   makes future cross-tier zh claims computable without new device time.
