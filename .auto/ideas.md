@@ -1455,3 +1455,30 @@ protocol clip emitted 3 MORE tokens here).
 Also verified: the `FEED_DEDUP_OFF` hatch reproduced the frozen reference exactly (1a095c8496b4) before the
 revert, so the experiment's provenance was sound - the hypothesis was simply wrong. Reverted in-tree; the
 shipped protocol is unchanged.
+
+## QUEUED, PRICED (Exp834): batch the two boundary tokens into the per-window prefill — ~2.0 % of the metric
+
+Measured on the shipped path with a temporary per-call breakdown (probe reverted, tree clean):
+
+| call | rows | ms/window |
+|---|---|---|
+| `feed_token([speech_start])` | 1 | **83** |
+| `feed_embeds(chunk)` | 26 | 890 (34 ms/row) |
+| `feed_token([speech_end])` | 1 | **83** |
+
+An isolated 1-row decode is billed at gemv/decode cost (one full weight stream, ~83 ms) while a row inside the
+prefill batch costs 34 ms. Two boundary tokens x 4 windows = 664 ms = **3.4 % of gen_s**, and batching them
+into the frame batch costs 2 extra rows (68 ms) instead of 166 ms, so the recoverable part is 49 ms x 8 rows =
+**392 ms = 2.0 % on the protocol clip** (138 s: 48 windows -> ~1.5 %, so it is a short-clip lever and should
+help the 40-utt mean by ~2 %).
+
+Why it is not already done: this vendored llama decides embd-vs-token **per batch, not per row**
+(`src/llama.cpp:3108` `if (batch->embd) { ... } else { ubatch.embd = nullptr; }`), so a batch cannot mix
+embedding rows with token-id rows. Route (all in scope, Exp663/664 precedent): add
+`llama_get_token_embd_row(model, id, float * dst)` to the vendored llama (read the `token_embd` tensor row and
+convert with `ggml_type_traits[type].to_float`), then build ONE 28-row embedding batch
+`[embd(t_start), frames x26, embd(t_end)]` in the windowed loop. Numerics: get_rows dequantizes the same row
+at compute time, so feeding the pre-converted F32 row should be **bit-identical** - but verify with the
+protocol transcript hash AND the 40-utt paired test, because if the model applies token-type embeddings or
+embedding scaling, the equivalence breaks exactly where Exp833 showed the chunk contract is fragile.
+Do NOT try to shorten the input instead: Exp833 measured that dropping rows from the chunk costs 14 pp WER.
