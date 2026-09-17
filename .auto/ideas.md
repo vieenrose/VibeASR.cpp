@@ -1569,3 +1569,29 @@ RAM-lean tier goes **2.1121 -> 2.0535 (-2.8 %)**, prefill 3.8 -> 3.3 s. The priz
    the 2.8 % could be bought honestly, and the implementation is one line of predicate.
  * Consequence for the loop: the boundary-batch axis is closed at both tiers (shipped: shipped; lean: declined),
    and so is the speed board - every component is at a measured ceiling and both work-removal levers are spent.
+
+## Exp839 — EQUIVALENCE MAP RE-ANCHORED TO THE POST-BATCH OUTPUT + FOUR UNITS FOR ONE 5-FILE CHANGE
+
+Host-only, zero device time: recomputed the paired distance of all 71 archived 40-utt gate sets against the
+CURRENT shipped output (`hyp-bound835`).
+
+ * **No archived set is within 4 hybrid tokens of today's shipped output.** The boundary batch (Exp835) moved it
+   by 11 hybrid tokens / 3 correctness-discordants vs `hyp-flusht829`, because gemv->gemm is not bit-identical.
+   So the pre-batch lineage claim ("9 sets byte-identical across the shipped history") must now be read as
+   "byte-identical to the PRE-BATCH reference". Consequence for future sessions: when the shipped output
+   legitimately moves, re-anchor `equiv_map.py`'s default in the same iteration, or every old artifact reads as
+   "changed" and byte-identity acceptance tests silently compare against the wrong baseline. Default is now
+   `hyp-bound835`; the map is saved at `.auto/equiv839.md`.
+ * Cross-tier pair re-stated for the docs: lean gate vs shipped-now = **b=1 / c=0, McNemar p=1.0** (WER 4.65 % vs
+   4.51 %), and lean vs pre-batch shipped = b=2 / c=0, p=0.5 - so "the two tiers are output-equivalent" still
+   holds at v4.7, with the lean tier 1 token away. Running the same pair twice with arguments swapped gave b/c
+   mirrored (0/2 vs 2/0): a free symmetry check on compare_arms.
+ * **FOUR UNITS, one change - the trap that cost me four tool calls.** For the same pair: **5** byte-differing
+   files, **20** whitespace-token differences, **11** hybrid-token differences (the gate has 730 hybrid vs 766
+   whitespace tokens, the hybrid tokenizer folds punctuation/contractions), and **3** correctness-discordant
+   tokens (McNemar). I mis-read the map's 11 against compare_arms' 3 as a 3.7x instrument defect and nearly
+   "fixed" a working tool; the map's own docstring had already documented the distinction, and the actual defect
+   was in my throwaway script (it compared per-file structures against a per-token stream, reporting 254). Sixth
+   instance of "the measurement you ran wasn't the measurement you meant", and a new sub-rule: **quote the unit
+   with every distance** - files, whitespace tokens, hybrid tokens, or discordants are not interchangeable.
+ Example change in the pair: `off` -> `oft` twice in one utterance (a real ASR confusion, 2 whitespace tokens).

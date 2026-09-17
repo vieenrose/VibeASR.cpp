@@ -47,7 +47,14 @@ def main():
     out = None
     if '-o' in args:
         i = args.index('-o'); out = args[i + 1]; del args[i:i + 2]
-    ref = args[0] if args else os.path.join(EVAL, 'hyp-flusht')   # Exp829 flush-era reference
+    ref = args[0] if args else os.path.join(EVAL, 'hyp-bound835')  # v4.7 shipped output (Exp835 batch)
+    # Re-anchored in Exp839: the boundary-token batch moved the shipped output by 11 hybrid tokens / 3
+    # correctness-discordants vs hyp-flusht829 (kernel-path change, gemv->gemm), so with the OLD default every
+    # archived artifact - including the whole pre-batch lineage - would read as 'changed'. When the shipped
+    # output legitimately moves, re-anchor here AND say so in the ledger, or byte-identity claims go stale.
+    # UNITS: the distance column is HYBRID tokens present in one side only. It is NOT files, NOT whitespace
+    # tokens (766 vs 730 on the gate, so a 5-file change reads 20 vs 11), and NOT McNemar discordants
+    # (correctness, 3 here). Quote the unit with the number - Exp839 chased a phantom bug across three tools.
     refs = json.load(open(os.path.join(EVAL, 'refs.json'), encoding='utf-8'))
     names = sorted(refs)
     A = stream(ref, refs, names)
