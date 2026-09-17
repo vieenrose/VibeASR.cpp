@@ -364,6 +364,10 @@ device binary 2,209,680 B / 09:36 vs host 2,210,128 B / 12:45.
     GMAC/s aggregate = 21.2/core -> AT the blocked-int8 ceiling. This RETIRES Exp779's "prefill 7.62
     GMac/window = 15.2 GMAC/s", ~5x low: right conclusion (prefill is not the remaining time), wrong basis.
     lm_decode 56.3 GMac over 39 tokens = 1.44 GMac/token = 811 MB at 93 ms = 8.7 GB/s ~ 81% of the 10.8
+    >>> CORRECTED BY Exp843: that 56.3 GMac is the q4_0_4x4 BUCKET ONLY. The type census also reports
+    >>> 10.0 GMac of q8_0 (the output head) in the same phase, so decode streams 1072 MB/token, not 811,
+    >>> and runs AT the memory ceiling (12.6 GB/s over MUL_MAT node time), not at 81% of it. Do not use the
+    >>> 8.7 GB/s figure to argue there is decode headroom - there is none.
     GB/s two-thread ceiling (Exp523). vae 387.8 GMac / 14.7 s with 324.6 GMac in the wide bucket at ceiling.
   * CAVEAT so nobody subtracts their way to a false conclusion: the census counts ONLY blocked-int8
     matmuls. vae_s minus (census MACs / ceiling rate) is an upper bound on (non-matmul + F16 matmul), not a
@@ -1662,3 +1666,31 @@ thermal drift).
  * Method: the force knob was proven live BEFORE the long arms (38 tokens vs the 39 reference on the protocol clip)
    - Exp764's rule, and it mattered: my first build failed to compile at all (BUILD rc 2 from a redeclared bool),
    so without the exit-code check I would have run 16 minutes of both arms on the previous binary.
+
+## Exp843 — LM DECODE IS AT THE MEMORY CEILING (measured both ways); the "81 % of ceiling" claim was wrong
+
+Decode is 17 % of the metric and the only component whose ceiling had never been measured directly. Two
+independent instruments now agree, and the answer is "no headroom".
+
+ * **A DRAM-bound GEMV probe** (new `mm_shape_micro big` mode: one 460.8 MB q4_0_4x4 weight at L=1, pinned to the
+   two A78s) measures the streaming limit: **12.6 GB/s at 2 threads** (22.4 GMAC/s), **6.3 GB/s at 1**. Runs
+   repeat to 0.4 %. The classic grid could never show this: its L=1 rows use 3-13 MB weights, i.e. L3-resident,
+   so they price the kernel, not the memory system.
+ * **In-graph node timing** (`GGML_OP_TIME=1`) says the lm_decode phase is **97.3 % MUL_MAT** (3313 ms of
+   3405 ms; everything else - norms, adds, copies, attention's non-matmul part - is 92 ms), and the type census
+   (`GGML_MM_DEBUG_TYPES=1`) gives the phase as 56.338 GMac q4_0_4x4 + **10.035 GMac q8_0** + 0.040 f16 =
+   41.81 GB per clip = **1072 MB per token** (813 MB body + 257 MB head).
+   41.81 GB / 3.313 s = **12.62 GB/s = the ceiling.** Over full decode wall time it is 11.6 GB/s (92 %), the
+   8 % being the non-matmul 92 ms plus sampler time.
+ * **Consequence for the ledger:** Exp816's "811 MB/token, 8.7 GB/s, 81 % of ceiling" divided by the RIGHT time
+   but the WRONG byte count - it used the q4_0_4x4 bucket and dropped the q8_0 head, which is 24 % of decode
+   traffic. That made a closed axis look 19 % open. Annotated in place, not deleted.
+ * **The head is 24 % of decode = 0.82 s = 3.6 % of the metric.** That is not a new lever: it was priced in
+   Exp592, where a q4_0_4x4 head was +0.55 pp WER and a q5_K head +0.42 pp, both declined in favour of q8_0
+   (which is also why q8_0 was chosen: q6_K has no gemv kernel). So the number is now known and the decision
+   already made - useful only if the accuracy trade is ever revisited with a bigger eval set.
+ * Ceiling numbers to use from now on: **12.6 GB/s** for 2-thread streaming (supersedes the inferred 10.8 from
+   Exp523), 6.3 GB/s for 1 thread.
+ * Method note: `mm_shape_micro` gained a mode, and piping its build through `head -5` SIGPIPE'd clang so the
+   "successful" compile wrote a stale binary - `COMPILE rc=$?` said 0 only on the retry without the pipe. Same
+   class as Exp835's rule: check the exit code, and do not pipe builds through head.

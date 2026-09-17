@@ -102,6 +102,17 @@ int main(int argc, char ** argv) {
     const int nthreads = argc > 1 ? atoi(argv[1]) : 1;
     const bool real = argc > 2 && !strcmp(argv[2], "real");
 
+    // Exp843: DRAM-bound GEMV. The classic grid's L=1 rows use 3-13 MB weights, i.e. L3-resident, so they
+    // price the kernel, not the memory system - which is the wrong ceiling for LM decode, where one token
+    // streams ~811 MB of weights once. "big" benches a ~615 MB weight at L=1 so the run is pure streaming:
+    // compare its GMAC/s x (bytes per MAC) against the in-graph decode rate to see if decode is at the bus.
+    if (argc > 2 && !strcmp(argv[2], "big")) {
+        const int64_t ne01 = argc > 3 ? atoll(argv[3]) : 100000;   // 8192 x 100000 -> ~615 MB at q4_0_4x4
+        fprintf(stderr, "threads=%d  DRAM-bound GEMV probe\n", nthreads);
+        bench(nthreads, 8192, ne01, 1, "big");
+        return 0;
+    }
+
     if (!real) {
         // Classic grid: the deepest FFN shapes (the Exp778 curve the ledger quotes).
         static const int shapes[][2] = {{8192, 2048}, {4096, 1024}, {2048, 512}, {1024, 256}};
