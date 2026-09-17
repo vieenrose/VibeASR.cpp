@@ -1,0 +1,37 @@
+soak: sampling asr_streaming every 8 s while running: env SKIP_BUILD=1 AUDIO=chat69.wav bash .auto/measure.sh
+  t(s)     VmRSS     VmHWM    VmSize
+     0    1818.8    1818.8    4799.6
+     8    2174.7    2195.9    4766.6
+    16    2196.8    2196.8    4811.6
+    24    2176.1    2197.3    4794.6
+    33    2175.8    2197.3    4777.6
+    41    2197.5    2197.5    4811.6
+    49    2197.7    2197.7    4811.6
+    57    2197.3    2197.7    4811.6
+    65    2176.2    2197.7    4789.6
+    73    2197.9    2197.9    4823.6
+    81    2197.5    2197.9    4823.6
+    89    2176.5    2197.9    4806.6
+    98    2198.0    2198.0    4823.6
+   106    2197.5    2198.0    4823.6
+   114    2176.5    2198.0    4806.6
+   122    2176.8    2198.0    4806.6
+   130    2197.6    2198.1    4823.6
+   138    2176.5    2198.1    4806.6
+
+samples=18  span=2.3 min  first=1818.8 MB  last=2176.5 MB  min=1818.8  max=2198.0  peak(HWM)=2198.1
+full-range trend = +47.80 MB/min   net last-first = +357.6 MB   <- includes the first-touch ramp of the mmap'd weights; NOT the leak indicator
+steady state from t=8s (sample 1/18): trend = +0.15 MB/min, band 2174.7-2198.0 MB (23.2 MB wide), HWM 2195.9 -> 2198.1 MB
+verdict: FLAT - no leak signal
+METRIC rtf=2.1467
+METRIC vae_s=81.2
+METRIC lm_s=66.9
+METRIC tokens=446
+METRIC peak_rss_mb=2198.1
+METRIC majflt=0
+METRIC ac_s=81.1
+METRIC sem_s=81.1
+METRIC prefill_s=23.9
+METRIC decode_s=43.0
+METRIC load_s=1.2
+METRIC batt_temp_c=33.9

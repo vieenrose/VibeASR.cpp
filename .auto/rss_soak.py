@@ -98,17 +98,47 @@ print(f"{'t(s)':>6} {'VmRSS':>9} {'VmHWM':>9} {'VmSize':>9}")
 for t, r, h, v in samples:
     print(f'{t - base:6.0f} {r:9.1f} {(h or 0):9.1f} {(v or 0):9.1f}')
 
+def trend(pairs):
+    """Least-squares MB/min over (t_seconds, rss_mb) pairs - shared so the self-test uses this code path."""
+    if len(pairs) > 2 and statistics.pstdev([t for t, _ in pairs]) > 0:
+        xs = [t / 60.0 for t, _ in pairs]
+        ys = [r for _, r in pairs]
+        mx, my = statistics.mean(xs), statistics.mean(ys)
+        den = sum((x - mx) ** 2 for x in xs)
+        return sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / den if den else float('nan')
+    return float('nan')
+
+
 rss = [s[1] for s in samples]
 dur = (samples[-1][0] - samples[0][0]) / 60.0
 xs = [(s[0] - base) / 60.0 for s in samples]
-if len(xs) > 2 and statistics.pstdev(xs) > 0:
-    mx, my = statistics.mean(xs), statistics.mean(rss)
-    slope = sum((x - mx) * (y - my) for x, y in zip(xs, rss)) / sum((x - mx) ** 2 for x in xs)
-else:
-    slope = float('nan')
+slope = trend([(t - base, r) for t, r, _, _ in samples])
+# Steady-state window: mmap'd weights are faulted in LAZILY (majflt stays 0, they are in the page cache),
+# so RSS ramps for the first windows and a full-range fit measures that page-in, not retention. Exp840:
+# a full-range fit on the 138 s clip said +24.4 MB/min while VmHWM never moved after t~200 s - the exact
+# signature of a ramp read as a leak. Report both, and base the verdict on the steady-state window.
+hwms = [s[2] or 0 for s in samples]
+hmax = max(hwms) if hwms else 0.0
+# Two conditions, because HWM saturates early (it is a high-water mark, so it reaches its max in the first
+# few windows even while RSS is still climbing): require the peak to be near its max AND the resident set to
+# be near its own median, otherwise sample 0 of a lazy-faulting run can sit inside the "steady" window.
+med_rss = statistics.median(rss)
+k = next((i for i, (h, r) in enumerate(zip(hwms, rss)) if h >= 0.98 * hmax and r >= 0.95 * med_rss),
+         max(0, len(samples) // 4))
+ss = [(t - base, r) for (t, r, _, _) in samples[k:]]
+ss_slope = trend(ss)
+ss_band = (min(r for _, r in ss), max(r for _, r in ss)) if ss else (0.0, 0.0)
+hwm_ss = max(hwms[k:]) if k < len(hwms) else 0.0
+hwm_first = hwms[k] if k < len(hwms) else 0.0
 print(f"\nsamples={len(samples)}  span={dur:.1f} min  first={rss[0]:.1f} MB  last={rss[-1]:.1f} MB"
       f"  min={min(rss):.1f}  max={max(rss):.1f}  peak(HWM)={max((s[2] or 0) for s in samples):.1f}")
-print(f'growth trend = {slope:+.2f} MB/min   net last-first = {rss[-1] - rss[0]:+.1f} MB')
+print(f'full-range trend = {slope:+.2f} MB/min   net last-first = {rss[-1] - rss[0]:+.1f} MB'
+      '   <- includes the first-touch ramp of the mmap\'d weights; NOT the leak indicator')
+print(f'steady state from t={ss[0][0]:.0f}s (sample {k}/{len(samples)}): trend = {ss_slope:+.2f} MB/min,'
+      f' band {ss_band[0]:.1f}-{ss_band[1]:.1f} MB ({ss_band[1] - ss_band[0]:.1f} MB wide),'
+      f' HWM {hwm_first:.1f} -> {hwm_ss:.1f} MB')
+verdict = 'FLAT - no leak signal' if abs(ss_slope) < 2.0 and (hwm_ss - hwm_first) < 25.0 else 'GROWTH - investigate'
+print(f'verdict: {verdict}')
 for line in out.splitlines():
     if line.startswith('METRIC'):
         print(line)
