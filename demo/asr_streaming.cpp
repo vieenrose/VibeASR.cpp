@@ -408,6 +408,19 @@ int main(int argc, char ** argv) {
         vae_cache_set_whole_window(vcache,
             (params.vae_pieces == 1 && !defer_now && !params.xwin) ? 1 : 0);
     }
+    // Exp829: the final-window flush is the DEFAULT. Parity-gated on the phone 40-utt set:
+    // WER 4.38 % vs 4.51 %, 0 discordant tokens of 731 (McNemar p=1.0), one FEWER insertion, and 6/40
+    // transcripts differing only in punctuation/marginal class. Speed: protocol 2.1866 -> 1.9295 (-11.8 %),
+    // gate mean 2.4456 -> 1.9811 (-19.0 %), 17 s -4.0 %, 69 s -1.5 % (the win is length-weighted, as priced
+    // in Exp828). Hatches: FLUSH_TAIL_OFF=1 reverts to the padded protocol exactly; FLUSH_TAIL=0 is an alias.
+    // The deferred late path is excluded - it assembles a window-sized boundary buffer (tpiece * pieces), so a
+    // short window needs its own shape handling; the lean tier therefore keeps the padded behaviour.
+    const char * fl_env = getenv("FLUSH_TAIL");
+    const bool flush_tail = getenv("FLUSH_TAIL_OFF") == nullptr && (fl_env == nullptr || atoi(fl_env) > 0) &&
+                            (getenv("VAE_DEFER_LATE") == nullptr);
+    fprintf(stderr, "note: final-window flush %s\n", flush_tail ? "ACTIVE (last window encodes only real frames)"
+            : (getenv("FLUSH_TAIL_OFF") != nullptr ? "OFF (fixed 26-frame tail padding, pre-Exp829 protocol)"
+                                                   : "DISABLED (deferred late path needs whole-window buffers)"));
     const int piece_samples = WINDOW_SAMPLES / params.vae_pieces;
     const int piece_frames = FRAMES_PER_WINDOW / params.vae_pieces;
     fprintf(stderr, "VAE pieces: %d x %d samples (%d frames each)%s\n\n",
@@ -496,8 +509,20 @@ int main(int argc, char ** argv) {
         int start = w * HOP_SAMPLES;
         int avail = std::min(WINDOW_SAMPLES, n_samples - start);
         if (avail <= 0) break;
+        // Exp829 FLUSH_TAIL: the final window of a clip is mostly tail padding under the fixed-window
+        // protocol (measured: 0.653 of it on the 10 s protocol clip), and that padding costs BOTH VAE time
+        // (3.45 s per 26-frame window) and LM prefill rows (1.07 s/window). Flushing encodes only the real
+        // samples, rounded up to the 6400-sample (2-frame) granularity the cached encoder asserts.
+        // Off by default: this changes what the model sees in the final window, so it is gated on the
+        // 40-utt WER parity test before it can ever become the default.
+        int want = WINDOW_SAMPLES;
+        if (flush_tail && avail < WINDOW_SAMPLES) {
+            want = ((avail + 6399) / 6400) * 6400;
+            if (want > WINDOW_SAMPLES) want = WINDOW_SAMPLES;
+        }
         memcpy(window.data(), audio.samples.data() + start, avail * sizeof(float));
-        if (avail < WINDOW_SAMPLES) memset(window.data() + avail, 0, (WINDOW_SAMPLES - avail) * sizeof(float));
+        if (avail < want) memset(window.data() + avail, 0, (want - avail) * sizeof(float));
+        int win_frames = FRAMES_PER_WINDOW;
 
         double t0 = now_ms();
         ggml_mm_set_phase(1);   // vae: the shipped loop's own span (Exp816). NOTE the first attempt hooked
@@ -592,11 +617,16 @@ int main(int argc, char ** argv) {
                             w, nfr, FRAMES_PER_WINDOW);
                     return 1;
                 }
-            } else
-            for (int p = 0; p < params.vae_pieces; p++) {
+            } else {
+            int rem_samples = want;
+            int got_frames = 0;
+            for (int p = 0; p < params.vae_pieces && rem_samples > 0; p++) {
                 const float * piece = window.data() + p * piece_samples;
                 float * af = afe.data() + p * piece_frames * acoustic_dim;
                 float * sf = sfe.data() + p * piece_frames * semantic_dim;
+                const int nsamp = std::min(piece_samples, rem_samples);   // short final piece when flushing
+                af = afe.data() + (size_t)got_frames * acoustic_dim;      // frames pack contiguously
+                sf = sfe.data() + (size_t)got_frames * semantic_dim;
                 int na, ns;
                 // Concurrent encoders are the DEFAULT (they are independent and
                 // the per-encoder math is split-invariant: transcripts are
@@ -604,22 +634,27 @@ int main(int argc, char ** argv) {
                 // restores the sequential pair for RAM-critical runs.
                 if (getenv("VAE_SEQ_ENCODERS") == nullptr) {
                     float ac_ms = 0.0f, sem_ms = 0.0f;
-                    na = ns = vae_encode_parallel_cached(vae_ctx, vcache, piece, piece_samples,
+                    na = ns = vae_encode_parallel_cached(vae_ctx, vcache, piece, nsamp,
                                                          af, sf, &ac_ms, &sem_ms);
                     g_ac_ms += ac_ms; g_sem_ms += sem_ms;
                 } else {
                     double ta2 = now_ms();
-                    na = vae_encode_acoustic_cached(vae_ctx, vcache, piece, piece_samples, af);
+                    na = vae_encode_acoustic_cached(vae_ctx, vcache, piece, nsamp, af);
                     g_ac_ms += now_ms() - ta2;
                     double ts2 = now_ms();
-                    ns = vae_encode_semantic_cached(vae_ctx, vcache, piece, piece_samples, sf);
+                    ns = vae_encode_semantic_cached(vae_ctx, vcache, piece, nsamp, sf);
                     g_sem_ms += now_ms() - ts2;
                 }
-                if (na != piece_frames || ns != piece_frames) {
+                const int want_f = nsamp / 3200;
+                if (na != want_f || ns != want_f) {
                     fprintf(stderr, "window %d piece %d: unexpected frames a=%d s=%d (want %d)\n",
-                            w, p, na, ns, piece_frames);
+                            w, p, na, ns, want_f);
                     return 1;
                 }
+                got_frames += na;
+                rem_samples -= nsamp;
+            }
+            win_frames = got_frames;
             }
         } else {
             int na = vae_encode_acoustic(vae_ctx, window.data(), WINDOW_SAMPLES, afe.data());
@@ -631,7 +666,7 @@ int main(int argc, char ** argv) {
         }
         vae_ms += now_ms() - t0;
         // sum acoustic+semantic (both are 1536-dim, connector already applied)
-        for (int f = 0; f < FRAMES_PER_WINDOW; f++)
+        for (int f = 0; f < win_frames; f++)
             for (int d = 0; d < n_embd; d++)
                 speech_emb[f * n_embd + d] = afe[f * acoustic_dim + d] + sfe[f * semantic_dim + d];
 
@@ -639,7 +674,7 @@ int main(int argc, char ** argv) {
         ggml_mm_set_phase(2);   // lm_prefill (shipped inline path)
         llama_token t_start = TOK_SPEECH_START, t_end = TOK_SPEECH_END, t_tce = TOK_TEXT_CHUNK_END;
         if ((pos = feed_token(lctx, t_start, pos)) < 0) { fprintf(stderr, "sp_start failed\n"); return 1; }
-        if ((pos = feed_embeds(lctx, speech_emb.data(), FRAMES_PER_WINDOW, n_embd, pos, params.n_batch)) < 0) {
+        if ((pos = feed_embeds(lctx, speech_emb.data(), win_frames, n_embd, pos, params.n_batch)) < 0) {
             fprintf(stderr, "frames failed\n"); return 1;
         }
         if ((pos = feed_token(lctx, t_end, pos)) < 0) { fprintf(stderr, "sp_end failed\n"); return 1; }

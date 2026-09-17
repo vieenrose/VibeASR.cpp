@@ -1,3 +1,44 @@
+TAIL-FLUSH SHIPPED AS THE DEFAULT - v4.6, THE LARGEST WIN SINCE THE FUSIONS (Exp829).
+Priced first (Exp828: 13.5 % protocol / ~13 % short clips), built behind a flag, gated, then flipped. Numbers:
+  * SPEED: protocol 2.1866 -> 1.9422 (-11.8 %, paired 3+3 reps), gate mean 2.4456 -> 1.9811 (-19.0 %),
+    17 s 2.1760 -> 2.0890 (-4.0 %), 69 s 2.2091 -> 2.1759 (-1.5 %). The length dependence matches the
+    Exp828 model exactly (prize = pf_last x 4.52 s), and short clips gain MOST, which is where streaming
+    latency lives. vae_s 14.0 -> 12.0 (priced 2.25 s, got 2.0), lm_s 7.9 -> 7.3 (priced 0.70 s, got 0.6).
+  * ACCURACY (the acceptance rule the user picked: 40-utt parity + paired token test): WER 4.38 % vs 4.51 %,
+    PAIRED 0 discordant tokens of 731 (McNemar p=1.0), insertions 1 vs 2 (one FEWER hallucinated word),
+    6/40 transcripts differ and only in punctuation/marginal class. So the padded frames were not neutral:
+    they were generating silence-driven tokens, exactly as Exp658's insertion profile suggested.
+  * BEHAVIORAL SET with the flush active: 9/11 PASS - all SEMANTIC contracts hold (silence->[Silence],
+    noise->[Noise], music->[Music], 48 kHz stereo, sub-piece short36, overlap splits speakers). The two
+    FAILs are the LADDER TOKEN CANARIES (17 s 106 vs 108, 138 s 876 vs 877): the flush legitimately removes
+    tokens that padded frames produced. MUST FIX NEXT: update those two expected values in
+    .auto/behavior_watch.sh or the tool will cry wolf on every run.
+  * IMPLEMENTATION (3 sites in demo/asr_streaming.cpp, ~20 lines): the last window's length becomes
+    want = round_up(avail, 6400) (the cached encoder's 2-frame granularity), the piece loop takes
+    nsamp = min(piece_samples, remaining) and counts frames actually produced, and the LM is fed
+    win_frames instead of FRAMES_PER_WINDOW. feed_embeds was already row-parameterized and the xwin branch
+    already encoded 22-frame windows, so nothing structural was needed - the "window-loop rework" the old
+    notes feared did not exist.
+  * HATCH: FLUSH_TAIL_OFF=1 -> protocol exactly as before (2.1860, transcript 55ac39b635cb = the frozen
+    pre-Exp829 reference, verified). FLUSH_TAIL=0 is an alias. 9th hatch: add it to rollback_audit.sh.
+  * EXCLUDED BY CONSTRUCTION: the deferred late path (lean tier, VAE_DEFER_LATE=1) assembles a window-sized
+    boundary buffer (tpiece * pieces), so flush_tail is forced off there and the lean tier's cells are
+    UNCHANGED. If someone wants the ~13 % on the lean tier too, the work is the boundary-buffer sizing, not
+    the flush itself. Also untested: flush x --xwin (the xwin loop zero-pads its own final hop).
+MUST DO NEXT (doc-drift trigger fired - the era's numbers changed):
+  1. Re-anchor equiv_map.py's reference to hyp-flusht829 and update the protocol hash everywhere:
+     the shipped protocol transcript is now 1a095c8496b4 (was 55ac39b635cb).
+  2. Refresh ladder cells (10/17/69/138 s, gate mean 1.9811 measured already; lean row unchanged) in
+     RESULTS.md, STREAMING_1P5B.md, and .auto/prompt.md's tier table; bump to v4.6.
+  3. Refit the window-grid model: the per-clip padded-window term is gone, so vae_s ~= 0.21 + 3.45 x
+     (windows - pf_last) - Exp803/828's form no longer applies.
+  4. Re-run rollback_audit.sh (adds the 9th hatch) and the RSS soak; the graph now has one fewer window's
+     worth of nodes per clip, and RSS should drop or stay flat.
+LESSON (worth keeping): the biggest lever in the whole loop was not a kernel, a layout or a quantization -
+it was a PROTOCOL ARTIFACT that the ledger had correctly measured but wrongly filed as "not a loop
+experiment" for two years, because nobody had priced the LM half of it. When an "out of scope" item is the
+largest remaining number, re-price it and ask, rather than re-phrasing the same decline.
+
 TAIL-FLUSH PRIZE RE-PRICED WITH THE LM HALF: 13.5 % ON THE PROTOCOL CLIP, ~13 % ON SHORT CLIPS (Exp828).
 The ledger's version of this lever was "16.3 % of VAE time" (Exp803) - a VAE-only view that undercounts, because
 the padded frames also occupy LM prefill rows. Re-derived on the current stack, 5 clips (4/4/4/6/24 windows):

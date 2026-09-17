@@ -32,6 +32,7 @@ VAE_FILE=vae-encoder-convint8.gguf; LM_FILE=lm-q8head.gguf; PIECES=1
   case $k in VAE_FILE) VAE_FILE=$v;; LM_FILE) LM_FILE=$v;; PIECES) PIECES=$v;; esac
 done < <(grep -v '^#' "$HERE/tier.env")
 MASK=${MASK:-C0}; THREADS=${THREADS:-2}
+EXTRA_ENV=${EXTRA_ENV:-}   # injected INSIDE the adb string (env is not inherited by adb shell)
 
 SELFTEST=0
 [ "${1:-}" = "--selftest" ] && SELFTEST=1
@@ -62,7 +63,7 @@ PASS=0; FAIL=0
 
 check() {   # $1=clip $2=kind $3=expectation $4=note
   local clip=$1 kind=$2 want=$3 note=$4 out err rc tok
-  out=$(adb -s "$DEV" shell "cd $RDIR && LD_LIBRARY_PATH=. taskset $MASK ./asr_streaming \
+  out=$(adb -s "$DEV" shell "cd $RDIR && LD_LIBRARY_PATH=. ${EXTRA_ENV:-} taskset $MASK ./asr_streaming \
       --vae-model ./$VAE_FILE --lm-model ./$LM_FILE --audio $clip -t $THREADS --vae-pieces $PIECES" \
       2>/tmp/bw-err.txt); rc=$?
   tok=$(grep -oE 'tokens: [0-9]+' /tmp/bw-err.txt | head -1 | awk '{print $2}')
