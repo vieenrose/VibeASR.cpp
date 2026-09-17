@@ -1414,3 +1414,17 @@ b=0/c=2 of 731 (p=0.5) = output-equivalent. Shipped tier untouched (1.9278). Thr
 
 Still open after v4.6: RSS soak on the flushed graph (last one v4.5); `--xwin` under the flush (untested
 pairing); the rollback audit re-run with the 9th `flush_off` arm (tool updated, not yet re-run).
+
+## Exp832 — harness argv gap closed, `--xwin` re-characterized, flushed-graph soak PASS
+
+`bench_device.sh` could not pass CLI-only flags (fixed argv; `measure.sh` forwarded env only), so `--xwin`
+was unmeasurable through the harness and Exp825's numbers could not be re-run. Added `ARGS=` -> appended to
+argv; verified by output change (`1a16d2009cf7` vs default `1a095c8496b4`, `carry` banner present).
+
+Re-baseline: carry 10 s 2.3750 vs windowed 1.9354 = **+22.7 %** (documented +8.6 %), 138 s 2.3808 vs 2.24 =
++6.3 %. Carry did not regress (2.3735 vs 2.3789 in Exp825) - the windowed path got the flush and carry did
+not, because the flush lives in the windowed loop while the carry loop pads its final hop to 70,400 samples.
+Gap = work volume (1.23x samples encoded, 1.2x frames fed to the LM), not a stall. Carry is **483 MB lighter**
+(1708/1727 MB). Queued if carry ever matters: flush the carry loop (~5-6 % at 10 s).
+
+Soak on the flushed graph: 15 samples / 4.7 min, 2181.4 -> 2184.2 MB, HWM 2205.5, +0.05 MB/min, majflt 0 = PASS.

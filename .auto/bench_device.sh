@@ -8,7 +8,7 @@ VAE_FILE=${VAE_FILE:-vae-encoder-f16.gguf}
 # deliberate A/B (Exp808): otherwise the positional argument silently won and a -t sweep measured the
 # same configuration in both arms. Same convention as LM_FILE/VAE_FILE/MASK above.
 TH=${THREADS:-$2}
-taskset ${MASK:-C0} ./asr_streaming --vae-model ./$VAE_FILE --lm-model ./$LM_FILE --audio "$1" -t "$TH" --vae-pieces "$3" > "out-$4.log" 2> "err-$4.log" &
+taskset ${MASK:-C0} ./asr_streaming --vae-model ./$VAE_FILE --lm-model ./$LM_FILE --audio "$1" -t "$TH" --vae-pieces "$3" ${ARGS:-} > "out-$4.log" 2> "err-$4.log" &
 PID=$!
 echo $PID > "pid-$4.txt"
 MAJ0=$(awk '{print $12}' /proc/$PID/stat 2>/dev/null)
