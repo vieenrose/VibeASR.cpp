@@ -1532,3 +1532,17 @@ ALL_OFF +33.3 (differs). 10/14 arms byte-identical to the default.
    "hash=$(md5sum .auto/last_out.txt)" as the DEFAULT arm's hash, but last_out.txt holds the LAST arm run, so
    I was comparing the ct_block arm's output to the default's reference. In a multi-arm sweep, hash per-arm
    files or run the arm you care about alone.
+
+## Exp837 — m2's value is now ~0.3 % EVERYWHERE + guard rotation tracks the batch ship + harness gap fixed
+
+ * **m2 re-priced at the RAM-lean tier** (where the boundary batch is OFF, so the prefill really is 26 rows =
+   6x4+2 with a tail): GGML_MM_M2_OFF costs **+0.4 %** (3 reps, overlapping spread, 2.1125 -> 2.1217). Combined
+   with the shipped tier's +0.3 % (Exp836), m2 is no longer the ~1.8 % lever it was reported as at ship; the
+   two protocol changes since then (Exp829's flush -> final window is 9 rows; Exp835's batch -> full windows are
+   28 rows) removed most of the tail work it was patching. DECISION: keep the kernel - it is free and harmless -
+   but never quote 1.8 % again, and do not "clean it up" as if it were load-bearing either.
+ * **Guard rotation** (second same-domain 10 s slice, 55 tokens constant): 2.0228 vs anchor 1.8889 (+7.1 %), and
+   it moved -2.4 % from v4.6 while the protocol moved -2.6 %. This matters specifically because Exp835 shipped
+   on a PAIRED TEST rather than on byte-identity: the guard is independent evidence that its gain generalizes.
+ * Harness: `run_rtf_multi.sh`'s clip field was device-side only, so a host clip path failed loudly. Now it
+   pushes a local path and uses the basename (audited green after the change).

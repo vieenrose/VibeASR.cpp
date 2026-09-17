@@ -43,6 +43,13 @@ for r in $(seq 1 "$REPS"); do
   for arm in "$@"; do
     label=${arm%%|*}; rest=${arm#*|}
     IFS='|' read -r audio threads pieces envs <<< "$rest"
+    # Exp837: this field is a DEVICE-side path, so a host clip (e.g. .auto/assets/slice10b_24k.wav) used to
+    # fail loudly with "Failed to open WAV file". Accept host paths by pushing them once - the guard-clip
+    # rotation must be one command, or it gets skipped and the anti-overfit board goes stale.
+    if [[ "$audio" == */* && -f "$audio" ]]; then
+      adb -s $DEV push "$audio" "$RDIR/$(basename "$audio")" >/dev/null 2>&1 || { echo "ERROR: push failed: $audio" >&2; exit 2; }
+      audio=$(basename "$audio")
+    fi
     tag=$(echo "$label" | tr -cd 'A-Za-z0-9')$r
     adb -s $DEV shell "$DEF_ENV $envs sh $RDIR/bench_device.sh $audio $threads $pieces $tag" \
       > .auto/multi-run-$tag.txt 2>&1
