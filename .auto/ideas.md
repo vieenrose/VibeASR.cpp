@@ -1694,3 +1694,23 @@ independent instruments now agree, and the answer is "no headroom".
  * Method note: `mm_shape_micro` gained a mode, and piping its build through `head -5` SIGPIPE'd clang so the
    "successful" compile wrote a stale binary - `COMPILE rc=$?` said 0 only on the retry without the pipe. Same
    class as Exp835's rule: check the exit code, and do not pipe builds through head.
+
+## Exp844 — GUARD BOARD CURRENT (2.0036) + the two-state effect is NOT the reported CPU clock
+
+Guard rotation (second same-domain 10 s slice, 55 tokens, never optimized against): **2.0036** (3 reps) against
+the anchor's 1.8687 = +7.2 %, fully explained by its 16 extra decode tokens at the same VAE rate. History:
+2.4085 -> 2.3861 -> 2.3226 -> 2.0728 -> 2.0228 -> **2.0036**. Since Exp837 the guard moved **-0.95 %** and the
+anchor **-1.07 %** with NO shipped change in between - i.e. both clips drifted down together, which is the
+device-state effect from Exp841/843 showing up in both arms, not an improvement. That is the expected behaviour
+of an anti-overfit guard and worth stating: the guard's job is to move WITH the metric, not to be flat.
+
+ * **NEW STATE PROBE, NEGATIVE RESULT.** `run_rtf_multi.sh` now prints `cpu7_khz` per rep (start + per run) so a
+   future session can see the state instead of inferring it from clusters. It is NOT informative on this device:
+   every sample read **1,300,000 kHz** while `cpuinfo_max_freq` is **2,400,000** and `stats/total_trans` is
+   **1,429,272** - the governor is clearly transitioning, but `scaling_cur_freq` reports a constant that is
+   neither the peak nor a real-time reading, and `scaling_governor`/`scaling_max_freq`/`thermal_zone*` are not
+   readable at all. So keep using (a) `batt_temp_c` per run and (b) same-session interleaving as the state
+   controls; do not cite scaling_cur_freq as evidence of anything (its only value is detecting a cluster that
+   has been deliberately pinned low by an operator).
+ * Cross-session rule reconfirmed by this round: a ~1 % same-binary drift appears over hours, so any A/B must be
+   same-session; Exp841's resolution table (0.30 % at 3 reps) applies WITHIN a session only.

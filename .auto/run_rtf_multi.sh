@@ -37,6 +37,11 @@ TSV=.auto/multi-$$.tsv
 adb -s $DEV push .auto/bench_device.sh $RDIR/ >/dev/null 2>&1
 B=$(adb -s "$DEV" shell "dumpsys battery" | grep -oE 'temperature: [0-9]+' | grep -oE '[0-9]+' | head -1 | tr -d '\r')
 echo "note: batt_temp_c=$(python3 -c "print(round(${B:-0}/10,1))")"
+# Exp844: device STATE next to every measurement. Exp841/843 showed the same binary spans ~1 % of RTF across
+# boost/thermal states hours apart, which makes cross-session comparisons meaningless unless the state is
+# recorded. thermal_zone* is not readable on this device, so the observable is the big-core clock.
+cpufreq() { adb -s "$DEV" shell "cat /sys/devices/system/cpu/cpu7/cpufreq/scaling_cur_freq" 2>/dev/null | tr -d '\r'; }
+echo "note: cpu7_khz_start=$(cpufreq)"
 echo "note: tier from measure.sh = $DEF_LM + $DEF_VAE"
 
 for r in $(seq 1 "$REPS"); do
@@ -59,7 +64,7 @@ for r in $(seq 1 "$REPS"); do
     rss=$(grep -oE 'hwm_kb=[0-9]+' .auto/multi-run-$tag.txt | head -1 | cut -d= -f2)
     maj=$(grep -oE 'majflt_delta=-?[0-9]+' .auto/multi-run-$tag.txt | head -1 | cut -d= -f2)
     echo "$label"$'\t'"$rtf"$'\t'"$tok"$'\t'"${rss:-0}" >> "$TSV"
-    echo "ARM $label | rep=$r | rtf=$rtf | tokens=$tok | rss_kb=${rss:-?} | majflt=${maj:-?}"
+    echo "ARM $label | rep=$r | rtf=$rtf | tokens=$tok | rss_kb=${rss:-?} | majflt=${maj:-?} | cpu7_khz=$(cpufreq)"
   done
 done
 
