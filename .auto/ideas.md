@@ -1595,3 +1595,21 @@ CURRENT shipped output (`hyp-bound835`).
    instance of "the measurement you ran wasn't the measurement you meant", and a new sub-rule: **quote the unit
    with every distance** - files, whitespace tokens, hybrid tokens, or discordants are not interchangeable.
  Example change in the pair: `off` -> `oft` twice in one utterance (a real ASR confusion, 2 whitespace tokens).
+
+## Exp840 — LONG-RUN MEMORY AT v4.7: FLAT (and why a soak's first number is a trap)
+
+Steady-state **+0.18 MB/min** (18 samples, 69 s clip; band 2174.7-2198.0 MB; HWM +2.2 MB), 138 s peak 2206 MB with
+VmHWM flat from t~200 s, majflt 0 -> the boundary batch's one-time ~3 MB `chunk_emb` buffer does not leak.
+
+ * **The run first said +24.4 MB/min.** Mechanism of that false alarm: the weights are mmap'd and faulted in
+   lazily, so RSS RAMPS for the first windows while VmHWM is already flat - and because the pages are in the page
+   cache, **majflt stays 0**, so the usual "major faults mean paging" tell never fires. Any whole-run line fit on
+   such a series measures the ramp, not retention. `rss_soak.py` now reports full-range AND steady-state trends
+   (window = HWM >= 98 % of max AND RSS >= 95 % of median) with an explicit FLAT/GROWTH verdict.
+ * Controlled the way the loop requires: synthetic leak -> +40.0 MB/min; leak planted onto the recorded series ->
+   +40.2 MB/min. Same code, opposite data, opposite verdict, so the FLAT is a property of the data.
+ * **Truncated-view trap, 7th instance, this time against my own fixed tool**: `... | tail -12` cut the verdict
+   lines from the soak output and it briefly looked as if the fix printed nothing. Rule: when the answer may be
+   above the cut, redirect the full output to a file and grep it - never pipe through head/tail.
+ * Free ladder cross-checks from the same runs: 69 s 2.1467 (cell 2.14) and 138 s 2.1984 / 876 tokens (cell 2.20 /
+   canary 876), with prefill 52.1 s and decode 89.5 s on 138 s matching Exp811's per-position decode law.
