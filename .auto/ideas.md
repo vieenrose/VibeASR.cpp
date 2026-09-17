@@ -1507,3 +1507,28 @@ decodes. Prefill 3.8 -> 3.2 s; shipped tier 1.9312 -> **1.8813** (-2.6 %), gate 
  * Build hygiene: my first "result" for this change measured the PREVIOUS binary because the build had FAILED on
    a non-public ggml symbol and I trusted a log tail instead of the exit code. Rule: check `BUILD rc` or the
    mtime guard, never a log tail.
+
+## Exp836 — ROLLBACK LADDER AT v4.7 (14 arms) + WHY Exp835 BEAT ITS PREDICTION
+
+`BOUND_BATCH_OFF` added as the 10th hatch (also added to the stack_off/ALL_OFF lists, or those arms stop meaning
+"all fusions off"). Default 1.8894, 2 reps/arm, per-window transcript hash. Cost of turning each OFF:
+dw_conv1d +8.6 | gelu_bias +5.1 | gelu_batch +4.0 | dw_lpad +3.0 | **bound_batch +2.5** | ls_fuse +1.2 |
+norm_fuse +1.1 | mm_m2 +0.3 | dw_axpy +0.0 (inert, 4th confirmation) | flush_off +13.6 (differs: the padded
+protocol, by design) | ct_block +24.2 (differs: layout revert = system change) | stack_off +25.5 (identical) |
+ALL_OFF +33.3 (differs). 10/14 arms byte-identical to the default.
+
+ * **m2 got cheaper: +0.7 % -> +0.3 %.** The 28-row prefill batch is an exact multiple of 4, so the window
+   prefill no longer leaves a 2-column GEMM tail (26 = 6x4+2 did). Exp835 therefore partly SUBSUMED the m2
+   lever - and that is why the batch measured -2.6 % when Exp834's isolated-decode arithmetic predicted -2.0 %.
+   Standing rule this generalizes: when a change alters a batch's ROW COUNT, re-check every kernel lever whose
+   benefit depends on row-count divisibility; fast paths overlap in both directions (Exp824's nesting lesson
+   was about fusions hiding each other; this is a shape effect hiding a kernel lever).
+ * **The layout-revert arm is not deterministic in TOKEN COUNT**: VAE_CT_BLOCK_OFF gave 37 tokens in one sweep
+   and 38 in the next, same binary and env. So do not describe it as "deterministic but differs" in a runbook.
+ * HYPOTHESIS I CORRECTLY RETRACTED: I read that 37 as proof that the batch changes output under the [T,C]
+   layout and tightened the `bound_on` predicate accordingly. A paired test (ct_block with batch ON vs OFF:
+   38 and 38 tokens) refuted it, so the tightening was reverted - scoping must rest on a verified difference.
+ * METHODOLOGY TRAP (4th instance of the Exp818/826 class): after a multi-arm sweep I quoted
+   "hash=$(md5sum .auto/last_out.txt)" as the DEFAULT arm's hash, but last_out.txt holds the LAST arm run, so
+   I was comparing the ct_block arm's output to the default's reference. In a multi-arm sweep, hash per-arm
+   files or run the arm you care about alone.
