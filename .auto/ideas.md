@@ -1428,3 +1428,30 @@ Gap = work volume (1.23x samples encoded, 1.2x frames fed to the LM), not a stal
 (1708/1727 MB). Queued if carry ever matters: flush the carry loop (~5-6 % at 10 s).
 
 Soak on the flushed graph: 15 samples / 4.7 min, 2181.4 -> 2184.2 MB, HWM 2205.5, +0.05 MB/min, majflt 0 = PASS.
+
+## Exp833 — LM-INPUT DEDUPLICATION: CLOSED BY GATE, DO NOT RETRY
+
+The windowed schedule advances 22 frames per hop but encodes and feeds 26, so the first 4 feature rows of every
+window after the first describe audio the LM was already given (they were the previous window's tail): the
+protocol clip feeds **87 embeddings for 75 unique frames**. Skipping them is arithmetically complete - each
+global frame is fed exactly once, in order, and the *encoder* overlap (real convolutional context) is kept.
+Measured speed: −0.77 % paired (prefill 3.8 -> 3.4 s = the predicted row-count saving, offset by +3 decode
+tokens on the protocol clip) - below the bar even if accuracy were neutral.
+
+**Accuracy: catastrophic. 40-utt gate WER 18.33 % (hybrid) / 20.11 % (jiwer path) vs 4.38 % / 4.68 %; paired
+b=2 / c=105, McNemar p = 7e-29.** The failure mode is DELETIONS (the LM stops emitting text), distributed
+across utterances rather than collapsing any single one (0/40 files lost >50 % of their characters), so it is
+early chunk termination, not garbling. Conclusion: **the full 26-frame chunk structure of the LM input is
+load-bearing** - the model's chunk-boundary behavior depends on seeing a whole 26-frame window per chunk, so
+those 4 rows are not redundant work even though they describe already-seen audio. Feature-level context
+arguments do not predict this; it is measured.
+
+TRAP WORTH REMEMBERING: the change made the metric BETTER at every length (gate mean 1.9811 -> 1.9262, −2.8 %)
+**because transcribing less audio takes less time.** A speed loop that skipped the accuracy gate would have
+shipped a 14 pp WER regression as an improvement. Any "removed work" lever must be gated before its speed
+number is believed - and for LM-input changes, deletions are the failure mode the protocol clip hides (the
+protocol clip emitted 3 MORE tokens here).
+
+Also verified: the `FEED_DEDUP_OFF` hatch reproduced the frozen reference exactly (1a095c8496b4) before the
+revert, so the experiment's provenance was sound - the hypothesis was simply wrong. Reverted in-tree; the
+shipped protocol is unchanged.
