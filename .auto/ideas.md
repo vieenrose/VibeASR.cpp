@@ -1482,3 +1482,28 @@ at compute time, so feeding the pre-converted F32 row should be **bit-identical*
 protocol transcript hash AND the 40-utt paired test, because if the model applies token-type embeddings or
 embedding scaling, the equivalence breaks exactly where Exp833 showed the chunk contract is fragile.
 Do NOT try to shorten the input instead: Exp833 measured that dropping rows from the chunk costs 14 pp WER.
+
+## Exp835 — SINGLE-PASS BOUNDARY-TOKEN PREFILL, SHIPPED (v4.7, 10th hatch `BOUND_BATCH_OFF`)
+
+Exp834's priced lever, built. Vendored addition: `llama_token_embd_row(model, id, dst)` (reads one row of
+`token_embd`, converts with `ggml_get_type_traits(type)->to_float` - the SAME routine `ggml_get_rows_q` uses).
+Demo: one 28-row embedding batch `[embd(speech_start), frames x win_frames, embd(speech_end)]` replaces three
+decodes. Prefill 3.8 -> 3.2 s; shipped tier 1.9312 -> **1.8813** (-2.6 %), gate mean 1.9811 -> **1.9329**.
+
+**Durable facts:**
+ * An isolated 1-row `llama_decode` costs 83 ms here vs 34 ms/row batched - 2.4x. Standing rule: never leave a
+   single-row decode in a hot loop if its row can join a batch.
+ * Batching rows moves them from the gemv path to the gemm path, which is arithmetically equal but **not
+   bit-identical**. So "verify by transcript hash" is still the right test, but a mismatch here does not mean a
+   bug: the gate showed 38/40 identical and b=1/c=2 of 731 (p=1.0), i.e. marginal-class equivalence. This is the
+   first shipped speedup whose equivalence rests on the paired test rather than on identity - state that in any
+   runbook so a future session does not hunt for a phantom bug.
+ * The end-token row index must follow `win_frames`, not the constant 26: with the tail flush the final window is
+   short, and a fixed index fed garbage (57 tokens, hash changed). Same lesson as Exp830 in a new place.
+ * Scoped to `pieces==1 && !defer && !xwin` (the shipping config, the Exp821 precedent). The deferred/lean path
+   flips one token under the batch - unexplained, and its features already differ from the shipped path, so it
+   keeps the three-decode path. QUEUED if the lean tier ever matters: find why it flips (start by feeding the
+   deferred path's frames through the batch with VAE_LATE_SPLIT unchanged and diff one utterance).
+ * Build hygiene: my first "result" for this change measured the PREVIOUS binary because the build had FAILED on
+   a non-public ggml symbol and I trusted a log tail instead of the exit code. Rule: check `BUILD rc` or the
+   mtime guard, never a log tail.

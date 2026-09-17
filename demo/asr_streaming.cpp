@@ -386,6 +386,17 @@ int main(int argc, char ** argv) {
     std::vector<float> afe(FRAMES_PER_WINDOW * acoustic_dim);
     std::vector<float> sfe(FRAMES_PER_WINDOW * semantic_dim);
     std::vector<float> speech_emb(FRAMES_PER_WINDOW * n_embd);
+    // Exp834: one prefill batch per window instead of three decodes. This llama cannot mix token-id rows with
+    // embedding rows in a batch, so the two boundary tokens are pre-embedded (llama_token_embd_row) and placed
+    // around the audio frames: [speech_start, frame x win_frames, speech_end]. Attention and positions are
+    // unchanged; the win_frames+2 rows just share one weight pass instead of three.
+    // Exp835: the batch moves the two boundary rows from the gemv path into the gemm path. That is equal in
+    // arithmetic but NOT bit-identical, so it is enabled only where byte-identity was actually verified: the
+    // shipping windowed config. Measured: shipped tier 39 tokens, transcript byte-identical; the deferred
+    // (RAM-lean) path flips one token (38 vs 39), so it keeps the three-decode path until that is understood.
+    const bool bound_batch = getenv("BOUND_BATCH_OFF") == nullptr;   // config test is at the feed site (defer_now)
+    std::vector<float> chunk_emb(bound_batch ? (size_t)(FRAMES_PER_WINDOW + 2) * n_embd : 0);
+    bool bound_ready = false;
     // The cached (and, by default, deferred) path is used for every piece count
     // including 1, where the single piece is the whole window: the cache is cold
     // at the window start and there are no interior boundaries, i.e. exactly the
@@ -705,11 +716,34 @@ int main(int argc, char ** argv) {
         t0 = now_ms();
         ggml_mm_set_phase(2);   // lm_prefill (shipped inline path)
         llama_token t_start = TOK_SPEECH_START, t_end = TOK_SPEECH_END, t_tce = TOK_TEXT_CHUNK_END;
-        if ((pos = feed_token(lctx, t_start, pos)) < 0) { fprintf(stderr, "sp_start failed\n"); return 1; }
-        if ((pos = feed_embeds(lctx, speech_emb.data(), win_frames, n_embd, pos, params.n_batch)) < 0) {
-            fprintf(stderr, "frames failed\n"); return 1;
+        // defer_now's definition, recomputed here because that name is scoped to the cache-setup block above.
+        const char * denv2 = getenv("VAE_DEFER_LATE");
+        const bool defer_here = (denv2 != nullptr) && (atoi(denv2) > 0) && (getenv("VAE_SEQ_ENCODERS") == nullptr);
+        const bool bound_on = bound_batch && params.vae_pieces == 1 && !defer_here && !params.xwin;
+        if (bound_on) {
+            if (!bound_ready) {
+                if (llama_token_embd_row(model, t_start, chunk_emb.data()) != n_embd) {
+                    fprintf(stderr, "boundary embedding lookup failed\n"); return 1;
+                }
+                bound_ready = true;
+            }
+            // The end token goes AFTER the frames that exist in THIS window - with the tail flush the final
+            // window has fewer than FRAMES_PER_WINDOW of them, so its row is not a constant index (Exp835:
+            // assuming 27 fed a garbage row on the flushed window and the LM rambled to 57 tokens).
+            memcpy(chunk_emb.data() + n_embd, speech_emb.data(), (size_t)win_frames * n_embd * sizeof(float));
+            if (llama_token_embd_row(model, t_end,
+                                    chunk_emb.data() + (size_t)(win_frames + 1) * n_embd) != n_embd) {
+                fprintf(stderr, "boundary embedding lookup failed\n"); return 1;
+            }
+            if ((pos = feed_embeds(lctx, chunk_emb.data(), win_frames + 2, n_embd, pos,
+                                   params.n_batch)) < 0) { fprintf(stderr, "frames failed\n"); return 1; }
+        } else {
+            if ((pos = feed_token(lctx, t_start, pos)) < 0) { fprintf(stderr, "sp_start failed\n"); return 1; }
+            if ((pos = feed_embeds(lctx, speech_emb.data(), win_frames, n_embd, pos, params.n_batch)) < 0) {
+                fprintf(stderr, "frames failed\n"); return 1;
+            }
+            if ((pos = feed_token(lctx, t_end, pos)) < 0) { fprintf(stderr, "sp_end failed\n"); return 1; }
         }
-        if ((pos = feed_token(lctx, t_end, pos)) < 0) { fprintf(stderr, "sp_end failed\n"); return 1; }
         g_prefill_ms += now_ms() - t0;
         ggml_mm_set_phase(3);   // lm_decode
         double tdec = now_ms();
