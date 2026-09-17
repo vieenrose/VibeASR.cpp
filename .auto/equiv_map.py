@@ -47,6 +47,9 @@ def main():
     out = None
     if '-o' in args:
         i = args.index('-o'); out = args[i + 1]; del args[i:i + 2]
+    for a0 in args:  # Exp846: never interpret a flag as the reference path
+        if a0.startswith('-'):
+            sys.exit("usage: equiv_map.py [reference-dir] [-o out.md]  (unknown flag: %s)" % a0)
     ref = args[0] if args else os.path.join(EVAL, 'hyp-bound835')  # v4.7 shipped output (Exp835 batch)
     # Re-anchored in Exp839: the boundary-token batch moved the shipped output by 11 hybrid tokens / 3
     # correctness-discordants vs hyp-flusht829 (kernel-path change, gemv->gemm), so with the OLD default every
@@ -58,6 +61,8 @@ def main():
     refs = json.load(open(os.path.join(EVAL, 'refs.json'), encoding='utf-8'))
     names = sorted(refs)
     A = stream(ref, refs, names)
+    if not A:  # Exp846: an empty reference makes EVERY distance meaningless (it reads as 'all changed')
+        sys.exit("ERROR: reference %r produced 0 tokens - wrong path or missing transcripts" % ref)
     stampf = os.path.join(ref, 'run-info.log')
     stamp = open(stampf).read().strip().splitlines()[0] if os.path.exists(stampf) else 'UNSTAMPED'
 
