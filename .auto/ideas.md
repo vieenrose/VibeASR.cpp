@@ -1546,3 +1546,26 @@ ALL_OFF +33.3 (differs). 10/14 arms byte-identical to the default.
    on a PAIRED TEST rather than on byte-identity: the guard is independent evidence that its gain generalizes.
  * Harness: `run_rtf_multi.sh`'s clip field was device-side only, so a host clip path failed loudly. Now it
    pushes a local path and uses the basename (audited green after the change).
+
+## Exp838 — LEAN-TIER BOUNDARY BATCH: PRICED (-2.8 %), DECLINED ON THE CANARY CLASS. AXIS CLOSED.
+
+The last in-loop speed item. With a measurement-only force knob (removed after this run, per Exp833's rule), the
+RAM-lean tier goes **2.1121 -> 2.0535 (-2.8 %)**, prefill 3.8 -> 3.3 s. The prize was real.
+
+ * **Mechanism of its one-token divergence is now known, and it is the same variable as Exp836/837.** Without the
+   batch the prefill is 26 rows = 6x4+2, so the two control-token rows run through the m2 tail sub-path; with it
+   the batch is 28 = 7x4 and they run in the main 4-column group. Different accumulation order, so near-ties in
+   the LM's argmax move. On the shipped tier nothing changes (it is already 28 rows, hence byte-identity), which
+   is why this only ever showed up at the lean tier.
+ * **Evidence both ways, stated honestly.** On the 57 s bilingual probe - the loop's only real zh+en audio asset -
+   the deferred-path batch produces a **byte-identical transcript** (1055 chars; WER 14.43 %, en 10.7 % / zh
+   15.9 % in both arms, 171 tokens both). So there is NO measurable accuracy effect. But on the protocol clip the
+   zh canary's proper-noun run changes `YYY` -> `YyY` (twice), the exact symptom string Exp499 attributed to the
+   blocked-int8 kernel path, and Exp626's ruling makes that class a stop signal.
+ * **Why byte-identity was the right test here**: the 40-utt gate is English-only, so it is structurally blind to
+   this failure mode. A clean paired gate test would have proven nothing about the only thing that moved.
+ * DECISION: not shipped, knob removed rather than defaulted off. This is a RULE-BASED decline, not a measured
+   regression - if a zh accuracy set of >=400 tokens is ever built (the ledger's own bar for zh claims, Exp655),
+   the 2.8 % could be bought honestly, and the implementation is one line of predicate.
+ * Consequence for the loop: the boundary-batch axis is closed at both tiers (shipped: shipped; lean: declined),
+   and so is the speed board - every component is at a measured ceiling and both work-removal levers are spent.
