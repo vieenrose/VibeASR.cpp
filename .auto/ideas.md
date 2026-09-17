@@ -1714,3 +1714,23 @@ of an anti-overfit guard and worth stating: the guard's job is to move WITH the 
    has been deliberately pinned low by an operator).
  * Cross-session rule reconfirmed by this round: a ~1 % same-binary drift appears over hours, so any A/B must be
    same-session; Exp841's resolution table (0.30 % at 3 reps) applies WITHIN a session only.
+
+## Exp845 — GATE REGRESSION: output is STATE-INVARIANT (b=0/c=0, CI [0,0]); ladder re-stamped same-session; lean penalty corrected to +11.8 %
+
+ * 40-utt gate re-run 5 rounds and one device-state change after the Exp835 ship: **WER 4.51 % unchanged**, and
+   paired against the ship-time set `hyp-bound835`: **b=0 / c=0 of 731, bootstrap CI exactly [0, 0]**. Two things
+   follow: the shipped config is deterministic across sessions/states (the ~1 % drift is timing only), and
+   Exp835's acceptance - which rested on a paired test instead of byte-identity - now has a second independent
+   run agreeing with it.
+ * **Ladder discipline rule (new).** The shipped row now reads 1.868 / 2.037 / 2.122 / 2.183 + gate mean 1.9147
+   in ONE session; the previous set (1.88 / 2.05 / 2.14 / 2.20 / 1.9329) was ~0.9 % higher in a warmer state with
+   the SAME binary and identical output. Ladder cells are therefore only mutually comparable within a session:
+   stamp the session, and when state drift is found, re-measure the whole row rather than one cell - otherwise
+   the ratio between two cells silently mixes two states.
+ * **CORRECTED, and it matters for product decisions: the RAM-lean tier costs +11.8 % same-session**
+   (2.0998 vs 1.8780), not the +6.3 % the ladder carried. Mechanism: the tail flush helped both tiers roughly
+   equally, but the boundary-token batch shipped on the p1 tier ONLY (Exp838/842 deliberately hold it at lean for
+   cross-tier parity), so lean lost a 2.6 % lever it used to have. Turning it on would restore the gap to ~+9 %
+   (Exp842 measured lean-batched 2.0535) - the accuracy evidence for that is already complete.
+ * Harness note: `run_rtf_multi`'s clip field with a bogus local path (`.auto/../chat17.wav`) fails as a device
+   path and the arm reports FAILED - loud, good. The 17 s clip's device name is `chat17.wav`.
