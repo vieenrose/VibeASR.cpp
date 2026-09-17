@@ -25,6 +25,7 @@ ARMS=(
   "dw_axpy|VAE_DW_AXPY_OFF=1"          # Exp664 fused dw-tap axpy -> per-tap mul+add chain
   "mm_m2|GGML_MM_M2_OFF=1"             # Exp765 two-column GEMV tail -> one column per weight pass
   "ct_block|VAE_CT_BLOCK_OFF=1"        # Exp586 channels-first block layout -> [T,C] legacy path
+  "flush_off|FLUSH_TAIL_OFF=1",                                                       # Exp830: a PROTOCOL switch, not a fusion - must reproduce the pre-Exp829 hash 55ac39b635cb
   "stack_off|VAE_DW_CONV1D_OFF=1 VAE_GELU_BIAS_OFF=1 VAE_NORM_FUSE_OFF=1 GGML_GELU_BATCH_OFF=1 VAE_LS_FUSE_OFF=1 VAE_DW_AXPY_OFF=1 GGML_MM_M2_OFF=1 VAE_DW_LPAD_OFF=1"  # Exp824: the honest "what does the fusion stack buy" arm - everything EXCEPT the layout revert, so it stays output-preserving
   "ALL_OFF|VAE_DW_CONV1D_OFF=1 VAE_GELU_BIAS_OFF=1 VAE_NORM_FUSE_OFF=1 GGML_GELU_BATCH_OFF=1 VAE_LS_FUSE_OFF=1 VAE_DW_AXPY_OFF=1 GGML_MM_M2_OFF=1 VAE_DW_LPAD_OFF=1 VAE_CT_BLOCK_OFF=1"
 )
