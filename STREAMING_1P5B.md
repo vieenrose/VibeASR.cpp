@@ -76,6 +76,12 @@ vs 12.5 GB for PyTorch CPU fp32 and 5.5 -> 15.5 GB for offline BitNet on long fi
   ~700 MB/piece materialising-op total; RESHAPE/PERMUTE are views and cost
   nothing), `VAE_CACHE_TRACE=1` (per-site checksums),
   `VAE_DUMP_FRAMES=<prefix>` (output frames), `VAE_DUMP_SITE=<sN|all>` (site inputs).\n
+**Quote WER with its tool.** Two scorers disagree slightly on the 40-utt gate because their error accounting differs on
+1-2 of 731 token alignments: `score_hyp.py` implies a 726-token reference (4.68 %) where `.auto/compare_arms.py`
+uses 731 (4.65 %), with identical S+D+I. Convention: **absolute** accuracy numbers come from `score_hyp.py`,
+**between-system** claims come from `compare_arms.py` (paired, McNemar + bootstrap), and the two are never mixed in
+one sentence. Re-deriving a scorer would re-quote every historical number, so this stays a quoting rule (Exp847).
+
 ## Reproduce & verify (Exp513)
 
 Both deployed artifacts are **bit-exactly reproducible** from `models-pt` with
