@@ -1613,3 +1613,24 @@ VmHWM flat from t~200 s, majflt 0 -> the boundary batch's one-time ~3 MB `chunk_
    above the cut, redirect the full output to a file and grep it - never pipe through head/tail.
  * Free ladder cross-checks from the same runs: 69 s 2.1467 (cell 2.14) and 138 s 2.1984 / 876 tokens (cell 2.20 /
    canary 876), with prefill 52.1 s and decode 89.5 s on 138 s matching Exp811's per-position decode law.
+
+## Exp841 — NOISE FLOOR MEASURED ON THE CURRENT STACK: sigma 0.19 %, and it is TWO-STATE
+
+8 interleaved reps of ONE binary on the protocol clip: mean **1.8851**, **sd 3.5 ms = 0.19 %**, range 1.8802-1.8886
+(0.45 %). This supersedes the 0.49 % figure quoted since Exp662 (v3.x stack, 12 consecutive runs, so it folded in
+thermal drift).
+
+ * **The spread is not gaussian.** The 8 values split into two groups - 1.8811 (n=3) and 1.8875 (n=5) - separated
+   by 6 ms (0.34 %), with WITHIN-group sd of 0.05-0.08 %. So a run is highly repeatable inside a boost/thermal
+   state and the run-to-run spread is mostly a two-state effect. Practical consequence: consecutive-run A/B is
+   biased by which state each arm lands in; interleaving (what `run_rtf_multi.sh` does) is what makes a sweep
+   trustworthy, and more reps buy resolution but not state coverage.
+ * **Resolution table** (95 %, two-sided, n reps per arm; conservative range-based figure in brackets):
+   n=1 -> 0.52 % [0.45 %], n=2 -> 0.37 % [0.32 %], n=3 -> 0.30 % [0.26 %].
+ * What this does to existing verdicts:
+   - every shipped keep (0.8-11.8 %) is 4-40x the resolution -> none is at risk from noise;
+   - `dw_axpy` +0.0 % stays "inert" (far below resolution AND below any plausible effect);
+   - **m2's +0.3 % sits AT the limit**: "inside noise" (Exp837 wording) was slightly too strong, corrected in
+     RESULTS.md to "honest range 0.0-0.4 %". Same conclusion (not worth removing, not load-bearing), better label.
+   - the 2 % shipping bar is ~7x the 3-rep resolution: kept deliberately, because transcript-level acceptance is
+     the binding constraint, not timing.
