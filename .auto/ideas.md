@@ -1749,3 +1749,26 @@ of an anti-overfit guard and worth stating: the guard's job is to move WITH the 
    becomes the product default, in which case re-measure its 4-length ladder.
  * Shipped tier's zh held-out transcript is now archived (`hyp-stream/zh846-shipped-p1.txt`) - the reference that
    makes future cross-tier zh claims computable without new device time.
+
+## Exp847 — LEAN ROW RE-STAMPED (rule applied to myself) + the long-form "tier divergence" is ORTHOGRAPHIC
+
+ * Rule from Exp845 applied the very next round: the RAM-lean row had mixed provenance, so it was re-measured as a
+   ROW in one session: **2.098 / 2.259 / 2.334 / 2.398** (10/17/69/138 s, RSS 1752-1766 MB), gate mean **2.1258**,
+   WER 4.65 %. All ~1 % below the old cells = state drift, same binary.
+ * Determinism: lean today is **byte-identical to Exp830** (b=0/c=0 of 731, CI [0,0], same stamped config), and
+   cross-tier vs shipped-now is **b=0/c=1 of 731** (CI [-0.41,+0.00] pp) - mirrors Exp839's b=1/c=0 correctly.
+ * **Long-form parity, resolved.** The tiers' *token counters* differ by ~3 % on 69 s (446 vs 432), which reads
+   like a semantic divergence. Diffing the TEXT: **11 differing spans in 306 words, all orthographic** -
+   `' cause` vs `because` (a contraction the deferred path normalizes to the full word), `had...` vs `had`,
+   `for.` vs `for`, `know.` vs `know,`, one capitalization. Zero repeated 10-grams in either. The counter delta is
+   a **subword-count artifact** of those choices (2 tokens vs 1), not different understanding. Standing rule: to
+   characterize an output difference, diff the text; a token-count delta is a proxy that can mislead by ~15x here.
+ * WER TOOL DISAGREEMENT (documented, not fixed): score_hyp implies a 726-token reference, compare_arms uses 731,
+   with identical S+D+I - so the same transcripts read 4.68 % vs 4.65 %. Convention now written into
+   STREAMING_1P5B.md: absolutes from score_hyp, between-system claims from compare_arms, never mixed. "Fixing" a
+   scorer would re-quote every historical number (Exp654 lesson), so this is a quoting rule.
+ * Harness: `measure.sh --clip` needs a HOST path (a bare device name errors loudly - good), so `chat69.wav` is
+   now mirrored in `.auto/assets/` (md5 cb919d2dd8f2003169ef66257fd362b7, 3,311,576 B) after pulling from
+   `/data/local/tmp/vibeasr`. Two near-misses avoided by reflexes this round: my `cp` of `last_out.txt` after an
+   instantly-failed run captured a STALE transcript (caught because both files were the same suspicious size), and
+   the sweep's `multi-run-*.txt` files are 73-byte summary tails, never transcripts (Exp671, third encounter).

@@ -415,10 +415,11 @@ LM n_embd=1536 n_vocab=151936
 Prompt: 31 tokens
 Windows: 24 (window=83200 hop=70400)
 
+note: final-window flush ACTIVE (last window encodes only real frames)
 VAE pieces: 13 x 6400 samples (2 frames each) [streaming cache]
 
 
 ========================================
- Audio: 68.99s | chunks: 24 | tokens: 432 | RTF: 2.4198
- load: 1.2s | VAE: 97.1s (ac 96.5s, sem 96.2s) | LM: 69.8s (prefill 28.0s, decode 41.7s) | total: 169.2s
+ Audio: 68.99s | chunks: 24 | tokens: 432 | RTF: 2.3335
+ load: 1.2s | VAE: 93.8s (ac 93.1s, sem 92.9s) | LM: 67.2s (prefill 26.8s, decode 40.4s) | total: 163.2s
 ========================================
