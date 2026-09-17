@@ -1634,3 +1634,31 @@ thermal drift).
      RESULTS.md to "honest range 0.0-0.4 %". Same conclusion (not worth removing, not load-bearing), better label.
    - the 2 % shipping bar is ~7x the 3-rep resolution: kept deliberately, because transcript-level acceptance is
      the binding constraint, not timing.
+
+## Exp842 — LEAN-TIER BATCH RE-TESTED ON 468 REAL zh TOKENS: accuracy objection RESOLVED; still not shipped
+
+15 minutes of device time settled what Exp838 had to decide by rule. Two arms of the RAM-lean tier on
+`holdout_zh.wav` (213 s, 48 Common Voice zh-TW voices, 468 ref tokens, never optimized against):
+
+| | batch OFF (shipped lean) | batch ON |
+|---|---|---|
+| WER | 15.38 % (S=62 D=8 I=2) | **15.17 %** (S=61 D=8 I=2) |
+| paired | **b=2 / c=1, McNemar exact p=1.0**, bootstrap CI [+0.004, +0.011] on A-B || 
+| stream tokens | 641 | 655 |
+| protocol-clip RTF | 2.1121 | 2.0468 (-2.2 %) |
+
+ * **The accuracy objection is gone.** Three corpora now agree: zh held-out 468 tokens (p=1.0), the 57 s bilingual
+   probe (byte-identical, Exp838), and the English 40-utt gate (b=1/c=2, p=1.0, Exp835). Insertions and deletions
+   are IDENTICAL (2/8 vs 2/8), so the 14 extra stream tokens are zh segmentation/folding, not hallucinations.
+   This meets the ledger's own >=400-token bar for zh claims (Exp655).
+ * **Why it is still not shipped.** The remaining blocker is a product invariant, not accuracy: with the batch ON,
+   the lean tier's PROTOCOL transcript changes from 39 to 38 tokens and its canary run becomes `YyY` while the
+   shipped tier (already batched) keeps `YYY` - so enabling it would introduce a NEW cross-tier text difference on
+   the loop's own metric clip, in exchange for 2.2 % on a tier that is not the loop's metric, plus a full re-
+   measurement of that tier's cells (~45 min). Cross-tier parity is worth more here than 2.2 % of a non-metric tier.
+ * **Standing statement for the runbook:** the lean tier's batch is now "shippable on evidence, held for parity".
+   If the lean tier ever becomes product-critical, flip the predicate (`params.vae_pieces == 1` -> drop it and the
+   defer test), take the 2.2 %, and re-measure the tier's ladder + gate mean; the accuracy work is already done.
+ * Method: the force knob was proven live BEFORE the long arms (38 tokens vs the 39 reference on the protocol clip)
+   - Exp764's rule, and it mattered: my first build failed to compile at all (BUILD rc 2 from a redeclared bool),
+   so without the exit-code check I would have run 16 minutes of both arms on the previous binary.
