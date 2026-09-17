@@ -98,9 +98,9 @@ check short36.wav        words     ""                "sub-piece clip: graceful o
 check twospk_overlap.wav split     ""                "overlapped 2 voices must split speakers (Exp609)"
 check twospk.wav         nofail    ""                "sequential voices: one tag = CLOSED Exp650, not a bug"
 check stream_10s_24k.wav tokens    39                "protocol clip token canary (ladder 10 s)"
-check chat17.wav         tokens    108               "ladder 17 s canary"
+check chat17.wav         tokens    106               "ladder 17 s canary (flushed; 108 padded)"
 check chat69.wav         tokens    446               "ladder 69 s canary"
-check chat138.wav        tokens    877               "ladder 138 s canary (marginal class: +/-1)"
+check chat138.wav        tokens    876               "ladder 138 s canary (flushed; 877 padded, +/-1)"
 
 echo "---- behavior_watch: $PASS pass, $FAIL fail  (selftest=$SELFTEST)"
 if [ "$SELFTEST" = "1" ]; then

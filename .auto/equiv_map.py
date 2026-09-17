@@ -16,9 +16,9 @@ Read this with two caveats:
   * sets recorded before Exp617 have no run-info.log stamp ('unstamped' below) - the distance is real,
     the recorded configuration is weaker evidence (Exp657).
   * the reference is whatever set you pass; distances are not comparable across different references.
-    The shipped reference today is hyp-gate791 (v4.4, 40/40 identical to hyp-norm784 and hyp-gatem2).
+    The shipped reference today is hyp-flusht (v4.6 tail flush; WER 4.38%, 0 discordant vs hyp-gate791).
 
-Usage:  python3 .auto/equiv_map.py [REF_DIR] [-o out.md]     # REF_DIR default: eval-librispeech/hyp-gate791
+Usage:  python3 .auto/equiv_map.py [REF_DIR] [-o out.md]     # REF_DIR default: eval-librispeech/hyp-flusht
 """
 import os, sys, glob, json, difflib, datetime
 
@@ -47,7 +47,7 @@ def main():
     out = None
     if '-o' in args:
         i = args.index('-o'); out = args[i + 1]; del args[i:i + 2]
-    ref = args[0] if args else os.path.join(EVAL, 'hyp-gate791')
+    ref = args[0] if args else os.path.join(EVAL, 'hyp-flusht')   # Exp829 flush-era reference
     refs = json.load(open(os.path.join(EVAL, 'refs.json'), encoding='utf-8'))
     names = sorted(refs)
     A = stream(ref, refs, names)

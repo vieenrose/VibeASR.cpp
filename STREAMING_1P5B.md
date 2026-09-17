@@ -451,3 +451,36 @@ RSS 2.44 GB flat, `-t 2`). 69 s WER 3.67%, identical parity class.
 (last dim % 32 == 0) to Q8_0, keeps conv kernels/bias/norms in F16/F32
 (Q8_0 blocks need 32-wide rows; depthwise kernels can't quantize).
 Below Q4 the LM falls off a cliff (+2pp at Q3, +3.5pp at Q2) — rejected.
+
+## 9. Final-window flush — v4.6 protocol change (Exp829/Exp830)
+
+The fixed-window protocol always zero-pads the **last** window to 26 frames, so the encoder spends most of
+that window's work on silence: `vae_s = 0.21 + 3.45 x windows` with `windows = ceil(len/70400)`, i.e. a 10 s
+clip encodes 332,800 samples for 240,000 of audio (1.387x). The last window now encodes only the real frames
+(rounded up to a 2-frame piece) and the LM is fed the frames that exist instead of 26.
+
+Measured (paired, interleaved reps):
+
+| length | padded | flushed | delta | padded fraction of last window |
+|---|---|---|---|---|
+| 10 s protocol | 2.1866 | **1.9395** | −11.8 % | 0.653 |
+| 17 s | 2.1760 | 2.0890 | −4.0 % | 0.193 |
+| 69 s | 2.2091 | 2.1759 | −1.5 % | 0.080 |
+| 138 s | 2.2542 | ~2.25 | ~0 % | 0.003 |
+| 40-utt gate mean | 2.4456 | **1.9811** | −19.0 % | ~0.65 per clip |
+
+**This is a protocol change, so it was gated, not just benchmarked.** 40-utterance gate: hybrid WER
+4.38 % vs 4.51 % (jiwer-path scorer 4.68 % vs 4.82 %), paired token test **0 discordant of 731**
+(McNemar p = 1.0), and one FEWER insertion. The direction is the point: the padded tail frames had been
+generating tokens from silence (17 s 108 → 106 tokens, 138 s 877 → 876), so removing them removed an
+insertion source rather than trading accuracy for speed. The gate improved MORE than the protocol clip,
+which is the opposite of an overfit signature.
+
+Hatch: `FLUSH_TAIL_OFF=1` restores the fixed-26-frame tail and reproduces the pre-Exp829 protocol exactly
+(2.1866, transcript `55ac39b635cb`), so the old benchmark remains reachable.
+
+The RAM-lean tier (`--vae-pieces 13` + `VAE_DEFER_LATE=1`) now flushes too (Exp830): its boundary buffers
+are allocated at full-window spacing and packed down to the frames actually present, so a short final window
+is self-consistent. Lean protocol cell 2.40 → **2.12** (−11.5 %) at ~1.75 GB, and its transcript is now
+byte-identical to the shipped tier's — the previously documented 1-token lean/shipped difference was the
+padded tail interacting with the deferred late path, not a real divergence.

@@ -18,6 +18,13 @@ tr = jiwer.Compose([jiwer.ToLowerCase(), jiwer.RemovePunctuation(), jiwer.Strip(
 
 keys = sorted(os.path.basename(p)[:-4] for p in glob.glob(os.path.join(root, f"hyp-{tag}", "*.txt")))
 keys = [k for k in keys if open(os.path.join(root, f"hyp-{tag}", k + ".txt"), encoding="utf-8").read().strip()]
+if len(keys) == 0:
+    # Exp830: a mistagged run used to fall through and score an empty/other set silently (the tag defaults to
+    # "a78"), which is how a typo in an acceptance test can look like a result. Refuse instead.
+    sys.exit(f"REFUSING: hyp-{tag} has no scorable transcripts (wrong tag? set was never written?)")
+if len(keys) != len(refs) and not os.environ.get("ALLOW_PARTIAL"):
+    sys.exit(f"REFUSING: hyp-{tag} has {len(keys)} of {len(refs)} utterances - partial set. "
+             f"Set ALLOW_PARTIAL=1 if a resumed/partial run is intended.")
 print(f"hyp-{tag}: {len(keys)}/{len(refs)} utterances scored")
 g = [refs[k] for k in keys]
 h = [norm(open(os.path.join(root, f"hyp-{tag}", k + ".txt"), encoding="utf-8").read()) for k in keys]

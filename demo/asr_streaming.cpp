@@ -416,11 +416,9 @@ int main(int argc, char ** argv) {
     // The deferred late path is excluded - it assembles a window-sized boundary buffer (tpiece * pieces), so a
     // short window needs its own shape handling; the lean tier therefore keeps the padded behaviour.
     const char * fl_env = getenv("FLUSH_TAIL");
-    const bool flush_tail = getenv("FLUSH_TAIL_OFF") == nullptr && (fl_env == nullptr || atoi(fl_env) > 0) &&
-                            (getenv("VAE_DEFER_LATE") == nullptr);
+    const bool flush_tail = getenv("FLUSH_TAIL_OFF") == nullptr && (fl_env == nullptr || atoi(fl_env) > 0);
     fprintf(stderr, "note: final-window flush %s\n", flush_tail ? "ACTIVE (last window encodes only real frames)"
-            : (getenv("FLUSH_TAIL_OFF") != nullptr ? "OFF (fixed 26-frame tail padding, pre-Exp829 protocol)"
-                                                   : "DISABLED (deferred late path needs whole-window buffers)"));
+                                                                : "OFF (fixed 26-frame tail padding, pre-Exp829 protocol)");
     const int piece_samples = WINDOW_SAMPLES / params.vae_pieces;
     const int piece_frames = FRAMES_PER_WINDOW / params.vae_pieces;
     fprintf(stderr, "VAE pieces: %d x %d samples (%d frames each)%s\n\n",
@@ -522,7 +520,9 @@ int main(int argc, char ** argv) {
         }
         memcpy(window.data(), audio.samples.data() + start, avail * sizeof(float));
         if (avail < want) memset(window.data() + avail, 0, (want - avail) * sizeof(float));
-        int win_frames = FRAMES_PER_WINDOW;
+        // A flushed final window has fewer frames than the protocol grid; the non-deferred branch overwrites
+        // this from the pieces it actually encoded, the deferred branch takes it from the window length.
+        int win_frames = flush_tail ? (want / 3200) : FRAMES_PER_WINDOW;
 
         double t0 = now_ms();
         ggml_mm_set_phase(1);   // vae: the shipped loop's own span (Exp816). NOTE the first attempt hooked
@@ -564,10 +564,24 @@ int main(int argc, char ** argv) {
                 std::vector<float> abnd, sbnd;
                 int64_t ashape[4] = {0,0,0,0}, sshape[4] = {0,0,0,0};
                 int64_t tpiece = 0, cch_a = 0, cch_s = 0;
-                for (int p = 0; p < params.vae_pieces; p++) {
+                // Exp830: the flush works here too. What made a short window impossible in this branch was
+                // the boundary SPACING: buffers were laid out with per-channel stride tpiece * pieces, but
+                // vae_encode_late_impl takes the stride from n_time_total and uses bshape[0] only to validate,
+                // so the right quantity is the number of frames PRESENT in this window - want/3200, which for
+                // a full window equals tpiece * pieces exactly. Nothing changes off the final window.
+                // NOTE the boundary is at the LATE-SPLIT stage, so its frame count per piece (ashape[0]) is
+                // downsampled relative to the audio grid - frames present cannot be derived from sample counts.
+                // Buffers are therefore allocated and written with the full-window spacing and packed down to
+                // the actual length afterwards (a few KB per channel), which keeps the full-window path
+                // byte-identical and makes a short final window self-consistent.
+                int64_t T_full = 0;      // boundary frames in a FULL window = tpiece * pieces (set at piece 0)
+                int64_t dfr = 0;                            // boundary frames written so far
+                int rem_defer = want;
+                for (int p = 0; p < params.vae_pieces && rem_defer > 0; p++) {
                     const float * piece = window.data() + p * piece_samples;
+                    const int nsamp = std::min(piece_samples, rem_defer);
                     float ac_ms = 0.0f, sem_ms = 0.0f;
-                    if (vae_encode_early_parallel_cached(vae_ctx, vcache, piece, piece_samples,
+                    if (vae_encode_early_parallel_cached(vae_ctx, vcache, piece, nsamp,
                                                          asct.data(), ashape, ssct.data(), sshape,
                                                          &ac_ms, &sem_ms) < 0) {
                         fprintf(stderr, "window %d piece %d: early encode failed\n", w, p);
@@ -589,34 +603,52 @@ int main(int argc, char ** argv) {
                                     (long long)sshape[0], (long long)sshape[1]);
                             return 1;
                         }
-                        const int64_t T_total = tpiece * params.vae_pieces;
-                        abnd.assign((size_t)T_total * cch_a, 0.0f);
-                        sbnd.assign((size_t)T_total * cch_s, 0.0f);
-                    } else if (ashape[0] != tpiece || ashape[1] != cch_a || sshape[1] != cch_s) {
+                        T_full = tpiece * params.vae_pieces;   // 16 boundary frames per 2-frame piece at p13
+                        abnd.assign((size_t)T_full * cch_a, 0.0f);
+                        sbnd.assign((size_t)T_full * cch_s, 0.0f);
+                    } else if (ashape[1] != cch_a || sshape[1] != cch_s) {   // frame count may shrink on a short final piece
                         fprintf(stderr, "window %d piece %d: boundary shape drift\n", w, p);
                         return 1;
                     }
-                    const int64_t T_total = tpiece * params.vae_pieces;
-                    // Strided tile: piece p's channel c row (tpiece contiguous
-                    // floats at c*tpiece) lands at offset c*T_total + p*tpiece.
+                    const int64_t tf = ashape[0];          // boundary frames this piece produced
+                    if (tf <= 0 || dfr + tf > T_full) {
+                        fprintf(stderr, "window %d piece %d: boundary frames %lld overflow %lld\n",
+                                w, p, (long long)tf, (long long)T_full);
+                        return 1;
+                    }
+                    // Strided tile: piece p's channel c row (tf contiguous floats at c*tf) lands at
+                    // offset c*T_win + dfr - the sequence is packed, so no hole is left by a short piece.
                     for (int64_t c = 0; c < cch_a; c++)
-                        memcpy(abnd.data() + (size_t)c * T_total + (size_t)p * tpiece,
-                               asct.data() + (size_t)c * tpiece, (size_t)tpiece * sizeof(float));
+                        memcpy(abnd.data() + (size_t)c * T_full + (size_t)dfr,
+                               asct.data() + (size_t)c * tf, (size_t)tf * sizeof(float));
                     for (int64_t c = 0; c < cch_s; c++)
-                        memcpy(sbnd.data() + (size_t)c * T_total + (size_t)p * tpiece,
-                               ssct.data() + (size_t)c * tpiece, (size_t)tpiece * sizeof(float));
+                        memcpy(sbnd.data() + (size_t)c * T_full + (size_t)dfr,
+                               ssct.data() + (size_t)c * tf, (size_t)tf * sizeof(float));
+                    dfr += tf;
+                    rem_defer -= nsamp;
+                }
+                if (dfr <= 0 || T_full <= 0) { fprintf(stderr, "window %d: no boundary frames\n", w); return 1; }
+                if (dfr < T_full) {          // flushed final window: re-space each channel to length dfr
+                    for (int64_t c = 1; c < cch_a; c++)
+                        memmove(abnd.data() + (size_t)c * dfr, abnd.data() + (size_t)c * T_full,
+                                (size_t)dfr * sizeof(float));
+                    for (int64_t c = 1; c < cch_s; c++)
+                        memmove(sbnd.data() + (size_t)c * dfr, sbnd.data() + (size_t)c * T_full,
+                                (size_t)dfr * sizeof(float));
                 }
                 float ac_ms = 0.0f, sem_ms = 0.0f;
                 int nfr = vae_encode_late_parallel(vae_ctx, abnd.data(), ashape,
-                                                   sbnd.data(), sshape,
-                                                   tpiece * params.vae_pieces,
+                                                   sbnd.data(), sshape, dfr,
                                                    afe.data(), sfe.data(), &ac_ms, &sem_ms);
                 g_ac_ms += ac_ms; g_sem_ms += sem_ms;
-                if (nfr != FRAMES_PER_WINDOW) {
+                // nfr is the number of OUTPUT (audio) frames the late pass produced, not boundary frames:
+                // for a flushed window that is want/3200, for a full window FRAMES_PER_WINDOW.
+                if (nfr != win_frames) {
                     fprintf(stderr, "window %d: late stages returned %d frames (want %d)\n",
-                            w, nfr, FRAMES_PER_WINDOW);
+                            w, nfr, win_frames);
                     return 1;
                 }
+                win_frames = nfr;
             } else {
             int rem_samples = want;
             int got_frames = 0;
