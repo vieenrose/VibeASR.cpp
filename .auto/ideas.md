@@ -2147,3 +2147,59 @@ NEXT row's label (so the new row would land above it) silently deleted that labe
 its first cell and would have rendered as a broken table row. Caught by `git diff` + a check that every
 line in the table range starts with '|'. Rule: when inserting a line adjacent to an anchor, the newText
 must restate the anchor; and a table edit is not verified until something has counted its row starts.
+
+## Exp862 — the VAE time budget CLOSES on the current stack, and one above-bar item fell out of it
+
+The per-node instrument (`GGML_OP_TIME=1`, queued by Exp817 as "the one thing that settles it") had last
+been read at v4.5. The flush (v4.6) removed a whole padded window and the boundary batch (v4.7) changed
+prefill rows, so every share in the ledger predated the shipping graph. Re-derived in one run:
+
+**Census (blocked-int8 MACs/clip):** vae 328.1, lm_prefill 161.4, lm_decode 56.3.
+The VAE figure vs Exp817's 388.5 is **-15.5 %**, which is an independent confirmation of the flush from
+the MAC side (vae_s went 14.0 -> 11.9 = -15 %). Good when two unrelated instruments agree.
+
+**Node time, VAE phase = 23 809 ms.** With >1 thread this SUMS the two concurrent chains, so
+wall-equivalent = node/2: 11.90 s against measured vae_s 11.94 s. The budget closes to 0.4 %, which is
+the point of the instrument - no missing time, no double count.
+
+| op | node ms | wall-equiv s | % of VAE | % of metric |
+|---|---|---|---|---|
+| MUL_MAT | 16 563 | 8.28 | 69.6 % | 44.3 % |
+| UNARY (gelu) | 2 461 | 1.23 | 10.3 % | 6.6 % |
+| RMS_NORM | 885 | 0.44 | 3.7 % | 2.4 % |
+| **CONT** | **827** | **0.41** | 3.5 % | **2.2 %** |
+| ADD | 824 | 0.41 | 3.5 % | 2.2 % |
+| ADD_SCALED | 746 | 0.37 | 3.1 % | 2.0 % |
+| CONV1D | 631 | 0.32 | 2.6 % | 1.7 % |
+| IM2COL | 585 | 0.29 | 2.5 % | 1.6 % |
+| PAD | 287 | 0.14 | 1.2 % | 0.8 % |
+
+**Rate check, done properly for once.** VAE matmul = 328.1 GMac / 8.28 s = **39.6 GMAC/s aggregate**. The
+device micro (`mm_shape_micro 2 real`) measures the VAE's OWN shapes in isolation at **42.6-44.8**
+(stage3/4/5 FCs). So the VAE runs within **7 %** of its shapes' isolated ceiling - "at ceiling" is now
+confirmed with current evidence, and that 7 % is the known in-kernel F32->Q8_0 `quantize_mat_q8_0`,
+already priced at ~2 % by Exp715/720 and NOT reachable by im2col dst_type (Q8_0 aborts, F16 is parity,
+cast-to-Q8_0 computes garbage: the three failure modes are in `vae_conv_1d_i8`'s comment).
+
+**The above-bar find: CONT = 0.41 s wall = 2.2 % of the metric.** Eight `ggml_cont(ggml_permute(...))`
+sites in vae.cpp (490, 651, 687, 691, 756, 818, 967, 997) - the layout transposes between the [C,T]
+channels-first blocks and the row-major form the matmuls consume. Exp818 saw it (0.49 s then), wrote
+"worth a look after PAD", and it was never looked at; PAD has since been closed twice. 280 calls.
+Do NOT assume it is free to remove: a cont(permute) is usually there because a consumer needs a dense
+buffer, so the honest first step is a PER-SITE attribution (which sites, how many bytes each), not an
+optimization. Sites reachable without touching vendored ggml are the ones where a downstream op could
+consume the permuted view directly.
+
+Micro-benchmark context that makes the mechanism concrete (constant 340 MMAC, ne00=128, F32 src1):
+rows=32 -> 11.85 GMAC/s, rows=128 -> 25.05, rows=1024 -> 38.06, rows=2048 -> 39.17; the SAME shapes with
+src1 pre-staged as Q8_0 are flat 38.6-42.4. So the conversion penalty is a LOW-ROWS phenomenon, and the
+VAE's big-MAC shapes are not in that regime - which is why the aggregate sits at 39.6 and not at 12.
+
+### QUEUED (from Exp862): CONT attribution, then decide
+- Instrument: extend the OPTIME dump with a per-CALL-SITE tag (the 8 sites above) or a one-off build that
+  prints bytes per cont node; 1 run. Acceptance for any later change: byte-identity, then 3 reps.
+- Candidate classes, cheapest first: (a) cont before an op that could take the strided view directly;
+  (b) cont(permute) pairs that cancel across two adjacent blocks; (c) sites that exist only because a
+  consumer's shape check is stricter than its kernel needs (check, do not assume).
+- Do NOT re-open via ggml_set_inplace (a copy op, not arithmetic - Exp662) and do not add vendored strided
+  src1 support for <2.2 % without a measurement saying the sites are removable.
