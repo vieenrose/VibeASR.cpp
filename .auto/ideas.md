@@ -1977,3 +1977,56 @@ of an anti-overfit guard and worth stating: the guard's job is to move WITH the 
  * Harness trap hit AGAIN: piping the soak through `tail -22` truncated the sample table AND the verdict lines before
    the tool's own output was captured - second occurrence of Exp840's class in two iterations. Fix: redirect the tool
    to a file and grep the file; never pipe a tool whose answer may be above the cut.
+
+## Exp857 — THE LOOP NEVER AUDITED ITS OWN BRIEFING: headline prose rotted two eras while 87 checks stayed green
+
+A fresh session reads exactly two things before it measures anything: RESULTS.md's `Headline:` line
+and `.auto/prompt.md`'s `Current best:` line. Both were wrong by 14-17 %, in the optimistic direction,
+and the harness audit printed "87 checks passed, 0 failures" over the top of them:
+
+| site | said | measured truth |
+|---|---|---|
+| RESULTS.md headline | `12.24 -> 2.70 (-78 %)` | 1.87, -84.7 % (last true at v3.5/Exp664) |
+| prompt.md `Current best` | `2.18 (MAX-SPEED v4.5)` | 1.87, era v4.7 |
+| prompt.md shipped tier row | `~2.18`, 17 s 2.18 / 69 s 2.22 / 138 s 2.28, gate 2.4456 | 1.87 / 2.04 / 2.12 / 2.18, gate 1.91 |
+| prompt.md lean tier row | `~2.44`, 17 s 2.42, 69 s 2.45 | 2.10 / 2.26 / 2.33 / 2.40, gate 2.13 (Exp847) |
+
+**Why the audit could not see it:** check 4b validates prompt.md by grepping it for the shipped VAE
+*filename*. That filename stayed correct through v4.6 and v4.7 while every number around it rotted.
+The doc-drift trigger DID fire at Exp829 and DID list "refresh .auto/prompt.md's tier table" among its
+MUST DOs - it reached RESULTS.md and STREAMING_1P5B.md, and never reached prompt.md, whose last doc
+commit is v4.5 (Exp821). Class: **a guard that validates the right ATTRIBUTE of the wrong thing**
+(Exp764 knob semantics, Exp816 tautological majflt, Exp855 fictional `--kv-type`).
+
+**Fixed the class, not the text.** `.auto/headline.json` is now the ONE machine-readable statement of
+era + both ladder cells + protocol hash + provenance, and audit check 9 requires every current-state
+claim to agree with it. It recognises claims by FORM, not vocabulary:
+  A. `Current best: N`   B. `Headline ...: base -> N`   C. a ladder table ROW labelled as the shipping tier
+Each must contain its block's current 10 s cell, and must name the era **on its own line**. Coverage is
+printed (`6 current-state claim(s): shipped=4, lean=2; 2 explicitly-historical excluded`) so the check
+can never read as coverage while checking nothing.
+
+**Four drafts of the guard were wrong, each caught by a planted fault rather than by reading:**
+ 1. Colon-anchored `headline:` - a cosmetic rewrite to `Headline (era v4.7):` silently unchecked the
+    single most-read line. Pattern brittleness is a silent failure, not a loud one.
+ 2. Word-anchored `headline` anywhere - 6 false positives ("headline speed claim for the max-speed
+    tier", an Exp654 scorer row). A noisy guard gets muted within a session, which is worse than none.
+ 3. Historical-line exclusion applied to the 3-line window - it excused the CURRENT lean row because an
+    ADJACENT table row said "pre-flush cells", and excused prompt.md's Current-best paragraph because a
+    later line said "DEAD tiers". Scope exclusions to the matching line.
+ 4. The era clause read the window too: deleting EVERY era token from prompt.md's Current-best line
+    still passed, because the next sentence mentioned v4.7. My own control D was invalid first (sed
+    removed only one of two era tokens) - a control that cannot fail is not a control.
+Final battery: spec-only ship to a fictional v4.8 -> 6 FAILs (the intended future use: edit the spec
+first and check 9 enumerates the prose to fix); synthetic stale `Current best` -> 1; lean row relabelled
+era v4.5 -> 1; era tokens stripped -> 1; restore -> 0. Zero device minutes.
+
+**Trap I hit while verifying my own change (Exp671 class, 4th encounter):** hashing the transcript
+SECTION instead of the whole file printed `686b3e0798d4` and looked like an output regression. The
+canonical protocol-hash command is `md5sum .auto/last_out.txt | cut -c1-12` (= `1a095c8496b4`).
+Caught only because the value disagreed with a documented one.
+
+KNOWN COVERAGE GAP, take next if docs come up again: present-tense claims that use neither form
+survive the check, e.g. STREAMING_1P5B.md's "the shipped default is PIECES=1 at RTF ~2.43" (v3.9-era,
+still reads as current). A FORM_D for "the shipped/current default/tier ... is N" would close it; do it
+with a false-positive sweep in the same commit or not at all.
