@@ -2381,3 +2381,23 @@ Consequences:
   Status of the elementwise board: gelu 1.26 s is the only above-bar item left; RMS_NORM 0.44, ADD 0.40,
   ADD_SCALED 0.36, CONV1D 0.32, IM2COL 0.29, PAD 0.14, CONT 0.11 s, and the producer-side epilogue route is
   measured negative (Exp822, +4.2% by weight-panel eviction).
+
+- GELU CONSUMER FUSION: BOTH IMPLEMENTATIONS MEASURED, AXIS CLOSED BY MECHANISM (Exp865/865b).
+  Three arms of one binary, vae_s on the protocol clip (LM output byte-identical in both fused arms):
+    baseline (gelu is its own node)            11.6 s
+    VAE_ABL_GELU (gelu work absent entirely)   10.6 s   => the removable ceiling is 1.0 s, 8.6% of VAE
+    fused via stack tile + per-block call      12.2 s   (fused work costs 1.6 s)
+    fused by inlining into the quantizer loop  13.1 s   (fused work costs 2.5 s)
+  Reading: the gelu's cost is NOT the two tensor passes alone. Roughly half of it is the 16-bit table
+  gather, which pipelines well in a standalone streaming loop (independent iterations; Exp780's batched
+  variant proved 4-in-flight is parity, i.e. already at its gather floor) but sits on the amax DEPENDENCY
+  PATH inside quantize_q8_0_4x4, where every block needs all 32 gelu'd values before it can compute its
+  scale - serializing gathers that used to overlap. Hence inlining is worse than the tile version, and the
+  tile version is worse than the node.
+  So: gelu stays a separate node. Both fused forms remain in the tree behind GGML_GELU_CVT=1 (default OFF;
+  default path verified byte-identical to the v4.8 anchor in the same binary). Together with Exp822
+  (producer-side epilogue +4.2% by weight-panel eviction), the fusion board is now closed on BOTH sides:
+  neither the producer's store tiles nor the consumer's input staging can absorb an elementwise op whose
+  per-element work is not itself free. RULE WORTH KEEPING: before planning any op-absorption, ablate the op
+  to find its REMOVABLE ceiling first (here: 1.0 s), and compare against the op's standalone cost (1.26 s) -
+  the gap is the irreducible compute, and it was 20% of the node, not 100%.
