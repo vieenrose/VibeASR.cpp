@@ -116,6 +116,22 @@ the denominator (the lying-header probe would then read ~0.5 instead of ~2.0). W
 every published RTF in this document is only meaningful if the clip is honest - the clips themselves are hash-pinned
 by `.auto/audit_harness.py`.
 
+### Time-to-first-transcript and incremental emission (measured, Exp853)
+
+Output really is incremental - the window loop does `printf` + `fflush(stdout)`, and sampling the output file's size
+during a run shows bytes arriving throughout (0 -> 45 -> 84 -> 135 -> 172 -> 340), not one dump at the end. Measured
+**time to first transcript**: **8.13 s** (shipped tier) and **8.90 s** (RAM-lean tier) for the 10 s protocol clip,
+then one line per window every ~5.5 s.
+
+TTFT closes against the latency tree: load 1.2 + system-prompt prefill 1.12 + window-1 VAE ~3.9 (incl. a 0.32 s
+first-touch page-in) + window-1 prefill 1.07 + decode ~0.9 = ~8.2 s. So ~2.6 s (32 %) of TTFT is FIXED setup that
+has nothing to do with the audio. Two consequences for a product:
+* A live microphone falls behind by (RTF - 1) = 0.87 s per second of speech - this is a file/batch-friendly engine
+  at RTF 1.87, not a sub-realtime streamer.
+* TTFT levers are process reuse (kills the 1.2 s load), folding the prompt prefill into window 1's LM batch
+  (~1.0 s of wall, +0.14 s of the loop's metric - see the note in the latency-tree section), and pre-touching the
+  arena (~0.3 s). None of these improve RTF; judge them on wall clock.
+
 ### Loader equivalence and config edges (Exp851)
 
 **`--no-mmap` is output-equivalent to the shipped zero-copy loader**: same protocol transcript hash, rtf 1.8734,

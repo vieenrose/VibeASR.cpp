@@ -1877,3 +1877,20 @@ of an anti-overfit guard and worth stating: the guard's job is to move WITH the 
    (b) My own map query printed "0 of 72 sets at distance 0", which contradicted the tool's own summary ("2 of 74
        byte-identical"). The table lists ONLY differing sets by design; I had queried the wrong population. The
        tool was right, my one-liner was vacuous - the recurring "measured the wrong thing" class.
+
+## Exp853 — TTFT measured: 8.13 s shipped / 8.90 s lean, and streaming emission is real (progressive flush)
+
+ * **Method worth keeping: the file-size timeline.** Launch through a LOCAL background job, poll
+   `adb shell stat -c %s <out>` in a tight loop, print (t, bytes) and dedupe on size. It measures both "is output
+   emitted incrementally" and TTFT without touching the binary or adding instrumentation.
+ * Timing trap: `date +%s%3N` produced garbage arithmetic on this host (t=6287763.86 s). Use
+   `awk '{print $1}' /proc/uptime` for fractional wall time - cheap, monotone, no format games.
+ * **Emission is genuinely incremental** (printf + fflush per window; bytes arrive 0 -> 45 -> 84 -> 135 -> 172 -> 340),
+   so the streaming UX claim is safe - and the lean tier's total output size matched the shipped tier byte for byte,
+   a free re-confirmation of cross-tier equivalence.
+ * **TTFT = 8.13 s** (shipped) / **8.90 s** (lean, +0.77 s of per-piece overhead landing on window 1), then a line
+   every ~5.5 s per 2.93 s hop. Decomposition closes against the known latency tree to ~0.1 s, and ~32 % of TTFT is
+   fixed setup (load 1.2 + prompt prefill 1.12 + page-in 0.32), i.e. independent of the audio.
+ * Product framing, not loop scope: at RTF 1.87 a live mic drifts 0.87 s behind per second of speech; the TTFT
+   levers are process reuse, prompt-prefill batching, and arena pre-touch - all wall-clock wins that the loop's
+   metric does not reward (two of them were already identified and deliberately not shipped).
