@@ -1847,3 +1847,18 @@ of an anti-overfit guard and worth stating: the guard's job is to move WITH the 
  * `.auto/fault_inject.sh` is now a 9-probe board: 5 model-file + 4 audio-input. Fixtures are generated at run time
    from a hash-pinned clip (gitignored), so nothing binary needs committing and the board cannot drift from its
    source asset.
+
+## Exp851 — loader equivalence + config edges: 12-probe board, guard tracks, one silent no-op documented
+
+ * **`--no-mmap` is output-equivalent to the zero-copy loader** (same protocol hash, rtf 1.8734, load_s 1.2). This
+   matters because it is the path that runs when mmap fails on a device - equivalence was assumed, now measured.
+ * Config edges are well-behaved: `-c 16` -> exit 1 `frames failed`; `--vae-pieces 7|0` -> exit 1 with the divisor
+   message; `--max-tokens 0` -> **exit 0 with 0 tokens** (cap checked before the first token). The last one is the
+   only silent-by-design no-op found: a typo yields an empty transcript and no error. Left as is (self-evidently
+   empty), but it is the kind of thing a runbook should mention; a `>= 1` validation would be a 3-line change if
+   anyone wants it.
+ * Board now 12 probes (5 model, 4 audio, 3 config), all green.
+ * Guard rotation: **2.0059** (3 reps, 55 tok) vs anchor 1.8739 (+7.0 %, its 16 extra decode tokens). History
+   2.4085 -> 2.3861 -> 2.3226 -> 2.0728 -> 2.0228 -> 2.0036 -> **2.0059**: +0.11 % since Exp844 where the anchor
+   moved +0.28 % (device state), i.e. flat within noise across a stretch where only loaders/harness/docs changed -
+   no overfit signal. cpu7_khz stayed pinned at 1.3 GHz in every sample (consistent with Exp844's negative result).

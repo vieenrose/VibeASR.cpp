@@ -84,6 +84,21 @@ aprobe "$AF/audio_lie_dur.wav"      run "WAV header lies 4x duration"
 aprobe "$AF/audio_header_only.wav"  err "WAV header only (44 B)"
 aprobe "$AF/audio_empty.wav"        err "WAV empty (0 B)"
 
+# --- config-edge probes (Exp851): invalid or degenerate configurations must be refused loudly, not silently
+cprobe() {  # $1=extra argv $2=expect(exit code) $3=label $4=grep pattern (optional)
+  local extra=$1 want=$2 label=$3 pat=$4 rc
+  rc=$(adb -s "$DEV" shell "cd $RDIR && timeout 60 sh -c 'LD_LIBRARY_PATH=. taskset $MASK ./asr_streaming \
+      --vae-model ./$VAE --lm-model ./$LM --audio $CLIP -t 2 $extra' >/dev/null 2>./ce.err; echo EXIT=\$?" \
+      2>&1 | tr -d '\r' | grep -oE 'EXIT=[0-9]+' | head -1)
+  local msg; msg=$(adb -s "$DEV" shell "grep -m1 -oE '$4' $RDIR/ce.err" 2>/dev/null | tr -d '\r')
+  if [ "$rc" = "EXIT=$want" ]; then PASS=$((PASS+1)); printf "%-26s PASS  %s\n" "$label" "${msg:-exit $want as expected}";
+  else FAIL=$((FAIL+1)); printf "%-26s FAIL  wanted EXIT=$want, got %s\n" "$label" "$rc"; fi
+}
+MASK=${MASK:-C0}
+cprobe "-c 16"            1 "n_ctx below one window" 'frames failed|decode failed'
+cprobe "--vae-pieces 7"   1 "pieces not a divisor of 26" 'must divide 26'
+cprobe "--vae-pieces 0"   1 "pieces = 0"               'must divide 26|Invalid|invalid'
+
 echo "---- fault_inject: $PASS pass, $FAIL fail"
 [ "$FAIL" = 0 ] || exit 1
 echo "no silent-corruption path: damaged model files and audio inputs fail loudly; RTF denominator stays content-derived"

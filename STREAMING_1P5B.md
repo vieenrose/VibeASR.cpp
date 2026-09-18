@@ -116,6 +116,20 @@ the denominator (the lying-header probe would then read ~0.5 instead of ~2.0). W
 every published RTF in this document is only meaningful if the clip is honest - the clips themselves are hash-pinned
 by `.auto/audit_harness.py`.
 
+### Loader equivalence and config edges (Exp851)
+
+**`--no-mmap` is output-equivalent to the shipped zero-copy loader**: same protocol transcript hash, rtf 1.8734,
+`load_s 1.2` - so the fallback path that runs when `mmap` fails produces the same text at the same cost.
+
+Degenerate/invalid configurations are refused or behave plainly, asserted by `.auto/fault_inject.sh` (12 probes):
+
+| invocation | behavior |
+|---|---|
+| `-c 16` (below one window's rows) | exits 1, `frames failed` - no crash, no hang |
+| `--vae-pieces 7` or `0` | exits 1: `pieces must divide 26 (1, 2, 13, 26)` |
+| `--max-tokens 0` | **exit 0 with an empty transcript** (the cap is checked before the first token) - silent by design, so a typo here yields nothing rather than an error |
+| `-t 1` vs `-t 2` | identical transcript hash (rtf 2.47 vs 1.87) - output is not thread-count specific |
+
 ### Corrupt / truncated model files fail loudly (Exp850)
 
 A truncated `.gguf` used to load "successfully": the copy fallback discarded `fread`'s return value into a
