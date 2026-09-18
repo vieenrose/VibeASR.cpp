@@ -2474,3 +2474,15 @@ Consequences:
   CAUTION KEPT: transcript LINES are WINDOWS, not turns - a per-clip WER built by zipping lines to the
   manifest table produces ~100% garbage (it did, and the 26% aggregate exposed it). Per-turn WER needs the
   scorer's own turn segmentation: QUEUED as a score_stream.py --per-turn option.
+
+- PHASE ALIGNMENT, SECOND CORPUS -> NO SYSTEMATIC EFFECT, LARGE TOKEN CHURN (Exp866i). Same method on the
+  48-clip zh-TW Common Voice held-out set (468 ref tokens, 48 distinct phases, content proven identical by
+  per-clip sha, +71.2 s of silence only): misaligned 15.38% vs aligned 16.88%, PAIRED b=23 / c=32, McNemar
+  p=0.28, CI [-4.70, +1.71] pp. So en favoured ALIGNED by 1.36 pp and zh favoured MISALIGNED by 1.50 pp -
+  opposite signs across corpora, both inside their CIs, while 55 of 468 zh tokens (11.8%) and 34 of 220 en
+  tokens changed identity. Conclusion for this stack: hop-misalignment does NOT bias WER; it randomizes
+  WHICH tokens the model gets wrong. Consequences: (1) historical held-out numbers need no re-quoting;
+  (2) for stitched TRAINING data the churn is the problem, not the mean - a misaligned corpus labels the
+  same audio with different text; (3) the Nano loop's +7-17 pp must come from a different variable than
+  phase alone (their single-splice design gives all later audio one shared offset, so it is systematic;
+  a many-splice asset averages out), which is the testable hypothesis already sent.
