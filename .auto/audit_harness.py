@@ -318,6 +318,47 @@ if '--skip-device' not in sys.argv:
                     (f" (cell: {man[n]['cell']})" if man[n].get('cell') else ''))
             else:
                 ok(f"{n} hash matches manifest")
+        # Stitched eval STREAMS must declare their phase policy (Exp866h/i). The windowed protocol advances
+        # 70,400 samples per window, so a clip that does not start on that boundary is processed at an
+        # arbitrary phase of the window grid. Measured on this stack: that does NOT bias WER (en +1.36 pp,
+        # zh -1.50 pp, opposite signs, both inside their CIs) but it churns 11-15% of tokens, which is label
+        # noise for training data and makes two builds of "the same" asset incomparable. So the property must
+        # be stated, not assumed: phase_policy = "hop-aligned" (verified here) or "arbitrary" (accepted).
+        HOP = 70400
+        for mf in sorted(glob.glob(os.path.join(os.path.dirname(RDIR) if False else '.',
+                                                '..', 'eval-bilingual', 'manifest_*.json'))):
+            try:
+                mj = json.load(open(mf))
+            except Exception:
+                continue
+            tab = mj.get('table')
+            if not tab or len(tab) < 2:
+                continue                                     # single-clip assets have phase 0 by construction
+            sr = mj.get('sr', 24000)
+            # Prefer exact sample positions; fall back to the ms-rounded start_s with a +-32-sample tolerance,
+            # because that timestamp is +-12 samples quantised and would otherwise call an aligned asset
+            # misaligned (which is exactly what the first version of this check did to Exp866i's twins).
+            devs = [min(t.get('start_samples', round(t['start_s'] * sr)) % HOP,
+                        HOP - t.get('start_samples', round(t['start_s'] * sr)) % HOP) for t in tab]
+            ph = [t.get('start_samples', round(t['start_s'] * sr)) % HOP for t in tab]
+            nph = len(set(ph))
+            aligned = max(devs) <= 32
+            pol = mj.get('phase_policy')
+            tag = os.path.basename(mf)
+            if pol is None:
+                warn(f"{tag}: {len(tab)} clips at {nph} distinct phases of the {HOP}-sample window grid and NO "
+                     'phase_policy - run .auto/align_asset.py or declare "phase_policy": "arbitrary"')
+            elif pol == 'hop-aligned':
+                if aligned:
+                    ok(f'{tag}: hop-aligned, {len(tab)} clips start a window (max deviation {max(devs)} samples)')
+                else:
+                    bad(f'{tag}: declares phase_policy=hop-aligned but clips deviate up to {max(devs)} samples '
+                        'from the grid')
+            elif pol == 'arbitrary':
+                ok(f'{tag}: phases arbitrary ({nph} distinct over {len(tab)} clips) - declared, tokens churn '
+                   'but WER is unbiased on this stack')
+            else:
+                bad(f'{tag}: unknown phase_policy {pol!r} (use "hop-aligned" or "arbitrary")')
         # the check that catches Exp675: two documented clips with the same bytes = one was
         # overwritten by the other, and any 'different condition' comparison is now a no-op.
         byhash = {}

@@ -2486,3 +2486,16 @@ Consequences:
   same audio with different text; (3) the Nano loop's +7-17 pp must come from a different variable than
   phase alone (their single-splice design gives all later audio one shared offset, so it is systematic;
   a many-splice asset averages out), which is the testable hypothesis already sent.
+
+- PHASE POLICY IS NOW A CHECKED PROPERTY (Exp866j). audit_harness gained a phase check over every stitched
+  eval manifest (9 of them): clip-start positions are taken from exact `start_samples` when present, else
+  from the ms-rounded start_s with a +-32-sample tolerance, and every multi-clip stream must declare
+  `phase_policy`: "hop-aligned" (verified) or "arbitrary" (accepted, with the Exp866h/i evidence that WER is
+  unbiased but tokens churn). Missing policy = WARN naming the fix. 104 checks, proven by planting
+  hop-aligned on the arbitrary zh set -> FAIL "clips deviate up to 34400 samples from the grid" -> restore.
+  Two bugs found in my own new code on the way, both worth remembering:
+    * an aligned build written with ms-rounded start_s LOOKS misaligned to anything re-deriving positions
+      from the manifest (3 distinct phases instead of 1) - so align_asset now writes start_samples/end_samples;
+    * naming a local `dev` inside the asset section shadowed that section's dev dict {name: md5} and crashed
+      the audit with AttributeError - a check that silently stops running is worse than no check, so verify
+      the CHECK COUNT moved, not just that the run went green.

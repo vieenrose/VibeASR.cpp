@@ -81,7 +81,11 @@ def main():
             raise SystemExit(f'FAIL turn {t.get("turn")}: segment sha {got[:12]} != manifest {t["sha"][:12]}')
         phases_before.append(s % a.hop)
         phases_after.append(pos % a.hop)
-        table.append({**t, 'start_s': round(pos / sr, 3), 'end_s': round((pos + len(seg)) / sr, 3), 'sha': got})
+        table.append({**t, 'start_s': round(pos / sr, 3), 'end_s': round((pos + len(seg)) / sr, 3),
+                      # start_s is millisecond-rounded (+-12 samples at 24 kHz), which is enough to make an
+                      # aligned asset look misaligned to any tool that re-derives positions from it. Keep the
+                      # exact sample positions so 'starts a window' is checkable, not approximate.
+                      'start_samples': pos, 'end_samples': pos + len(seg) // 2, 'sha': got})
         out += seg
         pos += len(seg) // 2
         pad = (-pos) % a.hop                      # pad to the next hop boundary -> every clip starts at phase 0
