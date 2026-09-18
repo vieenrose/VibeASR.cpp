@@ -1894,3 +1894,24 @@ of an anti-overfit guard and worth stating: the guard's job is to move WITH the 
  * Product framing, not loop scope: at RTF 1.87 a live mic drifts 0.87 s behind per second of speech; the TTFT
    levers are process reuse, prompt-prefill batching, and arena pre-touch - all wall-clock wins that the loop's
    metric does not reward (two of them were already identified and deliberately not shipped).
+
+## Exp854 — cold page cache cannot be induced without root; warm-cache numbers turn out to be ROBUST, not lucky
+
+ * Three attempts to create a cold-cache condition, each failing for a DISTINCT reason - recorded so nobody spends
+   another three runs on it:
+   1. `echo 1 > /proc/sys/vm/drop_caches` -> permission denied (adbd is uid 2000, no `su`, no root).
+   2. 4 GB sequential churn right after a warm run -> RTF unchanged, majflt 0. LRU keeps recently-touched pages, and
+      single-touch sequential reads self-evict, so the churn recycled its own pages.
+   3. 12 GB churn x 2 -> still no eviction (Cached *grew* to 4.75 GB), but majflt moved 0 -> 1, which is the tell
+      that the probe grazed the mapped pages and still did not evict them.
+ * **`file age != cache state`**: a model file untouched for 9 days reads at 3.8 GB/s, identical to the hot shipping
+   file (3.9 GB/s) - DRAM speed, so it was never evicted. The valid tell for cold-vs-warm is read bandwidth against
+   DRAM/flash expectations, not mtime.
+ * Net product conclusion: the loop's warm-cache RTF is not a lucky measurement - it survives cache churn and idle
+   time. A true cold boot remains unmeasured and needs privileges; bounded as >= ~0.4 s of first-touch stall
+   (1.6 GB at the 3.9 GB/s ceiling measured here, and decode wants 12.6 GB/s), with the caveat that real flash
+   would be slower than that measured page-cache-served rate.
+ * Harness lesson: my first dd-through-`$(( ))` construction silently never ran (whole sweep took 4.3 s, which is
+   impossible for 2 x 1.1 GB reads) - nested arithmetic inside an adb string again. Rule that finally sticks: send a
+   plain command, redirect stderr to a file IN the run dir (there is no /tmp on the device shell), and read the file
+   back. Sanity-check with elapsed time before believing any bandwidth number.

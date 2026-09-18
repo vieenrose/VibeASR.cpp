@@ -132,6 +132,22 @@ has nothing to do with the audio. Two consequences for a product:
   (~1.0 s of wall, +0.14 s of the loop's metric - see the note in the latency-tree section), and pre-touching the
   arena (~0.3 s). None of these improve RTF; judge them on wall clock.
 
+### Page-cache behavior: the RTF numbers are not fragile to other apps (measured, Exp854)
+
+Every log line shows `majflt 0`, so the published RTF is a warm-page-cache number by construction. To test whether
+that hides a cold-start penalty, weights were evicted with a 4 GB and then a 12 GB x 2 sequential churn: RTF moved
+**+0.7 %** (within state noise) and major faults went **0 -> 1** (not the ~400k an eviction would cause), because
+the model pages are the most-recently-touched ones and a single-touch sequential churn preferentially recycles its
+own pages. A model file untouched for **9 days** still reads at **3.8 GB/s** (DRAM speed, not flash), i.e. this
+device keeps model files cached with real tenacity while free memory exists.
+
+Consequence: co-running workloads that read large files do not degrade this engine's RTF, and idle time does not
+either. What remains genuinely UNMEASURED is a cold start after boot or after heavy app-driven reclaim - forcing it
+needs `drop_caches` (root; adbd runs as uid 2000, no `su`). Bound if it ever matters: first-touch cannot exceed the
+~3.9 GB/s read rate observed here, and LM decode wants 12.6 GB/s, so a fully cold first pass would throttle decode
+by roughly 3x until the weights are resident (~0.4 s of unavoidable stall for 1.6 GB, and that is a LOWER bound
+because the measured rate is page-cache-served, not flash).
+
 ### Loader equivalence and config edges (Exp851)
 
 **`--no-mmap` is output-equivalent to the shipped zero-copy loader**: same protocol transcript hash, rtf 1.8734,
