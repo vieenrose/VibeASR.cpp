@@ -666,6 +666,46 @@ for b in sorted(set(badflags)):
 if flag_claims and not badflags:
     ok(f"{flag_claims} documented/commented flag use(s) all exist in the parsers they name")
 
+# ---- 12. the SWEEP harness must resolve to the shipping tier (Exp865c). run_rtf_multi.sh used to expand
+# empty threads/pieces fields into NOTHING, which SHIFTED bench_device.sh's positionals (the run tag landed
+# in the thread-count argument) - so eight anti-overfit guard rotations measured a config that is not the
+# shipping one, ~1.2 % slow, and every cross-session comparison inherited that offset. The tool now has a
+# --dry mode; the assertion below is that its resolved argv equals the tier, plus a negative control proving
+# the tool rejects a malformed arm instead of silently shifting arguments again.
+try:
+    tier_pieces = None
+    for ln in open('.auto/tier.env', encoding='utf-8', errors='ignore'):
+        if ln.startswith('PIECES='):
+            tier_pieces = ln.strip().split('=', 1)[1]
+    sh = os.path.join(ROOT, '.auto', 'run_rtf_multi.sh')
+    r = subprocess.run([sh, '--dry', 'probe|clip.wav'], capture_output=True, text=True, timeout=60)
+    line = next((l for l in (r.stdout + r.stderr).splitlines() if l.startswith('DRY probe')), '')
+    if r.returncode != 0 or not line:
+        bad(f"run_rtf_multi.sh --dry failed (exit {r.returncode}) - the sweep harness cannot be verified; "
+            f"fix it rather than trusting any number it produced")
+    else:
+        want_p = (line.split('pieces=')[1].split()[0] if 'pieces=' in line else '?')
+        want_t = (line.split('threads=')[1].split()[0] if 'threads=' in line else '?')
+        if tier_pieces and want_p != tier_pieces:
+            bad(f"sweep defaults to pieces={want_p} but tier.env says PIECES={tier_pieces} - the guard board "
+                f"would measure a different configuration than the metric (Exp865c's bug class)")
+        elif want_t != '2':
+            bad(f"sweep defaults to threads={want_t}, not the shipped 2 threads on the A78 primes")
+        else:
+            ok(f"sweep harness resolves to the shipping tier (threads={want_t}, pieces={want_p}, from tier/measure defaults)")
+        if 'vae-encoder-convint8.gguf' not in line or 'lm-q8head.gguf' not in line:
+            bad(f"sweep probe does not name the shipped files: {line}")
+    r2 = subprocess.run([sh, '--dry', 'probe|clip.wav|2|9|'], capture_output=True, text=True, timeout=60)
+    if r2.returncode == 0:
+        bad("run_rtf_multi.sh ACCEPTED pieces=9 - the argument validation is gone, so a malformed arm would "
+            "again be measured with shifted positionals instead of failing (Exp660 rule: prove the guard fires)")
+    else:
+        ok("sweep harness rejects a malformed arm (exit != 0), so argument drift fails loudly")
+except FileNotFoundError:
+    bad("run_rtf_multi.sh missing - the guard rotation cannot be verified")
+except Exception as e:
+    bad(f"sweep-harness check raised {type(e).__name__}: {e}")
+
 # ---- report -------------------------------------------------------------------
 print(f"harness audit: {len(oks)} checks passed, {len(warns)} warnings, {len(fails)} failures\n")
 if '--verbose' in sys.argv:

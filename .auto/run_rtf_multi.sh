@@ -13,13 +13,33 @@ set -u
 DEV=${DEV:-$(grep -m1 '^DEV=' .auto/measure.sh | cut -d= -f2)}   # single source: measure.sh
 [ -n "$DEV" ] || { echo "ERROR: no device id (set DEV= or fix .auto/measure.sh)" >&2; exit 2; }
 RDIR=/data/local/tmp/vibeasr
+DEF_LM=$(grep -m1 '^LM_FILE=' .auto/measure.sh | sed -E 's/^[^:]*=\$\{LM_FILE:-([^}]*)\}.*/\1/')
+DEF_VAE=$(grep -m1 '^VAE_FILE=' .auto/measure.sh | sed -E 's/^[^:]*=\$\{VAE_FILE:-([^}]*)\}.*/\1/')
+# Exp865c: threads/pieces defaults come from the tier declaration - never a literal, never empty.
+DEF_THREADS=$(grep -m1 '^THREADS=' .auto/measure.sh | sed -E 's/^[^:]*=\$\{THREADS:-([^}]*)\}.*/\1/'); DEF_THREADS=${DEF_THREADS:-2}
+DEF_PIECES=$(grep -m1 '^PIECES=' .auto/tier.env 2>/dev/null | cut -d= -f2); DEF_PIECES=${DEF_PIECES:-1}
+# Exp865c: --dry prints each arm's RESOLVED command line and runs nothing, so the audit can assert that the
+# sweep targets the shipping tier. Empty threads/pieces fields used to expand into NOTHING, shifting
+# bench_device.sh's positionals (the run tag landed in the thread-count argument) - eight guard rotations
+# measured a config that is not the shipping one. Same class as Exp694/Exp816.
+if [ "${1:-}" = "--dry" ]; then
+  shift
+  for arm in "$@"; do
+    label=${arm%%|*}; rest=${arm#*|}
+    IFS='|' read -r audio threads pieces envs <<< "$rest"
+    threads=${threads:-$DEF_THREADS}; pieces=${pieces:-$DEF_PIECES}
+    case "$threads" in (*[!0-9]*|'') echo "ERROR: arm '$arm' threads='$threads' is not a number" >&2; exit 2;; esac
+    case "$pieces"  in (1|2|13|26) ;; *) echo "ERROR: arm '$arm' pieces='$pieces' must be 1, 2, 13 or 26" >&2; exit 2;; esac
+    echo "DRY $label | vae=$DEF_VAE lm=$DEF_LM mask=C0 threads=$threads pieces=$pieces env=$envs clip=$audio"
+  done
+  exit 0
+fi
+
 REPS=${1:-1}; shift
 # Tier defaults come from measure.sh, NOT from a copy of them here. The previous literal
 # (VAE_FILE=vae-encoder-q4x4ffn.gguf) was the pre-Exp690 F16-conv reference and silently made every
 # sweep through this runner measure a tier that no longer ships - same class as the stale-lib bug
 # check 5 guards against, but in the sweep harness instead of measure.sh.
-DEF_LM=$(grep -m1 '^LM_FILE=' .auto/measure.sh | sed -E 's/^[^:]*=\$\{LM_FILE:-([^}]*)\}.*/\1/')
-DEF_VAE=$(grep -m1 '^VAE_FILE=' .auto/measure.sh | sed -E 's/^[^:]*=\$\{VAE_FILE:-([^}]*)\}.*/\1/')
 [ -n "$DEF_LM" ] && [ -n "$DEF_VAE" ] || { echo "ERROR: could not parse model defaults from .auto/measure.sh" >&2; exit 2; }
 DEF_ENV="LM_FILE=$DEF_LM VAE_FILE=$DEF_VAE MASK=C0"
 # Freshness guard: this runner does NOT build, so sweeping after editing src/ silently
@@ -55,8 +75,15 @@ for r in $(seq 1 "$REPS"); do
       adb -s $DEV push "$audio" "$RDIR/$(basename "$audio")" >/dev/null 2>&1 || { echo "ERROR: push failed: $audio" >&2; exit 2; }
       audio=$(basename "$audio")
     fi
+    threads=${threads:-$DEF_THREADS}
+    pieces=${pieces:-$DEF_PIECES}
     tag=$(echo "$label" | tr -cd 'A-Za-z0-9')$r
-    adb -s $DEV shell "$DEF_ENV $envs sh $RDIR/bench_device.sh $audio $threads $pieces $tag" \
+    for f in "$audio" "$threads" "$pieces" "$tag"; do
+      [ -n "$f" ] || { echo "ERROR: empty positional in arm '$arm' (label|audio|threads|pieces|env)" >&2; exit 2; }
+    done
+    case "$threads" in (*[!0-9]*|'') echo "ERROR: arm '$arm' threads='$threads' is not a number" >&2; exit 2;; esac
+    case "$pieces"  in (1|2|13|26) ;; *) echo "ERROR: arm '$arm' pieces='$pieces' must be 1,2,13,26 (env = field 5)" >&2; exit 2;; esac
+    adb -s $DEV shell "$DEF_ENV $envs THREADS=$threads sh $RDIR/bench_device.sh $audio $threads $pieces $tag" \
       > .auto/multi-run-$tag.txt 2>&1
     adb -s $DEV pull $RDIR/err-$tag.log .auto/multi-err-$tag.txt >/dev/null 2>&1
     rtf=$(grep -oE 'RTF: [0-9.]+' .auto/multi-err-$tag.txt | head -1 | awk '{print $2}')
