@@ -27,10 +27,16 @@ DEV=$(grep -oE '^DEV=\S+' "$HERE/measure.sh" | head -1 | cut -d= -f2)
 [ -n "$DEV" ] || { echo "ERROR: could not parse DEV from measure.sh" >&2; exit 2; }
 RDIR=/data/local/tmp/vibeasr
 MODELS_DIR=$(cd "$HERE/.." && pwd)/../models-streaming
+# Exp848: env wins over tier.env wins over these defaults, so a non-shipping tier can be verified WITHOUT
+# mutating the shared tier.env (a leftover lean recipe there would silently retarget every later run).
+_E_VAE=${VAE_FILE:-}; _E_LM=${LM_FILE:-}; _E_P=${PIECES:-}
 VAE_FILE=vae-encoder-convint8.gguf; LM_FILE=lm-q8head.gguf; PIECES=1
 [ -f "$HERE/tier.env" ] && while IFS='=' read -r k v; do
   case $k in VAE_FILE) VAE_FILE=$v;; LM_FILE) LM_FILE=$v;; PIECES) PIECES=$v;; esac
 done < <(grep -v '^#' "$HERE/tier.env")
+if [ -n "$_E_VAE" ]; then VAE_FILE=$_E_VAE; fi
+if [ -n "$_E_LM" ]; then LM_FILE=$_E_LM; fi
+if [ -n "$_E_P" ]; then PIECES=$_E_P; fi
 MASK=${MASK:-C0}; THREADS=${THREADS:-2}
 EXTRA_ENV=${EXTRA_ENV:-}   # injected INSIDE the adb string (env is not inherited by adb shell)
 
@@ -58,7 +64,7 @@ for f in "$VAE_FILE" "$LM_FILE"; do
   [ "$dhf" = "$hhf" ] || { echo "note: pushing $f" >&2; adb -s "$DEV" push "$MODELS_DIR/$f" "$RDIR/" >/dev/null 2>&1; }
 done
 
-echo "behavior_watch: binary $bh  vae=$VAE_FILE lm=$LM_FILE pieces=$PIECES  selftest=$SELFTEST"
+echo "behavior_watch: binary $bh  vae=$VAE_FILE lm=$LM_FILE pieces=$PIECES  env='${EXTRA_ENV:-}'  selftest=$SELFTEST"
 PASS=0; FAIL=0
 
 check() {   # $1=clip $2=kind $3=expectation $4=note
@@ -97,10 +103,10 @@ check proto48k_stereo.wav cjk     ""                "48 kHz STEREO input must re
 check short36.wav        words     ""                "sub-piece clip: graceful output, no crash"
 check twospk_overlap.wav split     ""                "overlapped 2 voices must split speakers (Exp609)"
 check twospk.wav         nofail    ""                "sequential voices: one tag = CLOSED Exp650, not a bug"
-check stream_10s_24k.wav tokens    39                "protocol clip token canary (ladder 10 s)"
-check chat17.wav         tokens    106               "ladder 17 s canary (flushed; 108 padded)"
-check chat69.wav         tokens    446               "ladder 69 s canary"
-check chat138.wav        tokens    876               "ladder 138 s canary (flushed; 877 padded, +/-1)"
+check stream_10s_24k.wav tokens    ${CAN10:-39}      "protocol clip token canary (ladder 10 s)"
+check chat17.wav         tokens    ${CAN17:-106}     "ladder 17 s canary (flushed; 108 padded)"
+check chat69.wav         tokens    ${CAN69:-446}     "ladder 69 s canary"
+check chat138.wav        tokens    ${CAN138:-876}    "ladder 138 s canary (flushed; +/-1)"
 
 echo "---- behavior_watch: $PASS pass, $FAIL fail  (selftest=$SELFTEST)"
 if [ "$SELFTEST" = "1" ]; then

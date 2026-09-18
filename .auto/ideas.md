@@ -1772,3 +1772,21 @@ of an anti-overfit guard and worth stating: the guard's job is to move WITH the 
    `/data/local/tmp/vibeasr`. Two near-misses avoided by reflexes this round: my `cp` of `last_out.txt` after an
    instantly-failed run captured a STALE transcript (caught because both files were the same suspicious size), and
    the sweep's `multi-run-*.txt` files are 73-byte summary tails, never transcripts (Exp671, third encounter).
+
+## Exp848 — LEAN TIER'S BEHAVIORAL CONTRACTS VERIFIED WITH THE FLUSH ACTIVE (11/11), and a false alarm about tier differences
+
+ * **First full behavioral run on the RAM-lean/deferred path with the tail flush active** (the flush reached lean
+   through a different code path - Exp830's packed boundary frames - and had only ever been gated on WER + the
+   protocol transcript, never on edge-case semantics). 11/11 PASS: silence->8 tok, noise->4, music->38 -
+   **identical counts to the shipped tier** - plus 48 kHz stereo, sub-piece short36, both diarization probes, and
+   the four ladder canaries (39/106/432/847, the lean row from Exp847).
+ * `behavior_watch.sh` now takes **env overrides that win over tier.env** (env > tier.env > default, both branches
+   tested: PIECES=99 in env resolves to 99, no env resolves to tier.env's 1) and **env-tunable ladder canaries**
+   (CAN10/CAN17/CAN69/CAN138). Rationale: verifying a non-shipping tier by editing the shared tier.env would leave
+   a stale recipe that silently retargets every later run - the Exp798 class of failure.
+ * **FALSE ALARM, resolved by measurement**: `twospk_overlap` read 54 tokens at lean vs "73 tok" recorded at
+   Exp826, which looked like a big tier difference (26 %). Direct same-counter A/B: **both tiers = 54**, text
+   identical (35 words, Speaker 0 + Speaker 1 in both). 73 was the PRE-FLUSH count - the flush removes
+   silence-generated tokens on every clip (Exp829 recorded exactly that for the ladder canaries).
+   RULE: when a documented count differs, check the PROTOCOL VERSION it was recorded under before attributing it
+   to tier, config, or a regression. Same class as Exp847's token-counter-vs-text lesson, one level up.
