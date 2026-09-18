@@ -2401,3 +2401,21 @@ Consequences:
   per-element work is not itself free. RULE WORTH KEEPING: before planning any op-absorption, ablate the op
   to find its REMOVABLE ceiling first (here: 1.0 s), and compare against the op's standalone cost (1.26 s) -
   the gap is the irreducible compute, and it was 20% of the node, not 100%.
+
+- SWEEP HARNESS WAS MEASURING A NON-SHIPPING CONFIG (Exp865c, found by a suspicious reproduction).
+  run_rtf_multi.sh builds its device command from "label|audio|threads|pieces|env". Any arm spec with fewer
+  than 5 fields left threads/pieces EMPTY, and because they are expanded UNQUOTED the positional list
+  SHIFTED: bench_device.sh got the run TAG as its thread count and an empty --vae-pieces. Effect: every
+  number the tool produced - including eight anti-overfit guard rotations - described a different config
+  (~1.2 % slower than measure.sh, RSS column nonsense), and v4.8's -1.66 % did not appear in its protocol
+  arm at all. Fix: defaults resolved from the tier (threads from measure.sh, pieces from tier.env), values
+  validated (threads numeric, pieces in {1,2,13,26}), a --dry mode, and audit check 12 which asserts the
+  resolved argv equals the tier and that a malformed arm exits non-zero (proven with a planted fault).
+  HOW IT SURFACED: a fresh guard sweep reproduced Exp861's per-rep numbers to four decimals. Timing does not
+  do that. Rule worth keeping: if a measurement is TOO consistent, suspect the instrument, not luck.
+  LESSON FOR MYSELF, RE-LEARNED THE HARD WAY: I ran the fixed-but-UNCOMMITTED sweep for several rounds and
+  then destroyed it with a careless `git checkout .auto/run_rtf_multi.sh` while planting a fault. The loop's
+  own rule is commit tooling in the iteration it is written; a fault-plant must restore from a COMMIT, not
+  from the working tree. (The audit's new check caught the loss immediately, which is the only reason the
+  loss was cheap.)
+  Guard baseline from today: protocol 1.8504, guard 1.9852 (+7.3 %, = its 16 extra decode tokens).
