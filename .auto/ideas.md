@@ -2537,3 +2537,44 @@ Consequences:
   multiples of 70,400 (shipping), and never mix phases between a windowed and a carry run of the same asset.
   So the splice rule stands as a REPRODUCIBILITY/label-consistency control (10-15% token churn), not an
   accuracy lever, on the A78 stack.
+
+- COST MODEL RE-FIT, TREE CLOSURE, AND KV PRICED IN MY OWN UNITS (Exp870; supersedes Exp828's fit).
+  Four ladder clips, ONE session, window count from the binary's own banner, VAE half taken from vae_s
+  (LM-independent, Exp674/682) so a token-count difference cannot contaminate it. Tool: `.auto/cost_fit.sh`
+  (measures), `.auto/cost_fit.sh --analyze` (re-fits the saved .auto/cost_fit.txt with NO device time).
+    * VAE: **vae_s = +0.39 + 3.343 x EFFECTIVE windows**, residuals ±0.05 s. Effective = N minus the
+      fraction of the final window the flush removed (a model without that term is why Exp828's intercept
+      was +0.21: it over-prices the 10 s clip by +21 % and the 138 s one by +5 %). Zero-intercept form
+      3.362 s / 3.467 s of audio => **VAE-only RTF 0.970**: the encoder alone is just under real time.
+    * LM: **prefill = 29.8 ms/row + 9.11 µs/KV-position**, **decode = 90.3 ms/token + 10.67 µs/KV-position**,
+      residuals ≤1.8 ms. Two independent phases, same slope => the length-dependent term IS KV attention.
+    * Shares: protocol 62.9 % VAE / 17.3 % prefill / 19.5 % decode; 138 s 52.7 / 17.4 / 29.9.
+    * TREE CLOSURE ≤0.30 % at all four lengths. The latency tree is COMPLETE - there is no unmeasured
+      wait/sync/loader inside the metric. Keep the line in the tool as an invariant, not as a result.
+    * RATE: 58.3 GMac/window → 16.8-17.4 GMAC/s aggregate = **20 % of the two-core int8 peak at every
+      length**. That is Exp516/551/678's shape-limit conclusion, now length-independent, and it is the
+      number any future VAE claim has to be consistent with.
+  KV PRICE (the answer to the Nano loop's eviction thread, in my units): a KV-side lever is worth
+  ≤0.46 % on the protocol clip (cannot move this metric), 3.9 % at 69 s, 7.6 % at 138 s as an upper bound,
+  3.3 % if only the decode term is credited - and the decode-only branch is theirs: their formula predicts
+  -3.0 % on my 138 s clip, my slope 9.1-10.7 µs/position vs their 11.13 reproduces it. PARKED as a
+  long-form product feature (not a metric item): it needs a KV option the binary does not expose.
+- HARNESS INTEGRITY, TWO MORE CLASSES CLOSED (Exp870).
+    * HEAD CAN BE AUDIT-RED AND NOBODY KNOWS: a doc row reading "any invocation of measure.sh/eval40.sh
+      carrying a schedule option" was parsed as an invocation of eval40.sh (prose slash), charging that
+      line's --xwin/--env to a program whose interface is positionals+env. Committed red, caught one round
+      later only because the NEXT session ran the audit first. RULE: the audit is the last write of an
+      iteration. Writing it before the docs means it guards code but not prose.
+    * A GUARD THAT CANNOT SEE IS WORSE THAN NO GUARD: the first fix (reject any slash preceded by a word
+      char or dot) also rejected legitimate harness-path invocations, and the planted control printed ZERO
+      failures - the over-correction was found by RUNNING the control, not by reasoning about the regex.
+      Second rule added with it: a flag belongs to the invocation before it, so a two-command line stops
+      charging one typo to two programs (it used to report 3 failures for 2 defects).
+    * DOUBLE REPORTING: two identical `for b in sorted(set(badflags))` loops over the same accumulating
+      list printed every flag failure twice, so the header's failure count was inflated. Any guard whose
+      count lies makes "it went from 5 to 3" unreadable. Same class as Exp660's over-claiming guard.
+- majflt AS A COLD-CACHE DETECTOR, REHABILITATED (Exp870). After a ~4 h idle: 1.8913 (majflt 30),
+  1.8851, then 1.8541 (majflt 0) = +2.0 % cold inflation at v4.8. Exp156 had retired the majflt detector
+  as non-discriminating and kept only the pre-wait; on this stack it discriminates cleanly (30 vs 0 for a
+  2 % move). Cheap policy that costs nothing: read majflt from the METRIC line, and if it is > 0 treat the
+  run as a warm-up rather than a measurement.
