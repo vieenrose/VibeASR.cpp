@@ -2419,3 +2419,21 @@ Consequences:
   from the working tree. (The audit's new check caught the loss immediately, which is the only reason the
   loss was cheap.)
   Guard baseline from today: protocol 1.8504, guard 1.9852 (+7.3 %, = its 16 extra decode tokens).
+
+- SOAK VERDICT WAS A COIN TOSS; NOW IT REPORTS ITS OWN RESOLUTION (Exp865d).
+  Two soaks of ONE binary on chat138.wav returned +2.40 MB/min -> "GROWTH" and +0.95 -> "FLAT", with
+  identical first/last/HWM. Cause: rss_soak classified on a bare |slope| < 2.0, and on a 5-minute window a
+  few 20 MB two-state spikes move the least-squares slope by more than the threshold. Fixed: slope is now
+  reported with a 95% interval (standard error of the regression) and classified by whether the INTERVAL
+  clears 0.5 MB/min, which yields FLAT / GROWTH / INCONCLUSIVE honestly. --selftest validates the classifier
+  on synthetic series through the real functions (extracted from this file's source, since its run section
+  executes at import time): +40 MB/min with +-12 MB noise -> GROWTH; +1.2 with +-3 -> GROWTH; flat +-3 ->
+  FLAT; flat +-12 (device-like) -> INCONCLUSIVE, with the detectable floor printed (2.09 MB/min at +-12).
+  Real data, 3 soaks of the v4.8 tree on the 138 s clip: peak/HWM = 2205.9 / 2205.9 / 2205.8 MB (identical
+  to 0.1 MB), RSS last = 2184.9 / 2184.7 / 2184.6 MB, fd FLAT (3), threads 2-3 FLAT, majflt 0. The invariant
+  PEAK across independent runs is the stronger no-leak statement here; the slope test at 5 min simply cannot
+  resolve 0.5 MB/min on this device.
+  QUEUED (cheap, better instrument than any slope on one run): soak ACROSS N sequential runs of the same
+  clip and compare run-1 median RSS to run-N median - a paired comparison that is immune to the spike noise
+  that defeats the slope, and it matches how a session actually runs (many windows, one process). Needs the
+  sampler to follow a restarting PID (PROC lookup per run) rather than one PID.

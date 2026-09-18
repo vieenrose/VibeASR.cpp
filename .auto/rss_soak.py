@@ -17,11 +17,69 @@ is not expanded locally - the bug that made Exp676's first bless hash empty stdi
 """
 import os
 import re
+import math
 import statistics
+import sys
+def _selftest():
+    """Validate classify()/trend_se() on synthetic series, WITHOUT device time and WITHOUT re-implementing
+    them: this file's run section executes at import time, so the helpers are pulled from source here
+    (Exp865d - the soak verdict must not be a coin toss; two runs of one binary said GROWTH and FLAT)."""
+    ns = {'math': math, 'statistics': statistics}
+    src = open(__file__, encoding='utf-8').read()
+    lines = src.splitlines()
+    for name in ('trend', 'trend_se', 'classify'):
+        try:
+            i = next(j for j, l in enumerate(lines) if l.startswith('def ' + name + '('))
+        except StopIteration:
+            print(f'  selftest FAIL: def {name}( not found in this file')
+            return 1
+        block = [lines[i]]; i += 1
+        # a function body ends at the first column-0 statement (this file has module-level code after defs,
+        # which is why a greedy regex was wrong here)
+        while i < len(lines):
+            ln = lines[i]
+            if ln.strip() and not (ln.startswith((' ', '\t')) or ln.startswith(')')):
+                break
+            block.append(ln); i += 1
+        exec('\n'.join(block), ns)
+    trend, trend_se, classify = ns['trend'], ns['trend_se'], ns['classify']
+    rng = __import__('random').Random(7)
+    def series(slope, noise):
+        return [(i * 10.0, 2180.0 + (i * 10.0 / 60.0) * slope + rng.uniform(-noise, noise)) for i in range(30)]
+    # Expectations are calibrated to what the sampler can actually resolve (Exp865d): with the +-12 MB
+    # two-state spikes a real device shows, a 5-minute window CANNOT resolve 0.5 MB/min, and the tool must
+    # say INCONCLUSIVE rather than pick a verdict - which is exactly the coin toss that made one soak of an
+    # unchanged binary report GROWTH and the next report FLAT.
+    cases = [('+40 MB/min leak, +-12 noise', 40.0, 12.0, 'GROWTH'),
+             ('+1.2 MB/min leak, +-3 noise', 1.2, 3.0, 'GROWTH'),
+             ('flat, +-3 noise',              0.0, 3.0, 'FLAT'),
+             ('flat, +-12 noise (device-like)', 0.0, 12.0, 'INCONCLUSIVE')]
+    rc = 0
+    for name, sl, nz, want in cases:
+        pts = series(sl, nz)
+        got = classify(trend(pts), trend_se(pts))
+        se = 2 * trend_se(pts)
+        mark = 'ok' if got.startswith(want) else 'WRONG, expected ' + want
+        print(f'  selftest {name:28s} slope={trend(pts):+6.2f} +/- {se:.2f}  -> {got.split(" -")[0]:12s} {mark}')
+        if not got.startswith(want):
+            rc = 1
+    print(f'  resolution at +-12 MB noise: detectable slope >= {0.5 + 2 * trend_se(series(0.0, 12.0)):.2f} MB/min'
+          '  (threshold 0.5 plus 2se)')
+    if rc == 0:
+        print('  rss_soak self-test: PASS (leaks detected, flat accepted, unresolvable cases reported honestly)')
+    return 0
+
+
+
+
+
 import subprocess
 import sys
 import threading
 import time
+
+if '--selftest' in sys.argv:
+    sys.exit(_selftest())
 
 args = sys.argv[1:]
 interval = 5.0
@@ -122,6 +180,42 @@ for s_ in samples:
     print(f'{t - base:6.0f} {r:9.1f} {(h or 0):9.1f} {(v or 0):9.1f} '
           f'{(nth if nth else 0):4d} {(nfd if nfd else 0):5d}')
 
+def trend_se(pairs):
+    """Standard ERROR of trend()'s slope, in MB/min (Exp865d).
+
+    Why: two soaks of one binary on the 138 s clip returned +2.40 MB/min (verdict GROWTH) and +0.95
+    (verdict FLAT) with identical first/last/HWM. On a 5-minute window a few 20 MB spikes move a bare
+    least-squares slope by more than the leak threshold, so the old `abs(slope) < 2.0` verdict was a coin
+    toss at the low end and cried wolf at the high end. Report slope +/- 2 se and decide on the interval.
+    """
+    if len(pairs) > 3 and statistics.pstdev([t for t, _ in pairs]) > 0:
+        xs = [t / 60.0 for t, _ in pairs]
+        ys = [r for _, r in pairs]
+        mx, my = statistics.mean(xs), statistics.mean(ys)
+        Sxx = sum((x - mx) ** 2 for x in xs)
+        if not Sxx:
+            return float('nan')
+        b = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / Sxx
+        a = my - b * mx
+        rss_ = sum((y - (a + b * x)) ** 2 for x, y in zip(xs, ys))
+        return math.sqrt(rss_ / (len(xs) - 2) / Sxx)
+    return float('nan')
+
+
+def classify(slope, se, threshold=0.5):
+    """GROWTH only when the interval clears the threshold; FLAT when it cannot reach it; otherwise say so."""
+    if se != se:                      # nan
+        return 'INCONCLUSIVE - too few samples to fit'
+    lo, hi = slope - 2 * se, slope + 2 * se
+    if lo > threshold:
+        return 'GROWTH - investigate (the 95% interval is above the threshold)'
+    if hi < threshold:
+        return 'FLAT - no leak signal'
+    return 'INCONCLUSIVE - slope +/- 2se straddles the threshold; re-run or lengthen the soak'
+
+
+
+
 def trend(pairs):
     """Least-squares MB/min over (t_seconds, rss_mb) pairs - shared so the self-test uses this code path."""
     if len(pairs) > 2 and statistics.pstdev([t for t, _ in pairs]) > 0:
@@ -151,6 +245,7 @@ k = next((i for i, (h, r) in enumerate(zip(hwms, rss)) if h >= 0.98 * hmax and r
          max(0, len(samples) // 4))
 ss = [(samples[i][0] - base, samples[i][1]) for i in range(k, len(samples))]
 ss_slope = trend(ss)
+ss_se = trend_se(ss)
 ss_band = (min(r for _, r in ss), max(r for _, r in ss)) if ss else (0.0, 0.0)
 hwm_ss = max(hwms[k:]) if k < len(hwms) else 0.0
 hwm_first = hwms[k] if k < len(hwms) else 0.0
@@ -158,10 +253,15 @@ print(f"\nsamples={len(samples)}  span={dur:.1f} min  first={rss[0]:.1f} MB  las
       f"  min={min(rss):.1f}  max={max(rss):.1f}  peak(HWM)={max((s[2] or 0) for s in samples):.1f}")
 print(f'full-range trend = {slope:+.2f} MB/min   net last-first = {rss[-1] - rss[0]:+.1f} MB'
       '   <- includes the first-touch ramp of the mmap\'d weights; NOT the leak indicator')
-print(f'steady state from t={ss[0][0]:.0f}s (sample {k}/{len(samples)}): trend = {ss_slope:+.2f} MB/min,'
+print(f'steady state from t={ss[0][0]:.0f}s (sample {k}/{len(samples)}): trend = {ss_slope:+.2f} '
+      f'+/- {2 * ss_se:.2f} MB/min (95% interval, {len(ss)} samples), '
       f' band {ss_band[0]:.1f}-{ss_band[1]:.1f} MB ({ss_band[1] - ss_band[0]:.1f} MB wide),'
       f' HWM {hwm_first:.1f} -> {hwm_ss:.1f} MB')
-verdict = 'FLAT - no leak signal' if abs(ss_slope) < 2.0 and (hwm_ss - hwm_first) < 25.0 else 'GROWTH - investigate'
+# Threshold: a leak that matters is >= 0.5 MB/min (30 MB/hour in a pocket assistant). The old rule used a
+# bare |slope| < 2.0, which both missed slow real leaks and flagged sampler noise as GROWTH (Exp865d).
+verdict = classify(ss_slope, ss_se)
+if verdict == 'FLAT - no leak signal' and (hwm_ss - hwm_first) >= 25.0:
+    verdict = 'GROWTH - peak is climbing even though the resident trend is flat'
 print(f'memory verdict: {verdict}')
 
 # ---- descriptor / thread verdicts (the resource-limit edge) -------------------------------
