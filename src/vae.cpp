@@ -54,6 +54,16 @@ static bool vae_abl(const char* name) {
     }
     return it->second != 0;
 }
+
+// Exp862 instrumentation: name a cont() node with its SITE number so GGML_OP_TIME can attribute that
+// op per call site (parsed by ggml_cont_site in ggml.c). Diagnostic only - naming a node cannot
+// change the graph, and the protocol transcript is byte-identical with and without it.
+static struct ggml_tensor* vae_ct_site(struct ggml_tensor* t, int site) {
+    char nm[16]; snprintf(nm, sizeof(nm), "cts%d", site);
+    ggml_set_name(t, nm);
+    return t;
+}
+
 static struct ggml_tensor* vae_abl_add(struct ggml_context* ctx, struct ggml_tensor* a,
                                        struct ggml_tensor* b, const char* knob) {
     if (vae_abl(knob)) return a;      // op removed entirely: the sum is never materialised
@@ -487,7 +497,7 @@ static struct ggml_tensor* vae_conv_1d_dw_f16(
     struct ggml_tensor* a3d = ggml_reshape_3d(ctx, a, a->ne[0], 1, C);
     struct ggml_tensor* result = ggml_mul_mat(ctx, a3d, im2d);
     const int64_t OL = im2col->ne[1];
-    result = ggml_cont(ctx, ggml_permute(ctx, result, 0, 2, 1, 3));
+    result = vae_ct_site(ggml_cont(ctx, ggml_permute(ctx, result, 0, 2, 1, 3)), 1);
     return ggml_reshape_3d(ctx, result, C, OL, N);
 }
 
@@ -648,7 +658,7 @@ static struct ggml_tensor* ggml_nn_conv_1d_dw(
                                                        padding, 0, 0, dilation, 0, false, GGML_TYPE_I8_S);
         result = ggml_mul_mat_add(ctx, w, im2col, b);
         result = ggml_reshape_3d(ctx, result, result->ne[1], result->ne[2], 1);
-        result = ggml_cont(ctx, ggml_permute(ctx, result, 1, 0, 2, 3));
+        result = vae_ct_site(ggml_cont(ctx, ggml_permute(ctx, result, 1, 0, 2, 3)), 2);
     } else {
         // Channels-first input [C, T] (the block's natural layout when it is not
         // transposed): time is ne[1], so cache concat and padding go along dim 1.
@@ -684,11 +694,11 @@ static struct ggml_tensor* ggml_nn_conv_1d_dw(
             // was strided. VAE_DW_CT_OFF=1 restores the im2col + 3-D mul_mat path.
             const int64_t K = w->ne[0];
             const int64_t C = w->ne[2];
-            struct ggml_tensor* xc = ct_in ? x : ggml_cont(ctx, ggml_permute(ctx, x, 1, 0, 2, 3));
+            struct ggml_tensor* xc = ct_in ? x : vae_ct_site(ggml_cont(ctx, ggml_permute(ctx, x, 1, 0, 2, 3)), 3);
             // NOTE ggml's permute convention is result.ne[axis_i] = a.ne[i], so
             // going from [K, 1, C] to [C, K] needs (1, 2, 0), not (2, 0, 1).
             struct ggml_tensor* ww = ggml_permute(ctx, w, 1, 2, 0, 3);                   // [C, K]
-            ww = ggml_cont(ctx, ww);
+            ww = vae_ct_site(ggml_cont(ctx, ww), 4);
             if (ww->type != GGML_TYPE_F32) ww = ggml_cast(ctx, ww, GGML_TYPE_F32);
             // +padding: with the pad node deleted, padding carries the implicit left pad (Exp821) and the
             // output length must stay what it was with the materialised [hist | x] tensor.
@@ -753,7 +763,7 @@ static struct ggml_tensor* ggml_nn_conv_1d_dw(
             // as Exp586's guard mismatch, and the state Exp602's fix left the
             // knob working in; Exp586 re-broke it). The left-pad above was
             // applied on dim 1, which permutes to exactly dim-0 left-padding.
-            if (ct_in) x = ggml_cont(ctx, ggml_permute(ctx, x, 1, 0, 2, 3));
+            if (ct_in) x = vae_ct_site(ggml_cont(ctx, ggml_permute(ctx, x, 1, 0, 2, 3)), 5);
             result = vae_conv_1d_dw_f16(ctx, w, x, stride, padding, dilation);
         }
         if (b != NULL) {
@@ -815,7 +825,7 @@ struct ConvNeXtBlock {
                               mixer_conv_weight->ne[1] == 1 && x->ne[0] == mixer_conv_weight->ne[2] &&
                               x->ne[1] > 2 * mixer_conv_weight->ne[0];
         if (!ct_block) {
-            x = ggml_cont(ctx, ggml_permute(ctx, x, 1, 0, 2, 3));
+            x = vae_ct_site(ggml_cont(ctx, ggml_permute(ctx, x, 1, 0, 2, 3)), 6);
         }
 
         x = ggml_nn_conv_1d_dw(ctx, x, mixer_conv_weight, mixer_conv_bias,
@@ -964,7 +974,7 @@ struct AudioVAEEncoder {
                 x = stages[i][j].forward(ctx, x, cache);
             }
 
-            x = ggml_cont(ctx, ggml_permute(ctx, x, 1, 0, 2, 3));
+            x = vae_ct_site(ggml_cont(ctx, ggml_permute(ctx, x, 1, 0, 2, 3)), 7);
 
         }
 
@@ -994,7 +1004,7 @@ struct AudioVAEEncoder {
                 x = stages[i][j].forward(ctx, x, cache);
             }
 
-            x = ggml_cont(ctx, ggml_permute(ctx, x, 1, 0, 2, 3));
+            x = vae_ct_site(ggml_cont(ctx, ggml_permute(ctx, x, 1, 0, 2, 3)), 8);
 
         }
 
