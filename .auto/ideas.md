@@ -2437,3 +2437,17 @@ Consequences:
   clip and compare run-1 median RSS to run-N median - a paired comparison that is immune to the spike noise
   that defeats the slope, and it matches how a session actually runs (many windows, one process). Needs the
   sampler to follow a restarting PID (PROC lookup per run) rather than one PID.
+
+- SESSION MEMORY ANSWERED, AND THE RSS TWO-STATE PATTERN NAMED (Exp865f). rss_soak gained --repeat N: N runs
+  of one command under ONE sampler, comparing per-run steady MEDIANs plus per-run PEAKs. Two independent
+  3-run session soaks (chat69, 24 windows each, 72 windows total):
+      peak per run  2198.2 / 2198.1 / 2198.2   and   2198.2 / 2198.1 / 2198.1   -> spread 0.1 MB
+      median per run 2176.8 / 2176.8 / 2197.2  and   2176.8 / 2197.3 / 2197.1   -> a ~20 MB STEP, not a slope
+  So there is NO session growth: the peak (per-run, monotone within a run, spike-immune) is invariant. The
+  median step is the device's two-state resident-set pattern - the SAME ~20 MB effect that made Exp865d's
+  single-run slopes flip between GROWTH and FLAT, now identified as a state switch rather than a trend.
+  A slope fitted over 3 run-medians is honest only as an interval (+10.2 +/- 12.0 MB/run) - which is why the
+  tool now states the peak-invariance conclusion explicitly. Also fixed: --repeat leaked into the wrapped
+  argv (the parser only stripped --interval), so the harness tried to execute the FLAG as a program.
+  Verdict for the product: RSS is bounded across sessions; the only long-session ceiling remains KV
+  positions (~245-258 s of continuous audio at n_ctx=4096, Exp849/855).

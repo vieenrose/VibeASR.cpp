@@ -85,6 +85,10 @@ args = sys.argv[1:]
 interval = 5.0
 if args and args[0] == '--interval':
     interval = float(args[1]); args = args[2:]
+if args and args[0] == '--repeat':            # Exp865f: strip it here, or it leaks into the wrapped argv
+    REPEAT_N = int(args[1]); args = args[2:]   # and the harness tries to execute a flag as a program
+else:
+    REPEAT_N = 1
 if args and args[0] == '--':
     args = args[1:]
 
@@ -164,8 +168,19 @@ cmd = args or ['bash', '.auto/measure.sh', '--skip-build']
 print(f'soak: sampling {PROC} every {interval:.0f} s while running: {" ".join(cmd)}', flush=True)
 t0 = time.time()
 th = threading.Thread(target=poll, daemon=True)
+# Exp865f: --repeat N runs the wrapped command N times under ONE sampler and compares the per-run steady
+# medians. Why this beats a longer soak: a single process cannot exceed ~4 min of audio before the KV
+# context ends the session (Exp849 measured ~245 s at n_ctx=4096), so a one-run soak cannot reach a slope
+# resolution that answers 'does memory drift across a session'. Per-run MEDIANs are immune to the +-20 MB
+# two-state spikes that defeat a 5-minute slope (Exp865d), and comparing run 1 to run N is a paired test.
+REPEAT = REPEAT_N
+runs = []
+out = ''
 th.start()
-out = subprocess.run(cmd, capture_output=True, text=True).stdout
+for _r in range(REPEAT):
+    _t0 = time.time()
+    out += subprocess.run(cmd, capture_output=True, text=True).stdout
+    runs.append((_t0, time.time()))
 stop.set(); th.join(timeout=2)
 
 if not samples:
@@ -188,7 +203,7 @@ def trend_se(pairs):
     least-squares slope by more than the leak threshold, so the old `abs(slope) < 2.0` verdict was a coin
     toss at the low end and cried wolf at the high end. Report slope +/- 2 se and decide on the interval.
     """
-    if len(pairs) > 3 and statistics.pstdev([t for t, _ in pairs]) > 0:
+    if len(pairs) >= 3 and statistics.pstdev([t for t, _ in pairs]) > 0:   # 3 points = 1 dof, still a real interval
         xs = [t / 60.0 for t, _ in pairs]
         ys = [r for _, r in pairs]
         mx, my = statistics.mean(xs), statistics.mean(ys)
@@ -228,6 +243,32 @@ def trend(pairs):
 
 
 rss = [s[1] for s in samples]
+if REPEAT > 1:
+    print(f'\n---- session soak across {REPEAT} runs of one command ----')
+    meds = []
+    for r, (t0, t1) in enumerate(runs):
+        pts = [s_[1] for s_ in samples if t0 + 20 <= s_[0] <= t1 - 2]     # skip each run's first-touch ramp
+        if len(pts) < 3:
+            print(f'  run {r + 1}: too few in-window samples ({len(pts)}) - INCONCLUSIVE')
+            continue
+        meds.append((r, statistics.median(pts), max(s_[2] for s_ in samples if t0 <= s_[0] <= t1) or 0.0, len(pts)))
+    for r, m, h, n in meds:
+        print(f'  run {r + 1}: steady median RSS {m:.1f} MB  peak {h:.1f} MB  ({n} samples)')
+    if len(meds) >= 2:
+        pts = [(r * 1.0, m) for r, m, _, _ in meds]
+        sl, se = trend([(t * 60.0, m) for t, m in pts]), trend_se([(t * 60.0, m) for t, m in pts])
+        print(f'  drift across runs = {sl:+.2f} +/- {2 * se:.2f} MB per run   '
+              f'first-vs-last = {meds[-1][1] - meds[0][1]:+.1f} MB')
+        print(f'  session-memory verdict: {classify(sl, se)}')
+        hws = [h for _, _, h, _ in meds]
+        print(f'  peak per run: {" ".join(f"{h:.1f}" for h in hws)} MB  (spread {max(hws) - min(hws):.1f} MB)')
+        # The peak is the statistic that answers 'does a session grow?': it is per-run, monotone within a run,
+        # and immune to the +-20 MB two-state RSS pattern that makes per-run MEDIANS step (Exp865f: three
+        # runs gave medians 2176.8 / 2176.8 / 2197.2 but peaks 2198.2 / 2198.1 / 2198.2 - state, not drift).
+        if max(hws) - min(hws) < 2.0:
+            print('  per-run peak is invariant -> NO SESSION GROWTH (the median step is the two-state pattern,'
+                  ' not accumulation)')
+
 dur = (samples[-1][0] - samples[0][0]) / 60.0
 xs = [(s[0] - base) / 60.0 for s in samples]
 slope = trend([(t - base, r) for r, (t, _) in zip(rss, [(s_[0], s_[1]) for s_ in samples])])
