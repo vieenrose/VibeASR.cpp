@@ -1,0 +1,6 @@
+rep=1 clip=chat138.wav rtf=2.1625 tokens=876
+rep=1 clip=stream_10s_24k.wav rtf=1.8548 tokens=39
+rep=2 clip=chat138.wav rtf=2.1647 tokens=876
+rep=2 clip=stream_10s_24k.wav rtf=1.8578 tokens=39
+rep=3 clip=chat138.wav rtf=2.1640 tokens=876
+rep=3 clip=stream_10s_24k.wav rtf=1.8493 tokens=39

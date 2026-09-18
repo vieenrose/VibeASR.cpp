@@ -2499,3 +2499,14 @@ Consequences:
     * naming a local `dev` inside the asset section shadowed that section's dev dict {name: md5} and crashed
       the audit with AttributeError - a check that silently stops running is worse than no check, so verify
       the CHECK COUNT moved, not just that the run went green.
+
+- LONG CLIPS ARE A 4.5x SHARPER INSTRUMENT THAN THE PROTOCOL CLIP (Exp867h; transfers the Nano loop's
+  0.07%-at-240s finding). Interleaved 3+3 in one session: chat138.wav n=3 sd 0.052% rel (range 0.102%),
+  stream_10s_24k.wav n=3 sd 0.233% rel (range 0.458%). 3-rep standard errors: 0.030% long vs 0.135% short.
+  Mechanism is arithmetic: run length scales the work while fixed effects (thermal entry, page-in, scheduler
+  settling, the two-state ~0.3% cluster step from Exp841) do not, so relative variance falls ~1/sqrt(work).
+  HOW TO USE IT: for a length-independent question (a kernel, an elementwise op, a rate), bracket on
+  chat138 - 2 reps there beat 8 reps on the protocol clip. For a PROTOCOL or length-dependent change (tail
+  flush, first-window behaviour, anything touching the final window) the protocol clip remains the metric
+  AND the right place to measure: a long clip dilutes exactly the effect those changes have.
+  Cost: 5.5 min/rep, so a 2x2 is ~22 min - worth it only when the decision hinges on <0.2%.
