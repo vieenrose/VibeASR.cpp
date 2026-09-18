@@ -2263,3 +2263,31 @@ Ruled out along the way (do not retry):
   Knob deleted rather than defaulted off, per Exp833's rule for arms that abort.
 * Anything relying on `/proc/loadavg` as a busy signal (Exp862b), and anything whose speed claim comes
   from a run whose token count changed (Exp674).
+
+## Exp863c — the referee says the transpose formula was right all along (68.8M elements, 0 mismatches)
+
+`GGML_CONT_REF=1` in `ggml_compute_forward_dup_bytes`'s strided branch now runs the SHIPPED element
+loop (which owns `dst`) and then a candidate blocked transpose into scratch, compares them element by
+element, and prints an exit summary so silence cannot be mistaken for agreement:
+
+    CONT_REF SUMMARY: compared 68812800 elements, 0 mismatches
+
+Consequences:
+* **The blocked-transpose formula `d[j*ne0 + i] = s[i*(nb00/4) + j]` is byte-identical to the shipped
+  path on every accepted node of the real pipeline** - 68.8M elements across 4 windows x 2 chains. So
+  my two failed implementations were not wrong in their arithmetic, and my oracle's verdict was the
+  thing to distrust (it has since been shown to encode the same relation, so the earlier oracle failure
+  must ALSO have been structural - see below).
+* Two referee design errors found on the way, both worth remembering:
+  1. Take 1 compared scratch against the SOURCE. That is a tautology, not a check - it "passed" 13.3M
+     elements while proving nothing. A referee must compare the CANDIDATE against the SHIPPED OUTPUT.
+  2. Take 2 printed only on mismatch, so its silence was ambiguous (Exp668's rule). The exit summary
+     with an element count is what makes 0 mismatches mean something; it prints
+     "(CHECK NEVER FIRED)" if the count is 0.
+* **The live hypothesis for the original 14-token failure is STRUCTURAL, not arithmetic**: both my
+  implementations replaced the element loops with an EARLY RETURN, which also skips the surrounding
+  (i02, i03) slice bookkeeping and the contiguous-dst guard's own structure. The next attempt should
+  therefore not return early - keep the shipped branch skeleton and substitute only the inner walk,
+  then let the referee (roles swapped: generic formula into scratch, candidate owns dst) certify it.
+* Prize unchanged: 0.42 s wall = 2.2 % of the metric, bit-identical, acceptance = protocol hash + 3 reps
+  + gate not needed (a transpose cannot change values).
