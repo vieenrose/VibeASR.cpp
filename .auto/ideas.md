@@ -2229,6 +2229,10 @@ Harness bug caught by the control: the first sampler joined two `/proc/stat` lin
 the second line from `$13`, which printed `busy=-28641 %`. Sum each line separately.
 
 ## Exp863b — speeding up CONT site 7: ATTEMPTED, NOT SHIPPED, DISCREPANCY UNRESOLVED
+> **→ RESOLVED AND SHIPPED by Exp864 (v4.8). Read the end-of-file entry first.** The discrepancy was NOT
+> in the transpose formula (the referee was right) but in the fast path's GUARD: no F32 type test, so it
+> corrupted non-F32 cont nodes. Everything below was true as measured at the time. Do not redo this probe
+> set - the kernel ships; the reusable parts are the per-site attribution method and the referee design.
 
 The lever: site 7's `cont(permute(x,1,0,2,3))` is 0.42 s of wall (98.8 % of cont() time) and ggml's
 generic path is its own `"this is not optimal - fix me"` element-at-a-time memcpy, measured at
