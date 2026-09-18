@@ -2068,3 +2068,32 @@ Known remaining limits of check 9, stated so nobody assumes more coverage than e
    a policed form and put them above such headings, as done here);
  * past-tense history is by design not checked - which is why the doc convention going forward is
    **past tense = then, present tense = now**, and the guard polices the present-tense half.
+
+## Exp859 — THE REPRODUCE RECIPE REPRODUCED A DIFFERENT SYSTEM (+3.5 %)
+
+Found by asking a question the loop had never asked: does `RESULTS.md`'s "How to run (reproduce)" block
+actually produce the number printed 25 lines above it? It did not. The block ran
+`VAE_FILE=vae-encoder-q4x4ffn.gguf`, which is the **F16-conv reference build**, while the shipped tier is
+`vae-encoder-convint8.gguf` (the one declaration in `.auto/tier.env`). Measured both, same session:
+
+| what the docs told you to run | VAE file | rtf | transcript |
+|---|---|---|---|
+| documented recipe | `vae-encoder-q4x4ffn.gguf` (reference) | **1.9372** | `1a095c8496b4` |
+| shipped tier | `vae-encoder-convint8.gguf` | **1.8710 / 1.8735** | `1a095c8496b4` |
+
+So a faithful reader got **+3.5 %** and an honest-looking number - and because the transcript is
+byte-identical, nothing about the run *looks* wrong. Same mechanism as Exp694 (eval40.sh's stale
+defaults made a gate score another system), one level up: that class was fixed for the SCRIPTS and never
+applied to the prose a human copies.
+
+**Shipped:** recipe rewritten to the shipping tier, including the step the docs had dropped entirely -
+`.auto/conv_int8.py <src> <out> --device`, where `--device` is mandatory because
+`ggml_quantize_chunk(Q4_0_4_4)` on x86 writes ZERO SCALES (Exp688), so a host-built file of that type is
+fluent silent garbage. Verified end to end: the exact documented command line reads **1.8735**, matching
+the 1.87 headline cell, hash unchanged.
+
+**Guard:** check 10 - any documented COMMAND (a line invoking `measure.sh`/`eval40.sh`) must name
+tier.env's files; prose/table mentions of an alternate tier stay legal (the F16-conv reference row is
+history, not a recipe). Command lines only, because that is the boundary between "information" and
+"instructions". Negative control: re-point the recipe at the reference file -> 1 FAIL naming both values;
+restore -> 0. Coverage message reports the count of overrides compared (2), so an empty scan is visible.

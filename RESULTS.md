@@ -19,15 +19,26 @@ CPU-only, `-t 2` pinned to the two 2.4 GHz prime cores.
 ```bash
 # weights (bit-exactly reproducible, see hashes below)
 python3 utils/convert_vae_to_gguf.py models-pt --outtype q4_0_4x4_ffn -o vae-encoder-q4x4ffn.gguf
+# ...then the SHIPPED VAE: the 14 non-depthwise conv weights go to blocked int8 (Exp690, -3 %).
+# --device is NOT optional: ggml_quantize_chunk(Q4_0_4_4) on x86 writes ZERO SCALES, so a host-built
+# file of this type is fluent, plausible, silent garbage (Exp688).
+python3 .auto/conv_int8.py vae-encoder-q4x4ffn.gguf vae-encoder-convint8.gguf --device
 llama-quantize --allow-requantize --token-embedding-type q6_K \
     --output-tensor-type q8_0 \
     streaming-lm-q4_k_m.gguf lm-q8head.gguf Q4_0_4_4
 # audit: requantize silently demotes precision (Exp493 cost 0.7 pp); fail loudly
-python3 .auto/check_tensors.py ../models-streaming/lm-q8head.gguf ../models-streaming/vae-encoder-q4x4ffn.gguf
+python3 .auto/check_tensors.py ../models-streaming/lm-q8head.gguf ../models-streaming/vae-encoder-convint8.gguf
 # binary (device-specific build protocol; in-tree CMake stays armv8.0-safe)
 ./.auto/setup.sh                     # NDK cross-build with -mcpu=cortex-a78
-LM_FILE=lm-q8head.gguf VAE_FILE=vae-encoder-q4x4ffn.gguf ./.auto/measure.sh
+LM_FILE=lm-q8head.gguf VAE_FILE=vae-encoder-convint8.gguf ./.auto/measure.sh
 ```
+
+> These two filenames must equal `.auto/tier.env` (the one declaration of the shipped tier) and
+> `audit_harness.py` check 10 fails if a documented **command** ever names another tier. That guard
+> exists because this recipe ran `VAE_FILE=vae-encoder-q4x4ffn.gguf` - the F16-conv **reference**
+> build, not the shipping one - so following the instructions under the "reproduces 1.87" headline
+> measured a different system and came back **1.9372 (+3.5 %)**, same transcript (Exp859).
+> The F16-conv file remains the right choice for reference/ablation work; it is not the tier.
 
 `.auto/measure.sh` builds, pushes the binary **and the shared libs** (md5-diffed),
 runs the 10 s protocol clip pinned to the prime cores and prints `METRIC` lines.

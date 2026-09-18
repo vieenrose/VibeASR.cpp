@@ -557,6 +557,35 @@ else:
     except (KeyError, ValueError) as e:
         bad(f"headline.json is unreadable/incomplete: {e!r}")
 
+# ---- 10. documented COMMANDS must name the shipped tier (Exp859). Check 4b compares measure.sh and
+# eval40.sh's DEFAULTS against tier.env; it says nothing about the commands the DOCS tell a human to
+# run, and RESULTS.md's reproduce block had drifted to the F16-conv REFERENCE file. So a reader
+# following "reproduce" under the 1.87 headline measured another system and got 1.9372 (+3.5 %) - a
+# plausible, correct-looking number for the wrong tier, which is the Exp694 failure class wearing a
+# different hat (there it was eval40.sh's defaults; here it is prose a human trusts).
+cmd_claims = 0
+for name in ('RESULTS.md', 'STREAMING_1P5B.md', os.path.join('.auto', 'prompt.md'), 'README.md'):
+    p_ = os.path.join(ROOT, name)
+    if not os.path.exists(p_) or not TIER:
+        continue
+    for i, ln in enumerate(open(p_, encoding='utf-8', errors='replace').read().splitlines()):
+        if 'measure.sh' not in ln and 'eval40.sh' not in ln:
+            continue                      # commands only: prose mentions of an alternate tier are fine
+        if any(h in ln.lower() for h in ('as of exp', 'superseded', 'snapshot', 'pre-flush',
+                                         'previous default', 'reference build')):
+            continue
+        for k in ('VAE_FILE', 'LM_FILE'):
+            for v in re.findall(k + r'=([\w.\-]+\.gguf)', ln):
+                cmd_claims += 1
+                if v != TIER.get(k):
+                    bad(f"{name}:{i+1} documents a command that runs {k}={v}, but the shipped tier is "
+                        f"{k}={TIER.get(k)} (.auto/tier.env) - a reader following this reproduces a "
+                        f"DIFFERENT SYSTEM and gets a different RTF (Exp859: +3.5 % for exactly this)")
+if cmd_claims:
+    ok(f"{cmd_claims} documented command file-override(s) all match the shipped tier")
+else:
+    warn("no file overrides found in any documented command - check 10 had nothing to compare")
+
 # ---- report -------------------------------------------------------------------
 print(f"harness audit: {len(oks)} checks passed, {len(warns)} warnings, {len(fails)} failures\n")
 if '--verbose' in sys.argv:
