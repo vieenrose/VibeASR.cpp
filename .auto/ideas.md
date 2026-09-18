@@ -2227,3 +2227,39 @@ the LOCAL adb call and let on-device `timeout` bound the burners.
 
 Harness bug caught by the control: the first sampler joined two `/proc/stat` lines with `|` and indexed
 the second line from `$13`, which printed `busy=-28641 %`. Sum each line separately.
+
+## Exp863b — speeding up CONT site 7: ATTEMPTED, NOT SHIPPED, DISCREPANCY UNRESOLVED
+
+The lever: site 7's `cont(permute(x,1,0,2,3))` is 0.42 s of wall (98.8 % of cont() time) and ggml's
+generic path is its own `"this is not optimal - fix me"` element-at-a-time memcpy, measured at
+**0.78 GB/s of dst writes vs PAD's 3.6 GB/s**. A transpose changes no values, so the prize (~2.2 % of
+the metric) looked safe: acceptance = protocol transcript byte-identity, no gate needed.
+
+Two implementations, both reverted:
+1. **NEON 4x4 register transpose** (two `vtrn` stages, pairing derived on paper as
+   `(r0,r2)/(r1,r3)` then `(t0,t2)/(t1,t3)`). Pipeline output: 14 tokens instead of 39, hash
+   e44d190018be vs 1a095c8496b4. The rtf read 1.64 - a FAKE win caused by the LM emitting 25 fewer
+   tokens (Exp674's "the measurement you ran wasn't the measurement you meant", 6th instance).
+2. **Plain C 16x16 cache-blocked transpose** (no intrinsics at all - blocking was the real mechanism).
+   Same wrong values, same first-mismatch position.
+
+Why it is NOT shipped: a C double loop of the form `d[j*dn + i] = s[i*sx + j]` cannot have a lane bug,
+and the kernel's own diagnostic printed the correct strides (`sx = C`, `dn = ne0`, `ne00/ne01` right),
+and the buffers do not alias (`x->data != y->data`). So either ggml's `cont` semantics differ from the
+definition I encoded, or the oracle is wrong - and I could not tell which, which is exactly the
+condition for not shipping. The oracle (`.auto/cont_tile_test.cpp`, kept) has ALREADY had one indexing
+bug of its own (it scored a [C,T] tensor as row-major [T,C], which made a correct kernel look wrong),
+so it is not yet a trustworthy referee.
+
+**Cheapest decisive next step if this lever is ever retried** - settle the referee before writing any
+kernel: inside the fast path, ALSO run the generic loop into a scratch buffer and `memcmp` the two
+results, reporting "kernel vs generic" mismatches per shape. If they agree, the kernel is right and the
+oracle is wrong; if they disagree, the kernel is wrong - and in either case the answer arrives in one
+host-free run instead of through a 35 s pipeline or a self-written expectation.
+
+Ruled out along the way (do not retry):
+* Passing the permuted VIEW to the downsample conv instead of materializing it: SIGABRT at
+  ggml.c:17299 `GGML_ASSERT(src0->nb[0] == sizeof(float))` - the same wall Exp819 hit via im2col_asym.
+  Knob deleted rather than defaulted off, per Exp833's rule for arms that abort.
+* Anything relying on `/proc/loadavg` as a busy signal (Exp862b), and anything whose speed claim comes
+  from a run whose token count changed (Exp674).

@@ -974,6 +974,12 @@ struct AudioVAEEncoder {
                 x = stages[i][j].forward(ctx, x, cache);
             }
 
+            // Exp863 attribution: CONT site 7 = 98.8 % of all cont() time (0.42 s wall). It
+            // materializes the [T, C] time-fastest contract the next stage's downsample conv consumes.
+            // Two ways to remove it were tried, neither usable: (a) handing that conv the permuted VIEW
+            // ABORTS (ggml.c:17299, GGML_ASSERT(src0->nb[0] == sizeof(float)) - the same wall Exp819
+            // hit with im2col_asym); (b) speeding the copy up inside ggml_dup_data gave wrong values
+            // from two independent implementations, unresolved (Exp863b). So the copy stays.
             x = vae_ct_site(ggml_cont(ctx, ggml_permute(ctx, x, 1, 0, 2, 3)), 7);
 
         }
