@@ -148,6 +148,12 @@ needs `drop_caches` (root; adbd runs as uid 2000, no `su`). Bound if it ever mat
 by roughly 3x until the weights are resident (~0.4 s of unavoidable stall for 1.6 GB, and that is a LOWER bound
 because the measured rate is page-cache-served, not flash).
 
+### Ladder extension: 155 s (Exp855, same session as the position-law fit)
+
+`chat155.wav` = chat138 + chat17, 154.97 s, sha256 `1cd4f3a84fbb`, 7 438 748 B: **RTF 2.1935**, 978 tokens,
+peak RSS 2208 MB, majflt 0. Against the 138 s cell (2.183) this is +0.5 % for 12 % more windows, i.e. the length
+gradient stays gentle exactly as the corrected position law predicts.
+
 ### Loader equivalence and config edges (Exp851)
 
 **`--no-mmap` is output-equivalent to the shipped zero-copy loader**: same protocol transcript hash, rtf 1.8734,
@@ -179,15 +185,31 @@ to every quality metric, because the output stays fluent; only a fault-injection
 
 ### Long-session limit (measured, Exp849)
 
-Continuous-audio position budget = **49.5 KV positions per window** (hop 70400 samples = 2.933 s) = **~18 positions
-per audio second**. With the default `n_ctx = 4096`, a single unbroken stream therefore stops after **~245 s ≈ 4 min**;
-`n_ctx = 16384` reaches ~16 min but the KV cache grows from 112 MB to ~450 MB. The old code comment attached the
-15-minute figure to 4096 - it belongs to 16384.
+Continuous-audio position budget = **46.5 KV positions per window** (hop 70400 samples = 2.933 s): each window feeds
+28 rows and emits ~18.5 tokens, and every emitted token also occupies a position. Measured directly from a 155 s
+`LATENCY_TRACE` run (53 windows, 978 tokens, 2493 positions); Exp849's `-c` bracketing said 49.5 +- 3 - consistent.
+With the default `n_ctx = 4096`, a single unbroken stream therefore stops after **~258 s = 4.3 min**;
+`n_ctx = 16384` reaches ~16 min but the KV cache grows from 112 MB to ~450 MB (28.0 KB per position). The old code
+comment attached the 15-minute figure to 4096 - it belongs to 16384.
+
+**Position cost law** (same run, 53 windows, R2 0.88, standard error 0.56 us/position, measured to P = 2450):
+
+    decode ms/token = 89.1 + 11.13 us x P          prefill ms/row = 33.0 + 5.22 us x P          vae = 3428 +- 9 ms/window (flat)
+
+This **corrects Exp807's 22 us/position**, which understated P by about 2x (it used rows per window, ~28, instead of
+46.5) and therefore over-predicts this run's total decode time by 13.2 % (113.2 s predicted vs 100.0 s measured,
+against 100.8 s for the corrected law). Refitting the 138 s portion of the clip on its own gives 11.11 us - so the
+discrepancy was methodological, not data-dependent. Reading: KV traffic per token per position costs 2.28 us at the
+measured 12.6 GB/s ceiling, so the term is ~4.9x its traffic cost - it is mostly attention compute and cache
+management, which is why it cannot be bought back by streaming tricks.
 
 On exhaustion the process prints one of `decode failed` / `frames failed` (whichever row group hits the boundary)
 and **exits 1 with no final `--- Transcription ---` summary**; window lines emitted so far are already on stdout.
-For sessions longer than the limit: raise `-c`, add `--kv-type q8_0` for ~2x positions per byte, or restart the
-session on a boundary. To re-test the boundary cheaply, do NOT run a 4-minute clip - run the 138 s ladder clip with
+For sessions longer than the limit: raise `-c` (+28 MB per 1024 positions), or restart the session on a boundary.
+An 8-bit KV cache would buy **1.88x positions per byte** (q8_0's per-32-element scale costs 6 %), i.e. ~485 s at
+4096 slots - but **this build has no `--kv-type` flag**: the cache type is hardcoded to F16 in the vendored llama, and
+passing the flag exits 1 with `Unknown arg`. Treating it as an available option is wrong; enabling it means a vendored
+change plus a full accuracy gate, and its benefit is capacity, not speed (the position term is ~4.9x traffic-bound). To re-test the boundary cheaply, do NOT run a 4-minute clip - run the 138 s ladder clip with
 a small `-c` (e.g. `-c 1536` dies at window 31/48), which reaches the same code path in a fraction of the runtime.
 
 ## Phone evaluation (OPPO CPH2371, Dimensity 1300, 8 GB RAM, Android 13)

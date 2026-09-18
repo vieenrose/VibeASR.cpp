@@ -51,6 +51,10 @@
    "md5": "07352ef780c356f101008baef4992f40",
    "note": "138 s sustained/RSS soak"
   },
+  "chat155.wav": {
+   "md5": "58f44b2f58f3d6c58e9959d137751924",
+   "note": "155 s ladder cell + position-law run (Exp855) = chat138+chat17, sha256 1cd4f3a84fbb, host mirror .auto/assets/"
+  },
   "chat17.wav": {
    "cell": "17 s ladder cell (Exp675)",
    "derived_from": {

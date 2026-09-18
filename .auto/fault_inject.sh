@@ -22,12 +22,13 @@ PASS=0; FAIL=0
 # $1 = vae file, $2 = lm file, $3 = expect (ok|err), $4 = label
 probe() {   # $1=vae $2=lm $3=expect(ok|err) $4=label   - no shell constructs inside the adb string (Exp832)
   local v=$1 l=$2 exp=$3 label=$4 rc err out code sig
+  local extra=${5:-}
   rc=$(adb -s "$DEV" shell "cd $RDIR && LD_LIBRARY_PATH=. taskset C0 ./asr_streaming --vae-model ./$v --lm-model ./$l \
-        --audio $CLIP -t 2 --vae-pieces 1 >./fi.out 2>./fi.err; echo EXIT=\$?" 2>&1 | tr -d '\r' | grep -oE 'EXIT=[0-9]+' | head -1)
+        --audio $CLIP -t 2 --vae-pieces 1 $extra >./fi.out 2>./fi.err; echo EXIT=\$?" 2>&1 | tr -d '\r' | grep -oE 'EXIT=[0-9]+' | head -1)
   # analyse on the HOST: the device shell is too limited for alternation/|| in argv form
   err=$(adb -s "$DEV" shell "cat $RDIR/fi.err" 2>/dev/null | tr -d '\r')
   out=$(adb -s "$DEV" shell "cat $RDIR/fi.out" 2>/dev/null | tr -d '\r')
-  sig=$(printf '%s' "$err" | grep -m1 -oE 'truncated or corrupt[^\n]{0,70}|failed to load model' || true)
+  sig=$(printf '%s' "$err" | grep -m1 -oE 'truncated or corrupt[^\n]{0,70}|failed to load model|Unknown arg[^\n]{0,40}' || true)
   [ -n "$sig" ] || sig=$(printf '%s\n%s' "$err" "$out" | grep -m1 -oE 'tokens: [0-9]+' || true)
   code=$rc
   if [ "$exp" = err ]; then
@@ -51,6 +52,7 @@ probe "$VAE" "lm_trunc.gguf"    err "LM tail -8MB"
 probe "$VAE" "lm_head.gguf"     err "LM header-only 1MB"
 probe "vae_trunc.gguf"   "$LM"  err "VAE tail -8MB"
 probe "vae_trunc64.gguf" "$LM"  err "VAE tail -64MB"
+probe "$VAE" "$LM" err "unknown --kv-type flag" "--kv-type q8_0"   # a doc-promised option must not be silently accepted
 # --- audio-input probes (Exp850b): the RTF denominator must come from DECODED samples, not the RIFF header ---
 AF=$HERE/assets/faults; mkdir -p "$AF"
 python3 - "$HERE/assets/slice10b_24k.wav" "$AF" <<'PYGEN'

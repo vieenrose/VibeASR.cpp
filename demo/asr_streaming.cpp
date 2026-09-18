@@ -48,11 +48,14 @@ struct stream_params {
     std::string audio_path;
     std::string context_info;
     int n_threads = 4;
-    // Measured 49.5 KV positions per window (Exp849 bracketing: -c 1024 dies in window 21, -c 1536 in window 32,
-    // -c 2400 completes 48) = ~18 positions per audio second at hop 70400. So 4096 covers ~4 MINUTES of
-    // continuous audio, NOT 15 min - the 15-min figure belongs to 16384 (~16 min, KV 450MB vs 112MB here).
+    // Measured 46.5 KV positions per window, counted directly from a 155 s LATENCY_TRACE run (28 fed rows +
+    // ~18.5 emitted tokens; Exp849's -c bracketing said 49.5 +- 3, consistent). So 4096 covers ~258 s = 4.3 min
+    // of continuous audio, NOT 15 min - that figure belongs to 16384 (~16 min, KV 450MB vs 112MB here:
+    // 28 layers x 2 kv heads x 128 head dim x K+V x 2 bytes = 28.0 KB per position).
     // On exhaustion the window loop exits 1 with "decode failed" or "frames failed" and prints NO final summary.
-    // Raise -c, or use --kv-type q8_0 for ~2x positions per byte, for longer sessions.
+    // Raise -c for longer sessions. An 8-bit KV cache would give 1.88x positions per byte but is NOT exposed in
+    // this build: the type is hardcoded (3rdparty/llama.cpp/src/llama.cpp: type_k/type_v = GGML_TYPE_F16) and there
+    // is no --kv-type flag (passing it exits 1 "Unknown arg"). Enabling it needs a vendored change + an accuracy gate.
     int n_ctx = 4096;
     int n_batch = 512;
     int max_tokens_per_chunk = 256;

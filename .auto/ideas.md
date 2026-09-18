@@ -1923,3 +1923,36 @@ of an anti-overfit guard and worth stating: the guard's job is to move WITH the 
    writeback), not a persistent state change. Consequence for the loop's rules: any single-run reading outside the
    0.19 % band is provisional until reproduced - especially after an experiment that wrote or deleted large files.
    The RSS signature (91 MB low with majflt 0) is the tell that it was I/O/page-fault related, not thermal.
+
+## Exp855 — position cost law corrected 2x, the --kv-type "lever" was fictional, and the ladder reaches 155 s
+
+ * **Why the loop had never seen this:** every long-form claim I had rested on Exp807's fit
+   `ms/token = 88.2 + 22.0 us x position` (measured to P=1284). I extended the range by building `chat155.wav`
+   (chat138 + chat17, 154.97 s, sha256 1cd4f3a84fbb) and tracing 53 windows. Result:
+   **decode ms/token = 89.1 + 11.13 us x P** (R2 0.88, se 0.56, to P=2450), **prefill ms/row = 33.0 + 5.22 us x P**,
+   **vae = 3428 +- 9 ms/window** (flat, content-independent).
+ * **The mechanism of my own earlier error:** a window consumes 28 fed rows **plus one position per emitted token**
+   (~18.5 at this operating point) = **46.5 positions per window**. Exp807 counted only the rows (~28), so P was
+   understated ~1.7x and the slope inflated by the same factor. Independent corroboration: Exp849's `-c` bracketing
+   (dies at window 21 of 1024, 32 of 1536) says 49.5 +- 3 positions/window - it agreed with the *bigger* number all
+   along, and I had not connected the two measurements.
+ * **How the old law was falsified, cheaply:** the 155 s clip *contains* the 138 s clip, so refitting windows 1-47
+   alone reproduces 11.11 us/position - the disagreement is methodological, not data-dependent. And totals decide
+   it outright: measured decode 100.0 s, corrected law 100.8 s (+0.8 %), old law 113.2 s (**+13.2 %**).
+   Rule: when a fitted law and a bracketing experiment disagree, test on data you already have before running more.
+ * Consequences that survive the correction: the term is ~4.9x its KV traffic cost (2.28 us per token per position
+   at the measured 12.6 GB/s ceiling), so it is attention compute + cache management, not streaming - the KV axis
+   stays closed for the protocol metric. The length gradient of the ladder (~+4 % at 138 s) is now predicted at
+   +3.7 % instead of overshooting at +7.5 %.
+ * **`--kv-type q8_0` does not exist.** The code comment and two of my own next-hints recommended it; the demo
+   parses 10 flags and `--kv-type` is not one - passing it exits 1 `Unknown arg` (now a fault-board probe). The type
+   is hardcoded (`type_k = type_v = GGML_TYPE_F16` in the vendored llama), so the "2x positions per byte" lever is
+   really "make a vendored change and pass an accuracy gate", worth 1.88x capacity (q8_0's per-32 scale costs 6 %),
+   and its benefit is capacity, not speed. Fixed the comment and the docs.
+ * KV geometry, now derived rather than quoted: 28 layers x 2 kv heads x 128 head dim x 2 (K,V) x 2 B =
+   **28.0 KB per position** = 112 MB at 4096 (matches Exp849's 27.5 KB from memory size). Session limit becomes
+   **~258 s** at 4096 (4096 / 46.5 windows x 2.933 s), vs the bracketing estimate ~245 s.
+ * New ladder cell: 155 s = **2.1935**, 978 tokens, RSS 2208 MB, majflt 0. Registered in `device_assets.json`
+   (host mirror `.auto/assets/chat155.wav`, gitignored; md5 verified host == device before registering).
+ * Asset housekeeping worth knowing: the 138 s clip is `chat138.wav` on device (6 622 748 B), and `chat.wav` is
+   still a byte-identical duplicate of `chat69.wav` (the known Exp675 WARN).
