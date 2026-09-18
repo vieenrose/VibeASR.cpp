@@ -2451,3 +2451,26 @@ Consequences:
   argv (the parser only stripped --interval), so the harness tried to execute the FLAG as a program.
   Verdict for the product: RSS is bounded across sessions; the only long-session ceiling remains KV
   positions (~245-258 s of continuous audio at n_ctx=4096, Exp849/855).
+
+- SPLICE-PHASE LAW, TESTED ON THE A78 STACK (Exp866h, prompted by the Jetson loop's report): my stitched
+  eval assets insert GAP_MS=300 -> 7,200 samples between clips while the protocol advances HOP = 22 frames
+  x 3200 = 70,400 samples, so the 24 clips of holdout_en sit at 24 DISTINCT phases of the window grid
+  (0, 20768, 67584, 18080, 55104, ...). Only clip 1 starts a window. .auto/align_asset.py now rebuilds any
+  such asset with every clip on a hop boundary and PROVES content identity via the manifest's per-clip sha256
+  (all 24 matched; +39.4 s of silence is the only difference). Measured on the phone, same session, 220
+  held-out English tokens: misaligned 26.36% vs aligned 25.00%, PAIRED b=17 / c=17, McNemar p=1.0, CI
+  [-3.6, +6.8] pp. Reading: no SYSTEMATIC penalty is detectable at this n (power ~0.4; their +7-17 pp would
+  fall just outside this CI, so it is disfavoured, not excluded), but 34 of 220 tokens changed identity -
+  phase moves WHICH tokens are wrong even when the mean is unchanged, which is label noise for training data.
+  HYPOTHESIS for the cross-device discrepancy (test on their side): a SINGLE splice imposes one shared phase
+  offset on all later audio (systematic -> big WER swing), while many splices give i.i.d. phases whose
+  effects cancel in the mean and survive only as variance. If so, the rule to publish is "align every
+  segment start to the hop", not "a splice costs 15 pp".
+  OPEN MODELLING QUESTION: is the right modulus the STRIDE (22 frames = 70,400) or the WINDOW (26 frames =
+  83,200)? I used 70,400 because the windowed protocol advances 22 frames; a non-overlapping/carry schedule
+  would use 83,200. A one-arm test (shift by 83,200 - 70,400 = 12,800 samples) distinguishes them.
+  TOOLING: .auto/align_asset.py (re-phase + prove), .auto/phase_probe.py (insert aligned/non-aligned silence
+  into an existing asset; content-preserving, so arms share one reference and compare paired).
+  CAUTION KEPT: transcript LINES are WINDOWS, not turns - a per-clip WER built by zipping lines to the
+  manifest table produces ~100% garbage (it did, and the 26% aggregate exposed it). Per-turn WER needs the
+  scorer's own turn segmentation: QUEUED as a score_stream.py --per-turn option.
