@@ -2359,3 +2359,25 @@ Consequences:
   vae_s + the gate paired test (any src/ change => the gate, Exp852's rule), then behavior_watch on both
   tiers, then rollback_audit with the new hatch (GGML_GELU_CVT_OFF). STOP if the hash moves: that would
   mean a second consumer exists somewhere and the deletion is wrong, not a rounding detail.
+
+- CONSUMER-SIDE GELU FUSION: EQUIVALENCE PROVEN, SPEED LOST, KEPT OPT-IN (Exp865, GGML_GELU_CVT=1).
+  Built the Exp864d idea: fc1 stays RAW and FC2's F32->Q8_0 activation staging applies gelu(x+fc1_bias), so
+  the gelu node (1.26 s wall = 6.8% of the metric, the largest non-matmul item) leaves the graph. Result:
+  PROTOCOL TRANSCRIPT BYTE-IDENTICAL (hash 1a095c8496b4) - the equivalence argument was right - but 3.3%
+  SLOWER (1.9093 vs 1.8489, VAE 12.2 vs 11.6 s). Cause is mechanical: the fusion calls the shipped
+  quantize_q8_0_4x4 once per 32-element block instead of once per row, repeating its per-call setup
+  (float32x4_t srcv[4][8], the amax reduction tree) ne10/32 times, plus a 4x32-float stack tile per block.
+  So the ceiling (deleting 2 tensor passes) is real but this implementation shape gives it back.
+  DURABLE LAYOUT FACT (cost two wrong runs): in the 4x4 interleaved staging, ONE block_q8_0x4 carries the
+  same 32-element block of FOUR columns, so its address step is 4*nbw1/nb_blk, NOT nbw1/nb_blk. Using the
+  per-row stride scrambles the activation staging and yields 1024-token garbage silently under -DNDEBUG.
+  Also: a "fuse" extra-src must be attached to the CONSUMER's matmul - the first attempt passed it on the
+  fc1 call, which applied gelu to fc1's input and left fc2 without any. A one-shot probe printing the
+  flagged node's NAME (ffn.linear1.weight) located it in one run; probes should always name the node.
+  NEXT ATTEMPT IF PURSUED: inline the gelu INTO A COPY of quantize_q8_0_4x4's block loop in
+  ggml-aarch64.c - no tile, no per-block call; pass ggml_table_gelu_f16 as an argument (not visible in that
+  TU); apply the three branches per lane right after vld1q_f32 and BEFORE vabsq/amax (amax must see gelu'd
+  values). Acceptance = protocol hash, then 3 reps + vae_s, then gate (any src/ change, Exp852's rule).
+  Status of the elementwise board: gelu 1.26 s is the only above-bar item left; RMS_NORM 0.44, ADD 0.40,
+  ADD_SCALED 0.36, CONV1D 0.32, IM2COL 0.29, PAD 0.14, CONT 0.11 s, and the producer-side epilogue route is
+  measured negative (Exp822, +4.2% by weight-panel eviction).
