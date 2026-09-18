@@ -391,7 +391,9 @@ static struct ggml_tensor* ggml_nn_linear(
     struct ggml_tensor* x,
     struct ggml_tensor* w,
     struct ggml_tensor* b,
-    bool apply_bias = true) {   // false = return the pre-bias tensor so a consumer can fuse it (Exp673)
+    bool apply_bias = true,          // false = return the pre-bias tensor so a consumer can fuse it (Exp673)
+    struct ggml_tensor* act_gelu_bias = nullptr) {   // Exp865: gelu(this bias + x) fused into THIS matmul's
+                                                     // activation quantization; the gelu node then vanishes
     
     int64_t IC = x->ne[0];
     int64_t N = x->ne[1];
@@ -407,6 +409,10 @@ static struct ggml_tensor* ggml_nn_linear(
         result = ggml_mul_mat_add(ctx, w, x, b);
     } else {
         result = ggml_mul_mat(ctx, w, x);
+        if (act_gelu_bias) {   // Exp865: consumer-side gelu fusion (see ggml.c's mul_mat staging loop)
+            result->op_params[1] = 1;   // no setter API in this ggml version; new_tensor zero-inits op_params
+            result->src[2] = act_gelu_bias;   // precedent: the fused gelu_bias op passes its bias the same way
+        }
         if (b != NULL && apply_bias) {
             result = vae_abl_add(ctx, result, b, "VAE_ABL_BIAS");
         }
@@ -859,6 +865,29 @@ struct ConvNeXtBlock {
                    ffn_fc1_bias && ffn_fc1_bias->type == GGML_TYPE_F32 && ggml_is_contiguous(ffn_fc1_bias) &&
                    ffn_fc1_bias->ne[0] == ffn_fc1_weight->ne[1] &&
                    ffn_fc1_bias->ne[1] == 1 && ffn_fc1_bias->ne[2] == 1 && ffn_fc1_bias->ne[3] == 1) {
+            // Exp865: the gelu's two extra tensor passes (write gelu(x+b), read it back to quantize) are
+            // 1.26 s wall = 6.8% of the metric in the v4.8 node census - the largest non-matmul item. Here
+            // fc1 stays RAW and fc2's own activation quantization applies gelu(x + b1) in registers, which
+            // deletes the node. Value-preserving: same f32 add, same gelu body, same Q8_0 block math (all
+            // three are the shipped routines - see ggml.c's staging loop). Requires the activation column
+            // count to be a multiple of 4 only for the 4-column fast route; the per-row route covers the
+            // rest and fuses too, so the flag is always honoured. Hatch: GGML_GELU_CVT_OFF=1.
+            const bool cvt_ok = getenv("GGML_GELU_CVT") != nullptr && !getenv("GGML_GELU_CVT_OFF") &&
+                                !vae_abl("VAE_ABL_GELU") &&
+                                ggml_is_quantized(ffn_fc2_weight->type) &&
+                                ffn_fc2_weight->type != GGML_TYPE_I8_S &&
+                                ffn_fc2_weight->type != GGML_TYPE_I2_S &&
+                                ((x->ne[1] * x->ne[2]) % 4) == 0;
+            if (cvt_ok) {
+                // fc1 stays RAW; the gelu+bias is fused into FC2's activation quantization. (Passing the
+                // fuse bias on the fc1 call instead - which is what the first attempt did - applies gelu to
+                // fc1's INPUT and leaves fc2 without it: 1024-token garbage, and the probe naming
+                // ffn.linear1.weight as the flagged node is what located it.)
+                x = ggml_nn_linear(ctx, x, ffn_fc1_weight, ffn_fc1_bias, /*apply_bias=*/false);
+                x = ggml_nn_linear(ctx, x, ffn_fc2_weight, ffn_fc2_bias, /*apply_bias=*/true,
+                                   /*act_gelu_bias=*/ffn_fc1_bias);
+                goto ffn_done;
+            }
             // Exp673: mul_mat -> gelu(x+b) in ONE node, removing the bias ADD and its write+read
             // pass (bias adds measured 5.9% of VAE time). Bit-identical by construction: the fused
             // kernel reuses the same f32 add and the same ggml_vec_gelu_f32. Built by calling
@@ -889,6 +918,7 @@ struct ConvNeXtBlock {
         
         x = ggml_nn_linear(ctx, x, ffn_fc2_weight, ffn_fc2_bias);
 
+        ffn_done:;
         if (is_i8s) {
             x = ggml_add_scaled(ctx, x, residual, ffn_layer_scale);
         } else if (vae_abl("VAE_ABL_SCALE")) {
