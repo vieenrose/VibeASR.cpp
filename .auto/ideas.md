@@ -2323,3 +2323,39 @@ Consequences:
   DO NOW: rollback_audit.sh with GGML_CONT_TILE_OFF as the 11th hatch (nested-fast-path lesson, Exp824),
   and behavior_watch.sh on BOTH tiers (a copy kernel at VAE stage boundaries - edge cases are where a
   shape-population difference would show).
+
+- GELU ABSORBED INTO ITS CONSUMER'S ACTIVATION QUANTIZATION — SPECIFIED, PRICED, NOT YET BUILT (Exp864d).
+  The v4.8 node census (GGML_OP_TIME, re-derived after the CONT change per the Exp665/671/674 rule) gives
+  the VAE per chain: MUL_MAT 16.57 s node-ms (71.4%, = 8.29 s wall, AT the 39.6 GMAC/s ceiling), then
+  **UNARY/gelu 2513 ms = 1.26 s WALL = 6.8 % of the metric**, the largest non-matmul item by 3x
+  (RMS_NORM 0.44, ADD 0.40, ADD_SCALED 0.36, CONV1D 0.32, IM2COL 0.29, PAD 0.14, CONT 0.11 after Exp864).
+  WHY THIS ROUTE AND NOT THE EPILOGUE: Exp822 measured producer-side fusion (gelu in the GEMM store tiles)
+  NEGATIVE, +4.2 % at every tile size, because the extra pass evicts the weight panel the GEMM is streaming.
+  The CONSUMER side is a different site: fc2's mul_mat must quantize its F32 activations to Q8_0 anyway,
+  and that staging loop is ONE place - ggml.c:14209, `from_float_to_mat(...)` (= quantize_mat_q8_0) over 4
+  columns x ne10, with a scalar tail loop below. Today the pipeline writes gelu(x+b1) to memory (1 read +
+  1 write of the whole fc1 output) and then reads it back to quantize. Folding gelu+bias INTO the quantizer
+  deletes both passes: quantize(gelu(x+b1)) computed in registers. Ceiling = gelu's node time, 1.26 s wall;
+  realistic 4-6 % since the quantizer's own read stays.
+  BIT-IDENTICAL BY CONSTRUCTION (the same argument that made Exp673/671/670 shippable): the f32 values fed
+  to the quantizer are the same gelu(x+b1) results - same table lookup (GGML_GELU_FP16), same f32 add - and
+  Q8_0 block quantization is a deterministic function of those values. Q8_0 blocks are 32 CONTIGUOUS
+  elements, so a 32-float STACK buffer suffices: NO work-buffer request, which is what arms Exp578/664.
+  RECIPE:
+    1. ggml-quants.c: `quantize_mat_q8_0_gelu_bias(const float * x, const float * b, void * y, int nx,
+       int ny, int blck)` - per 32-element block: vaddq_f32 then the SAME gelu body, then the unchanged
+       q8_0 block math. No fma contraction (Exp664's rule).
+    2. ggml.c staging loop (14209): if the node flag is set, call the variant with bias from src[2].
+       Flag = op_params[1] == 1; bias tensor rides as an EXTRA SRC (src[2] of a mul_mat is unused - and
+       Exp672's lesson: pass the loaded tensor raw, do NOT ggml_cont a model tensor or cgraph leaves it
+       unallocated/garbage).
+    3. Builder: ggml_mul_mat_gelu_bias(m, a, bias) setting op_params + src[2].
+    4. vae.cpp ffn: build fc1 with apply_bias=FALSE (raw product, exactly today's intermediate) and fc2
+       through the new builder with ffn_fc1_bias. Fuse ONLY where the gelu output has exactly ONE consumer
+       (the fc2 matmul) - check the graph at build time, keep the node otherwise.
+    5. Gate the fusion on the frame count being a multiple of 4: the tail rows (ne11 % 4) go through a
+       different per-row conversion path below the loop, which this does not cover.
+  ACCEPTANCE: protocol transcript hash byte-identical (it must be, by the argument above), then 3 reps +
+  vae_s + the gate paired test (any src/ change => the gate, Exp852's rule), then behavior_watch on both
+  tiers, then rollback_audit with the new hatch (GGML_GELU_CVT_OFF). STOP if the hash moves: that would
+  mean a second consumer exists somewhere and the deletion is wrong, not a rounding detail.
