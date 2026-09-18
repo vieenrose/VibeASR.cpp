@@ -2097,3 +2097,32 @@ tier.env's files; prose/table mentions of an alternate tier stay legal (the F16-
 history, not a recipe). Command lines only, because that is the boundary between "information" and
 "instructions". Negative control: re-point the recipe at the reference file -> 1 FAIL naming both values;
 restore -> 0. Coverage message reports the count of overrides compared (2), so an empty scan is visible.
+
+## Exp860 — every flag the docs or comments PROMISE must exist in the parser (generalizing Exp855)
+
+Exp855 found `--kv-type q8_0` recommended by a code comment and by two of my own next-hints, in a binary
+that parses 10 flags and exits 1 on anything else. That iteration added a fault probe for **that one
+flag** - which leaves the class open for the next fictional flag. Check 11 closes it.
+
+Ground truth is derived, never declared: the binary's set comes from the string literals in
+`demo/asr_streaming.cpp`'s parse loop (11 tokens), the harness scripts' from their `case` labels
+(`--clip/--skip-build/--env`). Scanned surfaces: doc **invocations** (`/asr_streaming`, `/measure.sh`,
+`/eval40.sh` - flags appearing *after* the program token) and **code comments** in src/ and demo/,
+because the original fictional flag lived in a comment, not in a doc. 7 flag uses scanned, all valid.
+
+Three false-positive classes had to be handled, all the same underlying error - *mentioning* a program
+rather than *invoking* it:
+ * `cmake --build build --target asr_streaming -j` - "asr_streaming" is a target name, `-j` is make's;
+ * a prose cell about "two `asr_streaming` processes running concurrently";
+ * `-mcpu=cortex-a78` in a build-recipe table cell that names the binary.
+Fix: require a '/' before the program token (an executable path) and take the LAST invocation on the
+line. First draft used `rfind(prog)` and produced 4 FAILs on 4 lines that mention a name.
+
+Comment lines that DISAVOW a flag are skipped ("there is no --kv-type flag; passing it exits 1"), so
+Exp855's corrective comment can live in the tree without tripping the check that exists to catch its
+resurrected cousin. Control: plant `// pass --kv-type q8_0 ...` in src/vae.cpp -> 1 FAIL naming file,
+line and flag; restore -> 0.
+
+Also swept, and reported as NOT checked (saying so is part of the check): flags belonging to other
+programs (cmake, llama-quantize, python tools) are outside its scope - their option sets are not
+derivable here, and a deny-list of foreign flags is how a guard starts lying.

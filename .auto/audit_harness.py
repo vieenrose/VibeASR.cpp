@@ -23,6 +23,7 @@ Exit code is non-zero if any check fails, so it can gate a session.
 
 Usage: .auto/audit_harness.py [--skip-device]
 """
+import glob
 import hashlib
 import json
 import os
@@ -585,6 +586,85 @@ if cmd_claims:
     ok(f"{cmd_claims} documented command file-override(s) all match the shipped tier")
 else:
     warn("no file overrides found in any documented command - check 10 had nothing to compare")
+
+# ---- 11. documented FLAGS must exist in the parser they are documented against (Exp860).
+# Exp855 found --kv-type q8_0 recommended by a code comment and by two of my own next-hints, in a
+# binary that parses 10 flags and exits 1 on anything else. That iteration added a fault probe for
+# THAT flag. This closes the class: every flag the docs pass to asr_streaming, measure.sh or
+# eval40.sh is checked against the option set the real parser accepts, derived from source.
+# Scope is deliberately narrow and stated: flags belonging to OTHER programs on the same line
+# (cmake --build, python tools, llama-quantize) are NOT checked, because their option sets are not
+# derivable here and a deny-list of foreign flags is how a guard starts lying. A flag is treated as
+# an argument only when it appears AFTER the program token, which is what keeps
+# "cmake --build build --target asr_streaming" from being read as asr_streaming's own interface.
+BIN_FLAGS, HARNESS_FLAGS = set(), {}
+try:
+    dsrc = open(os.path.join(ROOT, 'demo', 'asr_streaming.cpp'), encoding='utf-8', errors='ignore').read()
+    BIN_FLAGS = set(re.findall(r'"(--[a-z][\w-]*)"', dsrc)) | {'-t', '-h'}
+except OSError:
+    bad("demo/asr_streaming.cpp not readable - the documented-flag check has no ground truth")
+for sh in ('measure.sh', 'eval40.sh'):
+    try:
+        t = open(os.path.join(HERE, sh), encoding='utf-8', errors='ignore').read()
+        HARNESS_FLAGS[sh] = set(re.findall(r'^\s{2,4}(--[a-z][\w-]+)\)', t, re.M))
+    except OSError:
+        HARNESS_FLAGS[sh] = set()
+if not HARNESS_FLAGS.get('measure.sh'):
+    warn("no case-label flags found in measure.sh - check 11 cannot verify its interface")
+flag_claims, badflags = 0, []
+for name in ('RESULTS.md', 'STREAMING_1P5B.md', os.path.join('.auto', 'prompt.md'), 'README.md'):
+    p_ = os.path.join(ROOT, name)
+    if not os.path.exists(p_):
+        continue
+    for i, ln in enumerate(open(p_, encoding='utf-8', errors='replace').read().splitlines()):
+        if any(h in ln.lower() for h in ('as of exp', 'superseded', 'snapshot', 'previous default')):
+            continue
+        # An argument belongs to a program only where the program is invoked AS ONE: the token must
+        # be preceded by '/' (./asr_streaming, ./.auto/measure.sh, $RDIR/asr_streaming). First draft
+        # used rfind(prog), which read `cmake --build build --target asr_streaming -j` as an
+        # invocation of the binary with a -j flag, and flagged a prose cell about two co-running
+        # processes - 4 false alarms from 4 lines that mention a name rather than run it. Precision
+        # is the whole value of this check: Exp660's rule is that an over-claiming guard gets muted.
+        for prog, truth in ([('asr_streaming', BIN_FLAGS)] +
+                            [(k, v) for k, v in HARNESS_FLAGS.items()]):
+            m = None
+            for m in re.finditer(r'/'+re.escape(prog)+r'\b', ln):
+                pass                                    # last invocation on the line wins
+            if m is None:
+                continue
+            tail = ln[m.end():]
+            for f in re.findall(r'(?<![-\w])(--?[a-z][\w-]*)', tail):
+                if f in ('-c', '-s', '-o'):      # launcher-side short opts (adb/taskset conventions)
+                    continue
+                flag_claims += 1
+                if f not in truth:
+                    badflags.append(f"{name}:{i+1} documents {prog} {f} - not in its parser "
+                                    f"({prog == 'asr_streaming' and 'exits 1: Unknown arg' or 'ignored or error'})")
+for b in sorted(set(badflags)):
+    bad(b)
+# Code COMMENTS too: the fictional --kv-type was recommended by a comment in demo/asr_streaming.cpp,
+# not by the docs (Exp855). Lines that DISAVOW a flag are skipped, which is how Exp855's own
+# corrective comment ("there is no --kv-type flag; passing it exits 1") can stay in the tree without
+# tripping the check that exists to catch its resurrected cousin.
+NEG = ('does not exist', "no --", 'there is no', 'never existed', 'no longer', 'not a flag',
+       'exits 1', 'is not a', 'instead of a flag', 'would need', 'is not an option')
+for f in sorted(glob.glob(os.path.join(ROOT, 'src', '*.cpp')) + glob.glob(os.path.join(ROOT, 'src', '*.h'))
+                + glob.glob(os.path.join(ROOT, 'demo', '*.cpp'))):
+    rel = os.path.relpath(f, ROOT)
+    if rel == os.path.join('demo', 'asr_streaming.cpp'):
+        continue                       # this file IS the parser; its string literals are the truth set
+    for i, ln in enumerate(open(f, encoding='utf-8', errors='ignore').read().splitlines()):
+        if not ln.strip().startswith(('//', '*', '/*')) or any(n in ln.lower() for n in NEG):
+            continue
+        for fl in sorted(set(re.findall(r'--([a-z][\w-]*)', ln))):
+            flag_claims += 1
+            if ('--' + fl) not in BIN_FLAGS:
+                badflags.append(f"{rel}:{i+1} comment recommends {('--' + fl)}, which the binary does "
+                                f"not parse (it exits 1 'Unknown arg') - the Exp855 failure class")
+for b in sorted(set(badflags)):
+    bad(b)
+if flag_claims and not badflags:
+    ok(f"{flag_claims} documented/commented flag use(s) all exist in the parsers they name")
 
 # ---- report -------------------------------------------------------------------
 print(f"harness audit: {len(oks)} checks passed, {len(warns)} warnings, {len(fails)} failures\n")
