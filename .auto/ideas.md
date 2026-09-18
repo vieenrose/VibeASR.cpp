@@ -2291,3 +2291,31 @@ Consequences:
   then let the referee (roles swapped: generic formula into scratch, candidate owns dst) certify it.
 * Prize unchanged: 0.42 s wall = 2.2 % of the metric, bit-identical, acceptance = protocol hash + 3 reps
   + gate not needed (a transpose cannot change values).
+
+- CONT TRANSPOSE KERNEL: SHIPPED AS v4.8 AFTER 3 FAILED ATTEMPTS (Exp861->863c->864; protocol 1.85, -1.66 %).
+  Site 7 of Exp863's per-site dump (the [C,T]<->[T,C] stage-boundary copy, 0.42 s = 2.2 % of the metric,
+  ggml's own "this is not optimal - fix me" element loop at 0.78 GB/s) is now a 16x16 blocked walk inside
+  the shipped branch of ggml_compute_forward_dup. Byte-identical by construction and in fact: gate b=0/c=0
+  of 731 (p=1.0, bootstrap CI exactly [0,0]), ladder canaries identical on both tiers.
+  WHY IT TOOK SO LONG, AND THE LESSON: the fast path's guard was missing
+  `src0->type == GGML_TYPE_F32 && dst->type == GGML_TYPE_F32`. Without it the branch also fired on non-F32
+  cont nodes and reinterpreted their bytes as float => silent corruption under -DNDEBUG (Exp667's class,
+  4th instance). The referee reported "0 mismatches over 68.8M elements" the whole time because ITS guard
+  required F32: the instrument certified exactly the population it shared with the candidate and was blind
+  to the population where the bug lived. RULE: a differential referee must cover the SUPERSET of the fast
+  path's accepted nodes, or its green result means nothing - assert the two guards are identical, or drop
+  the type term from the candidate. Second bug, found in one run by the same instrument: the first bad
+  element index was i00 = 16 = the tile size, which located a missing `ib*sx` in the source pointer (only
+  tile 0 had ever been right). first_bad VALUES are worth printing, not just counts (Exp668's rule).
+  Also ruled out, with instruments rather than argument: dst/src aliasing (no CONT_ALIAS lines) and a
+  concurrency exposure (wrong output persisted under VAE_SEQ_ENCODERS, i.e. single-chain).
+  STRUCTURE MATTERS: the first two attempts REPLACED the branch's element loops with an early return, which
+  also skipped the branch's later structure - a fast path must substitute the inner walk, never return.
+  DIAGNOSTICS LEFT IN TREE (all default-off, output verified unchanged): GGML_CONT_REF=1 same-run referee
+  (shipped loop owns dst, candidate writes scratch, BIT-level memcmp - float != flags NaN vs NaN and faked
+  a failure on a 26x2048 node), CONT_ALIAS print, per-site CONT dump.
+  AVOID: the permuted-view route (hand the conv src0->permute directly) - SIGABRT at
+  ggml.c:17299 GGML_ASSERT(src0->nb[0] == sizeof(float)); Exp819 hit the same wall from the other side.
+  DO NOW: rollback_audit.sh with GGML_CONT_TILE_OFF as the 11th hatch (nested-fast-path lesson, Exp824),
+  and behavior_watch.sh on BOTH tiers (a copy kernel at VAE stage boundaries - edge cases are where a
+  shape-population difference would show).
