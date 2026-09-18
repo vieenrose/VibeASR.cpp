@@ -56,6 +56,22 @@ if command -v adb >/dev/null 2>&1; then
   if [ "${BUSY:-0}" -gt 0 ] 2>/dev/null; then
     echo "WARNING: $BUSY asr_streaming already running on device - timings will be inflated (kill them first)" >&2
   fi
+  # Exp862, second half of the same class: the device's OWN background work contaminates a run and no
+  # process-name grep can see it. Caught +9 % then +29 % on two consecutive reps while Play Store
+  # AOT-compiled an app (dex2oat32 -j4, nice 10, 377 % CPU). CALIBRATION: /proc/loadavg is USELESS as a
+  # threshold here - it reads ~21 when the device is provably idle (busy 0.9 %) and barely decays, so
+  # the signal is the busy-jiffies delta over a 1 s window, with loadavg printed for context only.
+  # NOTE the awk trap in the first version: joining two /proc/stat lines with '|' shifts the second
+  # line's field indices, which printed busy=-28641 %. Sum each line separately (Exp676 class).
+  CPU1=$(adb -s $DEV shell "head -1 /proc/stat" 2>/dev/null | tr -d '\r' | awk '{print $2+$3+$4+$7+$8+$9, $2+$3+$4+$5+$6+$7+$8+$9}')
+  sleep 1
+  CPU2=$(adb -s $DEV shell "head -1 /proc/stat" 2>/dev/null | tr -d '\r' | awk '{print $2+$3+$4+$7+$8+$9, $2+$3+$4+$5+$6+$7+$8+$9}')
+  LOAD=$(adb -s $DEV shell "head -1 /proc/loadavg" 2>/dev/null | tr -d '\r' | awk '{print $1}')
+  BUSYFRAC=$(echo "$CPU1 $CPU2" | awk '{db=$3-$1; dt=$4-$2; if (dt>0) printf "%.0f", 100*db/dt; else print 0}')
+  echo "note: device other_busy=${BUSYFRAC}% load1=${LOAD:-?} (loadavg is context only on this device)" >&2
+  if [ "${BUSYFRAC:-0}" -gt 25 ] 2>/dev/null; then
+    echo "WARNING: device is burning ${BUSYFRAC}% of its cores on OTHER work - this run is PROVISIONAL, not a result. Typical culprit: Play Store / dex2oat / backup. Wait for it to settle or re-take 3 reps." >&2
+  fi
 fi
 
 # Exp759: the research tool's discard-revert runs `git checkout -- .` at the SESSION workDir, which

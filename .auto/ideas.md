@@ -2203,3 +2203,27 @@ VAE's big-MAC shapes are not in that regime - which is why the aggregate sits at
   consumer's shape check is stricter than its kernel needs (check, do not assume).
 - Do NOT re-open via ggml_set_inplace (a copy op, not arithmetic - Exp662) and do not add vendored strided
   src1 support for <2.2 % without a measurement saying the sites are removable.
+
+## Exp862b — a contamination class the co-runner guard could not see: the device's OWN background work
+
+Two consecutive reps read **2.0431** then **2.4109** (+9 %, +29 %) with byte-identical output. The Exp679
+guard said the device was idle because it greps for `asr_streaming` - and it was right, no *ASR* was
+running. What was running: **`dex2oat32 -j4` at 377 % CPU, nice 10**, AOT-compiling an app because the Play
+Store had started an install (`com.android.vending` + `installd`), load average 34.8.
+
+Fix in `measure.sh`: sample `/proc/stat`'s busy jiffies twice, 1 s apart, and warn when **>25 % of the
+device's CPU is going to work other than ours**, printing `other_busy=N%` in the note line so a
+contaminated run is identifiable AFTER the fact too.
+
+CALIBRATION, and it matters: **`/proc/loadavg` is not usable as a threshold on this device** - it reads
+~21-23 even when the device is provably idle (`busy = 0.9 %`) and barely decays over minutes. A
+loadavg-based guard would have warned on every single run forever. Busy-jiffies delta is the signal.
+
+Negative control (Exp660 rule: a self-check is untrustworthy until a planted fault makes it fail):
+6 x `timeout 30 nice -n 10 sh -c 'while :; do :; done'` -> `other_busy=76 %`, WARNING printed, rtf
+1.9766 (+5 %). Idle -> 1 %, silent, 1.8857. Note the FIRST control attempt loaded nothing at all
+(device-side `(cmd &)` dies on this toybox, Exp856 again) and would have "passed" vacuously; background
+the LOCAL adb call and let on-device `timeout` bound the burners.
+
+Harness bug caught by the control: the first sampler joined two `/proc/stat` lines with `|` and indexed
+the second line from `$13`, which printed `busy=-28641 %`. Sum each line separately.
