@@ -25,6 +25,10 @@ def main():
     ap.add_argument('--out', required=True)
     ap.add_argument('--shift', type=int, required=True, help='samples of silence to insert')
     ap.add_argument('--at', type=float, default=0.0, help='insertion point in seconds (default: file start)')
+    ap.add_argument('--delete', type=int, default=0,
+                    help='ALSO remove this many samples at --at: a real content discontinuity, as opposed to '
+                         'silence insertion. Exp868: silence insertion at ANY phase measured WER-neutral here, '
+                         'so the "splice costs 15 pp" symptom must come from the cut, not the phase.')
     a = ap.parse_args()
 
     with wave.open(a.src) as w:
@@ -34,12 +38,17 @@ def main():
     # nonsense duration, so do the arithmetic in samples and convert once, explicitly.
     n = len(pcm) // 2
     at = min(int(a.at * sr), n)
-    out = pcm[:2 * at] + b'\x00\x00' * a.shift + pcm[2 * at:]
+    if a.delete:
+        # Cut INSIDE the audio (the caller picks --at inside a clip). Deleting from a silence gap would only
+        # shorten the gap, which is the insertion case in disguise.
+        out = pcm[:2 * at] + b'\x00\x00' * a.shift + pcm[2 * (at + a.delete):]
+    else:
+        out = pcm[:2 * at] + b'\x00\x00' * a.shift + pcm[2 * at:]
     with wave.open(a.out, 'wb') as w:
         w.setnchannels(1); w.setsampwidth(2); w.setframerate(sr)
         w.writeframes(out)
     body = hashlib.sha256(pcm).hexdigest()
-    print(f'inserted {a.shift} samples at {a.at:.3f}s  ({a.shift % HOP} mod hop -> '
+    print(f'inserted {a.shift} samples at {a.at:.3f}s (deleted {a.delete})  ({a.shift % HOP} mod hop -> '
           f'{"ALIGNED, expect no change" if a.shift % HOP == 0 else "NON-ALIGNED, phase shift " + str(a.shift % HOP)})')
     print(f'  source pcm sha {body[:12]}  kept content: {len(pcm)} samples before, {len(pcm)} after '
           f'({a.shift} silence added)  duration {n / sr:.2f} s -> {(n + a.shift) / sr:.2f} s')

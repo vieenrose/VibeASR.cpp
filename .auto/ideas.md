@@ -2517,3 +2517,23 @@ Consequences:
   protocol clip were directionally right; the one -0.4% reading was noise. Keep the code, stop spending runs.
   Side product: the paired long-clip noise floor is ~0.0005 s per pair (0.02%), so any future claim below
   ~0.05% needs either 4+ pairs or a mechanism argument.
+
+- SPLICE-PHASE, CLOSED ON MY STACK (Exp868, four configurations, two corpora). The averaging hypothesis I
+  sent the Nano loop ("many splices cancel; one splice is systematic, hence their +7-17 pp") is REFUTED.
+  align_asset gained --phase N, which puts EVERY clip at the same phase (a leading pad is required, else
+  clip 1 sits at 0 and the systematic condition silently breaks - my first attempt did exactly that).
+    * zh 468 tokens, all 48 clips at phase 35,200 (half a hop = maximal displacement under a stride
+      modulus), content proven identical: WER 16.45% vs 16.88% phase-0, b=36/c=34, McNemar p=0.905.
+      A 7 pp systematic penalty would need ~51/19 discordants; 36/34 excludes it at p<0.001.
+    * en 220 tokens, 533 ms DELETED from inside clip 5 (verified real speech: cut-region rms 3139 vs clip
+      rms 3220) vs the same cut inside a silence gap: 21.36% / 21.82% vs 26.36% baseline, McNemar p=0.29 /
+      0.38, insertions DOWN 11 -> 6. A content discontinuity does not produce their insertion signature.
+  MODULUS QUESTION, ANSWERED FROM CODE (no device time needed, cite these lines): the WINDOWED path advances
+  `start = w * HOP_SAMPLES` (demo/asr_streaming.cpp:526, HOP_SAMPLES=70,400 at :42) so the modulus is the
+  STRIDE, exactly as my phase_policy enforces. But the CARRY path (--xwin) uses
+  `start = (h==0) ? 0 : WINDOW_SAMPLES + (h-1)*HOP_SAMPLES` (:489), i.e. 0 then 83,200, 153,600 ... which is
+  12,800 mod 70,400 - a DIFFERENT GRID. So a corpus aligned for the shipping tier is systematically
+  12,800 samples (533 ms) off the grid any --xwin evaluation would impose. Practical rule: align to
+  multiples of 70,400 (shipping), and never mix phases between a windowed and a carry run of the same asset.
+  So the splice rule stands as a REPRODUCIBILITY/label-consistency control (10-15% token churn), not an
+  accuracy lever, on the A78 stack.

@@ -34,6 +34,10 @@ def main():
     ap.add_argument('--manifest-out')
     ap.add_argument('--min-gap-s', type=float, default=0.3)
     ap.add_argument('--hop', type=int, default=70400, help='samples per window hop (22 frames x 3200)')
+    ap.add_argument('--phase', type=int, default=0,
+                    help='target phase for EVERY clip (0 = starts a window). Exp868: a non-zero target puts all '
+                         'clips at the SAME phase, which is the systematic case the many-splice assets cannot '
+                         'produce - there, per-clip phases are i.i.d. and any effect averages out in the mean.')
     ap.add_argument('--dry', action='store_true', help='report phases, write nothing')
     a = ap.parse_args()
 
@@ -71,7 +75,11 @@ def main():
 
     min_gap = int(a.min_gap_s * sr)
     out, table, phases_before, phases_after = b'', [], [], []
-    pos = 0
+    # A leading pad is required for a non-zero target: padding only BETWEEN clips leaves clip 1 at phase 0,
+    # which would put one clip on a different phase from every other clip and quietly break the systematic
+    # condition this option exists to create.
+    pos = a.phase % a.hop
+    out = b'\x00\x00' * pos
     for t, (s, e) in zip(man['table'], bounds):
         seg = pcm[2 * s:2 * e]
         got = hashlib.sha256(seg).hexdigest()
@@ -88,7 +96,7 @@ def main():
                       'start_samples': pos, 'end_samples': pos + len(seg) // 2, 'sha': got})
         out += seg
         pos += len(seg) // 2
-        pad = (-pos) % a.hop                      # pad to the next hop boundary -> every clip starts at phase 0
+        pad = (a.phase - pos) % a.hop             # land every clip on the requested phase of the grid
         if pad < min_gap:
             pad += a.hop                          # keep a natural pause; a whole hop does not change alignment
         out += b'\x00\x00' * pad
@@ -103,8 +111,8 @@ def main():
           f'(+{(len(out) - len(pcm)) / 2 / sr:.2f} s of silence; bytes/samples differ by 2x at 16-bit)')
     print(f'  content: every clip sha verified against the manifest'
           f' -> {"PROVEN identical" if all(t.get("sha") for t in man["table"]) else "no per-clip sha available"}')
-    if set(phases_after) != {0}:
-        raise SystemExit('FAIL: alignment did not land on phase 0')
+    if set(phases_after) != {a.phase % a.hop}:
+        raise SystemExit(f'FAIL: alignment landed on phases {sorted(set(phases_after))}, target {a.phase}')
     if a.dry:
         print('  (dry run, nothing written)')
         return
@@ -118,7 +126,7 @@ def main():
         m2['total_s'] = round(len(out) / sr, 2)
         m2['gaps_s'] = round(sum(t2['start_s'] - t1['end_s'] for t1, t2 in zip(table, table[1:])) / 1.0, 2)
         m2['rephased_from'] = {'wav_sha256': man.get('wav_sha256'), 'gap_ms': man.get('gap_ms'),
-                               'hop_samples': a.hop, 'builder': '.auto/align_asset.py'}
+                               'hop_samples': a.hop, 'phase_target': a.phase, 'builder': '.auto/align_asset.py'}
         m2['wav_sha256'] = hashlib.sha256(open(a.out, 'rb').read()).hexdigest()
         json.dump(m2, open(a.manifest_out, 'w'), indent=1)
         print(f'  wrote {a.out} and {a.manifest_out}')

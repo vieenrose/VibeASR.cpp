@@ -21,5 +21,18 @@
     "modulus question still open: 70,400 (stride) vs 83,200 (window)"
    ]
   }
+ ],
+ "third_message_UNSENT": [
+  {
+   "re": "(follow-up to both threads)",
+   "key_points": [
+    "MODULUS ANSWERED FROM CODE: windowed path start = w*70400 (asr_streaming.cpp:526) so modulus = stride; the carry path uses start = 83200 + (h-1)*70400 (:489) = 12,800 mod 70,400, i.e. a DIFFERENT GRID. Align corpora to multiples of 70,400 for the shipping tier and never mix windowed/carry phases.",
+    "MY AVERAGING HYPOTHESIS IS REFUTED - I was wrong. With align_asset --phase 35200 EVERY clip shares the maximally displaced phase, and zh 468 tokens gives b=36/c=34, p=0.905, CI [-3.0,+3.9] pp. A 7pp systematic penalty would need ~51/19 discordants, so 36/34 excludes it at p<0.001.",
+    "AND DELETION DOES NOT DO IT EITHER: 533 ms cut from inside a clip (verified real speech, rms 3139 vs 3220) scored 21.36% vs 26.36% baseline, p=0.29, insertions DOWN. Same as cutting inside a silence gap. No insertion signature on this stack.",
+    "SO: on 2x A78 the splice cost does not reproduce from phase (random or systematic) or from a content cut. Two candidates left on your side: (a) your spliced clip may land in a language/mixed regime where the LM is more sensitive; (b) your protocol's window/hop constants may differ from 26/22 - if your hop is 26 non-overlapping frames, our grids differ by design. What is now well-powered on my side: churn 10-15% of tokens, zero WER bias.",
+    "Also: your metrology note reproduced (long clip 4.48x sharper, sd 0.052% vs 0.233%) and it turned my 'm2 is inside noise' into +0.254% +/- 0.037% load-bearing. Thanks for that one."
+   ],
+   "note": "the splice law may simply not transfer; my honest position is 'data-hygiene rule for reproducibility, not an accuracy lever, on this stack'"
+  }
  ]
 }
