@@ -1,6 +1,6 @@
 # Results — VibeVoice-ASR-Streaming 1.5B on phone CPU (RTF)
 
-**Headline (era v4.7):** phone RTF **12.24 → 1.87 (−84.7 %)** on the 10 s protocol clip, at
+**Headline (era v4.8):** phone RTF **12.24 → 1.85 (−84.9 %)** on the 10 s protocol clip, at
 **equal-or-better accuracy** (40-utt WER 4.51 % vs 4.55 % for the original
 configuration), with **less RAM** (2.19 GB vs 2.99 GB) and a **1.2 s** model load.
 All numbers are measured on-device (OPPO CPH2371, Dimensity 1300, 8 GB, Android 13),
@@ -57,10 +57,10 @@ regenerated audio must hash to `984e60b14cfe…` to be the same probe).
 
 | tier | files | 10 s | 17 s | 69 s | 138 s | 40-utt mean | WER | RSS |
 |---|---|---|---|---|---|---|---|---|
-| **max-speed-lean (era **v4.7**, `--vae-pieces 13 VAE_DEFER_LATE=1`, flush active from Exp830, Exp643/708/711/732/766/781/784/785/786/830/847; WHOLE ROW re-measured in ONE session (Exp847) per the Exp845 rule - the previous set was ~1 % higher in a warmer state, same binary, output byte-identical to Exp830 (paired b=0/c=0 of 731)** | 1.75 GB | **2.10** | **2.26** | **2.33** | **2.40** | **2.13** | **4.65 %**† | **1.75 GB** |
+| **max-speed-lean (era **v4.8** at p13, `--vae-pieces 13 VAE_DEFER_LATE=1`, flush active from Exp830, Exp643/708/711/732/766/781/784/785/786/830/847/864; WHOLE ROW re-measured in ONE session (Exp864), token canaries 39/106/432/847 identical to Exp847 so the faster cont changed no output; the 40-utt mean cell is still the v4.7 measurement** | 1.75 GB | **2.08** | **2.24** | **2.32** | **2.38** | 2.13 *(v4.7 cell)* | **4.65 %**† | **1.75 GB** |
 | _same, 26 pieces (pre-flush cells - the p13 row above is the shipping lean tier)_ | 1.82 GB | _2.88_ | — | _2.83_ | _3.20_ | — | _4.55 % (tag `leanp26c`)_ | _1.84 GB_ |
 | **whole-file / server path** (Exp578/579) | — | — | — | live set **188-313 MB** for 6-10 s files | — | — | — | — |
-| **max-speed (shipped, **v4.7** — v4.6 + single-pass boundary-token prefill, Exp708/709/765/766/781/784/785/821/829/835; cells re-measured in ONE session Exp845 - the previous set was ~0.9 % higher in a warmer device state, same binary, output identical)** | 2.19 GB | **1.87** | **2.04** | **2.12** | **2.18** | **1.91** | **4.51 %** | 2.19 GB |
+| **max-speed (shipped, era **v4.8** — v4.7 + blocked-transpose cont, Exp864; whole ROW re-measured in ONE session Exp864; paired vs the frozen reference b=0/c=0 of 731, McNemar p=1.0, bootstrap CI [0,0], so this row is the same system with a faster copy kernel)** | 2.19 GB | **1.85** | **2.01** | **2.10** | **2.16** | **1.89** | **4.51 %** | 2.19 GB |
 | _138 s sustained (last full RSS soak: v4.5, Exp826, 2191 MB flat; 138 s cell re-measured v4.6)_ | | — | — | — | _2.24_ | — | — | _2206 MB_ |
 | _same tier at PIECES=2, defer ON (previous default, pre-flush cells)_ | 2.11 GB | _2.46_ | _2.41_ | _2.43_ | _2.75_ | — | _4.51 %_ | _2.12 GB_ |
 | _same tier with F16 conv weights (`VAE_FILE=vae-encoder-q4x4ffn.gguf`, the reference build, pre-flush cells)_ | 2.2 GB | _2.54_ | _2.47_ | _2.50_ | _2.82_ | _4.41 %_ | — | _2.23 GB_ |
