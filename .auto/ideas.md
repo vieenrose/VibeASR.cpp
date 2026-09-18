@@ -1862,3 +1862,18 @@ of an anti-overfit guard and worth stating: the guard's job is to move WITH the 
    2.4085 -> 2.3861 -> 2.3226 -> 2.0728 -> 2.0228 -> 2.0036 -> **2.0059**: +0.11 % since Exp844 where the anchor
    moved +0.28 % (device state), i.e. flat within noise across a stretch where only loaders/harness/docs changed -
    no overfit signal. cpu7_khz stayed pinned at 1.3 GHz in every sample (consistent with Exp844's negative result).
+
+## Exp852 — Gate proves Exp850's loader fix is inert (b=0/c=0), loader equivalence extended to real speech
+
+ * First 40-clip gate after a `src/` change since Exp835: **WER 4.51 %, paired vs hyp-gate845 = b=0/c=0 of 731,
+   CI exactly [0,0]**. The short-read check therefore touches nothing outside its error path, now shown on 40 real
+   utterances rather than inferred from one protocol hash. Gate mean **1.9117** (cell 1.9147; -0.16 % = state).
+ * Loader equivalence now demonstrated on real speech, not only the synthetic-ish protocol clip: mmap vs `--no-mmap`
+   on `6829-68769-0025` -> same hash `644e8b16c8c7`, 278 bytes, 30 tokens, rtf 1.9075/1.9057.
+ * Two traps caught by refusing to accept a number that contradicts another instrument:
+   (a) `cmp` of two files whose generating `ls` had failed reports **IDENTICAL for two empty files** (md5
+       d41d8cd9). A size guard now precedes every comparison in this pattern - "identical" is only meaningful if
+       both sides are non-empty.
+   (b) My own map query printed "0 of 72 sets at distance 0", which contradicted the tool's own summary ("2 of 74
+       byte-identical"). The table lists ONLY differing sets by design; I had queried the wrong population. The
+       tool was right, my one-liner was vacuous - the recurring "measured the wrong thing" class.
