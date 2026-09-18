@@ -1,0 +1,4 @@
+round=1 arm=ON rtf=2.1637 tok=125 hash=d0af7aba
+round=1 arm=OFF rtf=2.1700 tok=125 hash=d0af7aba
+round=2 arm=ON rtf=2.1643 tok=125 hash=d0af7aba
+round=2 arm=OFF rtf=2.1690 tok=125 hash=d0af7aba
