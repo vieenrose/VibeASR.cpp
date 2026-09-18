@@ -51,6 +51,39 @@ probe "$VAE" "lm_trunc.gguf"    err "LM tail -8MB"
 probe "$VAE" "lm_head.gguf"     err "LM header-only 1MB"
 probe "vae_trunc.gguf"   "$LM"  err "VAE tail -8MB"
 probe "vae_trunc64.gguf" "$LM"  err "VAE tail -64MB"
+# --- audio-input probes (Exp850b): the RTF denominator must come from DECODED samples, not the RIFF header ---
+AF=$HERE/assets/faults; mkdir -p "$AF"
+python3 - "$HERE/assets/slice10b_24k.wav" "$AF" <<'PYGEN'
+import struct, sys, os
+src, out = sys.argv[1], sys.argv[2]
+b = open(src, 'rb').read()
+open(os.path.join(out, 'audio_trunc_half.wav'), 'wb').write(b[:44 + (len(b) - 44) // 2])  # header says 10 s, data 5 s
+lie = bytearray(b); struct.pack_into('<I', lie, 40, struct.unpack('<I', b[40:44])[0] * 4)   # header says 40 s
+open(os.path.join(out, 'audio_lie_dur.wav'), 'wb').write(bytes(lie))
+open(os.path.join(out, 'audio_header_only.wav'), 'wb').write(b[:44])
+open(os.path.join(out, 'audio_empty.wav'), 'wb').write(b'')
+PYGEN
+
+# $1 = fixture path, $2 = expect (run|err), $3 = label. For run: rtf must stay in a plausible band, because a
+# metric that trusted the header field would report a FALSE speedup here (lie_dur would read ~0.5, not ~2.0).
+aprobe() {
+  local clip=$1 exp=$2 label=$3 out rtf
+  out=$(SKIP_BUILD=1 "$HERE/measure.sh" --clip "$clip" 2>&1 | grep -oE "METRIC (rtf|tokens)=[0-9.]+" | tr '\n' ' ')
+  rtf=$(printf '%s' "$out" | grep -oE "rtf=[0-9.]+" | head -1 | cut -d= -f2)
+  if [ "$exp" = err ]; then
+    if [ -z "$rtf" ]; then PASS=$((PASS+1)); printf "%-26s PASS  refused to load (no metric produced)\n" "$label";
+    else FAIL=$((FAIL+1)); printf "%-26s FAIL  expected a clean refusal, got rtf=%s\n" "$label" "$rtf"; fi
+  else
+    if [ -n "$rtf" ] && python3 -c "import sys;sys.exit(0 if 1.5 <= float('$rtf') <= 4.0 else 1)"; then
+      PASS=$((PASS+1)); printf "%-26s PASS  rtf=%s (content-derived denominator, no header-driven speedup)\n" "$label" "$rtf";
+    else FAIL=$((FAIL+1)); printf "%-26s FAIL  rtf=%s out of [1.5,4.0] - check what sets the duration\n" "$label" "${rtf:-none}"; fi
+  fi
+}
+aprobe "$AF/audio_trunc_half.wav"   run "WAV truncated (hdr 10s/5s)"
+aprobe "$AF/audio_lie_dur.wav"      run "WAV header lies 4x duration"
+aprobe "$AF/audio_header_only.wav"  err "WAV header only (44 B)"
+aprobe "$AF/audio_empty.wav"        err "WAV empty (0 B)"
+
 echo "---- fault_inject: $PASS pass, $FAIL fail"
 [ "$FAIL" = 0 ] || exit 1
-echo "no silent-corruption path: every damaged model file fails loudly"
+echo "no silent-corruption path: damaged model files and audio inputs fail loudly; RTF denominator stays content-derived"

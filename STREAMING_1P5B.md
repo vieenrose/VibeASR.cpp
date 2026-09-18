@@ -105,6 +105,17 @@ defaults to 13. WER gate: `./.auto/eval40.sh <tag> 0 40` +
 `venv-vibe/bin/python .auto/score_hyp.py <tag>`; for paired output-equivalence use
 `.auto/compare_arms.py --gate hyp-A hyp-B eval-librispeech/refs.json`.
 
+### The RTF denominator is content-derived, not header-derived (verified, Exp850)
+
+A WAV whose RIFF `data` size lies (inflated 4x, real data unchanged) does **not** flatter the metric: the pipeline
+iterates over decoded samples, so it did the honest 10 s of work (`vae_s 12.0`) and reported rtf 2.00 - identical to
+the honest clip. Likewise a file truncated to half its declared length processes the 5 s that exist and reports
+rtf 2.03, not a halved number. Header-only and empty WAVs are refused with `[audio_io] Error: ...`. This is asserted
+continuously by `.auto/fault_inject.sh`, whose audio section fails if a future change ever lets the header field set
+the denominator (the lying-header probe would then read ~0.5 instead of ~2.0). Worth stating explicitly because
+every published RTF in this document is only meaningful if the clip is honest - the clips themselves are hash-pinned
+by `.auto/audit_harness.py`.
+
 ### Corrupt / truncated model files fail loudly (Exp850)
 
 A truncated `.gguf` used to load "successfully": the copy fallback discarded `fread`'s return value into a

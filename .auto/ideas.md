@@ -1830,3 +1830,20 @@ of an anti-overfit guard and worth stating: the guard's job is to move WITH the 
    variable hashed nothing and produced md5 d41d8cd9 (empty input, Exp676 signature); `echo EXIT=$?` inside a local
    double-quoted adb string is expanded LOCALLY (Exp676 again) - must be `\$?`; and a success signal must require
    real output (`tokens: N`), not just exit 0, because exit 0 is exactly what this bug returned.
+
+## Exp850b — fault class swept: audio inputs are properly guarded, and the RTF denominator is CONTENT-derived (anti-cheat proof)
+
+ * Static hunt for the Exp850 pattern found no other ignored-read in the load paths (both readers check; the only
+   unchecked calls are two `fwrite`s in vae.cpp DEBUG-DUMP paths - harmless, noted, not field-critical).
+ * **Audio front end is correctly guarded**: header-only WAV -> `[audio_io] Error: No audio data in file`; empty
+   WAV -> `Failed to open WAV file`; both exit 1. (Cosmetic: the empty-file message says "failed to open" when the
+   open succeeded and the header read failed.)
+ * **Metric-integrity result, worth quoting in any benchmark claim**: the RTF denominator comes from DECODED
+   SAMPLES, not the RIFF header. A WAV with its data size inflated 4x (same 10 s of real data) did the honest work
+   (`vae_s 12.0` = 4 windows) and reported rtf 2.0036 - the same as the honest clip; a file truncated to half its
+   declared length did 2 windows (`vae_s 5.8`) and reported 2.0331. So no header field can manufacture speed, and
+   if a future change ever made the duration header-derived, the lying-header probe would read ~0.5 and the board
+   fails. Combined with the hash-pinned clips, the published RTFs are auditable from two directions.
+ * `.auto/fault_inject.sh` is now a 9-probe board: 5 model-file + 4 audio-input. Fixtures are generated at run time
+   from a hash-pinned clip (gitignored), so nothing binary needs committing and the board cannot drift from its
+   source asset.
