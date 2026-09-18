@@ -105,6 +105,19 @@ defaults to 13. WER gate: `./.auto/eval40.sh <tag> 0 40` +
 `venv-vibe/bin/python .auto/score_hyp.py <tag>`; for paired output-equivalence use
 `.auto/compare_arms.py --gate hyp-A hyp-B eval-librispeech/refs.json`.
 
+### Long-session limit (measured, Exp849)
+
+Continuous-audio position budget = **49.5 KV positions per window** (hop 70400 samples = 2.933 s) = **~18 positions
+per audio second**. With the default `n_ctx = 4096`, a single unbroken stream therefore stops after **~245 s ≈ 4 min**;
+`n_ctx = 16384` reaches ~16 min but the KV cache grows from 112 MB to ~450 MB. The old code comment attached the
+15-minute figure to 4096 - it belongs to 16384.
+
+On exhaustion the process prints one of `decode failed` / `frames failed` (whichever row group hits the boundary)
+and **exits 1 with no final `--- Transcription ---` summary**; window lines emitted so far are already on stdout.
+For sessions longer than the limit: raise `-c`, add `--kv-type q8_0` for ~2x positions per byte, or restart the
+session on a boundary. To re-test the boundary cheaply, do NOT run a 4-minute clip - run the 138 s ladder clip with
+a small `-c` (e.g. `-c 1536` dies at window 31/48), which reaches the same code path in a fraction of the runtime.
+
 ## Phone evaluation (OPPO CPH2371, Dimensity 1300, 8 GB RAM, Android 13)
 
 Cross-built with NDK r26d (`arm64-v8a`, `android-33`, `GGML_ARM_DOTPROD=ON`;

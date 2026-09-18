@@ -1790,3 +1790,19 @@ of an anti-overfit guard and worth stating: the guard's job is to move WITH the 
    silence-generated tokens on every clip (Exp829 recorded exactly that for the ladder canaries).
    RULE: when a documented count differs, check the PROTOCOL VERSION it was recorded under before attributing it
    to tier, config, or a regression. Same class as Exp847's token-counter-vs-text lesson, one level up.
+
+## Exp849 — LONG-SESSION KV LIMIT MEASURED: the shipped n_ctx=4096 covers ~4 minutes, not the 15 min the comment said
+
+ * Bracketing on the 138 s ladder clip by shrinking `-c` (reaches the KV boundary in minutes instead of hours):
+   `-c 1024` died in window 21, `-c 1536` in window **32 (pre-registered prediction hit exactly)**, `-c 2400` and
+   `-c 2560` completed all 48. Monotone, so **49.5 +-1 positions/window**, i.e. ~18 per audio second.
+ * **4096 -> ~83 windows ~ 245 s ~ 4.0 min** of continuous audio. 16384 would be ~16 min at 450 MB KV (the code
+   comment attached "15 min" to 4096; it belongs to 16384). This never showed up in any loop metric - the longest
+   clip ever run was 138 s.
+ * Failure is GRACEFUL but uneven: exit 1 with `decode failed` OR `frames failed` depending on which row group
+   crosses the boundary, and NO final `--- Transcription ---` block (window lines emitted so far are on stdout).
+   A runbook must match either message, not one.
+ * Levers for long sessions: `-c 16384` (+338 MB), `--kv-type q8_0` (~2x positions per byte), or session restart.
+   None affect the metric (the protocol clip uses ~11 % of the budget).
+ * HARNESS INSIGHT worth keeping: to probe a resource limit, shrink the resource instead of extending the workload
+   - `-c` is a knob on the very quantity being exhausted, so a 138 s clip tested four boundary points in ~15 min.
