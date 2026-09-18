@@ -1915,3 +1915,11 @@ of an anti-overfit guard and worth stating: the guard's job is to move WITH the 
    impossible for 2 x 1.1 GB reads) - nested arithmetic inside an adb string again. Rule that finally sticks: send a
    plain command, redirect stderr to a file IN the run dir (there is no /tmp on the device shell), and read the file
    back. Sanity-check with elapsed time before believing any bandwidth number.
+
+ * **NEW DEVICE STATE, and a save by rep-taking.** The single run taken immediately after creating + reading +
+   deleting 16 GB of flash read **rtf 1.9921** (lm_s 7.9, prefill 4.1, peak RSS 2100 MB) - +6 % with a BYTE-IDENTICAL
+   transcript. Three back-to-back reps right after it returned 1.8762 / 1.8786 / 1.8833 with lm_s 6.8 and RSS 2191,
+   i.e. the effect is a ONE-RUN transient (most plausibly the run racing the filesystem's post-delete cleaning or
+   writeback), not a persistent state change. Consequence for the loop's rules: any single-run reading outside the
+   0.19 % band is provisional until reproduced - especially after an experiment that wrote or deleted large files.
+   The RSS signature (91 MB low with majflt 0) is the tell that it was I/O/page-fault related, not thermal.
