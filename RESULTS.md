@@ -1,10 +1,18 @@
 # Results — VibeVoice-ASR-Streaming 1.5B on phone CPU (RTF)
 
-**Headline:** phone RTF **12.24 → 2.70 (−78 %)** on the 10 s protocol clip, at
-**equal-or-better accuracy** (40-utt WER 4.41 % vs 4.55 % for the original
-configuration), with **less RAM** (2.23 GB vs 2.99 GB) and a **1.2 s** model load.
+**Headline (era v4.7):** phone RTF **12.24 → 1.87 (−84.7 %)** on the 10 s protocol clip, at
+**equal-or-better accuracy** (40-utt WER 4.51 % vs 4.55 % for the original
+configuration), with **less RAM** (2.19 GB vs 2.99 GB) and a **1.2 s** model load.
 All numbers are measured on-device (OPPO CPH2371, Dimensity 1300, 8 GB, Android 13),
 CPU-only, `-t 2` pinned to the two 2.4 GHz prime cores.
+
+> **Era: v4.7** (v4.6 final-window flush Exp829/830 + v4.7 single-pass boundary-token prefill
+> Exp835). The headline above is generated-state, not hand-typed history: `.auto/headline.json`
+> is the single machine-readable statement of the current era and ladder cells, and
+> `audit_harness.py` check 9 FAILS if a line that asserts current state disagrees with it.
+> That guard exists because this line named **2.70** as the current number for two full eras
+> (it was last true at v3.5/Exp664) while the measured ladder cells below it kept being refreshed —
+> prose had no link to any measurement, so nothing could notice (Exp857).
 
 ## How to run (reproduce)
 
@@ -38,7 +46,7 @@ regenerated audio must hash to `984e60b14cfe…` to be the same probe).
 
 | tier | files | 10 s | 17 s | 69 s | 138 s | 40-utt mean | WER | RSS |
 |---|---|---|---|---|---|---|---|---|
-| **max-speed-lean (`--vae-pieces 13 VAE_DEFER_LATE=1`, flush active from Exp830, Exp643/708/711/732/766/781/784/785/786/830/847; WHOLE ROW re-measured in ONE session (Exp847) per the Exp845 rule - the previous set was ~1 % higher in a warmer state, same binary, output byte-identical to Exp830 (paired b=0/c=0 of 731)** | 1.75 GB | **2.10** | **2.26** | **2.33** | **2.40** | **2.13** | **4.65 %**† | **1.75 GB** |
+| **max-speed-lean (era **v4.7**, `--vae-pieces 13 VAE_DEFER_LATE=1`, flush active from Exp830, Exp643/708/711/732/766/781/784/785/786/830/847; WHOLE ROW re-measured in ONE session (Exp847) per the Exp845 rule - the previous set was ~1 % higher in a warmer state, same binary, output byte-identical to Exp830 (paired b=0/c=0 of 731)** | 1.75 GB | **2.10** | **2.26** | **2.33** | **2.40** | **2.13** | **4.65 %**† | **1.75 GB** |
 | _same, 26 pieces (pre-flush cells - the p13 row above is the shipping lean tier)_ | 1.82 GB | _2.88_ | — | _2.83_ | _3.20_ | — | _4.55 % (tag `leanp26c`)_ | _1.84 GB_ |
 | **whole-file / server path** (Exp578/579) | — | — | — | live set **188-313 MB** for 6-10 s files | — | — | — | — |
 | **max-speed (shipped, **v4.7** — v4.6 + single-pass boundary-token prefill, Exp708/709/765/766/781/784/785/821/829/835; cells re-measured in ONE session Exp845 - the previous set was ~0.9 % higher in a warmer device state, same binary, output identical)** | 2.19 GB | **1.87** | **2.04** | **2.12** | **2.18** | **1.91** | **4.51 %** | 2.19 GB |

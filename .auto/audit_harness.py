@@ -415,6 +415,124 @@ if os.path.exists(log) and os.path.exists(live):
 else:
     warn("ledger coherence not checked (missing live ledger or loop log)")
 
+# ---- 9. headline coherence (Exp857). A doc-drift class the OTHER 87 checks were blind to:
+# the measured LADDER cells get refreshed on the doc-drift trigger, but the PROSE that a fresh
+# session reads first (RESULTS.md's "Headline:", prompt.md's "Current best:") is prose, so nothing
+# ties it to a measurement. It silently rotted two full eras: RESULTS.md still claimed
+# "12.24 -> 2.70 (-78 %)" (last true at v3.5, Exp664) and prompt.md still claimed "Current best:
+# 2.18 (MAX-SPEED v4.5)" after v4.6 (tail flush) and v4.7 (boundary batch) shipped - a 17 % error
+# in the first two lines a new session reads. Check 4b could not see it: it greps prompt.md for the
+# shipped VAE *filename*, which stayed correct while every number around it went stale.
+# So: ONE machine-readable state file (.auto/headline.json) and this check. It FAILS when a line
+# that asserts current state does not contain the current number.
+SPEC = os.path.join(HERE, 'headline.json')
+if not os.path.exists(SPEC):
+    bad("headline.json is missing - the loop must declare its current era/cells in ONE machine-readable place")
+else:
+    try:
+        spec = json.load(open(SPEC, encoding='utf-8'))
+        cur = float(spec['shipped']['rtf10'])
+        era = str(spec['era'])
+        base = float(spec['baseline'])
+        tol = max(0.01, 0.01 * cur)          # cells are quoted to 2 dp; 1 % covers rounding + state drift
+        # A current-state claim is recognised by FORM, not by vocabulary. The first draft matched the
+        # word 'headline' anywhere and produced 6 false positives ("headline speed claim for the
+        # max-speed tier", "excluded from RTF", an Exp654 scorer row) - and the draft before that
+        # anchored on 'headline:' with a colon, which a cosmetic rewrite to "Headline (era v4.7):"
+        # silently broke, leaving the single most-read line unchecked. Both directions of the same
+        # lesson: a guard that cries wolf gets ignored, and a guard whose pattern is brittle lies.
+        # Three forms, each one an idiom the docs actually use:
+        #   A. "Current best: 1.87"                  - prompt.md's briefing line
+        #   B. "Headline ...: 12.24 -> 1.87"         - RESULTS.md's baseline -> current arrow
+        #   C. a tier-table ROW labelled as the shipping tier - both ladder tables
+        FORM_A = re.compile(r'current best[:\s]*\**(\d+\.\d+)', re.I)
+        FORM_B = re.compile(r'headline\b[^\n]{0,48}?(\d+\.\d+)\s*(?:\u2192|->)\s*\**' r'(\d+\.\d+)', re.I)
+        ROW_CI = [('max-speed-lean', 'lean'), ('max-speed (shipped', 'shipped')]
+        ROW_CS = [('(DEFAULT', 'shipped')]
+        # Explicitly-historical markers, tested against the MARKER LINE only (never the 3-line window:
+        # the window version excused the CURRENT lean row because an adjacent row said "pre-flush
+        # cells", and excused prompt.md's Current-best paragraph because a later line said "DEAD
+        # tiers" - the guard then printed "claims checked" while skipping the two that matter).
+        HIST = ('as of exp', 'superseded', 'snapshot', 'pre-flush cells', 'old-build',
+                'previous default', 'predecessor')
+        LOGROW = re.compile(r'^\s*[-*]?\s*Exp\d+')      # per-experiment log entry = historical by shape
+        seen, skipped, checked = {}, 0, 0
+        # A claim under a HISTORY heading is history, not a current-state claim. Structural, not
+        # lexical: prompt.md's whole "What's Been Tried" half is per-experiment log prose, and its
+        # lines quote whatever number was current THEN ("the headline is 12.24 -> 3.48 (-71.6 %)").
+        # Without this rule the check reports 4 false alarms there and gets muted within a session.
+        HISTHEAD = ("what's been tried", 'history', 'archive', 'superseded', 'log of', 'changelog')
+        for name in ('RESULTS.md', 'STREAMING_1P5B.md', os.path.join('.auto', 'prompt.md')):
+            p = os.path.join(ROOT, name)
+            if not os.path.exists(p):
+                continue
+            lines = open(p, encoding='utf-8', errors='replace').read().splitlines()
+            section = ''
+            for i, ln in enumerate(lines):
+                if ln.startswith('#'):
+                    section = ln.lower()
+                claim = None                              # (block, direct value or None)
+                m = FORM_A.search(ln)
+                if m:
+                    claim = ('shipped', float(m.group(1)))
+                else:
+                    m = FORM_B.search(ln)
+                    if m:
+                        claim = ('shipped', float(m.group(2)))
+                    else:
+                        # tier-ROW claims are TABLE ROWS. Requiring the leading '|' keeps the rule
+                        # structural: prompt.md's "MODEL ARTIFACTS: ... (DEFAULT since Exp690)" prose
+                        # is a filename statement, not a ladder cell, and demanding an RTF on that
+                        # line is the kind of false alarm that gets a guard muted.
+                        tbl = ln.lstrip().startswith('|')
+                        blk = next((b for mm, b in ROW_CI if tbl and mm in ln.lower()),
+                                   next((b for mm, b in ROW_CS if tbl and mm in ln), None))
+                        if blk:
+                            claim = (blk, None)
+                if claim is None:
+                    continue
+                block, val = claim
+                if any(h in ln.lower() for h in HIST) or LOGROW.match(ln) or any(h in section for h in HISTHEAD):
+                    skipped += 1
+                    continue
+                want = cur if block == 'shipped' else float(spec.get(block, {}).get('rtf10', cur))
+                win = ' '.join(lines[i:i + 3])            # a row/claim may wrap
+                checked += 1
+                seen[block] = seen.get(block, 0) + 1
+                nums = [val] if val is not None else [float(x) for x in re.findall(r'\d+\.\d+', win)]
+                if not any(abs(n - want) <= tol for n in nums):
+                    bad(f"{name}:{i+1} asserts CURRENT state ({block}) but quotes "
+                        f"{nums[0] if val is not None else 'no current number'}; "
+                        f".auto/headline.json says {spec['era']} {block} 10 s = {want} "
+                        f"(Exp{spec.get(block + '_exp', '?')}). {ln.strip()[:90]} - update the prose "
+                        f"OR the spec if a cell really moved, never leave the two disagreeing")
+                elif spec['era'] not in (ln if val is not None else win):
+                    # Tested on the CLAIM LINE for direct-value claims (A/B). Reading the 3-line
+                    # window here made the era clause vacuous in wrapped paragraphs: deleting 'v4.7'
+                    # from prompt.md's Current-best line still passed, because the next sentence of
+                    # the paragraph mentioned it. A guard whose negative control cannot fail is noise.
+                    bad(f"{name}:{i+1} states current numbers but never names the current era "
+                        f"{spec['era']} on its own line - it will be read as the latest word and is "
+                        f"already stale prose")
+        if checked:
+            ok(f"headline prose agrees with headline.json ({era}, {cur}) across {checked} current-state "
+               f"claim(s): " + ', '.join(f"{b}={n}" for b, n in sorted(seen.items()))
+               + (f"; {skipped} explicitly-historical claim(s) excluded" if skipped else ""))
+        else:
+            warn("no current-state claim line found in the docs - the headline check has nothing to check")
+        # ladder cells: formatting is free, staleness is not -> WARN if a cell vanished from RESULTS.md
+        missing = [f"{spec['shipped'][k]}" for k in ('rtf10', 'rtf17', 'rtf69', 'rtf138')
+                   if spec['shipped'].get(k) is not None
+                   and str(spec['shipped'][k]) not in open(os.path.join(ROOT, 'RESULTS.md'),
+                                                           encoding='utf-8', errors='replace').read()]
+        if missing:
+            warn(f"RESULTS.md no longer contains the shipped ladder cell(s) {missing} - if the row was "
+                 f"re-measured, update headline.json too (it is the source this check reads)")
+        elif not missing and spec['shipped'].get('rtf138'):
+            ok("RESULTS.md carries every shipped ladder cell declared in headline.json")
+    except (KeyError, ValueError) as e:
+        bad(f"headline.json is unreadable/incomplete: {e!r}")
+
 # ---- report -------------------------------------------------------------------
 print(f"harness audit: {len(oks)} checks passed, {len(warns)} warnings, {len(fails)} failures\n")
 if '--verbose' in sys.argv:

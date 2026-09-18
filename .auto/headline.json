@@ -1,0 +1,31 @@
+{
+  "_why": "ONE machine-readable statement of what the loop currently claims. Added by Exp857 after finding that RESULTS.md's headline still read '12.24 -> 2.70 (-78 %)' and .auto/prompt.md's 'Current best' still read '2.18 (MAX-SPEED v4.5)' two full eras after v4.6 (tail flush, Exp829) and v4.7 (boundary batch, Exp835) shipped - i.e. the measured TABLE cells were refreshed at Exp845/847 while the PROSE that a fresh session reads first was not, and the audit's 87 checks could not see it because check 4b only greps prompt.md for the shipped VAE *filename*. audit_harness.py check 9 now fails any 'current' prose number that disagrees with this file. Doc-drift trigger: when you ship, edit this file first, then let check 9 tell you which prose sites are stale.",
+  "_rule": "Every value here is a MEASURED cell, not a target. Cells quoted from a single session are marked in provenance. Refresh on the doc-drift trigger (a shipped change that moves a ladder cell or the era).",
+  "era": "v4.7",
+  "baseline": 12.24,
+  "shipped_exp": 845,
+  "lean_exp": 847,
+  "protocol_hash": "1a095c8496b4",
+  "shipped": {
+    "label": "MAX-SPEED v4.7 (DEFAULT, p1, defer OFF, tail flush ON, boundary batch ON)",
+    "rtf10": 1.87,
+    "rtf17": 2.04,
+    "rtf69": 2.12,
+    "rtf138": 2.18,
+    "gate_mean": 1.91,
+    "wer_pct": 4.51,
+    "rss_gb": 2.19,
+    "provenance": "whole row re-measured in ONE session (Exp845); anchor re-confirmed Exp857 at 1.8729"
+  },
+  "lean": {
+    "label": "max-speed-lean (p13 + VAE_DEFER_LATE=1)",
+    "rtf10": 2.10,
+    "rtf17": 2.26,
+    "rtf69": 2.33,
+    "rtf138": 2.40,
+    "gate_mean": 2.13,
+    "wer_pct": 4.65,
+    "rss_gb": 1.75,
+    "provenance": "whole row re-measured in ONE session (Exp847)"
+  }
+}
