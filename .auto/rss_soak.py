@@ -31,9 +31,14 @@ if args and args[0] == '--':
     args = args[1:]
 
 DEV = re.search(r'^DEV=(\S+)', open('.auto/measure.sh').read(), re.M).group(1)
-PROC = 'asr_streaming'
+PROC = os.environ.get('SOAK_PROC', 'asr_streaming')
+# SOAK_PID targets one process directly. It exists so the fd/thread columns can be proven SENSITIVE
+# against a planted leak (Exp660's rule: a self-check is untrustworthy until a fault makes it move),
+# which pidof-by-name cannot do when several processes share a name.
+TARGET_PID = os.environ.get('SOAK_PID')
 WARM_MB = float(os.environ.get('SOAK_WARM_MB', 200))   # ignore anything not yet running a model
-samples = []          # (t_seconds, rss_mb, hwm_mb, state)
+samples = []          # (t, rss_mb, hwm_mb, vsz_mb, threads, n_fd)
+nofile = [None]
 stop = threading.Event()
 
 
@@ -51,14 +56,14 @@ def poll():
     # the orphans are sub-MB, so the largest-RSS pid is unambiguous and self-documenting.
     while not stop.is_set():
         try:
-            pids = adb(['shell', 'pidof', PROC]).stdout.replace('\r', '').split()
+            pids = [TARGET_PID] if TARGET_PID else adb(['shell', 'pidof', PROC]).stdout.replace('\r', '').split()
             best = None
             for p in pids:
                 # cat, not grep: adb JOINS its argv into one device-shell command string, so an
                 # unquoted alternation like ^VmRSS|^VmHWM is parsed as shell PIPES by the device and
                 # the probe silently returns nothing (this cost the first two soak attempts).
                 r = adb(['shell', 'cat', f'/proc/{p}/status'])
-                rss = hwm = vsz = None
+                rss = hwm = vsz = nthr = None
                 for line in r.stdout.replace('\r', '').splitlines():
                     if line.startswith('VmRSS:'):
                         rss = int(line.split()[1]) / 1024.0
@@ -66,16 +71,32 @@ def poll():
                         hwm = int(line.split()[1]) / 1024.0
                     elif line.startswith('VmSize:'):
                         vsz = int(line.split()[1]) / 1024.0
+                    elif line.startswith('Threads:'):
+                        nthr = int(line.split()[1])
                 if rss is None:
                     continue
                 if best is None or rss > best[1]:
-                    best = (p, rss, hwm, vsz)
+                    best = (p, rss, hwm, vsz, nthr)
             if best is None:
                 pass                                  # nothing resident yet - keep sampling
             elif best[1] < WARM_MB:
                 stale_seen[0] += 1                     # loading, or an orphan: not a data point
             else:
-                samples.append((time.time(), best[1], best[2], best[3]))
+                # fd count + its hard limit: a per-window descriptor leak is invisible in RSS and
+                # kills a long session at RLIMIT_NOFILE, which no RTF-shaped board can see (Exp849's
+                # "resource-limit edges" lesson). One extra adb round trip per sample, so keep interval >= 5 s.
+                nfd = None
+                try:
+                    fd_out = adb(['shell', 'ls', f'/proc/{best[0]}/fd'], timeout=15).stdout
+                    nfd = len([x for x in fd_out.replace('\r', ' ').split() if x.strip()])
+                except Exception:
+                    pass
+                if nofile[0] is None and nfd is not None:
+                    lim = adb(['shell', 'cat', f'/proc/{best[0]}/limits'], timeout=15).stdout
+                    for line in lim.splitlines():
+                        if line.lower().startswith('max open files'):
+                            nofile[0] = line.split()[-2] if line.split()[-2].isdigit() else line.split()[-2]
+                samples.append((time.time(), best[1], best[2], best[3], best[4], nfd))
         except Exception:
             pass                                       # adb hiccup - keep sampling
         time.sleep(interval)
@@ -94,9 +115,12 @@ if not samples:
     sys.exit(2)
 
 base = samples[0][0]
-print(f"{'t(s)':>6} {'VmRSS':>9} {'VmHWM':>9} {'VmSize':>9}")
-for t, r, h, v in samples:
-    print(f'{t - base:6.0f} {r:9.1f} {(h or 0):9.1f} {(v or 0):9.1f}')
+print(f"{'t(s)':>6} {'VmRSS':>9} {'VmHWM':>9} {'VmSize':>9} {'Thr':>4} {'fd':>5}")
+for s_ in samples:
+    t, r, h, v = s_[0], s_[1], s_[2], s_[3]
+    nth, nfd = (s_[4] if len(s_) > 4 else None), (s_[5] if len(s_) > 5 else None)
+    print(f'{t - base:6.0f} {r:9.1f} {(h or 0):9.1f} {(v or 0):9.1f} '
+          f'{(nth if nth else 0):4d} {(nfd if nfd else 0):5d}')
 
 def trend(pairs):
     """Least-squares MB/min over (t_seconds, rss_mb) pairs - shared so the self-test uses this code path."""
@@ -112,7 +136,7 @@ def trend(pairs):
 rss = [s[1] for s in samples]
 dur = (samples[-1][0] - samples[0][0]) / 60.0
 xs = [(s[0] - base) / 60.0 for s in samples]
-slope = trend([(t - base, r) for t, r, _, _ in samples])
+slope = trend([(t - base, r) for r, (t, _) in zip(rss, [(s_[0], s_[1]) for s_ in samples])])
 # Steady-state window: mmap'd weights are faulted in LAZILY (majflt stays 0, they are in the page cache),
 # so RSS ramps for the first windows and a full-range fit measures that page-in, not retention. Exp840:
 # a full-range fit on the 138 s clip said +24.4 MB/min while VmHWM never moved after t~200 s - the exact
@@ -125,7 +149,7 @@ hmax = max(hwms) if hwms else 0.0
 med_rss = statistics.median(rss)
 k = next((i for i, (h, r) in enumerate(zip(hwms, rss)) if h >= 0.98 * hmax and r >= 0.95 * med_rss),
          max(0, len(samples) // 4))
-ss = [(t - base, r) for (t, r, _, _) in samples[k:]]
+ss = [(samples[i][0] - base, samples[i][1]) for i in range(k, len(samples))]
 ss_slope = trend(ss)
 ss_band = (min(r for _, r in ss), max(r for _, r in ss)) if ss else (0.0, 0.0)
 hwm_ss = max(hwms[k:]) if k < len(hwms) else 0.0
@@ -138,7 +162,24 @@ print(f'steady state from t={ss[0][0]:.0f}s (sample {k}/{len(samples)}): trend =
       f' band {ss_band[0]:.1f}-{ss_band[1]:.1f} MB ({ss_band[1] - ss_band[0]:.1f} MB wide),'
       f' HWM {hwm_first:.1f} -> {hwm_ss:.1f} MB')
 verdict = 'FLAT - no leak signal' if abs(ss_slope) < 2.0 and (hwm_ss - hwm_first) < 25.0 else 'GROWTH - investigate'
-print(f'verdict: {verdict}')
+print(f'memory verdict: {verdict}')
+
+# ---- descriptor / thread verdicts (the resource-limit edge) -------------------------------
+fds = [s_[5] for s_ in samples if len(s_) > 5 and s_[5]]
+ths = [s_[4] for s_ in samples if len(s_) > 4 and s_[4]]
+if fds:
+    fd_slope = trend([(samples[i][0] - base, samples[i][5]) for i in range(len(samples)) if len(samples[i]) > 5 and samples[i][5]])
+    fd_net = fds[-1] - fds[0]
+    head = f" / limit {nofile[0]}" if nofile[0] else ''
+    print(f'descriptors: first={fds[0]} last={fds[-1]} min={min(fds)} max={max(fds)} net={fd_net:+d}'
+          f' trend={fd_slope:+.2f}/min{head}')
+    print('descriptor verdict: ' + ('FLAT - no fd leak' if abs(fd_net) <= 2 and abs(fd_slope) < 0.5
+          else f'LEAK - {fd_net:+d} descriptors over {dur:.1f} min; long sessions die at RLIMIT_NOFILE'))
+else:
+    print('descriptor verdict: NOT MEASURED - /proc/<pid>/fd was unreadable, this soak proved nothing about fds')
+if ths:
+    print(f'threads: min={min(ths)} max={max(ths)} ' +
+          ('FLAT' if max(ths) - min(ths) <= 1 else f'CHANGES by {max(ths) - min(ths)} - thread leak?'))
 for line in out.splitlines():
     if line.startswith('METRIC'):
         print(line)

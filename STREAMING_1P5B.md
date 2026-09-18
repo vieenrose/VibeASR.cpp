@@ -148,6 +148,21 @@ needs `drop_caches` (root; adbd runs as uid 2000, no `su`). Bound if it ever mat
 by roughly 3x until the weights are resident (~0.4 s of unavoidable stall for 1.6 GB, and that is a LOWER bound
 because the measured rate is page-cache-served, not flash).
 
+### Resource limits: descriptors and threads (measured, Exp856)
+
+Sampled every 10 s through a 138 s run (48 windows, 29 samples): **file descriptors = 3, constant** (min = max = 3,
+net +0), **threads 2-3** depending on which phase is running, VmSize ~4.87 GB and RSS flat. No descriptor or thread
+leak exists in the shipping path.
+
+The fd count is 3 by design, not by luck: the loader `munmap`s and then **closes the gguf descriptor** (`src/vae.cpp`,
+zero-copy path) - a memory mapping stays valid after its fd is closed, so steady-state execution holds only
+stdin/stdout/stderr. Consequence: file-descriptor exhaustion cannot end a long session; the limit is 32 768 anyway,
+while the real long-session ceiling is KV positions (~258 s, section above).
+
+The counter itself was validated two ways before this row was trusted: `ls /proc/<pid>/fd` and `lsof -p <pid>` both
+report exactly 3 for a sleeping process, and `rss_soak.py` agrees. A `No such file or directory` from that path means
+the process is GONE, not that permission was denied.
+
 ### Ladder extension: 155 s (Exp855, same session as the position-law fit)
 
 `chat155.wav` = chat138 + chat17, 154.97 s, sha256 `1cd4f3a84fbb`, 7 438 748 B: **RTF 2.1935**, 978 tokens,

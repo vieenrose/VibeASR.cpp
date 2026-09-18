@@ -1956,3 +1956,24 @@ of an anti-overfit guard and worth stating: the guard's job is to move WITH the 
    (host mirror `.auto/assets/chat155.wav`, gitignored; md5 verified host == device before registering).
  * Asset housekeeping worth knowing: the 138 s clip is `chat138.wav` on device (6 622 748 B), and `chat.wav` is
    still a byte-identical duplicate of `chat69.wav` (the known Exp675 WARN).
+
+## Exp856 - resource-limit board (fds, threads) built and closed: 3 fds constant, no thread leak
+
+ * `rss_soak.py` now samples **fd count** (`ls /proc/<pid>/fd`) and **Threads** alongside RSS/HWM/VmSize, prints the
+   RLIMIT_NOFILE headroom, and gives separate verdicts. New env overrides `SOAK_PID` (target one pid exactly) and
+   `SOAK_PROC`, which exist so the columns can be validated against a known-count process.
+ * **Validated before use, not after** (Exp660's rule): `ls /proc/<pid>/fd`, `lsof -p <pid>` and my own counter all
+   report exactly **3** for a sleeping process (stdin/out/err). Only then was the ASR row believed.
+ * **Result: the shipping path holds 3 descriptors, constant across 48 windows (net +0), threads 2-3 by phase, RSS
+   flat.** The reason is structural: the zero-copy loader does `munmap` then `close(fd)` on the gguf files
+   (`src/vae.cpp:1635-1638`) - a mapping outlives its fd, so nothing is held during inference. fd exhaustion is
+   therefore NOT a long-session failure mode; the ceiling is KV positions (~258 s), and RLIMIT_NOFILE is 32 768.
+ * Thread count oscillates 2 <-> 3 (main + pool workers, phase-dependent). max-min = 1 over 48 windows rules out a
+   leak without needing the per-sample series, since a per-window leak would have added dozens.
+ * Dead ends so nobody re-tries them: a planted fd-leak script (`fdhog.sh`) dies instantly on this toybox (`exec
+   4$i</dev/null` in a loop), and `ls /proc/<pid>/fd` returning "No such file or directory" means the target already
+   exited - both of my first "permission denied" fears were wrong. Quantitative validation on a known process is
+   cheaper than either synthetic-leak plumbing or paranoia.
+ * Harness trap hit AGAIN: piping the soak through `tail -22` truncated the sample table AND the verdict lines before
+   the tool's own output was captured - second occurrence of Exp840's class in two iterations. Fix: redirect the tool
+   to a file and grep the file; never pipe a tool whose answer may be above the cut.
