@@ -1,0 +1,4 @@
+clip=stream_10s_24k.wav windows=4 vae=11.6 prefill=3.2 decode=3.6 tokens=39 rtf=1.8456
+clip=chat17.wav windows=6 vae=19.3 prefill=5.4 decode=9.6 tokens=106 rtf=2.0171
+clip=chat69.wav windows=24 vae=78.8 prefill=24.0 decode=42.4 tokens=446 rtf=2.1062
+clip=chat138.wav windows=48 vae=157.6 prefill=52.1 decode=89.3 tokens=876 rtf=2.1672

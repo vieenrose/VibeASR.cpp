@@ -671,14 +671,33 @@ for name in ('RESULTS.md', 'STREAMING_1P5B.md', os.path.join('.auto', 'prompt.md
         # invocation of the binary with a -j flag, and flagged a prose cell about two co-running
         # processes - 4 false alarms from 4 lines that mention a name rather than run it. Precision
         # is the whole value of this check: Exp660's rule is that an over-claiming guard gets muted.
+        #
+        # TWO rules make "invoked as one" decidable, both learned from a planted control that did the
+        # WRONG thing on the first attempt (Exp870):
+        #  (i) a '/' that FOLLOWS A FILENAME is prose, not a path. Exp869's own doc row wrote "any
+        #      invocation of measure.sh/eval40.sh carrying a schedule option"; the old code read the
+        #      '/eval40.sh' half as an invocation and charged that line's --xwin/--env (flags of the binary
+        #      and of measure.sh) to eval40.sh, whose real interface is positionals + env - which turned
+        #      HEAD audit-RED via a PROSE SLASH, unnoticed because the audit ran before the row was added.
+        #      The first fix, a `(?<![\w.])/` lookbehind, ALSO rejected `.auto/eval40.sh` (the segment
+        #      before the slash is the DIRECTORY ".auto") and made the guard blind to real commands. The
+        #      discriminator that survives both controls: does the preceding segment look like a FILE?
+        # (ii) a flag belongs to the invocation BEFORE it, so a line with two commands must charge each
+        #      program only up to the NEXT program's invocation. Before this, `.../eval40.sh --env x &&
+        #      .../measure.sh --bogus` charged --bogus to BOTH (3 failures for 2 defects).
+        inv = {}
         for prog, truth in ([('asr_streaming', BIN_FLAGS)] +
                             [(k, v) for k, v in HARNESS_FLAGS.items()]):
-            m = None
-            for m in re.finditer(r'/'+re.escape(prog)+r'\b', ln):
-                pass                                    # last invocation on the line wins
-            if m is None:
-                continue
-            tail = ln[m.end():]
+            m = None                                # per-program: reset, else a prose-only match leaks in
+            for m_last in re.finditer(r'/'+re.escape(prog)+r'\b', ln):
+                if re.search(r'\.(?:sh|bash|py|cpp|h|hpp|md|txt|json|log|wav|gguf)\s*$', ln[:m_last.start()]):
+                    continue                        # "measure.sh/eval40.sh" - a list of names, not a path
+                m = m_last
+            if m is not None:
+                inv[prog] = (m.start(), m.end(), truth)
+        for prog, (pos, end, truth) in inv.items():
+            nxt = [p for pr, (p, e, t) in inv.items() if pr != prog and p > pos]
+            tail = ln[end:min(nxt)] if nxt else ln[end:]
             for f in re.findall(r'(?<![-\w])(--?[a-z][\w-]*)', tail):
                 if f in ('-c', '-s', '-o'):      # launcher-side short opts (adb/taskset conventions)
                     continue
@@ -686,7 +705,13 @@ for name in ('RESULTS.md', 'STREAMING_1P5B.md', os.path.join('.auto', 'prompt.md
                 if f not in truth:
                     badflags.append(f"{name}:{i+1} documents {prog} {f} - not in its parser "
                                     f"({prog == 'asr_streaming' and 'exits 1: Unknown arg' or 'ignored or error'})")
-for b in sorted(set(badflags)):
+# Report each badflag ONCE. Two identical `for b in sorted(set(badflags))` loops used to sit back to back
+# (docs pass, then comments pass) over the SAME accumulating list, so every doc-derived failure was printed
+# twice and the header count double-counted it - 2 real defects showed up as 5 failures. A failure counter
+# that lies about n is the Exp660 class: it makes a later "it went from 5 to 3" reading meaningless.
+flag_fails_reported = set()
+for b in sorted(set(badflags) - flag_fails_reported):
+    flag_fails_reported.add(b)
     bad(b)
 # Code COMMENTS too: the fictional --kv-type was recommended by a comment in demo/asr_streaming.cpp,
 # not by the docs (Exp855). Lines that DISAVOW a flag are skipped, which is how Exp855's own
@@ -707,7 +732,8 @@ for f in sorted(glob.glob(os.path.join(ROOT, 'src', '*.cpp')) + glob.glob(os.pat
             if ('--' + fl) not in BIN_FLAGS:
                 badflags.append(f"{rel}:{i+1} comment recommends {('--' + fl)}, which the binary does "
                                 f"not parse (it exits 1 'Unknown arg') - the Exp855 failure class")
-for b in sorted(set(badflags)):
+for b in sorted(set(badflags) - flag_fails_reported):
+    flag_fails_reported.add(b)
     bad(b)
 if flag_claims and not badflags:
     ok(f"{flag_claims} documented/commented flag use(s) all exist in the parsers they name")
