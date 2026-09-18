@@ -318,6 +318,11 @@ if '--skip-device' not in sys.argv:
                     (f" (cell: {man[n]['cell']})" if man[n].get('cell') else ''))
             else:
                 ok(f"{n} hash matches manifest")
+        # Grid fact (Exp868, from code not experiment): the WINDOWED path starts windows at w*HOP_SAMPLES
+        # (asr_streaming.cpp:526, HOP=70,400) so THIS is the grid checked here; the CARRY path (--xwin) starts
+        # them at 83,200 + (h-1)*70,400 = 12,800 mod 70,400, a DIFFERENT grid. Do not "fix" one to the other:
+        # an asset aligned for the shipping tier is 533 ms off what a carry run imposes, which is a reason to
+        # never mix windowed and carry results in one comparison, not a defect to correct.
         # Stitched eval STREAMS must declare their phase policy (Exp866h/i). The windowed protocol advances
         # 70,400 samples per window, so a clip that does not start on that boundary is processed at an
         # arbitrary phase of the window grid. Measured on this stack: that does NOT bias WER (en +1.36 pp,
