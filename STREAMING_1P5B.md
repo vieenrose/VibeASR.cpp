@@ -105,6 +105,21 @@ defaults to 13. WER gate: `./.auto/eval40.sh <tag> 0 40` +
 `venv-vibe/bin/python .auto/score_hyp.py <tag>`; for paired output-equivalence use
 `.auto/compare_arms.py --gate hyp-A hyp-B eval-librispeech/refs.json`.
 
+### Corrupt / truncated model files fail loudly (Exp850)
+
+A truncated `.gguf` used to load "successfully": the copy fallback discarded `fread`'s return value into a
+zero-initialised buffer, so the missing tail tensors became **zero weights** - fluent, confident, wrong transcripts
+with **exit 0 and entirely normal timing** (reproduced with `truncate -s -8MB` -> one word differs; `-64MB` -> most
+of the transcript lost). The LM path was already guarded; the VAE path now checks the short read and names the
+tensor, e.g.
+
+    [VAE] Error: vae_trunc.gguf is truncated or corrupt: tensor 'semantic.stages.6.7.ffn.linear2.weight'
+          needs 9437184 bytes at offset 394527104, read 1122304
+
+`demo` then prints `VAE load failed` and exits 1. Regression board: **`.auto/fault_inject.sh`** (healthy control +
+four damaged fixtures; run it after any change to the model loaders). Note the shape of this bug - it is invisible
+to every quality metric, because the output stays fluent; only a fault-injection probe finds it.
+
 ### Long-session limit (measured, Exp849)
 
 Continuous-audio position budget = **49.5 KV positions per window** (hop 70400 samples = 2.933 s) = **~18 positions

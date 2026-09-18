@@ -1660,7 +1660,18 @@ vae_model_t* vae_load_model_from_file(
             size_t tensor_size = ggml_nbytes(tensor);
             std::vector<char> buf(tensor_size);
             size_t got = fread(buf.data(), 1, tensor_size, f);
-            (void) got;
+            // A short read used to be DISCARDED, and buf is zero-initialised - so a truncated or partially
+            // written gguf loaded "successfully" and fed ZEROS as weights: fluent, confident, wrong transcripts
+            // with exit code 0 and normal timing (Exp849 reproduced it with truncate -s -8MB / -64MB). The mmap
+            // path's bounds check only set loaded=false, which routes here, so this is where the error must land.
+            if (got != tensor_size) {
+                fprintf(stderr, "[VAE] Error: %s is truncated or corrupt: tensor '%s' needs %zu bytes at offset %zu, read %zu\n",
+                        model_path, name, tensor_size, offset, got);
+                fclose(f);
+                gguf_free(gguf_ctx);
+                delete model;
+                return nullptr;
+            }
 
             ggml_backend_tensor_set(tensor, buf.data(), 0, tensor_size);
         }

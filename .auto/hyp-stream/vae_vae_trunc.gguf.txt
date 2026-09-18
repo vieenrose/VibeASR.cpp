@@ -1,0 +1,9 @@
+[1/4]  
+ Speaker 0:Yboy 发布了新模型，
+[2/4] YboyASR 可以端到端同时实现
+[3/4] dilation 和 transcription 的功能。 Yboy
+[4/4] 之前推出了两个版本。
+
+--- Transcription ---
+ 
+ Speaker 0:Yboy 发布了新模型，YboyASR 可以端到端同时实现dilation 和 transcription 的功能。 Yboy之前推出了两个版本。

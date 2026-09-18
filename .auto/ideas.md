@@ -1806,3 +1806,27 @@ of an anti-overfit guard and worth stating: the guard's job is to move WITH the 
    None affect the metric (the protocol clip uses ~11 % of the budget).
  * HARNESS INSIGHT worth keeping: to probe a resource limit, shrink the resource instead of extending the workload
    - `-c` is a knob on the very quantity being exhausted, so a 138 s clip tested four boundary points in ~15 min.
+
+## Exp850 — SILENT-CORRUPTION BUG FOUND AND FIXED: a truncated VAE gguf produced fluent wrong transcripts with exit 0
+
+ * **Method that found it:** the Exp849 idea of probing a resource by shrinking it - instead of lengthening the
+   workload, damage the INPUT (`truncate -s -8MB / -64MB` on the VAE file). The metric never looks at this.
+ * **Root cause, one line in src/vae.cpp:** the mmap guard at the bounds check only set `loaded=false`, which routes
+   to the copy fallback, which did `size_t got = fread(...); (void) got;` into a **zero-initialised**
+   `std::vector<char>` and then wrote `tensor_size` bytes to the tensor. So a truncated tail = ZERO weights.
+   Measured effects: -8 MB -> one word changes (`YyY` -> `Yboy`); -64 MB -> 4 window lines lost, output is other
+   language garbage. Exit 0, RSS/timing indistinguishable from healthy. The LM loader was already fine.
+ * **Fix:** check the short read, name the file/tensor/offset/bytes, free and return nullptr (the demo already
+   prints `VAE load failed` + exit 1). Acceptance: healthy run BYTE-IDENTICAL (1a095c8496b4) so valid files are
+   provably unaffected - this cannot change WER, only reject damaged files.
+ * **Board shipped:** `.auto/fault_inject.sh` (5 probes: healthy control must emit `tokens: N`, four damaged
+   fixtures must exit 1 with a matched message). Its negative control is this iteration itself - the pre-fix runs
+   ARE the "silent EXIT=0" observations.
+ * Thread-count invariance proven while here: `-t 1` gives the **same transcript hash** as `-t 2` (rtf 2.47 vs
+   1.87), so blocked-int8 thread tiling does not change accumulation order - the shipped output is not
+   thread-count specific (Exp808 had measured speed only).
+ * Harness traps hit (all self-inflicted, all caught because the output looked wrong): `/tmp` does not exist in the
+   device shell so `2>/tmp/x.err` fails with EXIT=1 that is MINE not the binary's; `adb -s $VAR` with an unset
+   variable hashed nothing and produced md5 d41d8cd9 (empty input, Exp676 signature); `echo EXIT=$?` inside a local
+   double-quoted adb string is expanded LOCALLY (Exp676 again) - must be `\$?`; and a success signal must require
+   real output (`tokens: N`), not just exit 0, because exit 0 is exactly what this bug returned.
