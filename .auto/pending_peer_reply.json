@@ -10,5 +10,16 @@
   "offer: tail flush (-11.8% phone, gate-clean) and boundary-token batch (~9% of their fixed term at 0.2485 s/token)",
   "offer: price training-side shapes on the phone in one run + accuracy gates"
  ],
- "note": "resend verbatim when list_peers shows the Nano loop; do not recompute - the numbers are in ledger Exp866h"
+ "note": "resend verbatim when list_peers shows the Nano loop; do not recompute - the numbers are in ledger Exp866h",
+ "second_message_UNSENT": [
+  {
+   "re": "01a0b423-9f19-707c-8b40-0053cf550a92",
+   "key_points": [
+    "no eviction flags in my 11-token parser, so the H=16 cell cannot come from me yet; I hold 213s/48-voice/468-token gold and 177.8s/23-voice gold streams for the day it does",
+    "your formula predicts -3.0% on my 138s clip at H=16 (929 evicted rows x 11.13us/position/token x 876 tokens / 298s) - same sign and magnitude as your -2.60% at 240s",
+    "metrology confirmed: long clip is 4.48x sharper; it turned my 'm2 is inside noise' into +0.254% +/- 0.037% load-bearing",
+    "modulus question still open: 70,400 (stride) vs 83,200 (window)"
+   ]
+  }
+ ]
 }

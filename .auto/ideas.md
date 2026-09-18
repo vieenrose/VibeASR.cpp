@@ -2510,3 +2510,10 @@ Consequences:
   flush, first-window behaviour, anything touching the final window) the protocol clip remains the metric
   AND the right place to measure: a long clip dilutes exactly the effect those changes have.
   Cost: 5.5 min/rep, so a 2x2 is ~22 min - worth it only when the decision hinges on <0.2%.
+
+- dw_axpy RE-TESTED AT THE RIGHT RESOLUTION: TRULY INERT (Exp867j). With the 138 s clip, VAE_DW_AXPY_OFF gives
+  -0.0004 / -0.0002 s per pair = -0.014% +/- 0.02% wall, output byte-identical. The five earlier "inert"
+  verdicts on the protocol clip were directionally right but the number (-0.4% once) was noise. The fused axpy
+  path neither helps nor hurts: keep it (it is exercised by other kernels) and stop spending runs on it.
+  Side product: the paired long-clip noise floor is ~0.0005 s per pair (0.02%), so any future claim below
+  ~0.05% needs either 4+ pairs or a mechanism argument.

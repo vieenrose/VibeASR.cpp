@@ -1,0 +1,4 @@
+round=1 arm=ON rtf=2.1635 vae=157.5 hash=d0af7aba
+round=1 arm=OFF rtf=2.1631 vae=157.7 hash=d0af7aba
+round=2 arm=ON rtf=2.1615 vae=157.4 hash=d0af7aba
+round=2 arm=OFF rtf=2.1613 vae=157.5 hash=d0af7aba
