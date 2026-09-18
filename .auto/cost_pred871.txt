@@ -1,0 +1,8 @@
+# Exp871 BLIND PREDICTIONS, written before measuring. Fit source: Exp870 cost_fit.txt (4 clips: 10/17/69/138 s).
+# Test clips were NOT in the fit: chat155 (length extrapolation), hotwords 17.28 s and slice10b (content-independence at fitted lengths).
+chat155.wav        dur=155.00s N= 53 eff= 52.71 | vae_s=  176.6 | prefill=  60.0 decode= 100.3 (tok~976) | wall=  336.9 -> rtf=2.1736 | length extrapolation - NEW length
+hotwords.wav       dur= 17.28s N=  6 eff=  5.75 | vae_s=   19.6 | prefill=   5.2 decode=  10.0 (tok~109) | wall=   34.8 -> rtf=2.0132 | same length class as chat17, different content
+slice10b_24k.wav   dur= 10.00s N=  4 eff=  3.35 | vae_s=   11.6 | prefill=   3.4 decode=   5.7 (tok~63) | wall=   20.7 -> rtf=2.0725 | same length as the protocol clip, different content (the guard clip)
+# Tolerances stated IN ADVANCE: vae_s +-0.5 s (single-run sd on a long clip is ~0.05 % of wall;
+# Exp867h: sd 0.052 % rel on 138 s). rtf is looser because tokens are content-driven: +-5 % on tokens
+# moves decode ~0.7 s per 100 -> +-2 % on rtf at 155 s. FAIL the model if vae_s misses by >1 % relative.

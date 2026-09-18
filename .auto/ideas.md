@@ -2578,3 +2578,33 @@ Consequences:
   as non-discriminating and kept only the pre-wait; on this stack it discriminates cleanly (30 vs 0 for a
   2 % move). Cheap policy that costs nothing: read majflt from the METRIC line, and if it is > 0 treat the
   run as a warm-up rather than a measurement.
+
+- COST MODEL IS PREDICTIVE, NOT JUST FITTED (Exp871). Wrote the numbers to .auto/cost_pred871.txt BEFORE
+  measuring, then ran three configurations absent from the fit:
+    * VAE term: chat155 (155 s, new length) -0.07 %, hotwords (17.28 s) +0.13 %, guard slice (10 s) -0.21 %.
+    * Wall/rtf GIVEN TOKENS: +0.06 % / -1.31 % / +0.49 %. Blind (tokens from the 6.3 tok/s density
+      constant): +0.01 % at 155 s (that domain matches), +4.2 % and +12.4 % where the density did not.
+    * So the model is a RATE model: per-window VAE cost and the LM's per-row / per-token rates are
+      content-independent; the token COUNT is the only content-driven input and must be measured.
+      Predict with `.auto/cost_fit.sh --predict <seconds> [tokens]` - no device time.
+  WHAT IT BUYS: "what would that shape cost?" is now a paper exercise (give it frames/s and it returns
+  wall), which is exactly what the peer loops asked for, and a failed idea can be priced before it is built.
+  CONTENT-INDEPENDENCE, PROVEN DIRECTLY: protocol clip and never-optimized guard slice both give
+  vae_s = 11.6 s; the 17 s clip and the hotword probe both give 19.6 s at equal effective windows. That is
+  the assumption behind every vae_s-based argument in this loop (Exp674/682) - it was assumed, now it is measured.
+  New cell: 155 s -> rtf 2.1736, RSS 2208 MB, 978 tokens, majflt 0.
+- ASSET HEADERS ARE NOT CHECKED, AND ONE OF THEM LIES (Exp871, found by accident). chat17.wav declares a
+  `data` chunk of 816,036 bytes and holds 816,000 -> a reader that trusts the header reads 18 samples past
+  EOF. Harmless here (the loader uses the file length; every cell using it is unaffected) but it is exactly
+  the kind of latent asset defect the Exp676 hash audit cannot see: hashing bytes validates identity, not
+  self-consistency. QUEUED: audit_harness check - for every blessed WAV, parse RIFF/fmt/data and assert
+  data_size == filesize - header_size (with the device-side reads batched), negative-controlled by planting
+  a wrong size on a host mirror. Same check would catch a truncated push.
+  Also: device_assets.json says chat155.wav = "chat138+chat17"; the byte probe confirms the tail is chat17
+  but NOT the prefix, and chat17/chat138/chat155 are byte-identical at 100-200 KB. Long chat clips share
+  source audio. Do not use any of them for a phase/position argument without re-deriving their layout.
+- SHELL TRAP, RE-HIT VERBATIM (Exp871): I put $(...) inside a double-quoted `adb shell "..."` string, it
+  expanded LOCALLY, hashed nonexistent local files, and returned d41d8cd9... - the empty-input md5 that
+  THIS LEDGER NAMED as the tell (Exp676). Reading my own output would have caught it in one second, and it
+  did - but only because I have read that note. Rule that generalizes: when a probe returns the same hash
+  for two different "files", the probe is broken, not the files identical.

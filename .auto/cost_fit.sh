@@ -11,12 +11,45 @@
 #   ./.auto/cost_fit.sh              measure all four clips (one session, ~7 min) then fit
 #   ./.auto/cost_fit.sh --analyze    re-fit the existing .auto/cost_fit.txt - NO device time
 #
+#   ./.auto/cost_fit.sh --predict <seconds> [tokens]     what the model says a clip costs (no device time)
+#
+# VALIDATED OUT OF SAMPLE (Exp871, predictions written to .auto/cost_pred871.txt BEFORE measuring):
+# on three clips absent from the fit the VAE term came out -0.07 % / +0.13 % / -0.21 % (including a 155 s
+# clip, 15 % beyond the longest fitted length) and total wall to +0.06 % when the token count is given.
+# So the RATES are content-independent; the token COUNT is the one content-driven input and must be
+# measured - the 6.3 tok/s density constant holds for conversational audio (976 predicted vs 978 measured
+# at 155 s) and fails elsewhere (hotwords 109 predicted vs 63, guard slice 63 vs 55).
+#
 # The flush makes the LAST window partial, so the model is fitted against EFFECTIVE windows
 # (N minus the fraction the flush removed); that is the whole difference between this fit and Exp828's,
 # and it is why the old intercept was +0.21 s where the honest one is ~0.
 set -u
 cd "$(dirname "$0")/.."
 LOG=.auto/cost_fit.txt
+if [ "${1:-}" = "--predict" ]; then
+    python3 - "${2:?usage: cost_fit.sh --predict <audio-seconds> [tokens]}" "${3:-}" <<'PY'
+import sys
+SEC, WIN, HOP = 24000, 83200, 70400
+A, B = 0.39, 3.343                    # vae_s = A + B x effective_windows   (Exp870 fit)
+PM, PB = 29.82, 9.11e-3               # prefill ms/row, ms per KV position
+DM, DB = 90.31, 10.67e-3              # decode  ms/token, ms per KV position
+dur = float(sys.argv[1]); tok = float(sys.argv[2]) if sys.argv[2] else 6.3 * dur
+N = (int(round(dur * SEC)) - 1) // HOP + 1
+eff = N - (1.0 - min(WIN, dur * SEC - (N - 1) * HOP) / WIN)
+vae = A + B * eff
+ctx = 13.0 * (N - 1) + tok / 2         # mean KV positions a processed row attends over
+pre = 28 * N * (PM + PB * ctx) / 1e3
+dec = tok * (DM + DB * ctx) / 1e3
+print(f"dur={dur:.2f}s windows={N} effective={eff:.2f} tokens={tok:.0f}"
+      f"{' (density 6.3/s - only valid for conversational audio)' if not sys.argv[2] else ''}")
+print(f"  vae {vae:.1f}s  prefill {pre:.1f}s ({28*N} rows)  decode {dec:.1f}s  -> wall {vae+pre+dec:.1f}s  rtf {(vae+pre+dec)/dur:.4f}")
+print(f"  shares vae/pre/dec {vae/(vae+pre+dec)*100:.1f}/{pre/(vae+pre+dec)*100:.1f}/{dec/(vae+pre+dec)*100:.1f} %"
+      f"   (validated: vae +-0.2 %, wall +-0.1 % given tokens; Exp871)")
+print("  CAVEAT the model is a RATE model: it prices work, not behaviour. A change that alters what the LM")
+print("  emits (a precision, a decode policy) changes tok, which this line takes as an input.")
+PY
+    exit 0
+fi
 if [ "${1:-}" != "--analyze" ]; then
     : > "$LOG"
     for clip in stream_10s_24k.wav chat17.wav chat69.wav chat138.wav; do
