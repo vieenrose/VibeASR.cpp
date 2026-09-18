@@ -2126,3 +2126,24 @@ line and flag; restore -> 0.
 Also swept, and reported as NOT checked (saying so is part of the check): flags belonging to other
 programs (cmake, llama-quantize, python tools) are outside its scope - their option sets are not
 derivable here, and a deny-list of foreign flags is how a guard starts lying.
+
+## Exp861 — guard rotation #8: flat, and the delta is still exactly the decode tokens
+
+Scheduled board (last Exp851). One sweep, 3 interleaved reps per arm, so thermal/boost state hits both
+arms equally: protocol **1.8707** (1.871/1.870/1.871) vs the never-optimized guard slice
+`slice10b_24k.wav` **2.0042** (2.008/2.003/2.002), 55 tokens, RSS 2191 MB, **= +7.1 %**.
+
+ * The +7.1 % is not a mystery and is not an overfit signature: 55 vs 39 tokens = 16 extra decodes at
+   ~93 ms = 1.49 s predicted vs 1.33 s measured on a 10 s clip, at identical VAE work.
+ * History: 2.5367 -> 2.5095 -> 2.4085 -> 2.3861 -> 2.3226 -> 2.0728 -> 2.0228 -> 2.0036 -> 2.0059 ->
+   **2.0042**. Since Exp851 the guard moved **-0.08 %** and the protocol **-0.17 %**, both inside the
+   0.19 % band. Over rounds that changed loaders, docs and harness only. **Verdict: no drift, no
+   protocol-specific tuning.**
+ * `cpu7_khz` = 1,300,000 in all 6 samples - the Exp844 negative result (frequency is not the confound;
+   the primes are hard-capped) reproduces.
+
+**Self-inflicted, and the reason to always read your own diff:** inserting the row with `oldText` = the
+NEXT row's label (so the new row would land above it) silently deleted that label - the Exp845 row lost
+its first cell and would have rendered as a broken table row. Caught by `git diff` + a check that every
+line in the table range starts with '|'. Rule: when inserting a line adjacent to an anchor, the newText
+must restate the anchor; and a table edit is not verified until something has counted its row starts.
