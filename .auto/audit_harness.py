@@ -712,6 +712,40 @@ for b in sorted(set(badflags)):
 if flag_claims and not badflags:
     ok(f"{flag_claims} documented/commented flag use(s) all exist in the parsers they name")
 
+# ---- 13. a documented SHIPPING command must not change the window SCHEDULE (Exp869).
+# Exp868 found TWO grids in one program: the windowed path advances start = w*70,400 (asr_streaming.cpp:526)
+# while the carry path uses 83,200 + (h-1)*70,400 = 12,800 mod 70,400 (:489). A shipping recipe that quietly
+# acquires --xwin therefore measures a different grid AND a different work volume - the exact Exp825/832
+# incident, where carry drifted into a comparison and its characterization numbers went stale unnoticed.
+# Check 11 proves a flag EXISTS; this proves the flag does not change what the shipping number means.
+SCHED_TOKENS = ('--xwin', '--vae-pieces', 'ARGS=--xwin', 'VAE_SEQ_ENCODERS=', 'VAE_DEFER_LATE=')
+SCHED_TIER_OK = ('lean', 'carry', 'xwin', 'diagnostic', 'probe', 'alternate', 'deferred', 'experiment',
+                 're-character', 'characteriz', 'other tier', 'not the shipp', 'sub-1.85')
+sched_claims, sched_bad = 0, []
+for name in ('RESULTS.md', 'STREAMING_1P5B.md', os.path.join('.auto', 'prompt.md'), 'README.md'):
+    p_ = os.path.join(ROOT, name)
+    if not os.path.exists(p_):
+        continue
+    lines = open(p_, encoding='utf-8', errors='replace').read().splitlines()
+    for i_, ln in enumerate(lines):
+        if not re.search(r'/(?:\.|\$RDIR|auto/)?(?:measure|eval40|bench_device)\.sh', ln):
+            continue
+        if not any(t in ln for t in SCHED_TOKENS):
+            continue
+        if any(h in ln.lower() for h in ('as of exp', 'superseded', 'snapshot')):
+            continue
+        ctx = ' '.join(lines[max(0, i_ - 2):i_ + 1]).lower()
+        sched_claims += 1
+        if not any(t in ctx for t in SCHED_TIER_OK):
+            sched_bad.append(f"{name}:{i_+1} runs a SCHEDULE-changing option in what reads as the shipping "
+                             f'tier: ' + ln.strip()[:96])
+if sched_bad:
+    for b in sched_bad:
+        bad(b)
+else:
+    ok(f"{sched_claims} schedule-changing invocation(s) all declare a non-shipping tier "
+       '(windowed vs carry are different grids - Exp868)')
+
 # ---- 12. the SWEEP harness must resolve to the shipping tier (Exp865c). run_rtf_multi.sh used to expand
 # empty threads/pieces fields into NOTHING, which SHIFTED bench_device.sh's positionals (the run tag landed
 # in the thread-count argument) - so eight anti-overfit guard rotations measured a config that is not the
