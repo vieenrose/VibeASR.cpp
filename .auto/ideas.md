@@ -2030,3 +2030,41 @@ KNOWN COVERAGE GAP, take next if docs come up again: present-tense claims that u
 survive the check, e.g. STREAMING_1P5B.md's "the shipped default is PIECES=1 at RTF ~2.43" (v3.9-era,
 still reads as current). A FORM_D for "the shipped/current default/tier ... is N" would close it; do it
 with a false-positive sweep in the same commit or not at all.
+
+## Exp858 — check 9 coverage gap closed: FORM_D, and the wrapped-sentence lesson
+
+The gap I had just written down was bigger than I described. `STREAMING_1P5B.md`'s stale claim reads
+"the shipped / default is PIECES=1 at RTF **~2.43**" **with the sentence broken across a newline**
+("the shipped" ends one line, "default is PIECES=1..." starts the next), so *no line-anchored rule can
+see it* - which retroactively explains why four forms of the same class survived: the guard reads lines,
+prose wraps.
+
+Added **FORM_D**: present-tense config claims ("the shipped default is", "shipped tier is", "currently
+ships", "default tier is", ...) scanned over a **2-line window**, with two brakes:
+ * the value must be an **RTF-adjacent** number, otherwise "…whose default is defer-OFF): 2.54 on the
+   protocol clip" (a v3.9-era read of a *config* default) turns into a phantom speed claim;
+ * the historical rules still apply, so the two sites found are excluded by their own `SUPERSEDED`
+   section heading rather than by a deny-list, and the exclusion count went 2 -> 3 so this is visible.
+Dedupe: the 2-line window hits a wrapped sentence twice - one real claim, two FAILs - so FORM_D now
+remembers whether it fired on the previous line. Reporting the same defect twice trains people to
+distrust the count, which is its own kind of noise.
+
+Made one prose site self-policing instead of just correct: STREAMING_1P5B.md's superseded-snapshot
+section now opens with `**Current best: 1.87 (era v4.7)** — …the live ladder is in RESULTS.md`, phrased
+in the FORM_A idiom ON PURPOSE and placed *above* the `SUPERSEDED` heading so the historical-section
+rule cannot hide it. Now if the era moves and someone forgets this pointer, check 9 fails. Coverage
+6 -> 7 claims (`shipped=5, lean=2`), and a spec-only bump to a fictional v4.8 flags all 7 across
+3 files, including that pointer.
+
+**A control that failed because of my grep, not the code:** I wrote
+`grep "asserts CURRENT \(lean\)"` when the message says `asserts CURRENT state (lean)`, so control B
+looked like a miss and I nearly went hunting for a bug that was not there. Diagnosed by running the
+detection logic standalone on the exact line (triggers hit, mv=2.44, section not historical) - i.e. by
+testing the CLAIM rather than the REPORTER. Rule: when a control fails, verify the fault is present in
+the *object under test* before believing the instrument's own output channel.
+
+Known remaining limits of check 9, stated so nobody assumes more coverage than exists:
+ * a live claim parked UNDER a historical heading is invisible to it (mitigation: phrase live pointers in
+   a policed form and put them above such headings, as done here);
+ * past-tense history is by design not checked - which is why the doc convention going forward is
+   **past tense = then, present tense = now**, and the guard polices the present-tense half.

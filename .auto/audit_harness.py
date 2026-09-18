@@ -457,6 +457,9 @@ else:
                 'previous default', 'predecessor')
         LOGROW = re.compile(r'^\s*[-*]?\s*Exp\d+')      # per-experiment log entry = historical by shape
         seen, skipped, checked = {}, 0, 0
+        prev_d = False        # did FORM_D fire on the previous line? (its 2-line window double-hits
+                              # a wrapped sentence - one real claim, two FAILs, which trains people
+                              # to distrust the count)
         # A claim under a HISTORY heading is history, not a current-state claim. Structural, not
         # lexical: prompt.md's whole "What's Been Tried" half is per-experiment log prose, and its
         # lines quote whatever number was current THEN ("the headline is 12.24 -> 3.48 (-71.6 %)").
@@ -489,6 +492,27 @@ else:
                                    next((b for mm, b in ROW_CS if tbl and mm in ln), None))
                         if blk:
                             claim = (blk, None)
+                        else:
+                            # D. PRESENT-TENSE config claims - "the shipped default is PIECES=1 at
+                            # RTF ~2.43". Found while logging this check's own coverage gap: the
+                            # sentence WRAPS ("the shipped\ndefault is ..."), so no line-anchored
+                            # rule can see it; hence the 2-line window. Two guards against noise:
+                            # the value must be an RTF-adjacent number (else "whose default is
+                            # defer-OFF): 2.54 on the protocol clip" becomes a speed claim), and the
+                            # historical-section / past-tense rules above still apply - which is why
+                            # docs should use PAST tense for history and present tense only for now.
+                            w2 = ' '.join(lines[i:i + 2]).lower()
+                            hit_d = any(t in w2 for t in ('default is', 'shipped tier is',
+                                                          'currently ships', 'shipping default is',
+                                                          'default tier is', 'the default now'))
+                            if hit_d and prev_d:
+                                hit_d = False          # same sentence, second window line
+                            mv = None
+                            if hit_d:
+                                mv = re.search(r'rtf\s*\**[~\u2248]?(\d+\.\d+)', w2)
+                                if mv:
+                                    claim = ('lean' if 'lean' in w2 else 'shipped', float(mv.group(1)))
+                            prev_d = bool(hit_d and mv)
                 if claim is None:
                     continue
                 block, val = claim

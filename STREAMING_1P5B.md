@@ -406,6 +406,10 @@ everything else stays F16.
   mean **4.77**, WER 5.10% (S=31 D=3 I=3), RSS **2.05 GB**, 69 s transcript
   diff vs accuracy-first 3.93%.
 
+**Current best: 1.87 (era v4.7)** — the ladder in this section is history only; the live ladder is in
+RESULTS.md and the machine-readable statement is `.auto/headline.json`, which `audit_harness.py`
+check 9 enforces against every current-state claim in these docs.
+
 ### Final tier ladder (Exp525–542-era snapshot — SUPERSEDED)
 
 > **Superseded in v4.0** (whole-window pieces: PIECES=1 is −1.2 % with ZERO gate discordants, Exp706): the shipped
