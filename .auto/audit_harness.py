@@ -23,6 +23,7 @@ Exit code is non-zero if any check fails, so it can gate a session.
 
 Usage: .auto/audit_harness.py [--skip-device]
 """
+import fnmatch
 import glob
 import hashlib
 import json
@@ -189,7 +190,17 @@ else:
                 warn(f"{s} mentions DEV and config.json - verify DEV is not parsed from a file that lacks it")
     if '--skip-device' not in sys.argv:
         r = sh(f'adb -s {DEV} get-state 2>&1', timeout=30)
-        (ok if 'device' in r.stdout else bad)(f"device {DEV} state: {r.stdout.strip()[:40]}")
+        # Exp873's coverage plant found this: the old test was `'device' in r.stdout`, and adb's failure
+        # text is "error: device 'X' not found" - which CONTAINS 'device'. An unreachable or mistyped
+        # device therefore PASSED the connectivity check and every device-side section below reported
+        # missing files, which reads like a broken phone rather than a broken serial. Success is the
+        # literal line 'device' and nothing else.
+        state = r.stdout.strip()
+        if state == 'device':
+            ok(f"device {DEV} state: device (online)")
+        else:
+            bad(f"device {DEV} state: {state[:60]!r} - adb get-state must print exactly 'device'; "
+                f"check DEV in measure.sh and that the phone is connected")
 
         # ---- 4b. shipped-tier spec vs every runner's defaults -------------------------
 # Exp694: eval40.sh defaulted to VAE=vae-encoder-q8_0mixed, LM=streaming-lm-q4_k_m, PIECES=13 while the
@@ -502,7 +513,22 @@ if '--skip-device' not in sys.argv:
         # Cost control: the sizes are already in dev_size from the header check, and md5 is requested only
         # for unlisted clips whose size matches a documented clip (a real collision candidate).
         GATE_UTT = re.compile(r'^\d{3,5}-\d{5,7}-\d{4}\.wav$')      # LibriSpeech gate utterances
-        unlisted = sorted(n for n in dev_size if n not in man and not GATE_UTT.match(n))
+        # known_extras: device files a human already accounted for, declared IN the manifest with a reason
+        # (fixtures a tool regenerates, probes kept for reuse). Declaring is better than deleting: nothing
+        # is destroyed, and a NEW unexplained clip still shows up.
+        try:
+            extras = (json.load(open(MANIFEST)).get('known_extras') or {})   # top level, not man['assets']
+        except Exception:
+            extras = {}
+        ex_g = [(re.compile(fnmatch.translate(g)), why) for g, why in extras.items()]
+        def is_known(n):
+            if GATE_UTT.match(n):
+                return 'gate utterance'
+            for rx, why in ex_g:
+                if rx.match(n):
+                    return why
+            return None
+        unlisted = sorted(n for n in dev_size if n not in man and not is_known(n))
         undeclared_harmless = []
         doc_sizes = {spec.get('bytes') for spec in man.values() if spec.get('bytes')}
         if not doc_sizes:
@@ -530,7 +556,8 @@ if '--skip-device' not in sys.argv:
                  "drift - bless them or delete them: " + ', '.join(undeclared_harmless[:8])
                  + (' ...' if len(undeclared_harmless) > 8 else ''))
         if not unlisted:
-            ok("every clip on the device is declared in the asset manifest")
+            ok(f"every clip on the device is declared (manifest, gate-utterance pattern, or "
+               f"{len(extras)} accounted-for fixture/probe pattern(s))")
         if hdr_ok_n:
             ok(f"{hdr_ok_n} WAV asset(s) have a data chunk that agrees with the file length")
         if hdr_skip:

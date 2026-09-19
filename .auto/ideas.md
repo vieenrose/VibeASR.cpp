@@ -2635,3 +2635,25 @@ Consequences:
       loop, 1st one closed by a guard built from the earlier ones.
   Detail: ffmpeg writes a LIST/INFO chunk that puts `data` at offset 216 - probe 1 KB, not 192 B, or good
   assets get reported as "unverifiable".
+
+- GUARD-COVERAGE AUDIT + ONE SILENT GUARD FIXED (Exp873). `.auto/audit_selftest.py` (tracked) plants one
+  fault per audit check, runs the audit, and requires THAT check to fail; `--only <re>` runs a subset;
+  `--list` prints the matrix. Result 13/13 plantable classes fire (11 first pass, then the two below),
+  3 classes declared UNCOVERED with reasons - visible, not implied.
+  * SILENT GUARD FOUND: device-state test was `'device' in r.stdout`, and adb prints
+    `error: device 'X' not found` on failure, which CONTAINS 'device'. An unreachable/mistyped serial
+    passed connectivity and every later device section then reported missing files - misleading, though it
+    never produced a wrong number (those checks fail loudly). Fixed to require the literal line `device`.
+  * check 8 printed "gate refs.json: MISSING" as prose, never bad(). Fixed: a missing gate reference set is
+    a FAILURE (the scorers would print a WER against an empty reference).
+  * section 7 iterated the manifest only -> new 7d lists device clips that are in NO manifest and FAILs on
+    any that is byte-identical to a documented clip (the Exp675 collision class, now closed on the device
+    side too). First run found 16 undeclared clips; all now accounted for: 7 declared fixture/probe
+    patterns in device_assets.json `known_extras` (with reasons), 3 real assets blessed
+    (holdout_en_aligned / holdout_zh_aligned / holdout_zh_ph35200 - align_asset.py outputs used by
+    Exp866h/i), gate utterances matched by name pattern. Audit 115 checks / 0 failures / 1 explained WARN.
+  * Two false-positive classes avoided: check 2 now skips audit_selftest.py (a fault catalog names paths
+    that must not exist), and a plant must target a TRACKED file OUTSIDE .auto for the dirty-tree check to
+    see it (3b ignores .auto on purpose).
+  USE: run `.auto/audit_selftest.py` after ADDING an audit check (add a fault for it), and any time the
+  audit's own logic is refactored. It costs ~8 min and is the only thing that proves the guards exist.

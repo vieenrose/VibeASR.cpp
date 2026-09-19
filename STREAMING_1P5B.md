@@ -616,3 +616,33 @@ are allocated at full-window spacing and packed down to the frames actually pres
 is self-consistent. Lean protocol cell 2.40 → **2.12** (−11.5 %) at ~1.75 GB, and its transcript is now
 byte-identical to the shipped tier's — the previously documented 1-token lean/shipped difference was the
 padded tail interacting with the deferred late path, not a real divergence.
+
+## Guard-coverage audit: 11/13 checks fired on their own fault; one was silent (Exp873)
+
+`.auto/audit_selftest.py` plants one fault per audit check and requires THAT check to fail. Until now the
+Exp660 rule ("a self-check is untrustworthy until a planted fault makes it fail") had been applied only
+check-by-check, as each check was written - never as a property of the audit as a whole. 13 plantable
+classes, 3 accepted as uncontrolled and named as such (device binary hashes need a real rebuild; a
+co-runner would poison the timings it is meant to detect; check 12 has its own --dry control).
+
+**One guard was silent, and it was the connectivity guard**: the device-state test was
+`'device' in r.stdout`, but adb's failure text is `error: device 'X' not found` - which contains 'device'.
+An unreachable or mistyped serial therefore PASSED, and every device-side section below it then reported
+missing files, which reads like a broken phone rather than a broken serial. Success is now the literal line
+`device` and nothing else. Cost of the bug in practice: zero wrong measurements so far (the file checks
+would have failed loudly), but it is exactly the class that produces a plausible number from the wrong
+system, which this loop has been burned by repeatedly.
+
+Two further gaps were found while designing the plants, both fixed: check 8 PRINTED `gate refs.json:
+MISSING` without failing (so deleting the gate reference set changed no verdict), and section 7 iterated
+the manifest, so device clips nobody declared were invisible - the Exp675 blind spot. That new check found
+16 undeclared clips on the first run: fixtures a tool regenerates, phase probes held for reuse, and three
+aligned holdout sets that were real assets and are now blessed. The device asset surface is now fully
+declared (36 manifest entries + 7 accounted-for fixture/probe patterns + gate utterances by name).
+
+Method notes kept because they generalize:
+* A plant can be INVALID rather than a check SILENT - my dirty-tree plant modified `.auto/config.json`, and
+  section 3b deliberately ignores `.auto/` (the autoresearch log writes there). Distinguish the two before
+  "fixing" a working check: it fired once aimed at a tracked file outside `.auto`.
+* A fault catalog must be excluded from the path-existence check: `audit_selftest.py` legitimately names
+  files that must NOT exist, and an over-claiming guard gets muted (Exp660).

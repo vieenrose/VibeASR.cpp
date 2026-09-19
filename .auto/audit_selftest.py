@@ -73,8 +73,13 @@ def plant_execbit():
 
 
 def plant_dirty():
-    p = '.auto/config.json'
-    open(p, 'a').write(' ')
+    # Section 3b deliberately ignores paths under .auto/ (the autoresearch log writes there constantly),
+    # so the plant must dirty a TRACKED file outside .auto - my first version dirtied .auto/config.json
+    # and the check was correctly silent.
+    p = 'README.md'
+    if not os.path.exists(p):
+        raise RuntimeError('README.md not found; pick another tracked file outside .auto')
+    open(p, 'a').write('\n<!-- audit_selftest dirty marker -->\n')
     return lambda: git_revert(p)
 
 
@@ -188,6 +193,12 @@ UNCOVERED = [
     ('12 sweep resolves to tier', 'has its own --dry negative control inside audit_harness (Exp865c), '
      'which is why it is not repeated here'),
 ]
+
+if '--only' in sys.argv:
+    k = sys.argv[sys.argv.index('--only') + 1]
+    FAULTS = [f for f in FAULTS if re.search(k, f[0], re.I)]
+    UNCOVERED = []
+    print(f"guard coverage: subset /{k}/ ({len(FAULTS)} fault(s))\n")
 
 if '--list' in sys.argv:
     for c, d, _, _ in FAULTS:

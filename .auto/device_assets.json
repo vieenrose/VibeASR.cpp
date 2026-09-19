@@ -97,10 +97,22 @@
    "md5": "feb62bf7c49a222f165151356f6aa398",
    "note": "held-out CV-en watchdog"
   },
+  "holdout_en_aligned.wav": {
+   "md5": "50982384a8435100feeda0f9b0d51b3b",
+   "note": "Exp866h: align_asset.py hop-aligned rebuild of holdout_en.wav (content proven identical per-clip)"
+  },
   "holdout_zh.wav": {
    "cell": "held-out CV-zh watchdog",
    "md5": "a0870fcd3112a75d9712527d6c2ca95b",
    "note": "held-out CV-zh watchdog"
+  },
+  "holdout_zh_aligned.wav": {
+   "md5": "3a7a60ff59946faa305dba9f327f1829",
+   "note": "Exp866i: align_asset.py hop-aligned rebuild of holdout_zh.wav"
+  },
+  "holdout_zh_ph35200.wav": {
+   "md5": "341505223b7d438a4b5933f2864bb9b0",
+   "note": "Exp868: align_asset.py --phase 35200 (half-hop) arm of the zh set"
   },
   "hotwords.wav": {
    "md5": "04cae588f6871b3ac11a562cc42eed55",
@@ -150,5 +162,14 @@
    "md5": "d0cb6df4c923b8652b1b7836b963ad22",
    "note": "blessed from device"
   }
+ },
+ "known_extras": {
+  "audio_*.wav": "fault_inject.py fixtures (header-only/empty/lying-size/truncated) - regenerated at run time",
+  "grid[0-9].wav": "window-grid phase probe from Exp868 (held on device for reuse)",
+  "h_en_cut533.wav": "Exp868 mid-clip deletion probe (held for reuse)",
+  "h_en_gapcut.wav": "Exp868 mid-clip deletion probe (held for reuse)",
+  "lie_dur.wav": "fault fixture used by Exp847b/872 (honest audio, header claims 4x duration)",
+  "trunc_half.wav": "fault fixture used by Exp847b/872 (audio truncated to half its declared length)",
+  "win[0-9].wav": "window-grid phase probe from Exp868 (held on device for reuse)"
  }
 }
