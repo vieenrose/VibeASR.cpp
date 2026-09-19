@@ -84,6 +84,11 @@ _RDIR = '/data/local/tmp/vibeasr'
 SKIP_PREFIX = ('/data', '/proc', '/sys', '/system', '/tmp', '$RDIR', '${RDIR}', '.auto/multi-', '.auto/last_')
 seen = set()
 for s in scripts:
+    if s == 'audit_selftest.py':
+        # The fault catalog deliberately NAMES paths that must not exist (the faults it plants, the refs it
+        # hides). Flagging them would be a false alarm, and an over-claiming guard gets muted (Exp660) -
+        # which is exactly the protection this file exists to make unnecessary.
+        continue
     txt = open(os.path.join(HERE, s), errors='ignore').read()
     # Scripts that drive the PHONE binary reference files that live in $RDIR on the device, not in the repo.
     # Declared with a `# DEVICE_PATHS: name1 name2` marker so (a) the host-path check below does not cry wolf
@@ -490,6 +495,42 @@ if '--skip-device' not in sys.argv:
         if hdr_bad:
             for b_ in hdr_bad:
                 bad(b_)
+        # ---- 7d. device clips that are NOT in the manifest (Exp873) ----------------
+        # Section 7 iterates the manifest, so the audit could see a blessed clip go missing or change, but
+        # never that the device holds clips nobody declared. That is how Exp675's collision stayed hidden
+        # for a round: an undeclared copy of a documented clip is invisible to a loop over the manifest.
+        # Cost control: the sizes are already in dev_size from the header check, and md5 is requested only
+        # for unlisted clips whose size matches a documented clip (a real collision candidate).
+        GATE_UTT = re.compile(r'^\d{3,5}-\d{5,7}-\d{4}\.wav$')      # LibriSpeech gate utterances
+        unlisted = sorted(n for n in dev_size if n not in man and not GATE_UTT.match(n))
+        undeclared_harmless = []
+        doc_sizes = {spec.get('bytes') for spec in man.values() if spec.get('bytes')}
+        if not doc_sizes:
+            # no sizes recorded, so compare against the sizes we just read for the blessed clips
+            doc_sizes = {dev_size[n] for n in man if n in dev_size and not n.startswith('HOST ')}
+        # md5 is requested only for clips whose SIZE could collide (a size filter keeps it to one cheap
+        # adb call), but EVERY unlisted clip is reported - otherwise an undeclared clip that happens to be
+        # a unique size stays invisible, which is the hole this section exists to close.
+        cand = [n for n in unlisted if dev_size[n] in doc_sizes and dev_size[n] > 0]
+        known = {spec.get('md5'): n for n, spec in man.items() if spec.get('md5')}
+        dhash = {}
+        if cand:
+            hashout = sh('adb -s ' + DEV + ' shell "md5sum ' +
+                         ' '.join(f'{RDIR}/{n}' for n in cand) + ' 2>/dev/null"', timeout=180).stdout
+            dhash = {os.path.basename(l.split()[-1]): l.split()[0]
+                     for l in hashout.splitlines() if re.match(r'[0-9a-f]{32}\s+\S+', l)}
+        for n in unlisted:
+            if dhash.get(n) in known:
+                bad(f"undeclared device clip {n} is BYTE-IDENTICAL to documented clip {known[dhash[n]]} - "
+                    "any A/B between them measures one file twice (the Exp675 class)")
+            else:
+                undeclared_harmless.append(f"{n} ({dev_size[n]} B)")
+        if undeclared_harmless:
+            warn(f"{len(undeclared_harmless)} device clip(s) are in no manifest and cannot be checked for "
+                 "drift - bless them or delete them: " + ', '.join(undeclared_harmless[:8])
+                 + (' ...' if len(undeclared_harmless) > 8 else ''))
+        if not unlisted:
+            ok("every clip on the device is declared in the asset manifest")
         if hdr_ok_n:
             ok(f"{hdr_ok_n} WAV asset(s) have a data chunk that agrees with the file length")
         if hdr_skip:
@@ -522,14 +563,24 @@ if '--skip-device' not in sys.argv:
         ok("no co-runner: device is idle for timing")
 
 # ---- 8. frozen references used by A/B tooling ----------------------------------
-for f in sorted(os.listdir(HERE)):
-    if f.startswith('ref') and f.endswith('.txt'):
-        if os.path.getsize(os.path.join(HERE, f)) < 20:
-            bad(f"frozen reference {f} is empty/truncated")
+# Exp873: this section USED to print. It listed the refs it found and said "gate refs.json: MISSING" in
+# prose while returning success - so deleting a frozen transcript changed no verdict, and the paired-test
+# tools would have diffed against whatever they fell back to. A check that prints is not a check.
+ref_files = [f for f in sorted(os.listdir(HERE)) if f.startswith('ref') and f.endswith('.txt')]
+if not ref_files:
+    bad("no frozen reference transcripts in .auto - the A/B and rollback tools would compare against nothing")
+for f in ref_files:
+    if os.path.getsize(os.path.join(HERE, f)) < 20:
+        bad(f"frozen reference {f} is empty/truncated")
 refs_dir = os.path.join(ROOT, '..', 'eval-librispeech')
-print("frozen references present: "
-      + ', '.join(f for f in sorted(os.listdir(HERE)) if f.startswith('ref') and f.endswith('.txt'))
-      + f"; gate refs.json: {'found' if os.path.exists(os.path.join(refs_dir, 'refs.json')) else 'MISSING'}")
+refs_ok = os.path.exists(os.path.join(refs_dir, 'refs.json'))
+if not refs_ok:
+    bad(f"gate refs.json missing at {refs_dir} - score_hyp/compare_arms would score against an empty "
+        "reference set and still print a WER")
+else:
+    ok(f"{len(ref_files)} frozen references and gate refs.json present for the A/B tooling")
+print("frozen references present: " + ', '.join(ref_files)
+      + f"; gate refs.json: {'found' if refs_ok else 'MISSING'}")
 
 # ---- 8. ledger coherence (Exp770: the ledger is split in two halves and the loop prompt points at
 # the STALE archive half. A session that reads only the prompt path resurrects closed work - it cost
