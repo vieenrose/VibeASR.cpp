@@ -2657,3 +2657,19 @@ Consequences:
     see it (3b ignores .auto on purpose).
   USE: run `.auto/audit_selftest.py` after ADDING an audit check (add a fault for it), and any time the
   audit's own logic is refactored. It costs ~8 min and is the only thing that proves the guards exist.
+
+- UNRUN TESTS + UNSAFE PLANT REVERTS (Exp874). Two new guard items, both from applying Exp660 to TESTS:
+  * `score_mixed.py --selftest` RED since 869e73e (fixture said "1 char inserted", string inserted 2).
+    Scorer correct, fixture self-contradictory. Now fixed, and audit check 14 RUNS all four tool self-tests
+    (compare_arms/rss_soak/score_mixed/score_stream, <=0.5 s) + WARNs on any tracked tool with an uninvoked
+    --selftest. Fault 14 in audit_selftest.py proves it fires. Coverage now 14/14 plantable classes.
+  * PLANT REVERT RULE: never revert a plant with `git checkout --` - that restores the COMMITTED state and
+    destroys uncommitted edits to the same file (it ate a real fix this round). Plants snapshot bytes and
+    restore bytes. Recorded because the loop's own advice (Exp869: "restore from a COMMIT") is about losing
+    harness code to an auto-revert; for a PLANT the safe primitive is a content snapshot.
+  * Also defused: `sh` (subprocess helper) was rebound to a path inside audit section 12 - a landmine for
+    every later section. Rule: don't shadow module helpers inside a section body.
+  NEXT, if the harness is touched again: the 3 UNCOVERED classes are (a) device binary-hash drift (needs a
+  real rebuild to plant), (b) co-runner, (c) sweep-tier check (has its own --dry control). Only (a) is a
+  genuine hole: it would be plantable by pushing a deliberately stale .so in a scratch dir and pointing the
+  push list at it - worth one fault if the audit's push-list derivation ever changes.

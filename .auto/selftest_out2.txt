@@ -1,0 +1,37 @@
+guard coverage: 14 planted faults, 3 classes accepted as uncovered
+
+  FIRED     14 tool self-tests     (a scorer self-test starts failing)
+              FAIL  score_mixed.py --selftest FAILED (exit 1): self-test: FAIL
+  FIRED     1 syntax               (a harness script stops parsing)
+              FAIL  syntax fault_run.sh: /home/user/vibe-asr-streaming-1p5b/VibeASR.cpp/.auto/fault_run.sh: line 20: `def broken(:'
+  FIRED     2 host paths           (a script references a missing file)
+              FAIL  missing path referenced by bench_device.sh: .auto/this_tool_does_not_exist.py
+  FIRED     3 git tracking         (a harness script is untracked)
+              FAIL  harness script is NOT tracked in git (an auto-revert will delete it): selftest_untracked_copy.sh
+  FIRED     3c exec bit            (a harness script loses its +x)
+              FAIL  harness script is not executable (chmod +x and commit the mode): .auto/fault_run.sh
+  FIRED     3b dirty tree          (a tracked file is modified between runs)
+              FAIL  tracked files are DIRTY between runs: ['README.md'] - auto-revert cannot protect you (session workDir /home/user/vibe-asr-streaming-1p5b is not 
+  FIRED     4 config source        (measure.sh points at another device)
+              FAIL  device ZZZZWRONGSERIAL state: "error: device 'ZZZZWRONGSERIAL' not found" - adb get-state must print exactly 'device'; check DEV in measure.sh a
+  FIRED     7 duplicate clip       (an undeclared copy of a documented clip)
+              FAIL  undeclared device clip zz_selftest_dup.wav is BYTE-IDENTICAL to documented clip chat17.wav - any A/B between them measures one file twice (the E
+  FIRED     7 wav header           (a clip's data chunk disagrees with its size)
+              FAIL  noise5s.wav: data chunk claims 244096 bytes with a 44 B header = 244140 B, but the file is 240044 B (+4096 bytes) - a reader that trusts the hea
+  FIRED     8 frozen reference     (the gate reference set disappears)
+              FAIL  gate refs.json missing at /home/user/vibe-asr-streaming-1p5b/VibeASR.cpp/../eval-librispeech - score_hyp/compare_arms would score against an emp
+  FIRED     9 headline             (the prose headline disagrees with headline.json)
+              FAIL  RESULTS.md:3 asserts CURRENT state (shipped) but quotes 2.94; .auto/headline.json says v4.8 shipped 10 s = 1.85 (Exp864). **Headline (era v4.8):
+  FIRED     10 command tier        (a documented command runs a non-shipped file)
+              FAIL  RESULTS.md:362 documents a command that runs VAE_FILE=vae-encoder-f16.gguf, but the shipped tier is VAE_FILE=vae-encoder-convint8.gguf (.auto/ti
+  FIRED     11 flags               (a doc passes a flag the parser lacks)
+              FAIL  RESULTS.md:362 documents measure.sh --not-a-flag - not in its parser (ignored or error)
+  FIRED     13 schedule            (a shipping command changes the window grid)
+              FAIL  RESULTS.md:362 runs a SCHEDULE-changing option in what reads as the shipping tier: | selftest (temporary) | shipping tier: ./.auto/measure.sh EX
+  UNCOVERED 5 device inventory / binary hashes needs a rebuilt-or-stale .so on the phone; a rebuild is the only honest plant, and a wrong-hash file would be pushed by the next measure.sh anyway
+  UNCOVERED 7b co-runner           needs a second asr_streaming resident on the device; that would also poison every timing in the session, so it is planted by accident far more often than on purpose (Exp679)
+  UNCOVERED 12 sweep resolves to tier has its own --dry negative control inside audit_harness (Exp865c), which is why it is not repeated here
+
+final clean-tree audit: 
+
+coverage: 14/14 plantable checks fire on their own fault; 0 silent or invalid; 3 classes accepted as uncontrolled.

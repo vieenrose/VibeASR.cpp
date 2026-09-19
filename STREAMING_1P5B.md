@@ -646,3 +646,25 @@ Method notes kept because they generalize:
   "fixing" a working check: it fired once aimed at a tracked file outside `.auto`.
 * A fault catalog must be excluded from the path-existence check: `audit_selftest.py` legitimately names
   files that must NOT exist, and an over-claiming guard gets muted (Exp660).
+
+## An unrun test is not a test (Exp874)
+
+`score_mixed.py --selftest` has been **failing since the commit that introduced it** (869e73e). The fixture
+comment says "1 char inserted" but the string duplicated two characters (`你好世界` → `你好世界世界`), so the
+scorer correctly returned 2/4 = 0.50 against an expectation of 0.25. The scorer was right, the fixture
+contradicted its own comment - and because no harness step ever ran `--selftest`, a red test sat there
+across hundreds of measurements. No published number is affected (it is a test fixture, not a scorer bug),
+but the lesson generalizes: Exp660's "prove the guard can fail" applies to TESTS as well as CHECKS, and a
+test that nothing invokes is worse than no test because it reads as coverage.
+
+Fixes: audit check 14 now runs `compare_arms / rss_soak / score_mixed / score_stream --selftest` on every
+session start (≤0.5 s total) and WARNs on any tracked tool that has a `--selftest` mode nobody calls. Fault
+14 in `audit_selftest.py` proves the check fires by breaking a scorer's own expectation.
+
+Two harness defects surfaced while wiring it:
+* Section 12 rebound the name `sh` - the subprocess helper - to a PATH. Any section below it that calls
+  `sh()` would die. It bit check 14 within one run. Renamed to `sweep`.
+* `audit_selftest.py` reverted its plants with `git checkout --`, which restores the **committed** state and
+  silently destroys uncommitted work in the same file (it ate this round's fixture fix within minutes).
+  Plants now snapshot the file's bytes and write them back - a plant must restore the pre-plant state, not
+  the last commit.
