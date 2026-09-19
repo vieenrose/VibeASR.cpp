@@ -35,7 +35,17 @@ if [ "${1:-}" = "--dry" ]; then
   exit 0
 fi
 
-REPS=${1:-1}; shift
+REPS=${1:-1}
+# Exp877: REPS used to be `${1:-1}` with no validation, so calling the tool as
+#   run_rtf_multi.sh "a|x.wav" "b|y.wav"        (arms first, no REPS)
+# made REPS="a|x.wav", `seq` failed, the loop ran ZERO times, and the script still printed a summary
+# header and exited 0 - a vacuous run in 0.2 s (the Exp863 class, and 0.2 s is arithmetically impossible).
+case "$REPS" in
+  ''|*[!0-9]*) echo "ERROR: first argument must be REPS (a positive integer), got '$REPS'. Usage: $0 REPS \"label|audio|threads|pieces|env\" [...]" >&2; exit 2;;
+esac
+if [ "$REPS" -lt 1 ]; then echo "ERROR: REPS must be >= 1, got $REPS" >&2; exit 2; fi
+shift
+if [ "$#" -lt 1 ]; then echo "ERROR: no arms given (usage: $0 REPS \"label|audio|threads|pieces|env\" [...])" >&2; exit 2; fi
 # Tier defaults come from measure.sh, NOT from a copy of them here. The previous literal
 # (VAE_FILE=vae-encoder-q4x4ffn.gguf) was the pre-Exp690 F16-conv reference and silently made every
 # sweep through this runner measure a tier that no longer ships - same class as the stale-lib bug

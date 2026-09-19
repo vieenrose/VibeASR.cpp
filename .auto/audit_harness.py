@@ -1073,6 +1073,20 @@ try:
             bad(f"sweep defaults to threads={want_t}, not the shipped 2 threads on the A78 primes")
         else:
             ok(f"sweep harness resolves to the shipping tier (threads={want_t}, pieces={want_p}, from tier/measure defaults)")
+        # Exp877: misuse must fail LOUDLY. Called as `run_rtf_multi.sh "a|x.wav" "b|y.wav"` (arms with no
+        # REPS) the tool set REPS to the arm string, seq failed, the loop ran ZERO times, and it still
+        # printed a summary header and exited 0 - a vacuous 0.2 s run, the Exp863 class. All three misuse
+        # forms are checked here because the validation runs before any device contact, so this costs 0 s.
+        misuse = [([sweep, 'probe|clip.wav'], 'arms given without REPS'),
+                  ([sweep, '0', 'probe|clip.wav'], 'REPS=0'),
+                  ([sweep, '2'], 'no arms at all')]
+        accepted = [f'{why}' for args, why in misuse
+                    if subprocess.run(args, capture_output=True, text=True, timeout=60).returncode == 0]
+        if accepted:
+            bad("run_rtf_multi.sh ACCEPTED misuse: " + ', '.join(accepted)
+                + " - a sweep that runs zero reps and exits 0 produces a summary that reads like a result")
+        else:
+            ok("sweep harness rejects all 3 misuse forms (no REPS / REPS=0 / no arms) instead of running nothing")
         if 'vae-encoder-convint8.gguf' not in line or 'lm-q8head.gguf' not in line:
             bad(f"sweep probe does not name the shipped files: {line}")
     r2 = subprocess.run([sweep, '--dry', 'probe|clip.wav|2|9|'], capture_output=True, text=True, timeout=60)

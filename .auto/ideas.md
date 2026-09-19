@@ -2692,3 +2692,10 @@ Consequences:
   refactored; ~10 min, and it is the only evidence that the guards exist. Rounds Exp873-877 found four
   instrument defects this way (unfirable device-connectivity test, unrun scorer self-test, set -e abort
   sites, unproven binary-hash check) - i.e. more than any measurement round in the same window.
+  * VACUOUS SWEEP RUN found the same round (Exp877): calling `run_rtf_multi.sh "arm|clip.wav" ...` (arms
+    without the leading REPS) set REPS to the arm string, `seq` failed, ZERO runs executed, and the tool
+    still printed a summary header and exited 0. It took 8 minutes of my time because I called it with the
+    wrong signature and only noticed "PASSED in 0.2s" - arithmetically impossible for a 10 s clip at RTF 1.85.
+    Now all three misuse forms (no REPS / REPS=0 / no arms) exit 2 with the usage line, and audit check 12
+    asserts that (0 s, validation runs before any device contact). Rule reaffirmed: a timing under ~2x the
+    audio length is a run that did not happen - check the DURATION before the number.
