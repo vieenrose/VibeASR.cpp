@@ -82,8 +82,8 @@ s=open('.auto/eval40_out.txt',encoding='utf-8',errors='replace').read()
 t=s.split('--- Transcription ---')[1].strip() if '--- Transcription ---' in s else ''
 open(sys.argv[1],'w',encoding='utf-8').write(t+'\n')
 PY
-  R=$(grep -oE 'RTF: [0-9.]+' .auto/eval40_err.txt | head -1 | awk '{print $2}')
-  T=$(grep -oE 'tokens: [0-9]+' .auto/eval40_err.txt | head -1 | awk '{print $2}')
+  R=$( grep -oE 'RTF: [0-9.]+' .auto/eval40_err.txt | head -1 | awk '{print $2}' || true )   # pipefail-safe: absent line != failed run (Exp876)
+  T=$( grep -oE 'tokens: [0-9]+' .auto/eval40_err.txt | head -1 | awk '{print $2}' || true )   # pipefail-safe: absent line != failed run (Exp876)
   [ -z "${R:-}" ] && { echo "FAILED parse $K"; exit 1; }
   echo "$i $K rtf=$R tok=$T"
   # persist per-utterance RTF (Exp711: the mean was previously stdout-only and lost on

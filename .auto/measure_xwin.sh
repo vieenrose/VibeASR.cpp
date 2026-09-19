@@ -14,7 +14,7 @@ cd "$(dirname "$0")/.."
 HERE=$(cd "$(dirname "$0")" && pwd)
 
 # DEV's single source of truth is measure.sh (the audit enforces this; config.json has no DEV).
-DEV=$(grep -oE '^DEV=\S+' "$HERE/measure.sh" | head -1 | cut -d= -f2)
+DEV=$( grep -oE '^DEV=\S+' "$HERE/measure.sh" | head -1 | cut -d= -f2 || true )   # pipefail-safe: absent line != failed run (Exp876)
 [ -n "$DEV" ] || { echo "ERROR: could not parse DEV from measure.sh" >&2; exit 1; }
 RDIR=/data/local/tmp/vibeasr
 MODELS_DIR=$(cd "$HERE/.." && pwd)/../models-streaming
@@ -66,9 +66,9 @@ run() {   # $1=clip $2=extra-flag
     --vae-model ./$VAE_FILE --lm-model ./$LM_FILE --audio $1 -t $THREADS --vae-pieces $PIECES $2" \
     > /tmp/xw-out.txt 2> /tmp/xw-err.txt
   cp /tmp/xw-err.txt "/tmp/xw-err-$n.txt" 2>/dev/null || true   # per-arm stderr provenance (for *_TRACE knobs)
-  R=$(grep -oE 'RTF: [0-9.]+' /tmp/xw-err.txt | head -1 | awk '{print $2}')
-  T=$(grep -oE 'tokens: [0-9]+' /tmp/xw-err.txt | head -1 | awk '{print $2}')
-  L=$(grep -oE 'load: [0-9.]+' /tmp/xw-err.txt | head -1 | awk '{print $2}')
+  R=$( grep -oE 'RTF: [0-9.]+' /tmp/xw-err.txt | head -1 | awk '{print $2}' || true )   # pipefail-safe: absent line != failed run (Exp876)
+  T=$( grep -oE 'tokens: [0-9]+' /tmp/xw-err.txt | head -1 | awk '{print $2}' || true )   # pipefail-safe: absent line != failed run (Exp876)
+  L=$( grep -oE 'load: [0-9.]+' /tmp/xw-err.txt | head -1 | awk '{print $2}' || true )   # pipefail-safe: absent line != failed run (Exp876)
   [ -n "${R:-}" ] || { echo "ERROR: no RTF parsed for $1 $2 (see /tmp/xw-err.txt)" >&2; exit 1; }
   H=$(python3 -c "
 import re,sys,hashlib

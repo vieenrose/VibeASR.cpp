@@ -15,6 +15,10 @@ VAE_FILE=${VAE_FILE:-vae-encoder-convint8.gguf}
 MODELS_DIR=${MODELS_DIR:-$(cd "$(dirname "$0")/../.." && pwd)/models-streaming}
 AUDIO=${AUDIO:-stream_10s_24k.wav}      # device-side name, unless --clip pushes one
 SKIP_BUILD=${SKIP_BUILD:-0}
+# --parse-only: run the METRIC parser against the EXISTING .auto/last_*.txt and print PARSER lines
+# instead of METRIC lines, so the parse path is testable without device time and can NEVER be logged as
+# a measurement (Exp876: an absent-but-legal log line used to abort the whole metric block under pipefail).
+PARSE_ONLY=${PARSE_ONLY:-0}
 
 # Strict argument parsing: an unrecognised flag used to be ignored silently, which
 # made `measure.sh --clip something.wav` measure the DEFAULT 10 s clip and report it
@@ -24,8 +28,9 @@ while [ $# -gt 0 ]; do
     --clip)       CLIP_LOCAL="${2:-}"; [ -f "$CLIP_LOCAL" ] || { echo "ERROR: --clip file not found: $CLIP_LOCAL" >&2; exit 1; }
                   AUDIO=$(basename "$CLIP_LOCAL"); CLIP_PUSH=1; shift 2 ;;
     --skip-build) SKIP_BUILD=1; shift ;;
+    --parse-only) PARSE_ONLY=1; shift ;;
     --env)        EXTRA_ENV="${2:-}"; shift 2 ;;
-    *)            echo "ERROR: unknown argument '$1' (valid: --clip PATH, --skip-build, --env 'K=V ...')" >&2; exit 2 ;;
+    *)            echo "ERROR: unknown argument '$1' (valid: --clip PATH, --skip-build, --parse-only, --env 'K=V ...')" >&2; exit 2 ;;
   esac
 done
 
@@ -44,7 +49,7 @@ for _f in "$VAE_FILE" "$LM_FILE"; do
     adb -s $DEV push "$_hf" "$RDIR/" > /dev/null 2>&1 || { echo "ERROR: push failed for $_f" >&2; exit 1; }
   fi
 done
-echo "note: audio=$AUDIO skip_build=$SKIP_BUILD" >&2
+echo "note: audio=$AUDIO skip_build=$SKIP_BUILD parse_only=$PARSE_ONLY" >&2
 # Co-runner guard (Exp679): a host-side `timeout` leaves the DEVICE-side run alive, and a live
 # second asr_streaming halves throughput (two pinned 2-thread runs on two A78s, Exp533). That
 # produced plausible-but-2x-slow numbers here, so say it out loud instead of measuring it.
@@ -124,35 +129,50 @@ case " $_e " in *" LM_FILE="*) ;; *) _lm="LM_FILE=${LM_FILE:-lm-q8head.gguf} ";;
 case " $_e " in *" VAE_FILE="*) ;; *) _vf="VAE_FILE=$VAE_FILE ";; esac
 case " $_e " in *" MASK="*)    ;; *) _mk="MASK=${MASK:-C0} ";; esac
 case " $_e " in *" THREADS="*) ;; *) _th="THREADS=${THREADS:-2} ";; esac
+if [ "$PARSE_ONLY" != 1 ]; then
 adb -s $DEV shell "$_e $_lm$_vf$_mk$_th sh $RDIR/bench_device.sh ${AUDIO} ${THREADS:-2} ${PIECES:-1} loop" > .auto/last_run.txt 2>&1 || exit 1
 cat .auto/last_run.txt | tail -n 2
 adb -s $DEV pull $RDIR/out-loop.log .auto/last_out.txt > /dev/null 2>&1
 adb -s $DEV pull $RDIR/err-loop.log .auto/last_err.txt > /dev/null 2>&1
+else
+  echo "note: PARSE-ONLY - parsing the existing .auto/last_err.txt; this is NOT a measurement" >&2
+fi
 
-RTF=$(grep -oE 'RTF: [0-9.]+' .auto/last_err.txt | head -n 1 | awk '{print $2}')
-VAE=$(grep -oE 'VAE: [0-9.]+s' .auto/last_err.txt | head -n 1 | sed 's/VAE: //;s/s//')
-LMS=$(grep -oE 'LM: [0-9.]+s' .auto/last_err.txt | head -n 1 | sed 's/LM: //;s/s//')
-TOK=$(grep -oE 'tokens: [0-9]+' .auto/last_err.txt | head -n 1 | awk '{print $2}')
-ACS=$(grep -oE 'ac [0-9.]+s' .auto/last_err.txt | head -n 1 | awk '{print $2}' | sed 's/s//')
-SES=$(grep -oE 'sem [0-9.]+s' .auto/last_err.txt | head -n 1 | awk '{print $2}' | sed 's/s//')
-PRE=$(grep -oE 'prefill [0-9.]+s' .auto/last_err.txt | head -n 1 | awk '{print $2}' | sed 's/s//')
-DEC=$(grep -oE 'decode [0-9.]+s' .auto/last_err.txt | head -n 1 | awk '{print $2}' | sed 's/s//')
-LOAD=$(grep -oE 'load: [0-9.]+s' .auto/last_err.txt | head -n 1 | awk '{print $2}' | sed 's/s//')
-PEAKKB=$(grep -oE 'peak_kb=[0-9]+' .auto/last_run.txt | cut -d= -f2)
-HWMKB=$(grep -oE 'hwm_kb=[0-9]+' .auto/last_run.txt | cut -d= -f2)
-MAJFLT=$(grep -oE 'majflt_delta=-?[0-9]+' .auto/last_run.txt | cut -d= -f2)
-BATTT=$(adb -s $DEV shell "dumpsys battery 2>/dev/null | grep 'temperature:'" 2>/dev/null | grep -oE '[0-9]+' | head -n 1)
+TAG=$([ "$PARSE_ONLY" = 1 ] && echo "PARSER" || echo "METRIC")
+RTF=$( grep -oE 'RTF: [0-9.]+' .auto/last_err.txt | head -n 1 | awk '{print $2}' || true )   # pipefail-safe: absent line != failed run (Exp876)
+VAE=$( grep -oE 'VAE: [0-9.]+s' .auto/last_err.txt | head -n 1 | sed 's/VAE: //;s/s//' || true )   # pipefail-safe: absent line != failed run (Exp876)
+LMS=$( grep -oE 'LM: [0-9.]+s' .auto/last_err.txt | head -n 1 | sed 's/LM: //;s/s//' || true )   # pipefail-safe: absent line != failed run (Exp876)
+TOK=$( grep -oE 'tokens: [0-9]+' .auto/last_err.txt | head -n 1 | awk '{print $2}' || true )   # pipefail-safe: absent line != failed run (Exp876)
+ACS=$( grep -oE 'ac [0-9.]+s' .auto/last_err.txt | head -n 1 | awk '{print $2}' | sed 's/s//' || true )   # pipefail-safe: absent line != failed run (Exp876)
+SES=$( grep -oE 'sem [0-9.]+s' .auto/last_err.txt | head -n 1 | awk '{print $2}' | sed 's/s//' || true )   # pipefail-safe: absent line != failed run (Exp876)
+PRE=$( grep -oE 'prefill [0-9.]+s' .auto/last_err.txt | head -n 1 | awk '{print $2}' | sed 's/s//' || true )   # pipefail-safe: absent line != failed run (Exp876)
+DEC=$( grep -oE 'decode [0-9.]+s' .auto/last_err.txt | head -n 1 | awk '{print $2}' | sed 's/s//' || true )   # pipefail-safe: absent line != failed run (Exp876)
+LOAD=$( grep -oE 'load: [0-9.]+s' .auto/last_err.txt | head -n 1 | awk '{print $2}' | sed 's/s//' || true )   # pipefail-safe: absent line != failed run (Exp876)
+PEAKKB=$( grep -oE 'peak_kb=[0-9]+' .auto/last_run.txt | cut -d= -f2 || true )   # pipefail-safe: absent line != failed run (Exp876)
+HWMKB=$( grep -oE 'hwm_kb=[0-9]+' .auto/last_run.txt | cut -d= -f2 || true )   # pipefail-safe: absent line != failed run (Exp876)
+MAJFLT=$( grep -oE 'majflt_delta=-?[0-9]+' .auto/last_run.txt | cut -d= -f2 || true )   # pipefail-safe: absent line != failed run (Exp876)
+BATTT=$( adb -s $DEV shell "dumpsys battery 2>/dev/null | grep 'temperature:'" 2>/dev/null | grep -oE '[0-9]+' | head -n 1 || true )   # pipefail-safe: absent line != failed run (Exp876)
 [ -z "${RTF:-}" ] && { echo "FAILED: no RTF parsed"; tail -n 5 .auto/last_err.txt; exit 1; }
+# Exp876: a pipefail-safe parse must not turn a MISSING optional line into a silently missing metric.
+# rtf is the only required number; everything else may legitimately be absent, but say so out loud.
+_missing=""
+for _v in VAE LMS TOK PEAKKB HWMKB; do
+  eval "_val=\${$_v:-}"
+  # NB an `[ -z ... ] && ...` here would ABORT: when the test is false the && list is the loop body's
+  # last command, the for loop returns 1, and set -e exits - the same silent-abort class, from the inside.
+  if [ -z "$_val" ]; then _missing="$_missing $_v"; fi
+done
+if [ -n "$_missing" ]; then echo "note: not reported (line absent from the run log):$_missing" >&2; fi
 
-echo "METRIC rtf=$RTF"
-echo "METRIC vae_s=$VAE"
-echo "METRIC lm_s=$LMS"
-echo "METRIC tokens=$TOK"
-echo "METRIC peak_rss_mb=$(python3 -c "print(round(${HWMKB:-$PEAKKB}/1024,1))")"
-echo "METRIC majflt=${MAJFLT:-0}"
-[ -n "${ACS:-}" ] && echo "METRIC ac_s=$ACS"
-[ -n "${SES:-}" ] && echo "METRIC sem_s=$SES"
-[ -n "${PRE:-}" ] && echo "METRIC prefill_s=$PRE"
-[ -n "${DEC:-}" ] && echo "METRIC decode_s=$DEC"
-[ -n "${LOAD:-}" ] && echo "METRIC load_s=$LOAD"
-[ -n "${BATTT:-}" ] && echo "METRIC batt_temp_c=$(python3 -c "print(round(${BATTT}/10,1))")"
+echo "$TAG rtf=$RTF"
+if [ -n "${VAE:-}" ]; then echo "$TAG vae_s=$VAE"; fi
+if [ -n "${LMS:-}" ]; then echo "$TAG lm_s=$LMS"; fi
+if [ -n "${TOK:-}" ]; then echo "$TAG tokens=$TOK"; fi
+echo "$TAG peak_rss_mb=$(python3 -c "print(round(${HWMKB:-$PEAKKB}/1024,1))")"
+echo "$TAG majflt=${MAJFLT:-0}"
+[ -n "${ACS:-}" ] && echo "$TAG ac_s=$ACS"
+[ -n "${SES:-}" ] && echo "$TAG sem_s=$SES"
+[ -n "${PRE:-}" ] && echo "$TAG prefill_s=$PRE"
+[ -n "${DEC:-}" ] && echo "$TAG decode_s=$DEC"
+[ -n "${LOAD:-}" ] && echo "$TAG load_s=$LOAD"
+[ -n "${BATTT:-}" ] && echo "$TAG batt_temp_c=$(python3 -c "print(round(${BATTT}/10,1))")"
