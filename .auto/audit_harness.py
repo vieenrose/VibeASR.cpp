@@ -1181,6 +1181,9 @@ if os.path.exists(cap):
     else:
         warn(f".auto/last_out.txt holds {nwin} window lines - it is NOT a protocol capture, so do not hash it "
              "against the protocol reference (re-run ./.auto/measure.sh --skip-build to refresh it)")
+else:
+    warn(".auto/last_out.txt is absent - no protocol capture to hash; re-run "
+         "./.auto/measure.sh --skip-build before quoting an output-identity claim")
 
 # ---- report -------------------------------------------------------------------
 print(f"harness audit: {len(oks)} checks passed, {len(warns)} warnings, {len(fails)} failures\n")

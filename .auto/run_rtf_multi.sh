@@ -36,11 +36,6 @@ if [ "${1:-}" = "--dry" ]; then
 fi
 
 REPS=${1:-1}
-# Exp879: the sweep does not pull out-loop.log, so .auto/last_out.txt KEEPS whatever an earlier run left
-# there. A protocol hash taken right after a sweep therefore described a different clip (it happened for
-# real: 86 window lines from a 250 s run, read as a protocol-output change). Move it aside so the mistake
-# fails loudly instead of silently.
-if [ -f .auto/last_out.txt ]; then mv .auto/last_out.txt .auto/last_out.prev; fi
 # Exp877: REPS used to be `${1:-1}` with no validation, so calling the tool as
 #   run_rtf_multi.sh "a|x.wav" "b|y.wav"        (arms first, no REPS)
 # made REPS="a|x.wav", `seq` failed, the loop ran ZERO times, and the script still printed a summary
@@ -51,6 +46,14 @@ esac
 if [ "$REPS" -lt 1 ]; then echo "ERROR: REPS must be >= 1, got $REPS" >&2; exit 2; fi
 shift
 if [ "$#" -lt 1 ]; then echo "ERROR: no arms given (usage: $0 REPS \"label|audio|threads|pieces|env\" [...])" >&2; exit 2; fi
+
+# Exp879: the sweep does not pull out-loop.log, so .auto/last_out.txt KEEPS whatever an earlier run left
+# there. A protocol hash taken right after a sweep therefore described a different clip (it happened for
+# real: 86 window lines from a 250 s run, read as a protocol-output change). Move it aside so the mistake
+# fails loudly instead of silently.
+# NB it sits AFTER the argument validation on purpose - Exp879b: when it was first, audit check 12's own
+# "REPS with no arms" misuse probe moved the protocol capture aside before erroring out.
+if [ -f .auto/last_out.txt ]; then mv .auto/last_out.txt .auto/last_out.prev; fi
 # Tier defaults come from measure.sh, NOT from a copy of them here. The previous literal
 # (VAE_FILE=vae-encoder-q4x4ffn.gguf) was the pre-Exp690 F16-conv reference and silently made every
 # sweep through this runner measure a tier that no longer ships - same class as the stale-lib bug

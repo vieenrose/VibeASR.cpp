@@ -2725,3 +2725,11 @@ Consequences:
     39 - the only long-session ceiling remains the position count.
   * NOT a ladder rung: rtf 1.8743 here is LOW because the clip is sparse (2.9 tok/s vs chat's 6.3), not
     because anything got faster. Never compare this number to the chat ladder.
+  * TRAP CLOSED (Exp879b): the sweep does not pull out-loop.log, so `.auto/last_out.txt` kept the PREVIOUS
+    run's transcript; hashing it after a sweep reported a protocol-output change that was really a 250 s run's
+    output (9th wrong-measurement case, and the first where the "wrong" file was one I trusted every day).
+    Fixes: the sweep now moves it aside BEFORE running (so a stale read fails loudly), the mv sits after
+    argument validation (Exp879b's own bug: when it sat first, check 12's "REPS with no arms" misuse probe
+    moved the capture aside before erroring), and audit check 16 states what the capture holds - 4 window
+    lines = protocol, otherwise a WARN, and WARNs when it is missing. Rule: a hash is only as good as the
+    file's provenance; quote the capture's window-line count next to any identity claim.
