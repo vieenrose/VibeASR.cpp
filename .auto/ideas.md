@@ -2677,3 +2677,18 @@ Consequences:
   real rebuild to plant), (b) co-runner, (c) sweep-tier check (has its own --dry control). Only (a) is a
   genuine hole: it would be plantable by pushing a deliberately stale .so in a scratch dir and pointing the
   push list at it - worth one fault if the audit's push-list derivation ever changes.
+
+- GUARD COVERAGE IS NOW 17/17 PLANTABLE CLASSES (Exp877). The last genuine hole was check 5 (host-vs-device
+  binary hashes) - never controlled, and the class has bitten this loop for real: the Exp595-607 compiler-flag
+  sweeps measured stale objects because `make` does not rebuild on a flag change, so four arms reported
+  "0 %" about binaries that were never rebuilt. Plant now: append one byte to the DEVICE's libllama.so
+  (device-side `cp` backup, restore by `mv`, verified md5-equal to host afterwards) -> check 5 reports
+  `host vs device md5 MISMATCH`. Full sweep re-run after adding four faults in three rounds: 17/17 fire,
+  tree verified clean, final audit green.
+  REMAINING UNCOVERED, on purpose (visible, not implied): (a) co-runner - planting a second asr_streaming
+  would poison the very timings the check protects, and it happens by accident often enough (Exp679 found
+  two live runners from a killed `timeout`); (b) check 12 (sweep-tier) has its own --dry control.
+  RULE: run `.auto/audit_selftest.py` when ADDING an audit check (add a fault with it) or when the audit is
+  refactored; ~10 min, and it is the only evidence that the guards exist. Rounds Exp873-877 found four
+  instrument defects this way (unfirable device-connectivity test, unrun scorer self-test, set -e abort
+  sites, unproven binary-hash check) - i.e. more than any measurement round in the same window.

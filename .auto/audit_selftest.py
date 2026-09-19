@@ -206,7 +206,24 @@ def plant_unguarded_grep():
     return snap_append('.auto/checks.sh', '\nZZ_SELFTEST=$( grep -oE zzz .auto/config.json | head -n1 )\n')
 
 
+def plant_stale_device_lib():
+    # The device-binary-hash check (Exp660's "a stale lib silently measures the OLD kernels") had never
+    # been controlled: it was the one coverage hole that mattered, because this loop has actually been
+    # burned by stale objects (the Exp595-607 flag sweeps measured a binary that was never rebuilt).
+    # Plant: append one byte to the device's libllama.so, so the bytes differ from the host's while the
+    # file stays where the harness expects it. Restore is a device-side mv of the backup (no host path).
+    lib, bak = f'{RDIR}/libllama.so', f'{RDIR}/libllama.so.selftest-bak'
+    r = sh(f'adb -s {DEV} shell "cp {lib} {bak} && printf x >> {lib} && echo ok"')
+    if 'ok' not in r.stdout:
+        raise RuntimeError(f'could not mutate the device lib: {r.stdout}{r.stderr}')
+    def restore():
+        sh(f'adb -s {DEV} shell "mv {bak} {lib} && echo restored"')
+    return restore
+
+
 FAULTS = [
+    ('5 device binary hash',  'a lib on the phone is not the one on the host', plant_stale_device_lib,
+     'MISMATCH|missing on device'),
     ('15 set -e grep',      'a grep in $( ) can abort a set -e script',   plant_unguarded_grep,   'unguarded command substitution'),
     ('7e derivation',         'a clip note describes audio that was not used', plant_false_derivation,
      'derivation NOT proven|derivation .*payload lengths|is NOT a prefix'),
@@ -226,8 +243,6 @@ FAULTS = [
     ('13 schedule',         'a shipping command changes the window grid',  plant_schedule,      'SCHEDULE'),
 ]
 UNCOVERED = [
-    ('5 device inventory / binary hashes', 'needs a rebuilt-or-stale .so on the phone; a rebuild is the '
-     'only honest plant, and a wrong-hash file would be pushed by the next measure.sh anyway'),
     ('7b co-runner', 'needs a second asr_streaming resident on the device; that would also poison every '
      'timing in the session, so it is planted by accident far more often than on purpose (Exp679)'),
     ('12 sweep resolves to tier', 'has its own --dry negative control inside audit_harness (Exp865c), '
