@@ -203,11 +203,29 @@ to every quality metric, because the output stays fluent; only a fault-injection
 Continuous-audio position budget = **46.5 KV positions per window** (hop 70400 samples = 2.933 s): each window feeds
 28 rows and emits ~18.5 tokens, and every emitted token also occupies a position. Measured directly from a 155 s
 `LATENCY_TRACE` run (53 windows, 978 tokens, 2493 positions); Exp849's `-c` bracketing said 49.5 +- 3 - consistent.
-With the default `n_ctx = 4096`, a single unbroken stream therefore stops after **~258 s = 4.3 min**;
+With the default `n_ctx = 4096`, a single unbroken stream stops after **258 s on dense conversational audio
+and 329 s on sparse read speech** - the limit is DENSITY, not seconds, because positions per window =
+`28 + tokens emitted per window`. Measured on `long250.wav` (250.8 s of unique Common Voice audio, 86
+windows, 728 tokens): 36.5 positions/window, 3140 positions total, and it COMPLETED - which is the limit
+law confirmed from below, since 4096 positions at that density would allow 112 windows = 329 s (Exp849's
+bracketing gave the same law at chat density: 46.5 pos/window, 88 windows, 258 s).
 `n_ctx = 16384` reaches ~16 min but the KV cache grows from 112 MB to ~450 MB (28.0 KB per position). The old code
 comment attached the 15-minute figure to 4096 - it belongs to 16384.
 
 **Position cost law** (same run, 53 windows, R2 0.88, standard error 0.56 us/position, measured to P = 2450):
+
+**Extended to P = 3140 on different content (Exp879, `long250.wav`, 86 windows, 728 tokens, bilingual read
+speech):** `decode ms/token = 95.8 + 13.22 us x P` (R2 0.77, slope se 1.23 us) and
+`prefill ms/row = 33.9 + 5.00 us x P` (R2 0.88, slope se 0.29 us). The prefill law is confirmed out of range
+(-1.3 % on its total), but the 2025-era decode slope was a little shallow: on this run's decode total the old
+law gives 77.6 s against 82.5 s measured (-5.9 %) while the refit gives 84.9 s (+2.9 %). The slopes differ by
+1.7 sigma, so this is a widening of the same law rather than a contradiction - **use
+`decode = 95.8 + 13.2 us x P` for long-session budgeting up to P ~ 3100.** Wall closes again at this length:
+287.0 (VAE) + 100.5 (prefill) + 82.5 (decode) + 1.3 (load) = 471.4 s vs rtf x audio = 470.1 s (-0.3 %), and
+`vae = 3.337 s/window` over 86 windows against the model's 3.343 + 0.39/N - the VAE term is content-independent
+across a 2.5x change in token density, which is the assumption behind every paper-pricing argument here.
+RSS 2218 MB at 3140 positions with majflt 0: the KV cache is allocated up front, so memory does NOT grow with
+positions - only the position COUNT consumes the budget.
 
     decode ms/token = 89.1 + 11.13 us x P          prefill ms/row = 33.0 + 5.22 us x P          vae = 3428 +- 9 ms/window (flat)
 

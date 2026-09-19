@@ -63,3 +63,6 @@ eval40_*.txt
 
 # transient selftest captures (Exp874)
 .auto/selftest_out*.txt
+
+# device-only long probe (Exp879); hashed in .auto/device_assets.json
+/long250.wav

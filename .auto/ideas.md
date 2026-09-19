@@ -2705,3 +2705,23 @@ Consequences:
   1.90 (was 1.9117) = state. Tooling nits fixed: `compare_arms.py` on a GATE manifest without `--gate` died
   as a KeyError from score_stream - it now names the right invocation and exits 1 (the flag is easy to
   forget because both modes take three positional-ish arguments).
+
+- LONG-FORM LAWS EXTENDED WITH UNIQUE AUDIO, LIMIT IS DENSITY-BORNE (Exp879). Built `long250.wav` = holdout_en
+  (139.6 s) + hop-aligned 1,240 ms gap + first 110 s of holdout_zh = 250.8 s, 86 windows, 728 tokens, all
+  DISTINCT audio (the chat ladder's long rungs are one 69 s clip twice - Exp875 - so this is the first probe
+  past that). Results:
+  * Cost model validated at a new length AND a new content type: vae 3.337 s/window over 86 windows vs the
+    model's 3.343 + 0.39/N, and the wall tree closes -0.3 % (471.4 accounted vs 470.1 = rtf x audio). The VAE
+    term is content-independent across a 2.5x token-density change - the assumption behind every paper-pricing
+    argument in this loop, now tested where it could have failed.
+  * Decode law refit at P<=3140: 95.8 + 13.22 us x P (slope se 1.23) vs the 2025-era 89.1 + 11.13 - the old
+    slope under-predicted this run's decode total by 5.9 % (77.6 vs 82.5 s). 1.7 sigma apart: widen the law,
+    do not replace it. Prefill law confirmed out of range (33.9 + 5.00 us vs 33.0 + 5.22; -1.3 % on totals).
+  * SESSION LIMIT IS DENSITY, NOT SECONDS: positions/window = 28 rows + tokens emitted. Chat ~18.5 tok/win ->
+    46.5 pos/win -> 4096 positions = 258 s; sparse read speech 8.5 tok/win -> 36.5 pos/win -> 329 s. This run
+    finished at 3140 positions, confirming the law from below (it would have died at window 112). Docs fixed;
+    Exp849's "~258 s" is now qualified rather than general.
+  * Memory does not grow with positions (KV is allocated up front): RSS 2218 MB at 3140 positions vs 2191 at
+    39 - the only long-session ceiling remains the position count.
+  * NOT a ladder rung: rtf 1.8743 here is LOW because the clip is sparse (2.9 tok/s vs chat's 6.3), not
+    because anything got faster. Never compare this number to the chat ladder.

@@ -118,6 +118,11 @@
    "md5": "04cae588f6871b3ac11a562cc42eed55",
    "note": "hotword probe"
   },
+  "long250.wav": {
+   "bytes": 12038444,
+   "md5": "63d17caeef9ed22c7536d49f3c626cda",
+   "note": "Exp879: 250 s of UNIQUE audio (holdout_en 139.6 s + hop-aligned gap + first 110 s of holdout_zh) - the long ladder rungs are one 69 s clip repeated, so this is the only probe that reaches KV positions beyond Exp855 fit range (P>2450) and Exp849 predicted session limit (~258 s). Bilingual, so it is a RATE/POSITION probe, never an accuracy number."
+  },
   "noise5s.wav": {
    "md5": "16d1a595d8eef3ef912037bb77f3d684",
    "note": "noise probe"
