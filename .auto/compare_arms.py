@@ -181,7 +181,14 @@ if __name__ == '__main__':
         sys.exit(0)
     hA, hB, manifest = sys.argv[1], sys.argv[2], sys.argv[3]
     label = sys.argv[4] if len(sys.argv) > 4 else os.path.basename(manifest)
-    r = compare(hA, hB, json.load(open(manifest, encoding='utf-8')))
+    _man = json.load(open(manifest, encoding='utf-8'))
+    if 'table' not in _man:      # the --gate branch returns before this point, so we are in stream mode
+        # Exp878: a GATE manifest (refs.json, per-utterance) was passed positionally, and the failure came
+        # out as a KeyError from a nested module - accurate but useless. Name the right invocation.
+        raise SystemExit(f"{manifest} has no 'table' key - it looks like a GATE manifest (per-utterance). "
+                         "Use: compare_arms.py --gate DIR_A DIR_B refs.json "
+                         "(stream manifests need a 'table' of turns)")
+    r = compare(hA, hB, _man)
     print(f"{label}: n={r['n']} tokens | A {r['wer_a']:.4f} vs B {r['wer_b']:.4f} "
           f"| A-B {r['delta']:+.4f} [{r['ci'][0]:+.4f}, {r['ci'][1]:+.4f}] (paired bootstrap)")
     print(f"    McNemar exact p={r['p']:.4g} from discordants b={r['disc_a']} c={r['disc_b']} "

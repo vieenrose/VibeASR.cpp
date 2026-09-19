@@ -2699,3 +2699,9 @@ Consequences:
     Now all three misuse forms (no REPS / REPS=0 / no arms) exit 2 with the usage line, and audit check 12
     asserts that (0 s, validation runs before any device contact). Rule reaffirmed: a timing under ~2x the
     audio length is a run that did not happen - check the DURATION before the number.
+- GATE REGRESSION AFTER THE HARNESS STREAK (Exp878): 40/40, hybrid WER 4.51 % (jiwer 4.55), paired b=0/c=0
+  of 731 vs BOTH hyp-gate852 and hyp-bound835 (CI exactly [0,0]) -> five rounds of audit/harness work, and
+  the Exp876 edit that touched eval40.sh's own parse lines, are output-inert on real speech. Gate mean rtf
+  1.90 (was 1.9117) = state. Tooling nits fixed: `compare_arms.py` on a GATE manifest without `--gate` died
+  as a KeyError from score_stream - it now names the right invocation and exits 1 (the flag is easy to
+  forget because both modes take three positional-ish arguments).
