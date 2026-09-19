@@ -185,7 +185,25 @@ def plant_selftest():
     return snap_write(p, txt2)
 
 
+def plant_false_derivation():
+    # The clip-composition check must fail when a note describes audio that was NOT used, WITHOUT touching
+    # any clip's bytes (so the blessed-hash check stays green and this stays single-variable).
+    p = '.auto/device_assets.json'
+    import json as _json
+    man = _json.loads(open(p).read())
+    hit = False
+    for r in man.get('derives') or []:
+        if r.get('file') == 'chat155.wav':
+            r['concat'] = ['chat69.wav', 'chat17.wav']     # wrong source, right shape
+            hit = True
+    if not hit:
+        raise RuntimeError('derivation rule not found - plant invalid (manifest reworded?)')
+    return snap_write(p, _json.dumps(man, indent=1, sort_keys=True))
+
+
 FAULTS = [
+    ('7e derivation',         'a clip note describes audio that was not used', plant_false_derivation,
+     'derivation NOT proven|derivation .*payload lengths|is NOT a prefix'),
     ('14 tool self-tests',    'a scorer self-test starts failing',           plant_selftest,      'selftest FAILED|self-test FAILED'),
     ('1 syntax',            'a harness script stops parsing',              plant_syntax,        'syntax'),
     ('2 host paths',        'a script references a missing file',          plant_path,          'not exist|missing|no such'),

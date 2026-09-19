@@ -163,6 +163,29 @@
    "note": "blessed from device"
   }
  },
+ "derives": [
+  {
+   "concat": [
+    "chat69.wav",
+    "chat69.wav"
+   ],
+   "file": "chat138.wav",
+   "note": "PROVEN (Exp875): the \"138 s\" clip is chat69 played TWICE, byte for byte - 50 % unique audio. Any long-form CONTENT claim needs this caveat; rate/memory claims are unaffected."
+  },
+  {
+   "concat": [
+    "chat138.wav",
+    "chat17.wav"
+   ],
+   "file": "chat155.wav",
+   "note": "PROVEN (Exp875) by ranged md5; internal join sits at sample 3,311,352 = 2,552 mod 70,400."
+  },
+  {
+   "file": "chat17.wav",
+   "note": "first 408,000 frames (17.000 s) of chat69 - the derivation the ledger recorded at Exp675.",
+   "prefix_of": "chat69.wav"
+  }
+ ],
  "known_extras": {
   "audio_*.wav": "fault_inject.py fixtures (header-only/empty/lying-size/truncated) - regenerated at run time",
   "grid[0-9].wav": "window-grid phase probe from Exp868 (held on device for reuse)",

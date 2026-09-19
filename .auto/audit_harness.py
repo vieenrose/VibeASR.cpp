@@ -54,6 +54,30 @@ def warn(msg):
     warns.append(msg)
 
 
+def wav_data_range(head, size):
+    """(payload_start, payload_len_within_this_file) from a WAV header prefix, else None.
+
+    The derivation checks (Exp875) need it because ffmpeg writes LIST/INFO chunks BEFORE `data`, so the
+    payload offset varies per file (44 for the plain clips, 224 for chat69) - and comparing at a fixed
+    offset silently hashes different bytes. My first attempt at this check did exactly that and reported
+    "both parts differ" for clips that were in fact byte-identical.
+    """
+    off = 12
+    while off + 8 <= len(head):
+        cid = head[off:off + 4]
+        try:
+            ln = int.from_bytes(head[off + 4:off + 8], 'little')
+        except Exception:
+            return None
+        if cid == b'data':
+            start = off + 8
+            return (start, max(0, min(ln, size - start)))
+        if ln < 0 or ln > (1 << 30):
+            return None
+        off += 8 + ln + (ln & 1)
+    return None
+
+
 def sh(cmd, timeout=120):
     return subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
 
@@ -489,6 +513,81 @@ if '--skip-device' not in sys.argv:
                     hdr_bad.append(detail)
                 else:
                     hdr_skip.append(detail)
+        # ---- 7e. DERIVED clips: prove the composition, do not trust the note (Exp875) ------------
+        # The ledger recorded (Exp675) that clips silently overwrite each other, and that chat17 is an
+        # excerpt of chat69 - enforced. But the LONG rungs of the ladder had only a prose note ("155 s =
+        # chat138+chat17"), and prose turned out to be half true: chat138 is not a 138 s recording, it is
+        # chat69 played TWICE, byte for byte. That changes how the ladder reads (the 69 -> 138 s step is a
+        # pure length change with identical content) and it invalidates any long-form CONTENT claim built
+        # on chat138 - notably Exp644's "the clip genuinely contains refrains", which is now explained by
+        # construction. So the relations below are asserted on bytes, hashed on the device (no host copy).
+        derives = json.load(open(MANIFEST)).get('derives') or []
+        for rule in derives:
+            tgt = rule.get('file')
+            if tgt not in dev_size or tgt not in dev_head:
+                warn(f"derivation rule for {tgt}: file not on device, cannot verify")
+                continue
+            tr = wav_data_range(dev_head[tgt], dev_size[tgt])
+            if not tr:
+                warn(f"derivation rule for {tgt}: no parseable data chunk")
+                continue
+            tstart, tlen = tr
+            if rule.get('concat'):
+                parts = []
+                for pn in rule['concat']:
+                    if pn not in dev_size or pn not in dev_head:
+                        parts = None
+                        warn(f"derivation {tgt} = concat({','.join(rule['concat'])}): {pn} not on device")
+                        break
+                    pr = wav_data_range(dev_head[pn], dev_size[pn])
+                    if not pr:
+                        parts = None
+                        warn(f"derivation {tgt} = concat(...): {pn} has no data chunk")
+                        break
+                    parts.append((pn, pr[0], pr[1]))
+                if parts:
+                    if sum(p[2] for p in parts) != tlen:
+                        bad(f"derivation {tgt}: declared as concat({', '.join(p[0] for p in parts)}) but the "
+                            f"payload lengths sum to {sum(p[2] for p in parts)} B, not the target's {tlen} B "
+                            "- one of the clips was rebuilt independently")
+                        continue
+                    seg = ''.join(f'tail -c +{st + 1} {RDIR}/{nm} | head -c {ln}; ' for nm, st, ln in parts)
+                    h_parts = sh('adb -s ' + DEV + ' shell ' + shlex.quote(f'({seg}) | md5sum'),
+                                 timeout=240).stdout
+                    h_tgt = sh('adb -s ' + DEV + ' shell '
+                               + shlex.quote(f'tail -c +{tstart + 1} {RDIR}/{tgt} | head -c {tlen} | md5sum'),
+                               timeout=240).stdout
+                    hp = re.search(r'[0-9a-f]{32}', h_parts)
+                    ht = re.search(r'[0-9a-f]{32}', h_tgt)
+                    if hp and ht and hp.group(0) == ht.group(0):
+                        ok(f"derivation proven: {tgt} == concat({', '.join(p[0] for p in parts)}) byte for byte")
+                    else:
+                        bad(f"derivation NOT proven: {tgt} != concat({', '.join(p[0] for p in parts)}) "
+                            f"({(hp.group(0)[:12] if hp else '?')} vs {(ht.group(0)[:12] if ht else '?')}) - """
+
+                            "the clip was rebuilt from different audio than its note claims")
+            elif rule.get('prefix_of'):
+                par = rule['prefix_of']
+                if par not in dev_size or par not in dev_head:
+                    warn(f"derivation {tgt} prefix_of {par}: parent not on device")
+                    continue
+                pr = wav_data_range(dev_head[par], dev_size[par])
+                if not pr:
+                    warn(f"derivation {tgt} prefix_of {par}: parent has no data chunk")
+                    continue
+                pstart, plen = pr
+                n = min(tlen, plen)
+                h1 = sh('adb -s ' + DEV + ' shell ' + shlex.quote(f'tail -c +{tstart + 1} {RDIR}/{tgt} | head -c {n} | md5sum'),
+                        timeout=240).stdout
+                h2 = sh('adb -s ' + DEV + ' shell ' + shlex.quote(f'tail -c +{pstart + 1} {RDIR}/{par} | head -c {n} | md5sum'),
+                        timeout=240).stdout
+                m1, m2 = re.search(r'[0-9a-f]{32}', h1), re.search(r'[0-9a-f]{32}', h2)
+                if m1 and m2 and m1.group(0) == m2.group(0):
+                    ok(f"derivation proven: {tgt} is the first {n // 2} samples of {par}")
+                else:
+                    bad(f"derivation NOT proven: {tgt} is NOT a prefix of {par} (first {n} B differ) - "
+                        "the excerpt was cut from a different render")
+
         for key, spec in sorted(host.items()):
             # NB iterate `host`, NOT `man`: section 7 pops the 'HOST ' keys into `host` above, so a loop
             # over man sees only device names and this half of the check would run on nothing - which is
