@@ -35,6 +35,24 @@ def run_audit():
     return (int(m.group(3)) if m else -1), fails, out
 
 
+# Content snapshots, NOT `git checkout`. Exp874's first run proved why: a revert that restores the
+# COMMITTED state silently destroys any uncommitted fix to the same file - and my own working tree always
+# has uncommitted work in it during a session. Every plant here now saves bytes and puts them back.
+_SNAP = {}
+
+
+def snap_write(path, text):
+    _SNAP[path] = open(path, 'rb').read()
+    open(path, 'w').write(text)
+    return lambda: open(path, 'wb').write(_SNAP.pop(path))
+
+
+def snap_append(path, text):
+    _SNAP[path] = open(path, 'rb').read()
+    open(path, 'a').write(text)
+    return lambda: open(path, 'wb').write(_SNAP.pop(path))
+
+
 def git_revert(*paths):
     subprocess.run(['git', 'checkout', '--'] + list(paths), cwd=ROOT, capture_output=True)
 
@@ -47,16 +65,11 @@ def sh(cmd):
 # Each entry: (check id, what is broken, plant(), expect-substring, revert())
 # Invariants: a plant touches ONE property; every revert is idempotent; nothing here edits src/.
 def plant_syntax():
-    p = '.auto/fault_run.sh'
-    open(p, 'a').write('\ndef broken(:\n')
-    return lambda: git_revert(p)
+    return snap_append('.auto/fault_run.sh', '\ndef broken(:\n')
 
 
 def plant_path():
-    p = '.auto/bench_device.sh'
-    s = open(p).read()
-    open(p, 'w').write(s + '\n# referenced helper: .auto/this_tool_does_not_exist.py\n')
-    return lambda: git_revert(p)
+    return snap_append('.auto/bench_device.sh', '\n# referenced helper: .auto/this_tool_does_not_exist.py\n')
 
 
 def plant_untracked():
@@ -76,11 +89,9 @@ def plant_dirty():
     # Section 3b deliberately ignores paths under .auto/ (the autoresearch log writes there constantly),
     # so the plant must dirty a TRACKED file outside .auto - my first version dirtied .auto/config.json
     # and the check was correctly silent.
-    p = 'README.md'
-    if not os.path.exists(p):
+    if not os.path.exists('README.md'):
         raise RuntimeError('README.md not found; pick another tracked file outside .auto')
-    open(p, 'a').write('\n<!-- audit_selftest dirty marker -->\n')
-    return lambda: git_revert(p)
+    return snap_append('README.md', '\n<!-- audit_selftest dirty marker -->\n')
 
 
 def plant_dev_mismatch():
@@ -88,8 +99,7 @@ def plant_dev_mismatch():
     s = open(p).read()
     s2 = re.sub(r'^DEV=.*$', 'DEV=ZZZZWRONGSERIAL', s, count=1, flags=re.M)
     assert s2 != s, 'DEV= line not found in measure.sh - the plant is invalid, not the check'
-    open(p, 'w').write(s2)
-    return lambda: git_revert(p)
+    return snap_write(p, s2)
 
 
 def plant_stray_device_clip():
@@ -146,8 +156,7 @@ def plant_headline_drift():
                    '**Headline (era v4.8):** phone RTF **12.24 → 2.94', 1)
     if s2 == s:
         raise RuntimeError('headline prose line not found - plant invalid (docs reworded?)')
-    open(p, 'w').write(s2)
-    return lambda: git_revert(p)
+    return snap_write(p, s2)
 
 
 def plant_wrong_tier():
@@ -170,7 +179,20 @@ def plant_schedule():
     return lambda: git_revert(p)
 
 
+def plant_selftest():
+    # Break a scorer's OWN expectation (not the scorer): the audit must notice a RED self-test, because an
+    # unrun or ignored test is the same failure class as an unfirable check. Exp874 found score_mixed.py's
+    # self-test red since the commit that added it - nothing ever invoked it.
+    p = '.auto/score_mixed.py'
+    txt = open(p).read()
+    txt2 = txt.replace('("你好世界", "你好世界世", 1 / 4),', '("你好世界", "你好世界世", 1 / 8),  # PLANTED', 1)
+    if txt2 == txt:
+        raise RuntimeError('fixture not found - the plant is invalid, not the check')
+    return snap_write(p, txt2)
+
+
 FAULTS = [
+    ('14 tool self-tests',    'a scorer self-test starts failing',           plant_selftest,      'selftest FAILED|self-test FAILED'),
     ('1 syntax',            'a harness script stops parsing',              plant_syntax,        'syntax'),
     ('2 host paths',        'a script references a missing file',          plant_path,          'not exist|missing|no such'),
     ('3 git tracking',      'a harness script is untracked',               plant_untracked,     'NOT tracked'),

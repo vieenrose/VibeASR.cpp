@@ -92,7 +92,10 @@ def selftest():
         ("你好世界", "你好世界", 0.0),
         ("你好世界", "你好事界", 1 / 4),                     # 1 char substituted (世->事)
         ("你好世界 hello", "你好 hello", 2 / 5),              # 2 chars deleted
-        ("你好世界", "你好世界世界", 1 / 4),                   # 1 char inserted
+                # Exp874: this fixture read "1 char inserted" but the string duplicated TWO characters (世界), so
+        # the correct WER was 2/4 = 0.50 and this self-test has been RED since the commit that added it
+        # (869e73e) - nothing ran it. The scorer was right; the fixture contradicted its own comment.
+        ("你好世界", "你好世界世", 1 / 4),                     # 1 char inserted -> 1 error / 4 ref tokens
         ("你好世界 hello", "你好世界 hello world", 1 / 5),   # 1 insertion (a word)
         ("你好世界", "你 好 世 界", 0.0),                     # whitespace is irrelevant
         ("傳統漢字", "传统汉字", 0.0),                        # hant/hans folding

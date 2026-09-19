@@ -957,8 +957,9 @@ try:
     for ln in open('.auto/tier.env', encoding='utf-8', errors='ignore'):
         if ln.startswith('PIECES='):
             tier_pieces = ln.strip().split('=', 1)[1]
-    sh = os.path.join(ROOT, '.auto', 'run_rtf_multi.sh')
-    r = subprocess.run([sh, '--dry', 'probe|clip.wav'], capture_output=True, text=True, timeout=60)
+    # NB: this used to be `sh = ...`, which SHADOWED the sh() helper for every section below it
+    sweep = os.path.join(ROOT, '.auto', 'run_rtf_multi.sh')
+    r = subprocess.run([sweep, '--dry', 'probe|clip.wav'], capture_output=True, text=True, timeout=60)
     line = next((l for l in (r.stdout + r.stderr).splitlines() if l.startswith('DRY probe')), '')
     if r.returncode != 0 or not line:
         bad(f"run_rtf_multi.sh --dry failed (exit {r.returncode}) - the sweep harness cannot be verified; "
@@ -975,7 +976,7 @@ try:
             ok(f"sweep harness resolves to the shipping tier (threads={want_t}, pieces={want_p}, from tier/measure defaults)")
         if 'vae-encoder-convint8.gguf' not in line or 'lm-q8head.gguf' not in line:
             bad(f"sweep probe does not name the shipped files: {line}")
-    r2 = subprocess.run([sh, '--dry', 'probe|clip.wav|2|9|'], capture_output=True, text=True, timeout=60)
+    r2 = subprocess.run([sweep, '--dry', 'probe|clip.wav|2|9|'], capture_output=True, text=True, timeout=60)
     if r2.returncode == 0:
         bad("run_rtf_multi.sh ACCEPTED pieces=9 - the argument validation is gone, so a malformed arm would "
             "again be measured with shifted positionals instead of failing (Exp660 rule: prove the guard fires)")
@@ -985,6 +986,42 @@ except FileNotFoundError:
     bad("run_rtf_multi.sh missing - the guard rotation cannot be verified")
 except Exception as e:
     bad(f"sweep-harness check raised {type(e).__name__}: {e}")
+
+# ---- 14. tool self-tests are actually RUN (Exp874). A self-test that nothing invokes is not a test.
+# Proof, found while writing this section: score_mixed.py's self-test had been FAILING since the commit
+# that introduced it (869e73e) - its fixture comment said "1 char inserted" but the string duplicated TWO
+# characters, so the scorer correctly returned 0.50 against an expectation of 0.25. The scorer was right;
+# the fixture was wrong; and because no harness step ever ran --selftest, a red test sat there for
+# hundreds of runs. Same lesson as Exp660 for TESTS rather than CHECKS.
+SELFTEST_TOOLS = ['compare_arms.py', 'rss_soak.py', 'score_mixed.py', 'score_stream.py']
+for t in SELFTEST_TOOLS:
+    p_ = os.path.join(HERE, t)
+    if not os.path.exists(p_):
+        bad(f"{t} is missing but is listed in SELFTEST_TOOLS - a scorer the A/B tools depend on is gone")
+        continue
+    try:
+        r = subprocess.run([sys.executable, p_, '--selftest'], capture_output=True, text=True, timeout=300)
+    except Exception as e:                                        # noqa: BLE001 - a hang is a failure too
+        bad(f"{t} --selftest did not complete: {e}")
+        continue
+    tail = ((r.stdout or '').strip().splitlines() or [''])[-1]
+    if r.returncode == 0:
+        ok(f"{t} --selftest passes ({tail.strip()[:60]})")
+    else:
+        bad(f"{t} --selftest FAILED (exit {r.returncode}): {tail.strip()[:110]}"
+            + (((r.stderr or '').strip().splitlines() or [''])[-1][:80]))
+# and catch the other half of the class: a tool that HAS a self-test nobody runs
+for p_ in sorted(glob.glob(os.path.join(HERE, '*.py'))):
+    b = os.path.basename(p_)
+    if b in SELFTEST_TOOLS or b in ('audit_harness.py', 'audit_selftest.py'):
+        continue
+    try:
+        txt = open(p_, encoding='utf-8', errors='ignore').read()
+    except OSError:
+        continue
+    if '--selftest' in txt:
+        warn(f"{b} has a --selftest mode that nothing runs - add it to SELFTEST_TOOLS here "
+             "(an unrun test is not a test - Exp874)")
 
 # ---- report -------------------------------------------------------------------
 print(f"harness audit: {len(oks)} checks passed, {len(warns)} warnings, {len(fails)} failures\n")
