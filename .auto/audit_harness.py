@@ -1122,6 +1122,35 @@ for p_ in sorted(glob.glob(os.path.join(HERE, '*.py'))):
         warn(f"{b} has a --selftest mode that nothing runs - add it to SELFTEST_TOOLS here "
              "(an unrun test is not a test - Exp874)")
 
+# ---- 15. no unguarded `grep` inside `$( )` in a `set -e` script (Exp876) -------------------------
+# Measured here, not assumed: under `set -Eeo pipefail`, `X=$(grep ... | head -n1 | awk ...)` ABORTS the
+# script when the line is merely ABSENT (verified: rc=1, nothing after it runs). 23 sites in measure.sh /
+# eval40.sh / checks.sh / measure_xwin.sh had that shape, so a run log missing one optional timer line
+# would kill the metric block mid-way. The peer CUDA loop hit the same bug from the other side and had
+# believed for ~180 runs that a knob was tested when the script could not execute at all with it off.
+# Same class as Exp854's `grep -c` abort - and note the trap has an inner variant: `[ -z "$x" ] && ...`
+# as the LAST statement of a loop body makes the for loop return 1 and set -e exits (found while writing
+# the fix for this very check, which is why the fix uses `if`).
+sites = []
+for s_ in scripts:
+    if not s_.endswith('.sh'):
+        continue
+    try:
+        txt = open(os.path.join(HERE, s_), encoding='utf-8', errors='ignore').read()
+    except OSError:
+        continue
+    if 'set -e' not in txt:
+        continue                       # no abort-on-failure, so an unguarded grep just yields empty
+    for i_, ln in enumerate(txt.split('\n')):
+        if re.match(r'^\s*[A-Za-z_][A-Za-z0-9_]*=\$\(', ln) and re.search(r'\b(grep|sed -n)\b', ln):
+            if '|| true' not in ln and '|| :' not in ln and '|| exit' not in ln and '|| :' not in ln:
+                sites.append(f'{s_}:{i_ + 1}')
+if sites:
+    bad(f"{len(sites)} unguarded command substitution(s) with grep/sed in a set -e script (aborts when the "
+        f"line is absent - add `|| true`): " + ', '.join(sites[:8]) + (' ...' if len(sites) > 8 else ''))
+else:
+    ok("every grep/sed inside a $( ) in a set -e script is pipefail-safe (an absent line is not a failure)")
+
 # ---- report -------------------------------------------------------------------
 print(f"harness audit: {len(oks)} checks passed, {len(warns)} warnings, {len(fails)} failures\n")
 if '--verbose' in sys.argv:

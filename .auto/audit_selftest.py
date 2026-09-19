@@ -201,7 +201,13 @@ def plant_false_derivation():
     return snap_write(p, _json.dumps(man, indent=1, sort_keys=True))
 
 
+def plant_unguarded_grep():
+    # Reproduce the Exp876 class in one line: an unguarded $(grep ...) assignment in a set -e script.
+    return snap_append('.auto/checks.sh', '\nZZ_SELFTEST=$( grep -oE zzz .auto/config.json | head -n1 )\n')
+
+
 FAULTS = [
+    ('15 set -e grep',      'a grep in $( ) can abort a set -e script',   plant_unguarded_grep,   'unguarded command substitution'),
     ('7e derivation',         'a clip note describes audio that was not used', plant_false_derivation,
      'derivation NOT proven|derivation .*payload lengths|is NOT a prefix'),
     ('14 tool self-tests',    'a scorer self-test starts failing',           plant_selftest,      'selftest FAILED|self-test FAILED'),

@@ -668,3 +668,29 @@ Two harness defects surfaced while wiring it:
   silently destroys uncommitted work in the same file (it ate this round's fixture fix within minutes).
   Plants now snapshot the file's bytes and write them back - a plant must restore the pre-plant state, not
   the last commit.
+
+## Long-clip provenance: the ladder's long rungs are ONE 69-second recording (Exp875)
+
+The manifest used to *note* what the long clips were. Proving it on bytes (audit check 7e, hashed on the
+device via ranged `tail`/`head`, no host copies) gave:
+
+| clip | proven composition | unique audio |
+|---|---|---|
+| `chat69.wav` | 68.987 s, `data` at offset 224 (ffmpeg writes LIST/INFO first) | 100 % |
+| `chat138.wav` | `chat69` ⊕ `chat69` — **the same 69 s twice, byte for byte** | **50 %** |
+| `chat155.wav` | `chat138` ⊕ `chat17` (join at sample 3,311,352 → phase 2,552 mod 70,400) | ~57 % |
+| `chat17.wav` | the first 408,000 samples of `chat69` | — |
+
+Consequences, in the order they matter:
+1. **The ladder's length steps are content-free.** 10 → 17 → 69 → 138 s compares the *same conversation* at
+   increasing length, so a 69→138 s change cannot be blamed on content. That is a property worth having, and
+   it explains how flat the long end of the ladder is.
+2. **Long-form CONTENT statements need the caveat.** Anything about "what the model does in long audio"
+   based on `chat138`/`chat155` sees 69 s of unique signal repeated. Exp644's conclusion that chat138
+   "genuinely contains refrains" is now half-explained by construction (a repeat guarantees duplicated
+   transcript n-grams), which matters because that number was the baseline for repetition/loop detectors.
+3. Rate, RSS, KV-position and convertibility results are unaffected — they are per-window or per-position.
+
+Method note: the first comparison used a fixed 44-byte payload offset and reported "both parts differ" for
+byte-identical clips, because ffmpeg-written files put `data` at 224 while others put it at 44. The check
+parses the RIFF chunk chain per file (`wav_data_range`) and asserts payload-length arithmetic before hashing.
