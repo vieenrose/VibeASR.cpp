@@ -939,7 +939,11 @@ Also: the correct-tier gate supersedes the Exp690 gate - shipped tier WER 4.51%,
     ref - expected across 200+ runs of stack changes (Exp644 doctrine). Archived as
     .auto/hyp-138-v41.txt for same-stack checks.
   * Exp730 pathology screen on that archive: 138 distinct repeated 10-grams, ALL
-    exactly x2, all genuine talk refrains - zero runaway. Method note: screen
+    exactly x2, all genuine talk refrains - zero runaway. ***CORRECTION (Exp875): "genuine" was wrong
+    half the time - chat138.wav IS chat69.wav played twice (proven by ranged md5, enforced by audit check
+    7e), so a 69 s signal repeated must produce x2 n-grams by construction. The zero-runaway verdict
+    stands (it is about max run length, which the repeat does not create), but the x2 pattern is an asset
+    property, not a content or model property.*** Method note: screen
     includes Speaker labels, so absolute counts are not cross-method comparable;
     verdict rests on max run length.
   LESSON: the readable ledger had fallen 9 iterations behind JSONL (Exp714-721 were
