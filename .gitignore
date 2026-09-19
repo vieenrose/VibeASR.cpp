@@ -60,3 +60,6 @@ build-android/
 eval40_*.txt
 # generated fault-injection fixtures (rebuilt by .auto/fault_inject.sh from a hash-pinned clip)
 .auto/assets/faults/
+
+# transient selftest captures (Exp874)
+.auto/selftest_out*.txt
