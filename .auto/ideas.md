@@ -2593,7 +2593,10 @@ Consequences:
   vae_s = 11.6 s; the 17 s clip and the hotword probe both give 19.6 s at equal effective windows. That is
   the assumption behind every vae_s-based argument in this loop (Exp674/682) - it was assumed, now it is measured.
   New cell: 155 s -> rtf 2.1736, RSS 2208 MB, 978 tokens, majflt 0.
-- ASSET HEADERS ARE NOT CHECKED, AND ONE OF THEM LIES (Exp871, found by accident). chat17.wav declares a
+- ASSET HEADERS ARE NOT CHECKED (Exp871; the check shipped in Exp872). *** THE "ONE OF THEM LIES" HALF OF THIS "
+  ENTRY IS WRONG - RETRACTED BY THE CHECK BELOW IT: chat17.wav's header is correct; I conflated the RIFF "
+  size field (file-8 = 816,036) with the data field (file-44 = 816,000) in an od -c dump, and the 36-byte "
+  "anomaly" is just 44-8. Keep the entry for the class lesson, not the fact. ***  chat17.wav declares a
   `data` chunk of 816,036 bytes and holds 816,000 -> a reader that trusts the header reads 18 samples past
   EOF. Harmless here (the loader uses the file length; every cell using it is unaffected) but it is exactly
   the kind of latent asset defect the Exp676 hash audit cannot see: hashing bytes validates identity, not
@@ -2608,3 +2611,27 @@ Consequences:
   THIS LEDGER NAMED as the tell (Exp676). Reading my own output would have caught it in one second, and it
   did - but only because I have read that note. Rule that generalizes: when a probe returns the same hash
   for two different "files", the probe is broken, not the files identical.
+
+- PHASE CONVERTIBILITY = 1.0 ON THIS STACK, BOTH SCHEDULING MODES (Exp872). The Nano loop's #243/#252
+  correction (a phase's timer overstates its wall contribution until that phase is wall-critical) is true on
+  THEIR pipeline and would be a bug in MY cost model if it were true here. Measured, not argued:
+  concurrent (shipping) 138 s closure -0.02 %, 155 s +0.03 %; SEQUENTIAL arm (VAE_SEQ_ENCODERS=1, 138 s)
+  168.5 + 52.2 + 89.8 = 310.5 s vs wall 310.6 s = -0.03 %, rtf 2.2507 (+3.9 % vs concurrent 2.1672, RSS
+  1946 vs 2191 MB). Additivity therefore comes from the pipeline (encode-then-decode per window, no VAE/LM
+  overlap), not from the scheduling mode. Instrument corollary: vae_s is STAGE wall time, not a chain sum -
+  sequential vae_s 168.5 ~ ac_s+sem_s = 168.6; concurrent ac_s = sem_s = vae_s = 11.6.
+  USE: my closure line is a real detector for an unaccounted phase; theirs is not, and any cross-stack wall
+  prediction has to carry a per-phase convertibility factor. Mine is 1.0 with evidence.
+- WAV-HEADER CHECK: SHIPPED, NEGATIVE-CONTROLLED, AND IT REFUTED MY OWN ASSET CLAIM (Exp872).
+  Walk the RIFF chunks of every blessed clip (device + HOST mirror) and assert header_bytes + data_size ==
+  file_size. Value: catches a truncated push and a self-inconsistent header, both invisible to md5.
+  Two lessons:
+    * THE CONTROL CAUGHT A SILENT NO-OP. The first plant fired ONLY the md5 check, because section 7 does
+      `host = {k: man.pop(k) ...}` - my loop over `man` therefore saw no HOST keys and checked nothing.
+      A guard that reports "N assets OK" while iterating an empty dict is the Exp660 sin; iterate `host`.
+    * READ FIELDS, NOT DUMPS. The Exp871 claim that chat17.wav lied by 36 bytes was me misreading od -c:
+      RIFF size = file-8, data size = file-44, so a 36-byte difference between them is REQUIRED. The check
+      written to enforce the property is what disproved the claim - 6th "wrong measurement" case in this
+      loop, 1st one closed by a guard built from the earlier ones.
+  Detail: ffmpeg writes a LIST/INFO chunk that puts `data` at offset 216 - probe 1 KB, not 192 B, or good
+  assets get reported as "unverifiable".
