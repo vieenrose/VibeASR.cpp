@@ -1165,6 +1165,23 @@ if sites:
 else:
     ok("every grep/sed inside a $( ) in a set -e script is pipefail-safe (an absent line is not a failure)")
 
+# ---- 16. the protocol transcript capture must actually be a protocol capture (Exp879) -------------
+# The canonical recipe is `md5sum .auto/last_out.txt`, but that file is a transient capture: a sweep run
+# does not overwrite it, and a 250 s --clip run leaves 86 window lines behind. Hashing either one and
+# comparing it to the protocol reference reads as an output regression. The count of window lines is a
+# cheap identity test for the capture, so the audit states it.
+cap = os.path.join(HERE, 'last_out.txt')
+if os.path.exists(cap):
+    try:
+        nwin = sum(1 for ln in open(cap, encoding='utf-8', errors='ignore') if ln.startswith('['))
+    except OSError:
+        nwin = -1
+    if nwin == 4:
+        ok("protocol capture .auto/last_out.txt holds 4 window lines (the 10 s protocol clip)")
+    else:
+        warn(f".auto/last_out.txt holds {nwin} window lines - it is NOT a protocol capture, so do not hash it "
+             "against the protocol reference (re-run ./.auto/measure.sh --skip-build to refresh it)")
+
 # ---- report -------------------------------------------------------------------
 print(f"harness audit: {len(oks)} checks passed, {len(warns)} warnings, {len(fails)} failures\n")
 if '--verbose' in sys.argv:

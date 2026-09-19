@@ -36,6 +36,11 @@ if [ "${1:-}" = "--dry" ]; then
 fi
 
 REPS=${1:-1}
+# Exp879: the sweep does not pull out-loop.log, so .auto/last_out.txt KEEPS whatever an earlier run left
+# there. A protocol hash taken right after a sweep therefore described a different clip (it happened for
+# real: 86 window lines from a 250 s run, read as a protocol-output change). Move it aside so the mistake
+# fails loudly instead of silently.
+if [ -f .auto/last_out.txt ]; then mv .auto/last_out.txt .auto/last_out.prev; fi
 # Exp877: REPS used to be `${1:-1}` with no validation, so calling the tool as
 #   run_rtf_multi.sh "a|x.wav" "b|y.wav"        (arms first, no REPS)
 # made REPS="a|x.wav", `seq` failed, the loop ran ZERO times, and the script still printed a summary
