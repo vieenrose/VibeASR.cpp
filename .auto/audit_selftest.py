@@ -160,23 +160,17 @@ def plant_headline_drift():
 
 
 def plant_wrong_tier():
-    p = 'RESULTS.md'
-    open(p, 'a').write('\n| selftest (temporary) | reproduce with VAE_FILE=vae-encoder-f16.gguf '
+    return snap_append('RESULTS.md', '\n| selftest (temporary) | reproduce with VAE_FILE=vae-encoder-f16.gguf '
                        './.auto/measure.sh --skip-build |\\n')
-    return lambda: git_revert(p)
 
 
 def plant_bad_flag():
-    p = 'RESULTS.md'
-    open(p, 'a').write('\n| selftest (temporary) | reproduce with ./.auto/measure.sh --not-a-flag |\\n')
-    return lambda: git_revert(p)
+    return snap_append('RESULTS.md', '\n| selftest (temporary) | reproduce with ./.auto/measure.sh --not-a-flag |\\n')
 
 
 def plant_schedule():
-    p = 'RESULTS.md'
-    open(p, 'a').write('\n| selftest (temporary) | shipping tier: ./.auto/measure.sh '
+    return snap_append('RESULTS.md', '\n| selftest (temporary) | shipping tier: ./.auto/measure.sh '
                        'EXTRA_ENV="VAE_DEFER_LATE=1" |\\n')
-    return lambda: git_revert(p)
 
 
 def plant_selftest():
