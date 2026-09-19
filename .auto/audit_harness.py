@@ -29,6 +29,7 @@ import json
 import os
 import re
 import shutil
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -399,6 +400,101 @@ if '--skip-device' not in sys.argv:
                     (ok if same else bad)(
                         f"{n} == first {der['frames']} frames of {der['file']}: " + detail)
                 shutil.rmtree(tmp, ignore_errors=True)
+        # ---- header self-consistency (Exp871) --------------------------------------
+        # Hashing bytes proves a clip IS the clip; it says nothing about whether the clip is
+        # SELF-CONSISTENT. A `data` chunk that disagrees with the file length makes a header-trusting
+        # reader run past EOF (or stop short of the audio) while every measured cell off that clip looks
+        # perfectly normal - only this check would ever notice. It also catches a truncated push.
+        # Same check catches a truncated push of a never-blessed file. Device reads are TWO adb calls
+        # (23 pulls cost more than the check is worth): `stat -c '%s %n' RDIR/*.wav` (glob expands on the
+        # device, no $ involved) and one single-quoted loop for the header bytes. Single quotes matter:
+        # in a double-quoted adb string the loop variable expands LOCALLY, hashes nonexistent files and
+        # returns d41d8cd9 - md5 of empty input (Exp676/871, bitten twice).
+        def wav_consistency(blob, size, name):
+            """blob = first bytes of a wav, size = real file size. Walk RIFF chunks to find `data`."""
+            if blob[0:4] != b'RIFF' or blob[8:12] != b'WAVE':
+                return False, f"{name}: not a RIFF/WAVE file"
+            off, found = 12, None
+            while off + 8 <= len(blob):
+                cid = blob[off:off + 4]
+                try:
+                    clen = int.from_bytes(blob[off + 4:off + 8], 'little')
+                except Exception:
+                    break
+                if cid == b'data':
+                    found = (off, clen)
+                    break
+                if clen < 0 or clen > 1 << 30:
+                    return False, f"{name}: chunk {cid!r} claims {clen} bytes - unreadable header"
+                off += 8 + clen + (clen & 1)           # RIFF chunks are word-aligned
+            if found is None:
+                return None, f"{name}: no data chunk within {len(blob)} bytes (header with a big metadata chunk)"
+            doff, dlen = found
+            want = doff + 8 + dlen                     # header bytes actually present + audio
+            if want == size:
+                return True, f"{name}: {dlen} audio bytes after a {doff + 8} B header - consistent"
+            return False, (f"{name}: data chunk claims {dlen} bytes with a {doff + 8} B header = {want} B, "
+                           f"but the file is {size} B ({want - size:+d} bytes) - a reader that trusts the "
+                           f"header runs {'past EOF' if want > size else 'short of the end of the data'}")
+        hdr_bad, hdr_ok_n, hdr_skip = [], 0, []
+        dev_size, dev_head = {}, {}
+        if '--skip-device' not in sys.argv:
+            for ln in sh(f'adb -s {DEV} shell "stat -c \'%s %n\' {RDIR}/*.wav"', timeout=120).stdout.splitlines():
+                ln = ln.replace('\r', '').strip()
+                p2 = ln.split()
+                if len(p2) == 2 and p2[0].isdigit():
+                    dev_size[p2[1].rsplit('/', 1)[-1]] = int(p2[0])
+            _loop = ('for f in ' + RDIR + '/*.wav; do echo "HDR $f"; head -c 1024 "$f" | '
+                     'od -An -v -tx1 | tr -d "\\n"; echo; done')
+            hout = sh('adb -s ' + DEV + ' shell ' + shlex.quote(_loop), timeout=240).stdout
+            blk = hout.splitlines()
+            i = 0
+            while i < len(blk):
+                if blk[i].startswith('HDR '):
+                    nm = blk[i][4:].strip().rsplit('/', 1)[-1]
+                    hexs = blk[i + 1].strip() if i + 1 < len(blk) else ''
+                    try:
+                        dev_head[nm] = bytes.fromhex(hexs)
+                    except ValueError:
+                        pass
+                    i += 2
+                else:
+                    i += 1
+            for name, spec in sorted(man.items()):
+                if name.startswith('HOST '):
+                    continue
+                if name not in dev_size or name not in dev_head:
+                    hdr_skip.append(f"{name} (not on device or unreadable)")
+                    continue
+                verdict, detail = wav_consistency(dev_head[name], dev_size[name], name)
+                if verdict is True:
+                    hdr_ok_n += 1
+                elif verdict is False:
+                    hdr_bad.append(detail)
+                else:
+                    hdr_skip.append(detail)
+        for key, spec in sorted(host.items()):
+            # NB iterate `host`, NOT `man`: section 7 pops the 'HOST ' keys into `host` above, so a loop
+            # over man sees only device names and this half of the check would run on nothing - which is
+            # exactly what the planted-fault control caught (it fired on the md5 check and NOT on this one).
+            p_ = os.path.join(ROOT, key[len('HOST '):])
+            if not os.path.exists(p_):
+                continue
+            verdict, detail = wav_consistency(open(p_, "rb").read(1024), os.path.getsize(p_), os.path.basename(key))
+            if verdict is True:
+                hdr_ok_n += 1
+            elif verdict is False:
+                hdr_bad.append(detail)
+            else:
+                hdr_skip.append(detail)
+        if hdr_bad:
+            for b_ in hdr_bad:
+                bad(b_)
+        if hdr_ok_n:
+            ok(f"{hdr_ok_n} WAV asset(s) have a data chunk that agrees with the file length")
+        if hdr_skip:
+            warn(f"{len(hdr_skip)} asset(s) had no verifiable WAV header: " + '; '.join(hdr_skip[:4])
+                 + (' ...' if len(hdr_skip) > 4 else ''))
     else:
         warn(f"no asset manifest at {MANIFEST} - device clips are unverified (run --bless once)")
 
