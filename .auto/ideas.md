@@ -3119,3 +3119,13 @@ Consequences:
   Notable fired classes exercised this round: doc-vs-tier drift (10), doc-vs-parser flag (11),
   headline-vs-headline.json (9), frozen-refs removal (8), WAV header corruption (7), asset
   duplication (6), schedule-changing shipping command (13).
+
+- BEHAVIORAL CONTRACTS ROTATION (Exp912): 11/11 PASS / 0 fail on the current binary (~29 rounds since
+  Exp892, itself then "44 rounds overdue"). Labels hold (silence -> [Silence], noise -> [Noise], music
+  -> [Music]); 48 kHz stereo resamples + transcribes (39 tok); short36 sub-piece path graceful (17 tok);
+  twospk_overlap splits speakers (Speaker 1 present) while the sequential twospk stays one tag = the
+  closed Exp650 behaviour, recorded not failed; ladder canaries EXACT: 10 s 39, 17 s 106, 69 s 446,
+  138 s 876. All expectations are labels/tags/token-counts, never wording, so the board cannot become a
+  speed measurement by accident. Device warm after the board; settled anchor 1.2009 at 12.7 h (batt
+  38.4 C, top of the warm envelope; series 35.7 C 1.1948 / 38.0 C 1.1986 / 38.4 C 1.2009 tracks the
+  batt correlation, not drift), transcript byte-identical.
