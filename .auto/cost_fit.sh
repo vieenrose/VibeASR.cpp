@@ -27,28 +27,76 @@ set -u
 cd "$(dirname "$0")/.."
 LOG=.auto/cost_fit.txt
 if [ "${1:-}" = "--predict" ]; then
-    python3 - "${2:?usage: cost_fit.sh --predict <audio-seconds> [tokens]}" "${3:-}" <<'PY'
+    SEC_ARG=${2:?usage: cost_fit.sh --predict <audio-seconds> [tokens] [--vae-rate S] [--lm-scale F]}
+    shift 2
+    TOK_ARG=""
+    if [ $# -gt 0 ] && [ "${1#-}" = "$1" ]; then TOK_ARG=$1; shift; fi
+    VAE_RATE=""; LM_SCALE=""
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --vae-rate) VAE_RATE=${2:?--vae-rate needs a value (s per effective window)}; shift 2;;
+        --lm-scale) LM_SCALE=${2:?--lm-scale needs a factor}; shift 2;;
+        *) echo "ERROR: unknown argument '$1' for --predict (valid: --vae-rate S, --lm-scale F)" >&2; exit 2;;
+      esac
+    done
+    python3 - "$SEC_ARG" "$TOK_ARG" "$VAE_RATE" "$LM_SCALE" <<'PY'
 import sys
 SEC, WIN, HOP = 24000, 83200, 70400
-A, B = 0.39, 3.343                    # vae_s = A + B x effective_windows   (Exp870 fit)
+A, B = 0.39, 3.343                    # vae_s = A + B x effective_windows   (Exp870 fit, LONG-UPTIME regime)
 PM, PB = 29.82, 9.11e-3               # prefill ms/row, ms per KV position
 DM, DB = 90.31, 10.67e-3              # decode  ms/token, ms per KV position
 dur = float(sys.argv[1]); tok = float(sys.argv[2]) if sys.argv[2] else 6.3 * dur
+vae_rate = float(sys.argv[3]) if sys.argv[3] else 0.0
+lm_scale = float(sys.argv[4]) if sys.argv[4] else 1.0
 N = (int(round(dur * SEC)) - 1) // HOP + 1
 eff = N - (1.0 - min(WIN, dur * SEC - (N - 1) * HOP) / WIN)
-vae = A + B * eff
+vae = (vae_rate * eff) if vae_rate else (A + B * eff)
 ctx = 13.0 * (N - 1) + tok / 2         # mean KV positions a processed row attends over
-pre = 28 * N * (PM + PB * ctx) / 1e3
-dec = tok * (DM + DB * ctx) / 1e3
+pre = lm_scale * 28 * N * (PM + PB * ctx) / 1e3
+dec = lm_scale * tok * (DM + DB * ctx) / 1e3
 print(f"dur={dur:.2f}s windows={N} effective={eff:.2f} tokens={tok:.0f}"
       f"{' (density 6.3/s - only valid for conversational audio)' if not sys.argv[2] else ''}")
 print(f"  vae {vae:.1f}s  prefill {pre:.1f}s ({28*N} rows)  decode {dec:.1f}s  -> wall {vae+pre+dec:.1f}s  rtf {(vae+pre+dec)/dur:.4f}")
-print(f"  shares vae/pre/dec {vae/(vae+pre+dec)*100:.1f}/{pre/(vae+pre+dec)*100:.1f}/{dec/(vae+pre+dec)*100:.1f} %"
-      f"   (validated: vae +-0.2 %, wall +-0.1 % given tokens; Exp871)")
+print(f"  shares vae/pre/dec {vae/(vae+pre+dec)*100:.1f}/{pre/(vae+pre+dec)*100:.1f}/{dec/(vae+pre+dec)*100:.1f} %")
+if vae_rate or sys.argv[4]:
+    print(f"  regime: USER-OVERRIDDEN constants (vae_rate={vae_rate if vae_rate else 'fitted'}, lm_scale={lm_scale:g})")
+    print("    fresh-regime reference (Exp888/891): VAE 2.10 s per effective window at uptime < ~24 h.")
+else:
+    print("  regime: LONG-UPTIME (Exp870 fit, calibrated PRE-REBOOT; residuals vae +-0.2 %, wall +-0.1 %")
+    print("    given tokens, Exp871). WARNING (Exp916): a fresh boot runs the same clip ~1.5x faster, so these")
+    print("    defaults over-predict it (250.8 s clip: VAE +49 %, wall +45 %). Fresh-regime VAE rate is")
+    print("    2.10 s per effective window (Exp888/891) - pass --vae-rate 2.10 for fresh pricing; the LM legs")
+    print("    need measured phase scalars (fresh protocol clip: prefill 1.8 s, decode 3.0 s).")
 print("  CAVEAT the model is a RATE model: it prices work, not behaviour. A change that alters what the LM")
 print("  emits (a precision, a decode policy) changes tok, which this line takes as an input.")
 PY
     exit 0
+fi
+if [ "${1:-}" = "--selftest" ]; then
+    # Exp660 rule: prove the knobs FIRE (an output change), not merely that the flags are accepted, and
+    # prove a bad argument is REFUSED (the Exp877 vacuous-run class, in a pricing tool).
+    rc=0
+    def=$(./.auto/cost_fit.sh --predict 100 200 | awk '{for(i=1;i<=NF;i++) if($i=="vae"){print $(i+1); exit}}' | tr -d 's')
+    knb=$(./.auto/cost_fit.sh --predict 100 200 --vae-rate 2.0 | awk '{for(i=1;i<=NF;i++) if($i=="vae"){print $(i+1); exit}}' | tr -d 's')
+    pd=$(./.auto/cost_fit.sh --predict 100 200 | awk '{for(i=1;i<=NF;i++) if($i=="prefill"){print $(i+1); exit}}' | tr -d 's')
+    ph=$(./.auto/cost_fit.sh --predict 100 200 --lm-scale 0.5 | awk '{for(i=1;i<=NF;i++) if($i=="prefill"){print $(i+1); exit}}' | tr -d 's')
+    ./.auto/cost_fit.sh --predict 100 200 | grep -q '^  regime: LONG-UPTIME' || { echo "FAIL: default has no regime line"; rc=1; }
+    ./.auto/cost_fit.sh --predict 100 200 --vae-rate 2.0 | grep -q '^  regime: USER-OVERRIDDEN' || { echo "FAIL: override has no regime line"; rc=1; }
+    python3 - "$def" "$knb" "$pd" "$ph" <<'PY' || rc=1
+import sys
+d, k, pd, ph = (float(x) for x in sys.argv[1:5])
+N = (2400000 - 1) // 70400 + 1
+eff = N - (1.0 - min(83200, 2400000 - (N - 1) * 70400) / 83200)
+exp_k = 2.0 * eff
+ok = True
+if abs(k - exp_k) > 0.11:    print(f"FAIL: --vae-rate did not fire: {k} != {exp_k:.2f}"); ok = False
+if abs(d - k) < 1.0:         print("FAIL: --vae-rate inert (default == override)"); ok = False
+if abs(ph - pd / 2) > 0.11:  print(f"FAIL: --lm-scale did not fire: {ph} != {pd/2:.2f}"); ok = False
+sys.exit(0 if ok else 1)
+PY
+    if ./.auto/cost_fit.sh --predict 100 200 --bogus >/dev/null 2>&1; then echo "FAIL: unknown flag accepted"; rc=1; fi
+    if [ "$rc" = 0 ]; then echo "cost_fit --selftest: OK (regime lines present, both knobs fire, unknown flag refused)"; else echo "cost_fit --selftest: FAILED"; fi
+    exit "$rc"
 fi
 if [ "${1:-}" != "--analyze" ]; then
     : > "$LOG"

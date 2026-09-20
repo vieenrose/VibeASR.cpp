@@ -3204,3 +3204,21 @@ Consequences:
     claims "validated: vae +-0.2 %, wall +-0.1 %". The loop's practice (Exp888/891) applies fresh
     scalars by hand; the TOOL does not say so. This is the Exp896 class - an absolute timed number
     without a regime qualifier - and it is the next file to fix (with a control, per Exp660).
+
+- COST_FIT --PREDICT REGIME QUALIFIER SHIPPED + CONTROLLED (Exp917, harness; nothing else shipped).
+  The Exp916 finding: the tool's constants are the Exp870 LONG-UPTIME fit, so on a fresh boot it
+  over-predicts (250.8 s clip: VAE +49 %, wall +45 %) while its output line claimed only
+  "validated: vae +-0.2 %, wall +-0.1 %" - an absolute timed number with no regime qualifier, the
+  Exp896 class. Fix:
+  * `--predict` now prints an explicit `regime: LONG-UPTIME (Exp870 fit, PRE-REBOOT)` block with the
+    fresh-regime numbers (VAE 2.10 s/effective-window, Exp888/891) and how to override.
+  * new `--vae-rate S` (s per effective window) and `--lm-scale F` knobs, so fresh-regime pricing is a
+    stated input instead of a silent manual multiplication; override prints
+    `regime: USER-OVERRIDDEN` with the values used.
+  * default output is NUMERICALLY UNCHANGED (regression-checked against the pre-edit values:
+    250.8 s/728 tok -> vae 286.0, wall 467.1, rtf 1.8626; `--vae-rate 2.104` -> vae 179.7, wall 360.9).
+  * `--selftest` proves the knobs FIRE (an output change: 2.0 x eff exact to the print precision;
+    --lm-scale 0.5 exactly halves prefill) and that an unknown flag is REFUSED (exit 2). NEGATIVE
+    CONTROL: planted `vae = A + B*eff` (ignoring the override) -> selftest FAILS with
+    "--vae-rate did not fire: 114.3 != 68.15" and "inert"; restored byte-identical -> green.
+  Audit 129/1 explained WARN/0 failures after the change.
