@@ -3129,3 +3129,23 @@ Consequences:
   speed measurement by accident. Device warm after the board; settled anchor 1.2009 at 12.7 h (batt
   38.4 C, top of the warm envelope; series 35.7 C 1.1948 / 38.0 C 1.1986 / 38.4 C 1.2009 tracks the
   batt correlation, not drift), transcript byte-identical.
+
+- SESSION-MEMORY SOAK ROTATION (Exp913, ~35 rounds since Exp887): 3 chat69 runs under ONE sampler
+  (rss_soak --repeat 3), full log teed to .auto/soak913.log.
+  * Per-run steady MEDIANS 2176.8 / 2177.1 / 2187.0 MB, peaks 2198.2 / 2198.4 / 2198.4 MB (spread
+    0.2 MB) -> peak invariance = NO SESSION GROWTH, reproducing Exp887 (~2198 MB) in the current regime.
+    The +5.10 +/- 5.53 MB/run median step is the known two-state pattern, not accumulation.
+  * Global 5.6-min slope is INCONCLUSIVE (+0.81 +/- 15.34 MB/min) - expected: the two-state spikes
+    dominate a 5-min window, which is exactly why the per-run comparison is the designed instrument
+    (Exp865f). Do not quote the global slope as a verdict.
+  * fds 3/3 flat (limit 32768). Threads read 1-3, which is PHASE structure (1 during load, 2 during
+    LM, 3 during concurrent VAE), NOT a leak: the sequence is 2/3 throughout with one 1 at a run
+    boundary; the tool's "CHANGES by 2 - thread leak?" line is a naive max-min test. Same class as
+    Exp905's chunk bias - read the mechanism, not the flag.
+  * The RTFs in this log (1.478/1.547/1.544 at batt 40.9-41.2 C) are heat-influenced and are NOT
+    ladder cells (Exp904: long clips are not thermometrically valid in one pass).
+  * SELF-INFLICTED WOUND (method record): the first soak attempt was piped through `tail -30`, which
+    discarded the verdict block before the tool captured it, so the whole run had to be repeated
+    (~6 min + cool-down). RULE: multi-run instruments write to a log file (tee) FIRST - never pipe an
+    experiment through tail, the verdict is the product, not the METRIC tail.
+  Settled anchor 1.1968 at 13.5 h (batt 37.4 C after 8 min idle), transcript byte-identical.
