@@ -3284,3 +3284,24 @@ Consequences:
   so every residency cell we quote carries RSS + majflt together; (4) our asset-provenance rule
   (name+size, blessed device md5, audit FAIL on drift / WARN on byte-identical collision, derivations
   machine-verified) is the fix for their vanished-clip loss - offered the manifest format.
+
+- FAULT/CORRUPTION BOARD DUE BY CADENCE (Exp930): 13/13 PASS, 0 fail on the unchanged binary
+  (BIN md5 744bf77052fa, same as Exp908) - no regression 23 rounds on. Full log: .auto/fault930.log
+  (predictions in cost_pred930.txt, written first).
+  * MODEL: LM tail -8 MB and LM header-only 1 MB -> `failed to load model`; VAE tail -8 MB and
+    -64 MB -> `truncated or corrupt: te...`. All exit 1. (The Exp850 class: before the short-read
+    check, a truncated VAE loaded and fed fluent ZERO weights with exit 0 and normal timing.)
+  * FLAGS: unknown `--kv-type` -> exit 1 `Unknown arg: --kv-type` - a doc-promised option is not
+    silently accepted.
+  * AUDIO (the RTF-denominator contract): healthy baseline H=1.1908 in-session; trunc_half (header
+    says 10 s, data 5 s) runs at 1.3442, lie_dur (header claims 40 s) runs at **1.3131 = 1.10xH** -
+    inside the guard-like band [0.7H, 1.3H], so the denominator comes from DECODED samples: a
+    header-following metric would have read ~0.3, a false 4x speedup. header-only (44 B) and empty
+    (0 B) both refuse with no metric at all.
+  * CONFIG EDGES: `-c 16` (below one window) -> `frames failed`; `--vae-pieces 7` and `--vae-pieces 0`
+    -> `must divide 26`. All exit 1.
+  * The Exp886 fix held: the audio arms are judged against a SAME-SESSION healthy baseline, not the
+    old absolute [1.5, 4.0] band, which the fresh regime would have failed with a healthy binary.
+  Settled anchor 1.1948 at 16.9 h (batt 36.2 C), transcript byte-identical. The board leaves
+  last_out.txt holding a fixture capture, so the anchor was taken with a fresh measure.sh run (that
+  stale-capture trap is pre-registered in cost_pred930).

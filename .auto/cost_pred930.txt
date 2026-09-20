@@ -1,0 +1,17 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp930: fault/corruption board rotation)
+
+HYPOTHESIS: no src/ or shipped-config change since Exp908 (device BIN md5 744bf77052fa unchanged), so
+every probe must read exactly as it did then. Expected: 13 pass / 0 fail.
+
+  P1  4 model truncations (LM tail -8MB, LM header-only 1MB, VAE tail -8MB, VAE tail -64MB) -> exit 1
+      with a "truncated or corrupt"/"failed to load model" signature (never fluent zeros).
+  P2  healthy control -> exit 0, tokens 39 (protocol clip) and guard-like rate.
+  P3  unknown --kv-type -> exit 1 ("Unknown arg"), a doc-promised flag must not be silently accepted.
+  P4  audio arms: trunc_half runs, lie_dur runs GUARD-LIKE (0.7H..1.3H, denominator content-derived, so
+      a header-following metric would read ~0.5 not ~1.3), header-only and empty refuse (no metric).
+  P5  3 config edges -> exit 1: -c 16 (below one window), --vae-pieces 7 (not a divisor of 26),
+      --vae-pieces 0.
+  FAIL modes: any probe silent (exit 0 / a metric where refusal is required); lie_dur reading ~4x fast;
+  healthy control failing its relative band (the Exp886 regime-stale absolute band must NOT be back).
+  Note: the board's last device run leaves .auto/last_out.txt holding a NON-protocol capture, so the
+  settled anchor must be taken with a fresh measure.sh afterwards, not by hashing the board's capture.
