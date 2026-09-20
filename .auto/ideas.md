@@ -3418,3 +3418,31 @@ Consequences:
     is why a 13% term could not hide and the two-run split was worth the device time. Rule of thumb:
     design the state-split experiment only when the suspected effect EXCEEDS the model's residual band.
   * No cells change on either side; nothing owed.
+
+- PHASE-SPECIFIC CLOCK SENSITIVITY, AND THE LM SLOPES RE-SORTED (Exp933). Probe: chat17.wav repeated
+  6x back-to-back (FIXED ctx=118, FIXED 106 tokens every run), LATENCY_TRACE + 5 s device-state sampler,
+  from a 37.1 C start. The state flips between run 2 and run 4 (run 3 = transition), and the clock
+  samples agree: cpu7 2.4 GHz t=0..72 s, 2.0 GHz from t=77 s (two transient 2.4 s readings at 92-108 s).
+    run1 1.3396 / run2 1.3392 | VAE 11.8, prefill 3.0/3.1, decode 7.9
+    run4 1.4876 / run5 1.4794 / run6 1.4845 | VAE 13.5/13.4/13.5, prefill 3.6, decode 8.2/8.1/8.1
+  * PAIRED STATE SCALING (same clip/ctx/tokens, so no KV confound - the point of the probe):
+    VAE x1.142 | PREFILL x1.187 | DECODE x1.028. The step is NOT a uniform clock multiplier:
+    prefill (batched GEMM) is the most clock-bound, VAE (kernel-rate-bound, Exp681) in between, and
+    decode (weight-streaming GEMV) is nearly state-insensitive. Prediction miss recorded: P2 predicted
+    decode slow/fast 1.05-1.15; measured 1.028 - the miss sharpens the mechanism rather than weakening it.
+  * CONSEQUENCE FOR THE LM LEGS: the Exp932 "LM slopes are state-inflated" flag is right for PREFILL and
+    essentially absent for DECODE. Re-fitting the Exp932 clip-level legs with each clip rescaled by its
+    slow fraction (prefill x1.187, decode x1.028) gives prefill ~6.7e-3 ms/position (was 9.6e-3 mixed)
+    and decode ~8.6e-3 from the chat17->chat138 pair (state-insensitive; the mixed 6.3e-3 was biased LOW
+    by the protocol clip's per-window decode overhead, not by state).
+  * FRESH KV-LEVER PRICES (upper bound: all KV attention removed), corrected legs:
+      10 s 0.5 % | 17 s 1.1 % | 69 s 4.2 % | 138 s 7.9 %
+    vs the long-uptime documented 0.46 % / 3.9 % / 7.6 % (Exp870/891) => the KV-lever price TRANSFERS
+    across regimes as a fraction of wall (both the KV term and the wall shrink together). NO repricing
+    needed; the "~0 % on the protocol metric, ~4-8 % long-form product item" verdict stands.
+  * METHOD NOTE: per-window state-conditioned fits (ctx per window) are poorly conditioned here
+    (residuals 4-10 ms against KV terms of ~1 ms at small ctx), so they place the state effect in the
+    INTERCEPTS (prefill 18.2 -> 21.8 ms/row; decode 74.6 -> 77.1 ms/tok) and are NOT the right instrument
+    for pricing - the clip-level fit with slow-fraction rescaling is. Do not quote a KV slope from the
+    per-window fit.
+  Settled anchor 1.1878 at 18.4 h (batt 36.2 C), transcript byte-identical.

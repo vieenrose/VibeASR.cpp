@@ -1,0 +1,22 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp933: LM-leg state scaling from a fixed-context clip)
+
+CONTEXT: Exp932 left the fresh-regime LM slopes as upper bounds because the short ladder clips measured
+in the 2.4 GHz boost state and the long ones in the 2.0 GHz settled state - the state mix masquerades
+as a KV term (prefill 9.6e-3, decode 6.3e-3 ms/position). chat17.wav is the right probe: 6 windows,
+ctx = 13*5 + 106/2 = 118 and 106 tokens EVERY run, so per-row prefill and per-token decode differences
+across repetitions are PURE state effects, with no KV confound.
+
+DESIGN: 6 back-to-back chat17 runs with LATENCY_TRACE + a 5 s device-state sampler, starting from a
+~37 C device, so the sequence should span fast -> slow.
+
+  P1  the VAE per-window plateau flips from ~2050 ms to ~2335 ms at some run k, with cpu7 sampled at
+      2.4 GHz before the flip and 2.0 GHz after (the Exp931/932 step).
+  P2  prefill ms/row and decode ms/tok BOTH step at the same run k. Expected state ratios (slow/fast):
+      prefill ~1.1-1.2, decode ~1.05-1.15 (decode is the more bandwidth-bound phase).
+  P3  within a state, per-run prefill/decode are flat to ~1 % (tokens pinned at 106).
+  P4  after rescaling the Exp932 long-clip legs by the measured LM state factors, the KV slopes fall
+      below the Exp932 upper bounds (prefill < 9.6e-3, decode < 6.3e-3 ms/position). If they do NOT
+      fall, the separate-KV-term story is wrong and the LM legs are state-explained.
+  FAIL modes: no step across 6 runs (device stayed in one state - then extend to 10 runs and quote the
+  state as unidentified); tokens != 106 on any run; LT lines missing; a VAE plateau that is neither
+  ~2050 nor ~2335 (would reopen Exp931's two-state model).
