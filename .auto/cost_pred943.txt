@@ -1,0 +1,26 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp943: the repeated-transcription envelope + a transient hunt)
+
+CONTEXT: the loop's metric is an idle-first (boost) 10 s number, but a real user dictates repeatedly. The
+flip model says the boost->settled transition needs ~75-120 s of CUMULATIVE load since a sufficient idle
+(Exp940), while a 4-arm sweep with adb gaps stayed boost (Exp935) - so the protocol clip's ~50 % duty
+cycle (12 s of compute per ~25 s) may or may not flip it. This series answers the product question AND
+gives ~12 chances at the Exp940 LM transient (lm ~5.3 with vae 7.1), now diagnosable because every run
+records the DELIVERED 2.4 GHz share (Exp942).
+
+DESIGN: 12 protocol runs back-to-back, no spacing, shipped tier, nothing else touched.
+
+  P1  EITHER the series flips at some run k: runs 1..k-1 boost (deliv2400_pct 96-97, vae 7.1, rtf ~1.19)
+      and runs k..12 settled (deliv 0, vae ~8.0, rtf ~1.33) - OR it stays boost for all 12.
+  P2  if it flips, k is 3-10 (the cumulative-load model, ~75-120 s of load at ~12 s per run).
+  P3  once flipped there is NO auto-recovery within the series (delivered share stays 0) - recovery needs
+      idle (Exp938: 3 min).
+  P4  the rtf step at the flip is ~+11 % (the state model's phase-weighted effect for this clip).
+  P5  if any run shows lm >= 5.2 with vae 7.1 (the transient), record its delivered share: 96 => the
+      transient is NOT a clock effect (definitive); low => it is. Either way this is the first
+      diagnosable occurrence.
+  FAIL modes: a flip that shows no rtf step; a settled run that reports deliv 96 (instrument
+  inconsistency); more than one flip back and forth without idle (would mean the model needs a hysteresis
+  term).
+  NOTE ON FRAMING: a "stays boost" outcome is a POSITIVE product fact (repeated short transcriptions keep
+  the fast state), not a failed experiment - and it sharpens the model to "the flip needs sustained load,
+  which short intermittent runs do not provide".

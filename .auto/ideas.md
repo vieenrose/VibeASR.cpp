@@ -3703,3 +3703,27 @@ Consequences:
     share, so the is-it-clock question is answerable on the next occurrence (QUEUED: check
     cpu7_deliv2400_pct on the next lm>=5.2-at-boost row).
   Anchor 1.1902 at 22.5 h (batt 35.9 C, request 2400000, delivered 96), transcript byte-identical.
+
+- THE REPEATED-TRANSCRIPTION ENVELOPE, AND PARTIAL STATE RECOVERY (Exp943). 12 protocol runs back-to-back,
+  no spacing, shipped tier - the first series that exercises the delivered-frequency column end to end:
+    boost    (delivered 96-97 %) runs 1-6     mean rtf 1.1952   lm 4.8-4.9
+    partial  (delivered 48 / 47 %) runs 7, 9  mean rtf 1.2565   lm 5.0
+    settled  (delivered 0 %)      runs 8, 10-12 mean rtf 1.3345 lm 5.2-5.3
+    step boost -> settled +11.6 %
+  * PRODUCT FACT: a user dictating repeated 10 s clips keeps the BOOST level for ~6 uses (~2.5 min of
+    intermittent use) and then sees +11.6 %. That is the first product-facing statement of the state
+    effect, and it is measurable only because the delivered column resolves partial states.
+  * MODEL REFINEMENT: after the first flip (run 7) the device PARTIALLY recovers in the ~10 s inter-run
+    gaps - runs 7 and 9 started boost again (~48 % delivered) and flipped mid-run - but the recovery fades
+    as batt rises (runs 10-12 are 0 % with no recovery). So Exp938's "3 min idle restores boost" is the
+    FULL recovery; short gaps give partial recovery only while the device is cool. Add to the flip model:
+    budget = cumulative load, recovered by idle with a rate that itself depends on temperature.
+  * INSTRUMENT PAYOFF IMMEDIATELY: the request median read 2000000 for the partial runs too, and rtf alone
+    would have shown an unexplained 1.2565 between 1.195 and 1.335 - the delivered share names them as
+    half-flipped. The LM tracks the delivered share monotonically (4.8-4.9 -> 5.0 -> 5.2-5.3), which
+    sharpens the Exp940 transient definition further: lm ~5.3 at delivered >= 90 % has STILL not been
+    observed (0 hits in 12 boost-ish runs, ~0.7 expected - the series was sized for the envelope, not the
+    transient, so this is a null, not evidence).
+  * Predictions: P1 hit (flip at k=7), P2 hit (predicted 3-10), P3 hit with the partial-recovery nuance,
+    P4 hit (+11.6 % vs ~+11 % predicted), P5 no hit as expected.
+  Anchor 1.1911 at 23.0 h (batt 36.2 C, delivered 98), transcript byte-identical, audit green.
