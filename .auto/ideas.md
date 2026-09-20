@@ -2869,3 +2869,12 @@ Consequences:
   Exp882). No trend over the 20 min => decay invisible at 92-108 min; prompt.md's THERMAL DISCIPLINE
   updated with the fresh-regime protocol instead of the Exp15/16 long-uptime numbers. Transcript
   byte-identical throughout. This doubles as the 92-108 min decay point: 1.1931.
+
+- GATE REGRESSION, DUE BY CADENCE (Exp885): 40/40, WER 4.55 % (S=29 D=2 I=2 - the identical profile
+  three gates running), paired b=0/c=0 of 731 vs BOTH hyp-gate880 and hyp-gate852 (CI [0,0], p=1.0).
+  Nothing changed since gate880 (harness + docs only), so the WER null was expected; the new data is
+  the gate MEAN at 5 h uptime: 1.33 (1.2765/1.3766) vs 1.32 at ~1 h - flat, which is the decay series
+  on a second timescale (varied short utterances, not one repeated clip). Decay series now: 6m 1.22 /
+  25-45m 1.19 / 92-108m 1.19 / 5h 1.20 protocol and 1h 1.32 / 5h 1.33 gate-mean - two instruments,
+  same answer: no hour-scale decay. The slow state needs days; the 24-72 h points stand as theQueued
+  deciders. Stamp verified tier + current binary before proceeding (BIN=744bf770, unchanged).
