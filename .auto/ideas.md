@@ -3099,3 +3099,14 @@ Consequences:
   (P2 1.1898 is the low arm, -0.5 % vs P1). All cost_pred909.txt predictions met (P1 1.18-1.23,
   premium 1.09-1.11, 70-85 ms/tok, tokens 39/55). Settled anchor 1.1948 at 12.1 h (batt 35.7 C,
   majflt 0), byte-identical. Anchor decay series flat 6 m-12.1 h (1.19-1.22).
+
+- GATE REGRESSION BY CADENCE (Exp910): 40/40, WER 4.55 % (S=29 D=2 I=2 - identical profile EIGHT gates
+  running), paired b=0/c=0 of 731 vs BOTH hyp-gate905 and hyp-gate852 (CI exactly [0,0], p=1.0), and
+  0/40 differing transcripts vs gate905 (byte-identical) - all on the unchanged binary (device BIN md5
+  744bf77052fa matches gate905's stamp). Gate mean 1.3450, inside the 1.32-1.37 band; series
+  1.3266 (885) / 1.3546 (890) / 1.3475 (895) / 1.3544 (900) / 1.3133 (905, cool-chunk2 qualifier) /
+  1.3450 (910). Intra-run split this round: chunk1 1.3149 (started cool after >=15 min idle) and
+  chunk2 1.3750 - opposite order to gate905 (1.3566/1.2700), mean ratio 1.0272; the chunk swing is
+  state, reproduced symmetrically. Gate chunks were run back-to-back in ONE call (Exp905 lesson).
+  Settled anchor 1.1986 at 12.3 h, batt 38.0 C warm post-gate (series says this is +0.3 % vs a cool
+  read; recorded as-is, not "corrected"), transcript byte-identical.
