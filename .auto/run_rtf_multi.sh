@@ -136,12 +136,17 @@ for r in $(seq 1 "$REPS"); do
     # (1a095c8496b4 = md5 of the 4-window capture). The first version hashed only the '^[n/m]' lines,
     # which is a different (also stable) oracle - the known-value control caught the mismatch.
     tx=$(md5sum .auto/multi-out-$tag.txt 2>/dev/null | cut -c1-12 || true)
+    # Exp935: report the arm's DURING-RUN clock profile, not this script's own post-arm sample (which reads
+    # the idle governor target, 1430000, and cannot see the 2400000 -> 2000000 step of Exp931-933).
+    kmn=$(grep -oE 'cpu7_khz_min=[0-9?]+' .auto/multi-run-$tag.txt 2>/dev/null | cut -d= -f2 || true)
+    kmd=$(grep -oE 'cpu7_khz_med=[0-9?]+' .auto/multi-run-$tag.txt 2>/dev/null | cut -d= -f2 || true)
+    kmx=$(grep -oE 'cpu7_khz_max=[0-9?]+' .auto/multi-run-$tag.txt 2>/dev/null | cut -d= -f2 || true)
     rtf=$(grep -oE 'RTF: [0-9.]+' .auto/multi-err-$tag.txt | head -1 | awk '{print $2}')
     tok=$(grep -oiE 'tokens: [0-9]+' .auto/multi-err-$tag.txt | head -1 | awk '{print $2}')
     rss=$(grep -oE 'hwm_kb=[0-9]+' .auto/multi-run-$tag.txt | head -1 | cut -d= -f2)
     maj=$(grep -oE 'majflt_delta=-?[0-9]+' .auto/multi-run-$tag.txt | head -1 | cut -d= -f2)
-    echo "$label"$'\t'"$rtf"$'\t'"$tok"$'\t'"${rss:-0}"$'\t'"${tx:-none}" >> "$TSV"
-    echo "ARM $label | rep=$r | rtf=$rtf | tokens=$tok | rss_kb=${rss:-?} | majflt=${maj:-?} | tx=${tx:-none} | cpu7_khz=$(cpufreq)$HOT"
+    echo "$label"$'\t'"$rtf"$'\t'"$tok"$'\t'"${rss:-0}"$'\t'"${tx:-none}"$'\t'"${kmd:-?}" >> "$TSV"
+    echo "ARM $label | rep=$r | rtf=$rtf | tokens=$tok | rss_kb=${rss:-?} | majflt=${maj:-?} | tx=${tx:-none} | clock=${kmn:-?}/${kmd:-?}/${kmx:-?}kHz$HOT"
   done
 done
 

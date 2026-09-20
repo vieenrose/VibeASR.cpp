@@ -43,8 +43,14 @@ if [ -s "khz-$4.txt" ]; then
   KMIN=$(sort -n "khz-$4.txt" | head -1)
   KMAX=$(sort -n "khz-$4.txt" | tail -1)
   KMED=$(sort -n "khz-$4.txt" | awk '{a[NR]=$1} END{print a[int((NR+1)/2)]}')
+  # Exp935: min != max is NOT a straddle - two arms showed a single 2150000/2240000 sample (an idle
+  # governor ramp between arms) with med == max == 2400000 and a fully boost-state rtf. Report the count
+  # of samples BELOW the 2.3 GHz midpoint so "one transient sample" is distinguishable from "half the
+  # run ran slow" (which the median alone cannot show).
+  KLO=$(awk '$1 < 2300000' "khz-$4.txt" | wc -l | tr -d ' ')
+  KN=$(wc -l < "khz-$4.txt" | tr -d ' ')
 else
-  KMIN="?"; KMED="?"; KMAX="?"
+  KMIN="?"; KMED="?"; KMAX="?"; KLO=0; KN=0
 fi
 rm -f "khz-$4.txt"
-echo "exit=$EC peak_kb=$PEAK hwm_kb=$HWM majflt_delta=$(( ${MAJ:-0} - ${MAJ0:-0} )) minflt_delta=$(( ${MIN:-0} - ${MIN0:-0} )) cpu7_khz_min=${KMIN:-?} cpu7_khz_med=${KMED:-?} cpu7_khz_max=${KMAX:-?}"
+echo "exit=$EC peak_kb=$PEAK hwm_kb=$HWM majflt_delta=$(( ${MAJ:-0} - ${MAJ0:-0} )) minflt_delta=$(( ${MIN:-0} - ${MIN0:-0} )) cpu7_khz_min=${KMIN:-?} cpu7_khz_med=${KMED:-?} cpu7_khz_max=${KMAX:-?} cpu7_khz_low=${KLO:-0} cpu7_khz_n=${KN:-0}"

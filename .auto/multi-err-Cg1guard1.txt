@@ -3,10 +3,10 @@
 ========================================
   VAE: ./vae-encoder-convint8.gguf
   LM:  ./lm-q8head.gguf
-  Audio: stream_10s_24k.wav
+  Audio: slice10b_24k.wav
   Threads: 2
 
-[audio_io] Loaded: stream_10s_24k.wav (10.00s, 240000 samples @ 24000 Hz)
+[audio_io] Loaded: slice10b_24k.wav (10.00s, 240000 samples @ 24000 Hz)
 Audio: 10.00s, 240000 samples
 VAE dims: acoustic=1536 semantic=1536
 llama_model_loader: loaded meta data with 23 key-value pairs and 339 tensors from ./lm-q8head.gguf (version GGUF V3 (latest))
@@ -420,6 +420,6 @@ VAE pieces: 1 x 83200 samples (26 frames each) [streaming cache]
 
 
 ========================================
- Audio: 10.00s | chunks: 4 | tokens: 39 | RTF: 1.2000
- load: 0.8s | VAE: 7.2s (ac 7.2s, sem 7.1s) | LM: 4.8s (prefill 1.8s, decode 3.0s) | total: 13.4s
+ Audio: 10.00s | chunks: 4 | tokens: 55 | RTF: 1.3103
+ load: 0.8s | VAE: 7.1s (ac 7.1s, sem 7.1s) | LM: 6.0s (prefill 1.8s, decode 4.2s) | total: 14.5s
 ========================================

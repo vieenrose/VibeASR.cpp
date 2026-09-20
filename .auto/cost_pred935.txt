@@ -1,0 +1,25 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp935: is the standard A/B sweep state-stable?)
+
+CONTEXT: the loop's primary A/B instrument is run_rtf_multi.sh (P,G,G,P guard sweeps, ladder arms).
+Exp931-933 showed the big core steps 2400000 -> 2000000 after ~40-120 s of sustained load depending on
+start temperature, with a 10% rtf jump. A 4-arm sweep IS ~2 min of intermittent load, so the arms could
+straddle the step - which would contaminate every premium/ladder number this tool has produced
+(8 guard rotations, the rollback ladder). Exp934 shipped per-run clock telemetry (bench_device.sh now
+emits cpu7_khz_min/med/max, which run_rtf_multi captures in .auto/multi-run-<tag>.txt), so this is now
+a direct, cheap check.
+
+DESIGN: one sweep from a COOL device (~36 C, the strongest case for staying in boost - the flip needs the
+longest load) and one from a WARM device (after 2 warm-up runs, ~38 C, where the flip comes soonest).
+4 arms each: P proto, G guard, G2 guard, P2 proto.
+
+  P1  every ARM is single-state: cpu7_khz_min == med == max within an arm.
+  P2  the COOL sweep stays entirely in boost (2400000 in all four arms) - predicted because Exp919's
+      arm-4 step was only +0.8%, nowhere near the +10% a state flip produces.
+  P3  the WARM sweep may flip; if it does, record which arm and the rtf step. Either outcome is a result:
+      all-boost = the sweep is state-stable and the premium series is clean; a flip = the premium needs a
+      state-controlled restatement.
+  P4  premium reproduces ~+9.5% and transcripts match the references (P arms 1a095c8496b4, G arms
+      849cca7df5bc).
+  FAIL modes: an arm with min != max (its rtf is a state average, so the arm is not a point); a flip
+  between arms that moves the premium by more than 1 pp; the pacing gate hiding a flip by cooling the
+  device (that would be a finding about the protocol, not a pass).

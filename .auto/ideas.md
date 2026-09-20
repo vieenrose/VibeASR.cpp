@@ -3470,3 +3470,32 @@ Consequences:
     highest point of the session series (typical 1.188-1.199), and the new telemetry says state does NOT
     explain it - the run was in the BOOST state (median 2400000, and vae_s 7.2 vs the usual 7.0-7.1). So
     it is ambient/other; re-check at the next anchor rather than calling it drift.
+
+- THE A/B SWEEP IS STATE-STABLE (Exp935) + two instrument completions. Hypothesis: a 4-arm guard sweep
+  is ~2 min of intermittent load, so its arms could straddle the 2400000 -> 2000000 step (Exp931-933),
+  which would contaminate every premium/ladder number the tool ever produced.
+  * ANSWER: the arms are single-state in BOTH conditions. Cool sweeps (36.5 C): 1.1956 / 1.3061 / 1.3104
+    / 1.1968 = +9.42 %; and with the new ARM-line clock: 1.1928 / 1.3103 / 1.3110 / 1.1948 = +9.88 %,
+    all four arms clock=2400000/2400000/2400000. WARM sweep (batt 38.1 C, preceded by two warm-up chat17
+    runs that were themselves SETTLED at 2000000): 1.2000 / 1.3085 / 1.3078 / 1.1944 = +9.01 %, and the
+    during-run medians are 2400000 in ALL FOUR arms. Mechanism: the arms are ~25 s bursts separated by
+    adb/pull gaps, and the Exp902 pacing waits restore the boost state (arm 1 ran boost right after the
+    device had been settled). So the premium series is state-clean; this round's range 9.01-9.88 % vs the
+    earlier 9.56/9.65/9.73 - stable, and the pre-registered FAIL mode (a flip moving the premium >1 pp)
+    did not occur.
+  * INSTRUMENT 1 (shipped): run_rtf_multi's ARM line used to print its OWN post-arm sample
+    (`cpu7_khz=$(cpufreq)`, which reads the idle target 1430000/910000 and cannot see the step). It now
+    prints the arm's DURING-RUN clock min/med/max, parsed from bench_device.sh's exit line, plus a 6th
+    TSV field.
+  * INSTRUMENT 2 (shipped, and it corrects a misreading the new field invites): min != max is NOT a
+    straddle. Two arms showed a single 2150000 / 2240000 sample (an idle governor ramp between arms)
+    with med == max == 2400000 and a fully boost-state rtf. bench_device.sh now also emits
+    `cpu7_khz_low` (samples below the 2.3 GHz midpoint) and `cpu7_khz_n`; the anchor run reads
+    low=1 of n=19, i.e. one transient, not half a slow run. QUEUED: a 49/51 split would still hide in the
+    median - emit a coarse two-bin histogram if a long sweep ever needs straddle detection.
+  * METHOD WOUND: two sweeps in one command overwrote each other's per-arm files, because run_rtf_multi
+    tags are label+rep only (Pproto1 etc.) - the first cool sweep's during-run profile was lost. Use
+    distinct labels (or add a run id to the tag) when sweeping twice in one call.
+  * ANCHOR RESOLVES THE Exp934 FLAG: 1.1927 at 19.0 h (batt 36.3 C, boost state, transcript
+    byte-identical) - back in the normal band, so the 1.2159 point was a one-off ambient excursion, not
+    drift. The new telemetry paid for itself in the first round after shipping.
