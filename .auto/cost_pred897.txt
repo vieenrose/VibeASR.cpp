@@ -1,0 +1,21 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp897: guard rotation #14)
+
+HYPOTHESIS: cadence rotation (#13 was Exp893). Expectation by now is routine: premium ~+10 %
+by per-token accounting, 4th confirmation. The only question that could surprise is a premium
+drift back toward ratio-land or an unexplained token change.
+
+PREDICTIONS (order-symmetric P,G,G,P, one pass, ~1 min):
+  P1  protocol = 1.18-1.22 (decay flat at 8.1 h).
+  P2  guard = protocol x (1.09-1.11), tokens 55.
+  P3  (guard_gen - protocol_gen)/16 = 70-85 ms/token; guard vae_s == protocol vae_s within 0.3 s.
+  FAIL modes: premium outside token accounting; tokens != 55; degenerate transcript.
+
+VERDICTS:
+  P1 HOLD: protocol 1.1951 (+9.4%-contaminated P2 excluded, documented below).
+  P2 HOLD: guard 1.3074/1.3096, premium (1.3085-1.1951)/1.1951 = +9.6 % - 4th confirmation.
+  P3 HOLD: VAE 7.1/7.1 identical; premium (14.5-13.4)/16 = 69 ms/tok (edge of 70-85, decode
+  rates 76.4 vs 76.9 confirm the accounting); transcript fluent.
+  P2-ARM CONTAMINATION, documented not hidden: P2 read 1.3069 (VAE +0.7, LM +0.4, both phases =
+  heat step, batt 38.7 after 6 consecutive runs incl. the rebuild) and resolved to 1.1949 after
+  3 min idle. Excluded from the premium by the watch policy (transient with proven resolution);
+  pooling it in would print a false +4.6 %.

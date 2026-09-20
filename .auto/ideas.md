@@ -2991,3 +2991,15 @@ Consequences:
   Rule applied: a discard is revisited only on a CHANGED ASSUMPTION with a named mechanism, never
   on a new regime alone - regimes rescale thresholds but do not rewrite mechanisms. The two queued
   product calls (-c default, lean batch) are the only shippable value left, and both need the user.
+
+- GUARD ROTATION #14 (Exp897): protocol 1.1951, guard 1.3074/1.3096 (55 tok) = +9.6 % premium -
+  4th confirmation of the per-token criterion (VAE 7.1/7.1, decode 76.4 vs 76.9, fluent). The P2
+  arm read 1.3069 (both phases up = heat step after 6 consecutive runs) and resolved to 1.1949
+  after idle; excluded by the watch policy, documented here. No overfit signal.
+- PLANT MUST LEAVE NO TRACE, INCLUDING MTIME (Exp897, harness): fault 17's byte-perfect revert
+  still bumped demo/asr_streaming.cpp's mtime, which tripped run_rtf_multi's freshness guard on
+  the next sweep (stale-binary refusal on a content-current tree - the instrument contradicted
+  itself one round after certifying itself). Fix: snapshots cover stat (ns precision, verified
+  exact) as well as bytes. Control: --only 17 fires AND mtime is bit-identical after. Rule
+  generalized: a revert that restores content but not metadata is half a revert - every guard
+  that reads metadata (mtime, perms, xattrs) can tell.

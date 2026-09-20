@@ -42,16 +42,31 @@ def run_audit():
 _SNAP = {}
 
 
+def _snap(path):
+    # A plant must leave NO trace, including mtime. Exp897: fault 17's byte-perfect revert still
+    # updated demo/asr_streaming.cpp's mtime, which made run_rtf_multi's freshness guard (Exp662:
+    # refuse unless the binary is newer than every source) reject the NEXT sweep with a stale-binary
+    # error on a content-current tree. So the snapshot covers the stat too, not just the bytes.
+    st = os.stat(path)
+    _SNAP[path] = (open(path, 'rb').read(), st.st_atime_ns, st.st_mtime_ns)
+
+
+def _restore(path):
+    data, atime_ns, mtime_ns = _SNAP.pop(path)
+    open(path, 'wb').write(data)
+    os.utime(path, ns=(atime_ns, mtime_ns))
+
+
 def snap_write(path, text):
-    _SNAP[path] = open(path, 'rb').read()
+    _snap(path)
     open(path, 'w').write(text)
-    return lambda: open(path, 'wb').write(_SNAP.pop(path))
+    return lambda: _restore(path)
 
 
 def snap_append(path, text):
-    _SNAP[path] = open(path, 'rb').read()
+    _snap(path)
     open(path, 'a').write(text)
-    return lambda: open(path, 'wb').write(_SNAP.pop(path))
+    return lambda: _restore(path)
 
 
 def git_revert(*paths):
