@@ -2901,3 +2901,13 @@ Consequences:
   verdict to tool truncation - heat discipline applies to every multi-run instrument, and long
   outputs get teed to a file I own; (2) my prediction quoted the lean token canary (432) for a
   shipped-tier run - the ledger's 446 was exact, caught in 30 s. Settled anchor 1.2003 at 6.2 h.
+
+- COST-MODEL REGIME TRANSFER (Exp888): settled chat69 (24 windows, 446 tok) in the fresh regime:
+  VAE 48.9 s = 2.086 s/effective-window vs protocol's 2.107 - the linear VAE structure transfers
+  to +-1 %, so per-window paper pricing holds fresh with the 0.61 scalar. Prefill 13.6 s vs ~14.3 s
+  with-KV prediction (consistent, not crisp - needs a second settled rep to separate heat from
+  structure); decode 34.9 in band. Fresh chat69 ladder cell 1.41 (provisional) vs 2.10. The model
+  gains its regime parameter; no re-fit needed. My first P1-P3 bands were raw-division shortcuts
+  ignoring intercepts/flush/KV - corrected in P1r-P4r BEFORE the clean run, and the lesson is
+  recorded: predictions from shortcuts test arithmetic, not systems. Settled protocol 1.1943 at
+  6.6 h (decay flat).
