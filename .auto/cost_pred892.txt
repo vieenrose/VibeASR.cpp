@@ -1,0 +1,7 @@
+PREDICTIONS (Exp892: behavioral-contracts rotation; pre-registered in behavior_watch.sh since
+Exp848 - not written fresh, because the expectations predate this run by 44 rounds):
+  11/11 PASS: silence->[Silence], noise->[Noise], music->[Music] with documented token counts,
+  48kHz stereo + sub-piece short36 graceful, twospk sequential collapses to one tag (CLOSED
+  Exp650), twospk_overlap splits (54 tok), ladder canaries 39/106/446/876 exact.
+  FAIL mode: any contract FAILs (edge-semantics regression on the current binary - gate +
+  bisect, since the last behavioral run predates the Exp865 opt-in and Exp880 default change).

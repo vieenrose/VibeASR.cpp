@@ -2936,3 +2936,10 @@ Consequences:
   s/eff-window, 0.2 %), decode 35.1, tokens 446, rtf 1.4203. Structure holds completely with all
   terms accounted for; question CLOSED. Fresh chat69 cell firms to ~1.41-1.42 (two reps).
   Settled anchor 1.1951 at 7.2 h, byte-identical.
+
+- BEHAVIORAL CONTRACTS ROTATION (Exp892, ~44 rounds overdue): 11/11 PASS, 0 fail on the current
+  binary - silence/noise/music labels, 48 kHz stereo, sub-piece short36, twospk collapse (CLOSED
+  Exp650) + overlap split, ladder canaries 39/106/446/876 exact. Expectations pre-registered in
+  the script since Exp848, so this was a pure rotation, no new predictions needed. Settled anchor
+  1.2039 at 7.5 h (decay flat); the immediate post-board anchor read 1.3391 warm and settled on
+  the normal 5-min discipline.
