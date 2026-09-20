@@ -3727,3 +3727,26 @@ Consequences:
   * Predictions: P1 hit (flip at k=7), P2 hit (predicted 3-10), P3 hit with the partial-recovery nuance,
     P4 hit (+11.6 % vs ~+11 % predicted), P5 no hit as expected.
   Anchor 1.1911 at 23.0 h (batt 36.2 C, delivered 98), transcript byte-identical, audit green.
+
+- GATE STATE ATTRIBUTION MEASURED (Exp944): the flip is at UTTERANCE 8, NOT at the chunk boundary, and
+  the chunk ratio decomposes quantitatively. Gate944 (40/40, WER 4.55 %, S=29 D=2 I=2, paired b=0/c=0 of
+  731 vs BOTH gate941 and gate852, 0/40 differing) - the TENTH gate with the identical profile.
+  * With the timestamp + concurrent sampler pattern (Exp941's wiring was inert), the per-utterance state is
+    now MEASURED: utterances 1-7 delivered-boost (fb=1), 8-40 settled (fb=0). The boost phase is ~96 s of
+    gate wall time; the chunk boundary (utterance 20) is at +246 s - so the state flips INSIDE chunk1, and
+    "chunk1 boost vs chunk2 settled" is the wrong mental model.
+  * THE DECOMPOSITION CLOSES QUANTITATIVELY: chunk1 = 7 boost + 13 settled, chunk2 = 20 settled. With the
+    protocol-clip state effect (+11.6 %), the state alone makes chunk1 (7/20 at the boost level) LOWER than
+    chunk2 by a factor (7*0.896+13)/20 = 0.9635, i.e. -3.8 %; composition adds +1.4 % (chunk2's utterances
+    average 5.66 s vs chunk1's 8.13 s) -> predicted ratio 1.014 x 1.038 = **1.053**; measured 1.0527.
+    Exp941's inference is therefore confirmed by measurement, and the mechanism is named.
+  * HONEST MISS: my per-utterance regression could not be made to work and the reason is structural.
+    rtf ~ duration + state fits poorly (R^2 0.46), rtf ~ 1/duration + state worse (0.30), and the
+    well-fitting form (generation time ~ duration + tokens, R^2 0.97) becomes unstable when the state
+    dummy is added (vae 0.940 -> 0.745 s/s, fixed +0.23 -> -2.41 s, decode 56.9 -> 147 ms/token) because
+    the state flips at utterance 8 and the boost/settled groups differ in composition -> collinear at
+    n=40. So the honest instruments remain (a) the WITHIN-chunk duration correlation for composition
+    (Exp941), (b) the protocol-clip state model for the state, and (c) this round's measured flip point
+    for the mechanism. A chunk dummy adds nothing (-2.9 pts), consistent with Exp941.
+  * Predictions: P1 hit, P2 hit (flip measured), P3 MISS (predicted R^2 >= 0.9), P4 as above.
+  Anchor 1.1928 at 23.5 h (delivered 98), transcript byte-identical, audit green.

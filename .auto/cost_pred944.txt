@@ -1,0 +1,18 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp944: per-utterance state attribution of the gate's rtf)
+
+CONTEXT: Exp941 decomposed the gate's chunk2/chunk1 swing into composition (+1.4 %, from the utterance
+durations) plus a state component, using ARCHIVED rtf values and the protocol-clip state model - it was an
+inference, because that gate run's clock wiring was inert. eval40.sh now records a per-utterance timestamp
+and the validated pattern is a concurrent `.auto/batt_sampler.sh` (cpu7 delivered request + batt), so the
+attribution can be MEASURED: per utterance, delivered share (state) and duration (composition).
+
+  P1  ACCURACY (the gate's job): 40/40 scored, WER 4.55 % (S=29 D=2 I=2 - the profile that has held for
+      nine gates), paired b=0/c=0 of 731 vs BOTH hyp-gate941 and hyp-gate852, 0/40 differing transcripts.
+  P2  the sampler shows the flip inside the run: delivered 2400000 early, 2000000 for the later
+      utterances (mapped by the per-utterance timestamps).
+  P3  a two-term model (rtf ~ duration + delivered-state) explains >= 90 % of the per-utterance variance
+      (R^2 >= 0.9), with the state coefficient corresponding to the measured +11.6 % boost -> settled.
+  P4  no residual CHUNK effect after controlling for duration and state - i.e. Exp941's decomposition is
+      confirmed by measurement rather than inference.
+  FAIL modes: R^2 well below 0.9 (a third factor drives per-utterance rtf); a state coefficient far from
+  +11.6 %; the sampler failing to capture the flip (then the state term is unidentified).
