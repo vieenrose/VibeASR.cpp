@@ -65,8 +65,11 @@ else:
     print("  regime: LONG-UPTIME (Exp870 fit, calibrated PRE-REBOOT; residuals vae +-0.2 %, wall +-0.1 %")
     print("    given tokens, Exp871). WARNING (Exp916): a fresh boot runs the same clip ~1.5x faster, so these")
     print("    defaults over-predict it (250.8 s clip: VAE +49 %, wall +45 %). Fresh-regime VAE rate is")
-    print("    2.10 s per effective window (Exp888/891) - pass --vae-rate 2.10 for fresh pricing; the LM legs")
-    print("    need measured phase scalars (fresh protocol clip: prefill 1.8 s, decode 3.0 s).")
+    print("    STATE-CONDITIONED (Exp932): 2.05 s per effective window in the big-core 2.4 GHz boost state,")
+    print("    2.33 in the 2.0 GHz settled state (flat within a state, ratio 1.13). A >2 min run is a MIX of")
+    print("    both, so pass --vae-rate for the STATE you are pricing, never for the clip length; window 1")
+    print("    carries a +4..7 % premium. LM legs (fresh, state-mixed): prefill ~16-26 ms/row and decode")
+    print("    ~75-85 ms/token, both rising with KV positions - quote them with the state.")
 print("  CAVEAT the model is a RATE model: it prices work, not behaviour. A change that alters what the LM")
 print("  emits (a precision, a decode policy) changes tok, which this line takes as an input.")
 PY

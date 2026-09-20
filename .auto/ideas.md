@@ -3370,3 +3370,36 @@ Consequences:
     aliases), so the "same file listed twice" cause cannot arise; two REAL files with identical bytes is
     the documented Exp675 WARN (chat.wav == chat69.wav). Same symptom, different cause - their path-set
     fix is the right general guard if our scan ever gains nesting.
+
+- COST MODEL RE-DERIVED STATE-CONDITIONED: THE LENGTH TREND IS A STATE MIX, PROVEN BY ARITHMETIC
+  (Exp932). All four ladder clips in one session with per-window LATENCY_TRACE + the device-state
+  sampler. Clips: 10 s (4 win), 17 s (6), 69 s (24), 138 s (48).
+  * TRACE vs SUMMARY: sum(LT vae) matches vae_s to -0.34 %/-0.34 %/+0.05 %/+0.02 %; tree closure
+    (vae+prefill+decode vs rtf x audio) -0.11 %/+0.40 %/-0.12 %/+0.02 % -> the additive frame holds in
+    the fresh regime at all four lengths.
+  * STATE PLATEAUS (window 1 and the flushed last window excluded): FAST 2067 ms (n=13, sd 1.74 %),
+    SLOW 2334 ms (n=61, sd 0.51 %); ratio 1.129. Fully-fast clips read 2046-2070; the slow state is
+    2334. (The fast pool's sd is inflated by one 2144 ms transition window in chat138.)
+  * STATE-MIX ARITHMETIC CLOSES FOR EVERY CLIP (+-0.3 %): predicting each clip's VAE total as
+    window-1 + sum(per-window rate by classified state) + flushed last gives
+      protocol 7.1 vs 7.1 (slow fraction 0/2) | chat17 11.9 vs 11.9 (0/4) |
+      chat69 53.3 vs 53.4 (16/22) | chat138 109.8 vs 109.7 (45/46).
+    So the aggregate per-clip rate (2.122 / 2.098 / 2.278 / 2.333 s/eff-win) is FULLY explained by the
+    slow fraction - there is no residual length term. This is the falsifiable version of Exp931: one
+    clip (chat69) exhibits BOTH rates within itself.
+  * CLOCK TRAJECTORY during the sequence: cpu7 = 2.4 GHz at t=0..90 s (protocol + chat17 + chat69's
+    opening windows), then 2.0 GHz for the rest (chat138 entirely settled). The state classification
+    from VAE times alone agrees with the independent clock samples.
+  * WINDOW-1 PREMIUM, CORRECTED: within-run it is +4.2 % (protocol) / +6.7 % / +6.0 % / +6.4 %.
+    Exp931's "+20 %" was a CROSS-run comparison (a hot run's w1 vs a cool run's plateau) - retracted;
+    quote +4..7 %.
+  * FRESH LM LEGS, STATE-MIXED (flagged as such): prefill 16.2/18.0/22.5/25.7 ms per row at ctx
+    58/118/522/1049 -> intercept ~15.6 ms/row + ~9.6e-3 ms per KV position; decode 78.4/74.9/79.7/
+    84.7 ms/token -> ~78.0 ms/token + ~6.3e-3 ms per position. Both slopes are inflated because the
+    short clips measured FAST and the long clips SLOW, i.e. the state mix masquerades as a KV term -
+    treat these as upper bounds until a same-chip-clip fast/slow pair fixes the scaling (queued).
+    The intercepts are clean: protocol and chat17 are both fully fast (prefill 16-18, decode 75-78).
+  * TOOL UPDATED (Exp917 text superseded): `cost_fit.sh --predict`'s fresh-regime hint now gives the
+    two STATE rates (2.05 boost / 2.33 settled) and says to pass --vae-rate for the state being
+    priced, never for the clip length; selftest still green after the edit.
+  Settled anchor 1.1887 at 18.0 h (batt 37.0 C), transcript byte-identical.

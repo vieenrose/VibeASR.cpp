@@ -1,0 +1,24 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp932: state-conditioned re-derivation of the cost model)
+
+CONTEXT: Exp931 showed the VAE per-window rate is bimodal with the big-core clock state (2.045 vs
+2.335 s/eff-window, flat within a state over 85 windows) and that the "long clips are 6-7 % slower per
+window" length trend is a STATE MIX. Every rate the loop uses for paper pricing (cost_fit.sh's fresh
+scalar, --vae-rate 2.10) is therefore a length/state average. Test: measure ALL FOUR ladder clips
+(4 / 6 / 24 / 48 windows) in one session with per-window LATENCY_TRACE + the device-state sampler,
+then fit per state.
+
+  P1  for each clip, sum(LT vae) == the run's vae_s within 0.5 % (trace and summary are the same
+      counter).
+  P2  per-window VAE is BIMODAL in every clip that spans the step: a fast plateau ~2045 ms and a slow
+      plateau ~2335 ms, with <=1 % spread inside each plateau. The 10 s and 17 s clips should sit
+      entirely in ONE state (whichever the device is in when they run).
+  P3  state-conditioned rates agree ACROSS clip lengths: fast ~2.05 and slow ~2.34 s/eff-window from
+      the 24/48-window clips must match the 4/6-window clips when those are in the same state.
+      That is the discriminating test - a real length effect would make the short clips faster at
+      matched state.
+  P4  the aggregate per-clip rate correlates with the FRACTION of windows in the slow state, not with
+      window count (no residual length term).
+  P5  tree closure (vae+prefill+decode vs rtf*audio) within 1 % per clip in the fresh regime.
+  P6  a first-window premium exists: window 1 VAE is above its run's plateau (~+7..+21 %, Exp931).
+  FAIL modes: no bimodality in the long clip (would refute Exp931's clock mechanism); closure >2 %;
+  LT lines missing; a clip whose mixed-state aggregate contradicts the two-state arithmetic.
