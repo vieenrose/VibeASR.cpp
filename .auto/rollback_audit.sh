@@ -34,9 +34,40 @@ ARMS=(
 
 declare -A SUM N HASH TOK
 REF=""
+DEV=${DEV:-$(grep -m1 '^DEV=' .auto/measure.sh | cut -d= -f2)}   # single source: measure.sh
+# Exp883 thermal gate: each arm runs only when the battery reads settled (<= 370 = 37.0 C).
+# The fresh regime shows +18 % heat excursions (Exp882), and this round's first ladder attempt
+# proved the failure mode: the default drifted 1.19 -> 1.34 across 32 back-to-back runs and every
+# hatch cost inflated (stack_off +42.9 % vs +27.1 %, dw_axpy +5.4 % vs +0.0 %) - heat amplifies the
+# price of extra passes, so a soaked ladder misleads the runbook it serves. The rep-reversal
+# (also Exp883) cancels linear drift; this gate bounds the nonlinear throttle remainder.
+# Always echoes its verdict (empty = settled) and always returns 0, so a blind/expired gate is
+# visible on the arm line instead of stalling or aborting the ladder.
+cool_down() {
+  local empty=0 T=""
+  for ((w = 1; w <= 20; w++)); do
+    T=$(adb -s $DEV shell "dumpsys battery 2>/dev/null | grep 'temperature:'" 2>/dev/null | grep -oE '[0-9]+' | head -n 1 | tr -d '\r')
+    if [ -z "${T:-}" ]; then empty=$((empty+1))
+      if [ "$empty" -ge 2 ]; then echo " [gate-blind]"; return 0; fi
+      sleep 10; continue
+    fi
+    if [ "$T" -le 370 ] 2>/dev/null; then return 0; fi
+    sleep 30
+  done
+  echo " [HOT batt ${T:-?}]"
+  return 0
+}
+# Exp883 heat-bias control: 16 sequential runs heat-soak the phone, and the fresh regime shows +18 %
+# heat excursions (Exp882). A fixed arm order charges all of that drift to the later arms while the
+# default, always first, looks artificially good. Even reps run the list REVERSED so a linear drift
+# cancels in the mean at zero time cost; the default arm's rep1-vs-rep2 spread is the residual check
+# (P4 in cost_pred883.txt). The summary accumulates per-arm, so the order is transparent to it.
 for ((r = 1; r <= REPS; r++)); do
-  for a in "${ARMS[@]}"; do
+  if (( r % 2 == 0 )); then ORDER=(); for ((i=${#ARMS[@]}-1; i>=0; i--)); do ORDER+=("${ARMS[$i]}"); done
+  else ORDER=("${ARMS[@]}"); fi
+  for a in "${ORDER[@]}"; do
     name=${a%%|*}; env=${a#*|}
+    gate=$(cool_down)
     out=$(SKIP_BUILD=1 EXTRA_ENV="$env" .auto/measure.sh 2>/dev/null)
     rtf=$(echo "$out" | grep -o 'METRIC rtf=[0-9.]*' | cut -d= -f2)
     tok=$(echo "$out"  | grep -o 'METRIC tokens=[0-9]*' | cut -d= -f2)
@@ -48,7 +79,7 @@ for ((r = 1; r <= REPS; r++)); do
     N[$name]=$(( ${N[$name]:-0} + 1 ))
     HASH[$name]="${HASH[$name]:-}$h "
     TOK[$name]="$tok"
-    echo "rep$r $name rtf=$rtf tok=$tok hash=$h"
+    echo "rep$r $name rtf=$rtf tok=$tok hash=$h$gate"
   done
 done
 

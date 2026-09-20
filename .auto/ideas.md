@@ -2844,3 +2844,20 @@ Consequences:
   with higher clocks having more to throttle, mechanism n=1. Rule for the queued decay series: space
   runs with idle cooldown, or heat masquerades as decay (the Exp15/16 discipline, re-learned for a
   new regime - the third time this loop has mistaken heat for signal: Exp15/16, Exp122-123, now).
+
+- ROLLBACK LADDER RE-RUN ON THE CURRENT BINARY, AND RELATIVE COSTS DON'T TRANSFER (Exp883).
+  16 arms x 2 reps, rep2 reversed (new), batt-gated <= 37.0 C (new, no HOT flags): identity EXACTLY
+  as at Exp864b (12 byte-identical; flush_off = 55ac39b635cb verified in a separate cooled run, so
+  every historical cell stays reachable; ct_block/ALL_OFF differ as documented). Costs: small hatches
+  match (axpy inert 6th time, m2/cont/lpad/gelu_batch within ~1 pp), big stacks read higher
+  (dw_conv1d +12.8 vs +8.4, stack +38.6 vs +27.1, ALL +45.0 vs +39.5).
+  Decisive control against heat: a cooled back-to-back default/stack pair reproduces +39.6 % with
+  byte-identical transcripts. Mechanism: ABSOLUTE overheads transfer across regimes (dw_conv1d 1.52 s
+  fresh vs 1.55 s, bound_batch 0.49 vs 0.48, stack 4.6-4.7 vs 5.0) while RELATIVE costs rise because
+  the fused default fell 36 % - the regime cheapened compute-dense fused paths more than the
+  bandwidth-bound fallbacks. Runbook rule: quote hatch costs in absolute seconds (transferable) plus
+  relative at its regime. Kept as negative control: the first ungated attempt (32 back-to-back runs)
+  drifted the default 1.19 -> 1.34 and inflated everything - reversal alone does not save a soaked
+  ladder. Also closed pre-round: VAE_DW_CT_OFF is deliberately NOT a ladder arm (RESULTS.md documents
+  it debug-only since Exp710 - it changes the transcript, failing the ladder's contract by design);
+  checking the ledger first saved a wrong "fix".

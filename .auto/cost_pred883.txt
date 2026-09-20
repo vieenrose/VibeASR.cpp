@@ -1,0 +1,54 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp883: rollback ladder re-run on the current binary)
+
+HYPOTHESIS: 19 rounds and one binary change (Exp880's help/defaults) since Exp864b. Every hatch
+must still reproduce its cost and its identity contract on the current tree. Costs are quoted
+vs_default IN THE SAME RUN, so they are regime-independent to first order - the fresh regime
+moves the absolute numbers (default ~1.19 vs 1.8481) but not the ratios. Any hatch whose cost
+or identity moved is a real regression or a real discovery.
+
+FROM Exp864b (v4.8, long-uptime), tolerance +-1.5 pp (heat + regime + noise):
+  P1  dw_conv1d +8.4 | gelu_bias +5.0 | gelu_batch +4.2 | dw_lpad +3.2 | bound_batch +2.6 |
+      cont_tile +1.9 | norm_fuse +1.4 | ls_fuse +1.3 | mm_m2 +0.2 | dw_axpy -0.0 |
+      flush_off +13.6 | stack_off +27.1 | ct_block +19.8 | ALL_OFF +39.5
+  P2  identity: 12/15 arms byte-identical to default (1a095c8496b4); flush_off reproduces the
+      pre-Exp829 protocol EXACTLY (55ac39b635cb); ct_block + ALL_OFF differ (layout system
+      change, 37-38 tokens). bound_batch_off is byte-identical ON THE PROTOCOL CLIP (its
+      b=1/c=2 lived in the 40-utt paired test, not in this hash).
+  P3  every arm deterministic across its 2 reps (no UNSTABLE) - with the heat control below,
+      rep spreads > 1.5 % on the default arm mean the control failed, not the hatch.
+  P4  (heat control check): default rep1 vs rep2 within 1 % - the reversal cancels linear drift,
+      so a larger spread indicts nonlinear heat, and hatch costs from such a run are provisional.
+
+NOT AN ARM (verified before proposing it): VAE_DW_CT_OFF. The ledger (RESULTS.md, Exp710) documents
+it as debug-only - it sets dw_taps=false and CHANGES the transcript - so it fails the ladder's
+contract by design ("a hatch that changes text is a different system"). The ladder is complete
+without it; proposing it would have repeated the Exp882 near-miss class (check the ledger first).
+
+METHOD (new this round): even reps run the arm list REVERSED. 16 sequential runs heat-soak the
+phone and the fresh regime shows +18 % heat excursions (Exp882); a fixed order charges all drift
+to the later arms while the default, always first, looks artificially good. Reversal cancels
+linear drift in the mean at zero time cost.
+
+VERDICTS (gated ladder, 16 arms x 2 reps, rep2 reversed, batt-gated <= 37.0 C, no HOT flags):
+  IDENTITY HOLDS EXACTLY AS AT Exp864b: 12 arms byte-identical to default (1a095c8496b4);
+  flush_off reproduces 55ac39b635cb EXACTLY (separate cooled run - historical reachability
+  confirmed on the current binary); ct_block/ALL_OFF differ (37-38 tok, documented system change).
+  P2 HOLD on identity; P3 HOLD (no UNSTABLE; rep spreads <= 1 % where visible).
+  P1/P4 REFINED, not failed: small-hatch costs match (axpy +0.1 vs -0.0 INERT 6th time, m2 +0.8 vs
+  +0.2, cont_tile +2.1 vs +1.9, dw_lpad +2.7 vs +3.2, gelu_batch +3.7 vs +4.2, norm_fuse +3.9 vs
+  +1.4, ls_fuse +2.3 vs +1.3, bound_batch +4.1 vs +2.6, flush +12.7 vs +13.6, ct_block +17.9 vs
+  +19.8) but big-stack arms read higher: dw_conv1d +12.8 vs +8.4, stack_off +38.6 vs +27.1,
+  ALL_OFF +45.0 vs +39.5.
+  MECHANISM, not heat (decisive control): a cooled back-to-back default/stack pair reproduces
+  +39.6 % (1.6601 vs 1.1893, byte-identical transcripts), and absolute overheads transfer:
+  dw_conv1d 1.52 s fresh vs 1.55 s long-uptime (IDENTICAL seconds); stack 4.60-4.71 s vs 5.01 s
+  (-6 %); bound_batch 0.49 vs 0.48 s (identical); flush 1.52 vs 2.51 s (window-rate effect).
+  So ABSOLUTE hatch costs are regime-stable (~+-10 %) while RELATIVE costs rise because the
+  fused default fell 36 %: the regime cheapened compute-dense fused paths more than the
+  bandwidth-bound fallbacks. Runbook rule from here on: quote hatch costs in ABSOLUTE seconds
+  (transferable) plus the relative figure at its regime - a relative-only table rots on the
+  next regime change, which is exactly what P1 caught.
+  FIRST ATTEMPT (soaked, ungated, 32 back-to-back runs) FAILED HONESTLY and is kept as the
+  negative control: default drifted 1.19 -> 1.34 and every cost inflated (stack +42.9, axpy +5.4).
+  The reversal alone does NOT save a soaked ladder (nonlinear throttle beats linear cancellation);
+  the batt gate does. Both ship in rollback_audit.sh.
