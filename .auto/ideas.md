@@ -3110,3 +3110,12 @@ Consequences:
   state, reproduced symmetrically. Gate chunks were run back-to-back in ONE call (Exp905 lesson).
   Settled anchor 1.1986 at 12.3 h, batt 38.0 C warm post-gate (series says this is +0.3 % vs a cool
   read; recorded as-is, not "corrected"), transcript byte-identical.
+
+- COVERAGE / AUDIT SELF-TEST BOARD (Exp911): 19/19 plantable checks fire on their own fault, 0 silent
+  or invalid, 3 classes accepted as uncontrolled (co-runner, sweep-resolves-to-tier which has its own
+  --dry control, and capture-identity which is WARN-only by construction). Every plant is a byte+stat
+  snapshot restored in a finally block; `git status` clean and the final clean-tree audit is green
+  (129 checks, 1 explained WARN) after all faults are reverted. Host-only round, no device time.
+  Notable fired classes exercised this round: doc-vs-tier drift (10), doc-vs-parser flag (11),
+  headline-vs-headline.json (9), frozen-refs removal (8), WAV header corruption (7), asset
+  duplication (6), schedule-changing shipping command (13).
