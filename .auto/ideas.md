@@ -3585,3 +3585,32 @@ Consequences:
     independence rests on Exp919/931-933's identity checks plus the token canary holding in all four.
   ANCHOR = B2 (a boost-state protocol run after 3 min idle, i.e. exactly the anchor condition):
   1.1976 at 20.4 h, transcript byte-identical.
+
+- ONE-SESSION FRESH-REGIME LADDER, WITH STATE PROVENANCE (Exp939). The documented ladder cells are
+  LONG-UPTIME (headline.json rtf10 1.85, Exp864/847); the fresh regime had only cross-session points
+  assembled at Exp899 ("provisional 10 s 1.19 / 17 s 1.34 / 69 s 1.41 / 138 s ~1.55"). Shipped tier,
+  ascending order, ONE session, no pre-heating between cells (the shape a user experiences in sequence):
+    clip   rtf     vae    lm     tokens  RSS      clock     s/eff-win   implied boost fraction
+    10 s   1.1937   7.1    4.8    39     2191.8   2400000   2.122        (boost; w1 premium inflates)
+    17 s   1.3418  11.9   11.0    106    2192.6   2400000   2.098        (boost)
+    69 s   1.4695  51.5   49.9    446    2198.2   2000000   2.197        ~48 % boost (11.1 of 23.4 win)
+    138 s  1.5823 109.7  108.6    876    2205.8   2000000   2.333        0 % (settled plateau exactly)
+  majflt 0 throughout; all four token canaries exact (39/106/446/876); RSS rises with the KV allocation.
+  * THE LADDER'S SHAPE IS A STATE MIX, NOW MEASURED PER CELL: the 10/17 s cells are boost-only, the 69 s
+    cell flips mid-run (~11 of 23 windows boost), the 138 s cell is settled end-to-end. The rtf rise with
+    length is therefore NOT a length effect - it is the fraction of each cell spent in the 2000000 state
+    (Exp931-933), and the state column now records it per cell.
+  * IT ALSO EXPLAINS THE Exp899 DISCREPANCY: my 10/17 s cells reproduce Exp899 exactly (1.1937/1.3418 vs
+    1.19/1.34) but the long cells are HIGHER (69 s 1.4695 vs 1.41, 138 s 1.5823 vs 1.55) because this
+    session ran them with no idle between cells, so they started warmer and spent more of the run
+    settled (Exp904's 138 s 1.52-1.53 corresponds to 2.238 s/eff-win = a mixed run; mine is 2.333 =
+    fully settled). PREDICTION MISS recorded: my P3/P4 bands (1.40-1.45, 1.50-1.56) were set from the
+    Exp899 points and were 1.4 %/1.4 % too low for this thermal history - the mix, not the band, is the
+    right frame.
+  * CONSEQUENCE FOR THE REPORT: a fresh-regime ladder cell is only meaningful with its state mix; cells
+    measured in different sessions are NOT exchangeable at the long end. If the report needs
+    state-homogeneous cells, pre-condition each cell (3 min idle -> boost for short cells; a pre-heat ->
+    settled for long cells) - QUEUED, not done here because the loop's ladder convention is the
+    ascending one-session row.
+  Anchor (protocol, boost, after cooldown - also refreshed the capture the 138 s run had left stale):
+  1.1950 at 20.9 h, transcript byte-identical, audit green.

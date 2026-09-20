@@ -1,0 +1,22 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp939: one-session FRESH-regime ladder with states)
+
+CONTEXT: the documented ladder cells (10/17/69/138 s) come from the LONG-UPTIME regime (Exp864/847,
+headline.json rtf10 1.85). The fresh regime's cells exist only as cross-session points assembled at
+Exp899 ("provisional: 10 s 1.19 / 17 s 1.34 / 69 s 1.41 / 138 s ~1.55") plus separate anchors. The loop's
+own rule is that the final report needs a ladder measured in ONE session, and Exp934's telemetry now
+records the clock state per run, so the ladder's shape can be explained instead of assumed.
+
+DESIGN: shipped tier, ascending order 10 -> 17 -> 69 -> 138 s, one session, no pre-heating between cells
+(so the shape is what a user experiences in sequence), states recorded per cell.
+
+  P1  10 s: rtf 1.19-1.20, 39 tokens, clock 2400000 (boost).
+  P2  17 s: rtf 1.33-1.35, 106 tokens, clock 2400000 (still boost - ~50 s of load so far).
+  P3  69 s: rtf 1.40-1.45, 446 tokens, clock 2000000 (settled: the flip lands inside this cell).
+  P4  138 s: rtf 1.50-1.56, 876 tokens, clock 2000000 (essentially all settled).
+  P5  the ladder's shape (rtf rising with length) is explained by the STATE MIX, not by a length effect:
+      the 10/17 s cells are boost-only, the 69 s cell is mixed, the 138 s cell is settled-only.
+  P6  RSS rises with length (KV allocation), majflt 0 throughout, and every transcript is the shipped
+      canary (39/106/446/876).
+  FAIL modes: a short cell reading settled (would mean the preceding idle did not restore boost, breaking
+  the ladder's comparability); a long cell reading boost at the end (would mean the flip needs > 138 s);
+  any token-count deviation; rtf outside the bands by more than the state model allows.
