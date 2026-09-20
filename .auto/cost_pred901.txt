@@ -1,0 +1,19 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp901: guard rotation #15)
+
+HYPOTHESIS: cadence rotation (#14 was Exp897). Standing expectation: premium ~+10 % by
+per-token accounting, 5th confirmation. Phone mildly warm at start (batt 38.0) - premium
+is the verdict, computed within one minute.
+
+PREDICTIONS (order-symmetric P,G,G,P, one pass):
+  P1  protocol = 1.18-1.23.
+  P2  guard = protocol x (1.09-1.11), tokens 55.
+  P3  (guard_gen - protocol_gen)/16 = 70-85 ms/token; guard vae_s == protocol vae_s within 0.3 s.
+  FAIL modes: premium outside token accounting; tokens != 55; degenerate transcript.
+
+VERDICTS:
+  P1 HOLD: protocol 1.1939.
+  P2 HOLD: guard 1.3050/1.3081, premium +9.5 % - 5th confirmation.
+  P3 HOLD: VAE identical 7.1/7.1; premium 69 ms/tok (edge, decode rates confirm); fluent.
+  P2 contamination (1.2885, both phases up) resolved to 1.1960 after idle - excluded by policy.
+  The 4th-sweep-arm heat step recurs (Exp897 P2 1.3069, now 1.2885): three arms clean, fourth
+  trips. Pattern named for future sweep design (keep sweeps <= 3 arms or gap before arm 4).

@@ -3020,3 +3020,9 @@ Consequences:
   six gates running), paired b=0/c=0 of 731 vs BOTH hyp-gate895 and hyp-gate852 (CI [0,0], p=1.0).
   Output stability across 6 gates and both regimes. Gate mean 1.35 (1.3350/1.3737) at ~8.6 h:
   series 1.32/1.33/1.35/1.35/1.35 - flat; chunk-2 now +-0.0015 across FOUR gates.
+
+- GUARD ROTATION #15 (Exp901): protocol 1.1939, guard 1.3050/1.3081 (55 tok) = +9.5 % premium -
+  5th confirmation of the per-token criterion (VAE 7.1/7.1, premium 69 ms/tok, fluent). P2 arm
+  heat-contaminated again (1.2885, both phases, 4th sweep arm) and resolved to the logged 1.1960
+  after idle - the 4th-arm step is now a recurring pattern worth naming: three back-to-back arms
+  stay clean, the fourth trips. No overfit signal. Decay flat at 9.0 h.
