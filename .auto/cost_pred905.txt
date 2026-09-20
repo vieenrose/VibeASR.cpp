@@ -1,0 +1,45 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp905: guard rotation #16 + gate regression)
+
+HYPOTHESIS: two boards due by cadence (guard #15 Exp901, gate Exp900). No changes since either
+(gate guards src changes; there are none), so both are expected-null hygiene - but the gate
+mean extends the decay series and the guard extends the premium series. Order: guard first
+(cool phone, 1 min), gate chunks second (heats), settled anchor last.
+
+PREDICTIONS:
+  GUARD (order-symmetric P,G,G,P):
+  P1  protocol = 1.18-1.22; guard = protocol x (1.09-1.11), tokens 55/39.
+  P2  (guard_gen - protocol_gen)/16 = 70-85 ms/token; VAE equal within 0.3 s; fluent.
+  GATE (tag gate905, stamp checked first):
+  P3  40/40, WER 4.55 % (S=29 D=2 I=2), paired b=0/c=0 vs gate900 AND gate852.
+  P4  gate mean 1.32-1.37 (series 1.32/1.33/1.35/1.35/1.35 - flat).
+  ANCHOR: settled protocol ~1.19 (decay point ~10 h) after cooldown.
+  FAIL modes: any guard premium break (see Exp881 rule); any gate discordant (output changed
+  with no src change - stop everything and investigate); anchor warm (cool longer, do not log).
+
+VERDICTS (session resumed mid-round: guard sweep 11:37-11:38 + gate chunk1 11:39-11:43 ran
+before the interrupt; chunk2/score/anchor completed after):
+  GUARD (order-symmetric P,G,G,P, heat pacing built in):
+  P1 HOLD: Pproto 1.1943 (39 tok, transcript correct).
+  P2 HOLD: Gguard 1.3050->1.3068 / G2guard 1.3121 (55 tok both), premium +9.65 % -
+  6th confirmation of the per-token criterion.
+  Per-token: guard LM 6.0 vs protocol 4.8 = 75 ms/tok (band 70-85); VAE 7.1/7.1
+  identical; guard transcripts byte-identical to each other, fluent concert text.
+  No 4th-arm step: P2proto 1.1979 (+0.3 % vs P1) - pacing-era sweeps stay clean.
+  Protocol arms byte-identical to each other AND to the settled anchor transcript.
+  GATE (tag gate905, stamp BIN=744bf77 verified = current binary before chunk2):
+  P3 HOLD: 40/40, WER 4.55 % (S=29 D=2 I=2 - identical profile SEVEN gates running),
+  paired b=0/c=0 of 731 vs gate900 AND vs gate852 (CI [0,0], p=1.0 both).
+  P4 MISS on the letter, EXPLAINED: overall mean 1.3133 vs band 1.32-1.37. Chunk1
+  1.3566 (in band) but chunk2 1.2700 - the 55-min idle between chunks (interrupt)
+  left chunk2 on a cool phone. Per-utterance ratios vs gate900 (same 40 wavs):
+  chunk1 x1.0185, chunk2 x0.9244, uniform shift on byte-identical outputs = device
+  state, not a product change. Symmetric corroboration of the heat-step magnitude
+  (+8-9 % warm vs cool). PROTOCOL LESSON: gate chunks must run back-to-back in one
+  thermal state for series comparability; a long idle between chunks breaks the
+  gate-mean series point (this one carries the qualifier).
+  ANCHOR: settled protocol 1.1938 (batt 36.9, VAE 7.1 / prefill 1.8 / decode 3.0,
+  RSS 2191.9, majflt 0, transcript byte-identical, checks.sh OK) at ~10.8 h uptime.
+  Decay flat: series 6m-10.8h all ~1.19-1.22.
+  TELEMETRY (n=17 protocol rows, procs-watch): batt r=+0.896 (t+7.79, decisive);
+  uptime -0.022, mem +0.060, procs -0.264 (t-1.06, ns, attenuated from -0.379 - the
+  watch resolves toward noise, still the wrong sign for contention).

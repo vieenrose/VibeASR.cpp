@@ -3052,3 +3052,16 @@ Consequences:
   long runs measure rates-with-bias. Fresh 138 s cell 1.52-1.53 stays heat-influenced provisional.
   Corroboration (rough): fresh decode slope ~6.6 us/pos vs 13.22 (about half) matches the regime
   asymmetry. Settled anchor 1.1924.
+
+- GUARD ROTATION #16 + GATE BY CADENCE, ONE INTERRUPT, ONE LESSON (Exp905): guard sweep
+  P,G,G,P reads Pproto 1.1943, Gguard 1.3068, G2guard 1.3121 (55 tok both), P2proto 1.1979 -
+  premium +9.65 %, 6th per-token confirmation (75 ms/tok, VAE 7.1/7.1, fluent, arms
+  byte-identical pairwise); no 4th-arm step (+0.3 %). Gate gate905 40/40, WER 4.55 %
+  (S=29 D=2 I=2, identical profile seven gates running), paired b=0/c=0 vs BOTH gate900
+  and gate852 (p=1.0). Gate mean 1.3133 misses the 1.32-1.37 band on the letter because a
+  mid-round interrupt idled the phone 55 min before chunk2: per-utterance ratios vs gate900
+  show chunk1 x1.02 but chunk2 x0.92 uniform on identical outputs - cool-state bias, not a
+  product change (and a symmetric corroboration of the heat-step size). Lesson: gate chunks
+  run back-to-back in one thermal state, or the series point carries a qualifier. Telemetry
+  n=17: batt r=+0.90 decisive; procs-watch attenuates to -0.26 (ns, resolving to noise).
+  Settled anchor 1.1938 at 10.8 h, byte-identical, checks OK - decay flat 6m-10.8h.
