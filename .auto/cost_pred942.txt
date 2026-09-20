@@ -1,0 +1,17 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp942: delivered-frequency telemetry, boost vs settled)
+
+CONTEXT: Exp940's LM transient (+0.4-0.5 s on the LM with vae identical) had the governor REQUEST pinned
+at 2400000 with low=0/20 samples, so the request cannot see it. cpu7's cpufreq stats/time_in_state IS
+readable and gives the DELIVERED histogram; calibrated at 100.3 units per second of wall (10 ms jiffies),
+with a boost-state protocol run delivering 80.8 % of its counted time at 2.4 GHz. measure.sh now
+differences it across each run and records the 2.4 GHz share as a METRIC line and a 14th TSV column.
+
+  P1  BOOST run (device idle, protocol clip): cpu7_deliv2400_pct 75-85, khz_med 2400000, vae 7.1.
+  P2  SETTLED run (immediately after 3 chat17 runs): cpu7_deliv2400_pct <= 20, khz_med 2000000, vae 8.0.
+  P3  the delivered share AGREES with the request-based classification on both (so the state model is
+      not an artefact of the request column) and separates the states by >= 55 points.
+  P4  after 3 min idle the next protocol run is boost again (deliv2400_pct back to 75-85).
+  P5  audit check 18 passes at 14 columns (header ends cpu7_deliv2400_pct).
+  FAIL modes: both runs reading the same delivered share (instrument blind to the state - then the
+  request-based classification was measuring something else); a settled run reading high (the heat did
+  not take); check 18 red after the migration.

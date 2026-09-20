@@ -148,7 +148,14 @@ case " $_e " in *" VAE_FILE="*) ;; *) _vf="VAE_FILE=$VAE_FILE ";; esac
 case " $_e " in *" MASK="*)    ;; *) _mk="MASK=${MASK:-C0} ";; esac
 case " $_e " in *" THREADS="*) ;; *) _th="THREADS=${THREADS:-2} ";; esac
 if [ "$PARSE_ONLY" != 1 ]; then
+# Exp942: DELIVERED-frequency histogram. cpu7's scaling_cur_freq (the 5th TSV column and the med/min/max
+# from bench_device.sh) is the governor's REQUEST; this is what the core actually delivered. Read
+# cpufreq stats/time_in_state before and after the run and difference it: the unit is a 10 ms jiffy
+# (calibrated: 100.3 units per second of wall), and the 2.4 GHz share is the state indicator. Needed
+# because Exp940's LM transient had the request pinned at max while the run was 10 % slower.
+TIS0=$( { adb -s $DEV shell "cat /sys/devices/system/cpu/cpu7/cpufreq/stats/time_in_state" 2>/dev/null; } || true )
 adb -s $DEV shell "$_e $_lm$_vf$_mk$_th sh $RDIR/bench_device.sh ${AUDIO} ${THREADS:-2} ${PIECES:-1} loop" > .auto/last_run.txt 2>&1 || exit 1
+TIS1=$( { adb -s $DEV shell "cat /sys/devices/system/cpu/cpu7/cpufreq/stats/time_in_state" 2>/dev/null; } || true )
 cat .auto/last_run.txt | tail -n 2
 adb -s $DEV pull $RDIR/out-loop.log .auto/last_out.txt > /dev/null 2>&1
 adb -s $DEV pull $RDIR/err-loop.log .auto/last_err.txt > /dev/null 2>&1
@@ -198,6 +205,23 @@ echo "$TAG majflt=${MAJFLT:-0}"
 [ -n "${DEC:-}" ] && echo "$TAG decode_s=$DEC"
 [ -n "${LOAD:-}" ] && echo "$TAG load_s=$LOAD"
 [ -n "${KHMED:-}" ] && echo "$TAG cpu7_khz_med=$KHMED"
+# Exp942: delivered 2.4 GHz share (percent of the run's counted big-core time). -1/absent = the stats
+# file is unreadable on this device, said out loud rather than silently blank.
+if [ -n "${TIS0:-}" ] && [ -n "${TIS1:-}" ]; then
+  printf '%s\n' "$TIS0" > /tmp/tis0.$$
+  printf '%s\n' "$TIS1" > /tmp/tis1.$$
+  DELIV=$( { python3 -c "
+import sys
+def rd(p):
+    return {l.split()[0]: int(l.split()[1]) for l in open(p) if len(l.split()) == 2}
+a, b = rd('/tmp/tis0.$$'), rd('/tmp/tis1.$$')
+d = {k: b.get(k, 0) - a.get(k, 0) for k in set(a) | set(b)}
+tot = sum(v for v in d.values() if v > 0)
+print(round(100 * d.get('2400000', 0) / tot) if tot > 0 else -1)
+" 2>/dev/null; } || true )
+  rm -f /tmp/tis0.$$ /tmp/tis1.$$
+  [ -n "${DELIV:-}" ] && echo "$TAG cpu7_deliv2400_pct=$DELIV"
+fi
 [ -n "${BATTT:-}" ] && echo "$TAG batt_temp_c=$(python3 -c "print(round(${BATTT}/10,1))")"
 # Exp894: device-state telemetry used to be PRINTED (note: lines) but never SAVED - so the only
 # per-run state record was batt_temp_c, and any uptime/memory/process correlation the loop might
@@ -211,16 +235,21 @@ if [ "$PARSE_ONLY" != 1 ] && [ -n "${RTF:-}" ]; then
   # faked uptime significance), and EXTRA_ENV is exactly the confound source for measure.sh rows.
   # Appended at END so columns 0-10 are stable; legacy headers migrate one-time, data rows are
   # never rewritten. Env assignment strings cannot contain tabs/newlines, so the TSV stays clean.
-  [ -f "$_tsv" ] || printf 'ts\tuptime_s\tprocs\tmem_avail_mb\tcpu7_khz\tbatt_c\trtf\tvae_s\tlm_s\ttokens\tfingerprint\textra_env\tcpu7_khz_med\n' > "$_tsv"
+  [ -f "$_tsv" ] || printf 'ts\tuptime_s\tprocs\tmem_avail_mb\tcpu7_khz\tbatt_c\trtf\tvae_s\tlm_s\ttokens\tfingerprint\textra_env\tcpu7_khz_med\tcpu7_deliv2400_pct\n' > "$_tsv"
   if ! head -1 "$_tsv" | grep -q 'extra_env'; then
     sed -i '1s/$/\textra_env/' "$_tsv"
   fi
-  # Exp934: 13th column `cpu7_khz_med` = the big core's median request DURING the run (the 5th column
+  # Exp934: 13th column `cpu7_khz_med` = the big core's median REQUEST during the run (the 5th column
   # `cpu7_khz` is a single PRE-RUN sample, which reads 1430000 while a run actually sits at 2400000 then
   # 2000000). Same append-only rule as Exp907: history is never rewritten, the header migrates one-time.
   if ! head -1 "$_tsv" | grep -q 'cpu7_khz_med'; then
     sed -i '1s/$/\tcpu7_khz_med/' "$_tsv"
   fi
+  # Exp942: 14th column `cpu7_deliv2400_pct` = percent of the run's counted big-core time actually
+  # DELIVERED at 2.4 GHz (request-independent). Append-only, same rule.
+  if ! head -1 "$_tsv" | grep -q 'cpu7_deliv2400_pct'; then
+    sed -i '1s/$/\tcpu7_deliv2400_pct/' "$_tsv"
+  fi
   _battc=$(python3 -c "print(round(${BATTT:-0}/10,1))" 2>/dev/null || echo "?")
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%s)" "${UPT:-?}" "${NPROC:-?}" "${MEMAV:-?}" "${KHZ:-?}" "$_battc" "$RTF" "${VAE:-?}" "${LMS:-?}" "${TOK:-?}" "${FP:-?}" "${EXTRA_ENV:-}" "${KHMED:-?}" >> "$_tsv" 2>/dev/null || true
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%s)" "${UPT:-?}" "${NPROC:-?}" "${MEMAV:-?}" "${KHZ:-?}" "$_battc" "$RTF" "${VAE:-?}" "${LMS:-?}" "${TOK:-?}" "${FP:-?}" "${EXTRA_ENV:-}" "${KHMED:-?}" "${DELIV:--1}" >> "$_tsv" 2>/dev/null || true
 fi

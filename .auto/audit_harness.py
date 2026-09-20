@@ -1322,8 +1322,8 @@ elif not os.path.exists(_tsv):
 else:
     try:
         _lines = [l for l in open(_tsv, encoding='utf-8', errors='ignore').read().splitlines() if l.strip()]
-        _hdr_ok = _lines and _lines[0].startswith('ts\tuptime_s') and _lines[0].rstrip().endswith('cpu7_khz_med')
-        _last_ok = len(_lines) > 1 and len(_lines[-1].split('\t')) == 13
+        _hdr_ok = _lines and _lines[0].startswith('ts\tuptime_s') and _lines[0].rstrip().endswith('cpu7_deliv2400_pct')
+        _last_ok = len(_lines) > 1 and len(_lines[-1].split('\t')) == 14
         if not _hdr_ok or not _last_ok:
             bad("check 18: device_state.tsv malformed (header/column check) - the telemetry write "
                 "is broken, not just absent")

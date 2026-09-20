@@ -3680,3 +3680,26 @@ Consequences:
         visible as duplicated sampler lines. Killed; and the first `pkill -f` matched MY OWN command line
         and killed my shell (the self-match trap flagged in Exp935) - use `pgrep -af "batt_sample[r]"`.
   Anchor (protocol, boost, lm 4.8) 1.1928 at 22.0 h, transcript byte-identical, audit green.
+
+- DELIVERED-FREQUENCY TELEMETRY SHIPPED, AND IT IS THE RIGHT STATE VARIABLE (Exp942). The request column
+  (scaling_cur_freq: the 5th TSV column and bench_device's med/min/max) is the governor's REQUEST; Exp940's
+  LM transient had it pinned at 2400000 with low=0/20 while the run was 10 % slower. cpu7's
+  `cpufreq/stats/time_in_state` IS readable on this device and gives the DELIVERED histogram. measure.sh
+  now reads it before and after every run, differences it, and records the 2.4 GHz share as
+  `METRIC cpu7_deliv2400_pct=` and a 14th TSV column (append-only; check 18 moved 13 -> 14 in lockstep).
+  * CALIBRATION: 100.3 units per second of wall => the unit is a 10 ms jiffy, so the column is
+    request-independent and unit-verified.
+  * VALIDATION (P1-P5 all hit): boost runs read **96 / 97 / 97 / 96** and settled runs read **0 / 0** -
+    a near-BINARY separation where the request median only says 2400000 vs 2000000. The chat17 warm-up
+    sequence resolved the flip to a single run (warm1 97, warm2 97, warm3 0, then the settled protocol 0),
+    and the post-idle anchor returned to 96 (P4). Audit green at 14 columns.
+  * P1's band was low (predicted 75-85, measured 96) because the calibration window was taken OUTSIDE
+    measure.sh and included its pre-run checks at low frequency; the shipped window starts just before the
+    run, which is the correct scope - recorded as a band miss, not a defect.
+  * WHY IT MATTERS: (1) it closes the blind spot that hid the Exp940 transient (request-independent);
+    (2) it is the cleaner state variable for the telemetry dataset (96/97 vs 0/0, no ambiguity);
+    (3) the settled-state LM reads 5.2 here, matching Exp938's S2 5.3, which sharpens the transient
+    definition to "lm ~5.3 at DELIVERED BOOST" - and the next hit will be recorded WITH the delivered
+    share, so the is-it-clock question is answerable on the next occurrence (QUEUED: check
+    cpu7_deliv2400_pct on the next lm>=5.2-at-boost row).
+  Anchor 1.1902 at 22.5 h (batt 35.9 C, request 2400000, delivered 96), transcript byte-identical.
