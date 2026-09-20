@@ -1,0 +1,31 @@
+PREDICTIONS WRITTEN BEFORE ANALYSIS (Exp903: first telemetry-dataset correlation)
+
+HYPOTHESIS: within the fresh regime, short-term rtf variance is heat alone; uptime/mem/procs
+carry no independent signal (the slow state lives on day timescales, unmeasured here). Test on
+the 13 protocol rows in device_state.tsv (+1 settled anchor this round = 14): Pearson r of rtf
+against batt_c, uptime_s, mem_avail_mb, procs (n=14 needs |r| > 0.53 for p < 0.05 - state the
+threshold in advance so a "suggestive" 0.4 cannot be oversold).
+
+PREDICTIONS:
+  P1  r batt_c > +0.7 (heat drives short-term variance; the 1.23/1.26 points sit at 39+ C).
+  P2  |r| < 0.4 for uptime_s, mem_avail_mb, procs (no independent short-term signal; the
+      6-9 h decay flatness already implies uptime-null, this quantifies it).
+  P3  the round's settled anchor reads 1.18-1.22 (decay flat at ~9.2 h) and joins the dataset
+      without moving any |r| by more than 0.1 (one row cannot swing n=14 - stated so a swing
+      would falsify the stability claim, not confirm the analysis).
+  FAIL modes: mem or procs show |r| > 0.53 (background-state mechanism gains REAL evidence -
+  escalate to a dedicated probe); uptime shows positive r (early decay inside 6-9 h -
+  contradicts the flat series, investigate); batt r < 0.5 (the heat story weakens - re-examine
+  what drives the excursions).
+
+VERDICTS (n=15 protocol rows; threshold |t|>2.18 pre-registered):
+  P1 HOLD: r(rtf,batt) = +0.916, t=+8.26 - heat drives short-term variance, decisively.
+  P2 HOLD: uptime +0.126, mem -0.051, procs -0.379 (t=-1.47, not significant) - no independent
+  short-term signal. Procs is closest to the line but with the WRONG sign for contention (more
+  procs -> faster) and t below threshold: noise until it says otherwise with more n. Watch it
+  as the dataset grows; do not claim it.
+  P3 HOLD: anchor 1.1948 settled (9.1 h decay point, flat); correlations recomputed with it
+  included - no |r| moved (single row, n=15, as stated).
+  SCOPE (not overstated): narrow predictor ranges (uptime 7.6-9.1 h, mem +-3 %, procs 815-832)
+  rule out STRONG short-term effects only. The slow state (days) is unmeasured by construction
+  and untouched by this analysis. The dataset's first use paid exactly as designed.

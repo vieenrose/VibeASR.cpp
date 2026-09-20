@@ -3034,3 +3034,10 @@ Consequences:
   cooled the SoC (clean number) while the lagging batt proxy still read high (honest flag). The
   flag marks proxy state; the waits do the work. Cost: +3 min on this sweep when engaged.
   Settled anchor 1.1899 at 9.1 h, byte-identical.
+
+- TELEMETRY DATASET FIRST USE (Exp903): n=15 protocol rows correlate rtf against batt/uptime/mem/
+  procs (|t|>2.18 pre-registered): batt +0.916 (t=+8.26, decisive), uptime +0.126, mem -0.051,
+  procs -0.379 (t=-1.47, not significant, wrong sign for contention - noise until more n says
+  otherwise). Short-term variance is heat alone; mem/procs carry no independent signal in the
+  6-9 h window. Scope kept honest: narrow ranges rule out strong short-term effects only; the
+  slow state (days) is unmeasured by construction. Settled anchor 1.1948 at 9.1 h.
