@@ -2835,3 +2835,12 @@ Consequences:
   Side observation for a future contention experiment: the concurrent shipped path jitters VAE-side while
   the sequential lean path does not (lean sd 0.5 % vs shipped 2.2 % at n=4 each) - at this n it is a
   note, not a finding.
+
+- FRESH-REGIME HEAT DISCIPLINE (Exp882 addendum): two upward excursions (1.4044 both phases up, then
+  1.2706) inside one back-to-back sequence, both at other_busy=1-2 % - background CPU ruled out as the
+  cause. After 3 min idle: 1.1917 with batt 38.1 -> 36.7 C. Verdict: SELF-HEATING, excluded from the
+  decay series (settled/idle points only: 6m 1.22 / 25m 1.19 / 35m 1.19 / 45m 1.19 / 9.75h 1.18-1.24).
+  The fresh regime looks MORE heat-sensitive than the long-uptime band (+18 % vs +-1 %) - consistent
+  with higher clocks having more to throttle, mechanism n=1. Rule for the queued decay series: space
+  runs with idle cooldown, or heat masquerades as decay (the Exp15/16 discipline, re-learned for a
+  new regime - the third time this loop has mistaken heat for signal: Exp15/16, Exp122-123, now).

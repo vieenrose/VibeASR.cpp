@@ -40,3 +40,14 @@ VERDICTS (two order-symmetric passes, 8 runs):
   SIDE OBSERVATION (n=4+4, not a claim): the concurrent-encoder shipped path jitters VAE-side
   under light contention (batt 38.2 C, procs 832) while the sequential lean path does not -
   if real, the lean tier is the steadier product. Needs a dedicated contention experiment.
+
+ADDENDUM - heat discipline for the fresh regime (same round):
+  Two upward excursions appeared mid-round: 1.4044 (VAE +0.8, LM +1.3, both phases) and 1.2706,
+  both at other_busy=1-2% (background CPU ruled out) after ~15 back-to-back runs. After 3 min idle:
+  1.1917, batt 36.7 C (was 38.1). Verdict: the excursions were SELF-HEATING, not decay and not
+  contention - excluded from the decay series by the documented rule ( settled/idle points only ).
+  Decay series (settled points): 6m 1.22 / 25m 1.19 / 35m 1.19 / 45m 1.19 / 9.75h 1.18-1.24.
+  The fresh regime seems MORE heat-sensitive than the long-uptime band (+18% excursions vs +-1%):
+  plausible if higher clocks have more headroom to throttle, but n=1 on the mechanism. CONSEQUENCE
+  for the queued decay series: runs must be spaced with idle cooldown (the Exp15/16 discipline,
+  re-learned) or heat masquerades as decay.
