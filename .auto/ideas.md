@@ -3860,3 +3860,24 @@ Consequences:
     STALE binary: the "harness says PASSED while the intended artifact was not produced" class (Exp931,
     Exp941). The `rc=` of the build step must be checked, not the chain's.
   Anchor 1.1921 at 20.2 h (batt 38.7 C, delivered 96), transcript byte-identical.
+
+- MANDATORY RE-VALIDATION AFTER THE Exp949 SRC CHANGE, + THE EXECUTABLE HASH (Exp950). prompt.md's rule is
+  that "full re-validation (17 s + 69 s + 40-utt WER)" is required before any result is trusted; Exp949
+  shipped a src change (an error path only) and I had run only the 40-utt leg. Now complete:
+    protocol 10 s: 1.1955, 39 tokens, transcript 1a095c8496b4 (boost, delivered 97 %)
+    17 s:          1.3398, **106 tokens EXACT**, RSS 2192.8 MB (boost) - the Exp939 cell is 1.3418 (0.15 %)
+    69 s:          1.5432, **446 tokens EXACT**, RSS 2198.3 MB - it ran FULLY SETTLED (delivered 0 %,
+                   vae 54.9 s = 2.34 s/eff-win, exactly the settled plateau), which is why it is not
+                   1.4695 (Exp939, ~48 % boost) or 1.4273 (Exp940, boost-start). The 69 s cell therefore
+                   has three measured state variants: 1.427 / 1.470 / 1.543 (an 8 % spread).
+    majflt 0 throughout; every token canary exact, so the error-path change did not leak into the normal path.
+  * BONUS (independent settled-state reproduction): the anchor run immediately after the 69 s cell was
+    itself settled (delivered 0, batt 39.7 C) and read **1.3327** - Exp938's S2 settled value was 1.3334,
+    i.e. agreement to 0.05 % from a different session and a different binary. Two independent measurements
+    of the settled state now exist, which is what makes "settled = +11.6 %" a level rather than a point.
+  * DOC RULE HONOURED (and it was two commits stale): RESULTS.md's reproducibility row quoted `84efcee2`
+    while the binary is `ed4cb82172ceec4d23c3b7db0fc405eb` (host == device, audit check 5). Refreshed in
+    both sites (the prose rule and the artifact table) with the Exp949 change named. This is the RULE the
+    row itself states - "refresh the executable hash in the commit that changes src/ or demo/" - and it had
+    been skipped for the Exp949 commit, which is exactly how such a quote goes stale.
+  Anchor (boost, after cooldown) 1.1913 at 20.6 h (batt 36.7 C, delivered 97), transcript byte-identical.
