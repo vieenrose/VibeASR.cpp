@@ -75,6 +75,17 @@ for ((i=START; i<START+COUNT && i<${#WAVS[@]}; i++)); do
   W=${WAVS[$i]}; B=$(basename "$W"); K=${B%.wav}
   [ -s "$OUT/$K.txt" ] && { echo "skip $K"; continue; }
   adb -s $DEV push "$W" $RDIR/ls40/ >/dev/null 2>&1
+  # Exp941: per-utterance TIMESTAMP. The first attempt at state telemetry here sampled the big core's
+  # governor request before/after each utterance - and it is INERT: 35 of 40 samples read 1430000, the
+  # idle target, because a between-runs sample cannot see the run (the same trap as the old measure.sh
+  # column). The working pattern is a single CONCURRENT sampler for the whole gate:
+  #     timeout 900 ./.auto/batt_sampler.sh .auto/gate_<tag>_state.txt 5 &
+  # then align its samples to these timestamps. Two adb calls per utterance bought nothing and cost ~16 s.
+  TS=$(date +%s)
+  # The measurement itself. (Exp941b: an edit that added the timestamp ABOVE accidentally deleted this
+  # line, and the gate then "ran" 4 utterances in 10.5 s by parsing the PREVIOUS run's stale err file -
+  # four identical rtf/tok values and identical timestamps were the tell. Keep this line directly under
+  # TS so the two move together.)
   adb -s $DEV shell "cd $RDIR && ${EXTRA_ENV:-} LD_LIBRARY_PATH=. taskset $MASK ./asr_streaming --vae-model ./$VAE_FILE --lm-model ./$LM_FILE --audio ls40/$B -t $THREADS --vae-pieces $PIECES" > .auto/eval40_out.txt 2> .auto/eval40_err.txt || { echo "FAILED $K"; exit 1; }
   python3 - "$OUT/$K.txt" <<'PY'
 import sys
@@ -85,10 +96,10 @@ PY
   R=$( grep -oE 'RTF: [0-9.]+' .auto/eval40_err.txt | head -1 | awk '{print $2}' || true )   # pipefail-safe: absent line != failed run (Exp876)
   T=$( grep -oE 'tokens: [0-9]+' .auto/eval40_err.txt | head -1 | awk '{print $2}' || true )   # pipefail-safe: absent line != failed run (Exp876)
   [ -z "${R:-}" ] && { echo "FAILED parse $K"; exit 1; }
-  echo "$i $K rtf=$R tok=$T"
+  echo "$i $K rtf=$R tok=$T t=${TS:-?}"
   # persist per-utterance RTF (Exp711: the mean was previously stdout-only and lost on
   # interrupted/resumed runs - a gate's mean is a ladder cell, not a throwaway line)
-  echo "$i $K rtf=$R tok=$T" >> "$OUT/rtf.log" 2>/dev/null || true
+  echo "$i $K rtf=$R tok=$T t=${TS:-?}" >> "$OUT/rtf.log" 2>/dev/null || true
   SUM=$(python3 -c "print($SUM+$R)"); N=$((N+1))
 done
 adb -s $DEV shell "rm -rf $RDIR/ls40" >/dev/null 2>&1

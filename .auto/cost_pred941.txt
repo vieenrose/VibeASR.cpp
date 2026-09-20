@@ -1,0 +1,18 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp941: gate regression + is the chunk swing the clock state?)
+
+CONTEXT: the gate is due by cadence (last Exp910, 30 rounds). Its chunk-to-chunk swings were attributed
+to "cool-state bias" (Exp905: chunk2 x0.92 uniform on identical outputs; Exp910: the opposite order).
+Exp931-933 showed a discrete 2400000 -> 2000000 step worth +11 % on the protocol clip, and eval40.sh now
+samples the clock before and after every utterance (two samples each, ~40 back-to-back utterances).
+
+  P1  ACCURACY (the gate's real job): 40/40 scored, WER 4.55 % (S=29 D=2 I=2 - the identical profile
+      that has held for eight gates), paired b=0/c=0 of 731 vs BOTH hyp-gate910 and hyp-gate852, and
+      0/40 differing transcripts (same binary, device BIN md5 744bf77052fa).
+  P2  the clock samples show the flip: 2400000 early in the run, 2000000 for the later utterances
+      (before/after pairs, so the flip utterance shows kb=2400000 ka=2000000).
+  P3  the chunk means track the state: chunk1 (utts 0-19) lower than chunk2 (20-39) if the flip lands
+      inside chunk1, i.e. the swing is the clock state, not a "cool-state" mystery. Gate mean 1.32-1.38.
+  P4  per-utterance rtf within a state is tight (~0.4 % sd), so the chunk means are state-dominated.
+  FAIL modes: a chunk swing that does NOT align with the sampled clock (then something else drives it);
+  clock samples absent/constant (wiring broken); any WER or transcript change (would mean the binary or
+  tier moved - it should not have).

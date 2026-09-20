@@ -3647,3 +3647,36 @@ Consequences:
   * All cells kept their token canaries (39/106/446/876); RSS rose with the KV allocation; majflt 0.
   Anchor (protocol, boost, lm 4.8 - the transient did NOT recur, confirming it is transient):
   1.1962 at 21.3 h, transcript byte-identical, audit green.
+
+- GATE REGRESSION + THE CHUNK SWING DECOMPOSED (Exp941). Gate941: 40/40 scored, WER 4.55 %
+  (S=29 D=2 I=2 - the identical profile NINE gates running), paired b=0/c=0 of 731 vs BOTH hyp-gate910
+  and hyp-gate852, and 0/40 differing transcripts on the unchanged binary. That is the gate's job done.
+  * THE CHUNK SWING (the substantive result, from 15 ARCHIVED gates - no device time): chunk2/chunk1
+    mean-rtf ratio is 1.013-1.016 in the long-uptime regime (gate721/778/791/845/852/878/gatem2 - seven
+    gates, tightly reproducible) but 0.936-1.085 in the fresh regime (880 +8.5 %, 885 +7.8 %, 890 +3.2 %,
+    895 +4.2 %, 900 +2.9 %, 905 -6.4 %, 910 +4.6 %, 941 +5.5 %).
+    COMPOSITION explains the baseline: chunk2's utterances average 5.66 s vs chunk1's 8.13 s (fixed by the
+    utterance ORDER), and within-chunk r(rtf, duration) = -0.59 (chunk1) / -0.49 (chunk2) with a slope of
+    ~-0.0097 rtf per second -> the composition difference alone predicts +1.4-1.9 %, which matches the
+    long-uptime 1.014 baseline almost exactly. So the baseline swing is COMPOSITION and only the
+    fresh-regime deviations are the state/thermal component; Exp905's 0.936 was a state REVERSAL (its
+    chunk2 ran after a 55 min interrupt, back in boost while chunk1 was settled). The Exp905/910
+    "cool-state bias" attribution was directionally right but incomplete.
+  * INSTRUMENT CORRECTED (twice): my first attempt sampled cpu7's governor request before/after each
+    utterance and it is INERT - 35 of 40 samples read 1430000, the idle target, because a between-runs
+    sample cannot see the run (the same trap as the old measure.sh column; two adb calls per utterance
+    bought nothing and cost ~16 s). Replaced with a per-utterance TIMESTAMP plus ONE concurrent
+    `.auto/batt_sampler.sh` for the whole gate, validated end-to-end on 4 utterances (real values
+    tok 46/31/84/17) - and the sampler showed the clock flipping **2000000 -> 2400000 -> 2000000 WITHIN
+    the gate**, i.e. the state OSCILLATES on ~15 s timescales, not just at startup. A gate's chunk mean
+    can therefore contain several state segments.
+  * TWO SELF-INFLICTED WOUNDS, both caught by inspection rather than by the harness:
+    (a) my edit DELETED the `adb shell` run line from eval40.sh, and the gate then "ran" 4 utterances in
+        10.5 s by parsing the PREVIOUS run's stale err file - four identical rtf/tok values and identical
+        timestamps were the tell. The run line is restored directly under the timestamp with a comment so
+        the two move together, and the fix was re-validated (4 real utterances).
+    (b) a stray sampler survived the first attempt because `&` backgrounded the whole `cd && ... && timeout`
+        chain, so `kill $BS` killed only the subshell (the Exp931 precedence class, second occurrence) -
+        visible as duplicated sampler lines. Killed; and the first `pkill -f` matched MY OWN command line
+        and killed my shell (the self-match trap flagged in Exp935) - use `pgrep -af "batt_sample[r]"`.
+  Anchor (protocol, boost, lm 4.8) 1.1928 at 22.0 h, transcript byte-identical, audit green.
