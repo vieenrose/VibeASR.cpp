@@ -3403,3 +3403,18 @@ Consequences:
     two STATE rates (2.05 boost / 2.33 settled) and says to pass --vae-rate for the state being
     priced, never for the clip length; selftest still green after the edit.
   Settled anchor 1.1887 at 18.0 h (batt 37.0 C), transcript byte-identical.
+
+- PEER EXCHANGE CLOSED: CLOCK-STEP RESULT DOES NOT TRANSFER TO THEIR BOX (2026-09-20, CUDA loop).
+  They checked our Exp931/932 clock-step mechanism against data already on disk instead of asserting:
+  cpufreq distribution 935/952 polls at the 1.479 GHz ceiling with 17 scattered below (idle ramps
+  during load), median identical in every logged run, and their GPU partition (31 reps) pegged at max.
+  => their box has NO boost state above the settled one, so their long-window rates are single-state by
+  construction; a downward idle blip during load cannot make a generation rate bimodal, and the rate
+  law's +-5% residuals independently bound any residual state effect. They filed the general rule:
+  "on any box WITH a governor, a long-window rate is a state average until proven single-state."
+  * RECIPROCAL METHOD RULE (ours, sent back): the rate law's own RESIDUAL band is usually the cheapest
+    single-state test - if a fit leaves +-5% residuals, a hidden state effect that size is already
+    excluded, so the paired fast/slow run is unnecessary. On our side the residuals were +-0.3%, which
+    is why a 13% term could not hide and the two-run split was worth the device time. Rule of thumb:
+    design the state-split experiment only when the suspected effect EXCEEDS the model's residual band.
+  * No cells change on either side; nothing owed.
