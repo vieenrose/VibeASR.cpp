@@ -3881,3 +3881,22 @@ Consequences:
     row itself states - "refresh the executable hash in the commit that changes src/ or demo/" - and it had
     been skipped for the Exp949 commit, which is exactly how such a quote goes stale.
   Anchor (boost, after cooldown) 1.1913 at 20.6 h (batt 36.7 C, delivered 97), transcript byte-identical.
+
+- FAULT BOARD ROTATION, WITH THE Exp949 DIAGNOSTIC NOW GUARDED (Exp951): 13/13 PASS, 0 fail. The board was
+  due by cadence (~20 rounds since Exp930) and it is the right home for a guard on the behaviour Exp949
+  shipped: its `-c 16` config-edge probe asserted only the EXIT CODE, so a future change could have
+  restored the old bare "frames failed" and the board would still have printed PASS. `cprobe` now takes an
+  optional 5th argument - a pattern that MUST match - and the `-c 16` probe requires `context exhausted`.
+  * CONTROL (Exp660 rule): with the required pattern replaced by a string that cannot appear, the probe
+    FAILs with a new, explicit message ("exit 1 as expected but the message /.../ is MISSING") and the
+    board reads 12 pass / 1 fail; restored byte-identical (cmp) -> 13/13. So the assertion is a real check,
+    not a no-op, and it is the third shipped behaviour this board guards by message rather than by code.
+  * Board detail: healthy baseline H=1.3355 (the device was warm, i.e. settled state) and the audio probes
+    still passed with content-derived denominators (trunc_half 1.4845, lie_dur 1.3510 vs H=1.3355), which is
+    the point of judging them RELATIVE to the same-session baseline rather than an absolute band (Exp886).
+  * PARTIAL-STATE ANCHOR, a by-product worth recording: the first post-board anchor read 1.2048 with
+    delivered=76 % (low=4 of 20 samples) - a HALF-FLIPPED run, sitting between the boost level (1.19) and
+    the settled level (1.333). That is the third independent partial-state observation (Exp943 runs 7 and 9
+    were 48/47 %) and it fits the model: the mix moves the metric roughly proportionally.
+  Anchor (clean boost, after 5 min idle) 1.1980 at 20.7 h (batt 36.4 C, delivered 97), transcript
+  byte-identical.
