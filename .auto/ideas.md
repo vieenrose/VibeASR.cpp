@@ -3015,3 +3015,8 @@ Consequences:
   5 % of the 2.10 rate), prefill 3.0, decode 7.9 (74.5 ms/tok), rtf 1.3399, tokens 106 EXACT
   (flushed canary). All bands held (two edge-kisses low, within noise). Fresh ladder complete
   (provisional): 10 s 1.19 / 17 s 1.34 / 69 s 1.41 / 138 s ~1.55. Settled anchor 1.1928 at 8.6 h.
+
+- GATE REGRESSION, DUE BY CADENCE (Exp900): 40/40, WER 4.55 % (S=29 D=2 I=2 - identical profile
+  six gates running), paired b=0/c=0 of 731 vs BOTH hyp-gate895 and hyp-gate852 (CI [0,0], p=1.0).
+  Output stability across 6 gates and both regimes. Gate mean 1.35 (1.3350/1.3737) at ~8.6 h:
+  series 1.32/1.33/1.35/1.35/1.35 - flat; chunk-2 now +-0.0015 across FOUR gates.
