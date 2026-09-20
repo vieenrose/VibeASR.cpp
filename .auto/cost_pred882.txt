@@ -1,0 +1,42 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp882: lean-vs-shipped in the fresh-boot regime)
+
+HYPOTHESIS: the lean tier's +11.8 % penalty (Exp845, long-uptime: 2.08 vs 1.85) is STRUCTURAL -
+the deferred deep stages do extra work that scales with the same clocks and bandwidth as the
+shipping path. If so the penalty is regime-independent: lean should read shipped x 1.118 in the
+fresh regime too. If instead the penalty is ABSOLUTE seconds (a fixed recompute cost), it becomes
+a LARGER relative penalty when everything else is 35 % faster - and the product advice for 4 GB
+devices changes.
+
+MECHANISM: lean = PIECES=13 + VAE_DEFER_LATE=1, same model files as shipped. The deferral converts
+concurrent deep-stage work into a late sequential pass; nothing in that transformation is
+clock- or bandwidth-asymmetric vs the shipping schedule, so both arms should scale together.
+
+PREDICTIONS (protocol clip, order-symmetric S,L,L,S, one pass):
+  P1  shipped fresh = 1.18-1.22 (decay point at uptime ~30 min; reproduces Exp881's 1.19).
+  P2  lean fresh = shipped x (1.10-1.14), i.e. ~1.31-1.37. Tokens identical to the lean canary
+      (39 - the lean row's protocol token count, Exp847).
+  P3  lean RSS ~1.75-1.85 GB (below shipped 2.19 - the tier's reason to exist; regime-independent
+      by construction since arenas are sized, not timed).
+  FAIL modes: lean penalty <= +5 % (the deferral got relatively cheaper - reprice the tier);
+  penalty >= +20 % (absolute-seconds story - reprice AND re-explain); tokens != 39 on either arm
+  (wrong config - the Exp798 class; the stamp is PIECES=13 + VAE_DEFER_LATE=1, files default).
+
+AFTERWARD: whichever way it lands, the tier table gains a regime qualifier or a confirmation.
+This does NOT ship anything - it prices the product option the -c result (Exp880) made timely:
+if long sessions want -c 8192 (+112 MB), the lean tier's RAM headroom is where that budget lives.
+
+VERDICTS (two order-symmetric passes, 8 runs):
+  P1 HOLD (with jitter): shipped 1.1876/1.1909 then 1.2453/1.2214 - still the ~1.19 regime
+  (far from 1.85), but the second pass scattered VAE-side (+0.5 s on one arm). Decay point at
+  uptime ~40 min: fast.
+  P2 HOLD on the pooled number: lean 1.3559/1.3626/1.3472/1.3591 (mean 1.3562, sd 0.006) vs
+  shipped pooled mean 1.2113 -> penalty +12.0 %, vs +11.8 % long-uptime. WITHIN noise: the
+  penalty is regime-independent; no reprice. (Pass 1 alone read +14.3 %, pass 2 alone +8.2 % -
+  the shipped arm's sd is 2.2 % vs lean's 0.5 %, so single-pass ratios mislead in both directions.
+  This is why the prediction demanded pooling, and why the criterion was a band, not a point.)
+  P3 HOLD: lean RSS 1752.2 MB both passes to 0.1 MB - the tier's RAM virtue is exact.
+  Mechanism: lean overhead = +1.2 s VAE (deferred deep stages) + ~0.5 s prefill (p13 rows);
+  decode identical (same 39 tokens). Overhead scales ~3/4 with the regime in absolute seconds.
+  SIDE OBSERVATION (n=4+4, not a claim): the concurrent-encoder shipped path jitters VAE-side
+  under light contention (batt 38.2 C, procs 832) while the sequential lean path does not -
+  if real, the lean tier is the steadier product. Needs a dedicated contention experiment.

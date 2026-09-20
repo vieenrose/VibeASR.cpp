@@ -2823,3 +2823,15 @@ Consequences:
   from the phone UI when it is next in hand; if a third unexplained reboot appears, audit host-side adb
   access. A device that reboots itself on a schedule is a metrology feature (fresh states for free), not a
   fault - provided the schedule is KNOWN, which it currently is not.
+
+- LEAN PENALTY IS REGIME-INDEPENDENT (Exp882; predictions in .auto/cost_pred882.txt BEFORE the runs).
+  Two order-symmetric S,L,L,S passes, fresh boot: shipped pooled 1.2113 (1.1876/1.1909/1.2453/1.2214,
+  sd 2.2 %), lean pooled 1.3562 (1.3559/1.3626/1.3472/1.3591, sd 0.5 %) -> penalty +12.0 % vs +11.8 %
+  long-uptime. WITHIN noise: the deferral overhead (+1.2 s VAE deep stages + ~0.5 s p13 prefill rows,
+  decode identical) scales ~3/4 with the regime in absolute seconds, so the relative price is unchanged
+  and the tier table needs no reprice - just this confirmation cell. Lean RSS 1752.2 MB both passes to
+  0.1 MB. Method lesson kept: pass 1 alone read +14.3 %, pass 2 alone +8.2 % - single-pass ratios
+  mislead in BOTH directions when one arm scatters, which is exactly why predictions must demand pooling.
+  Side observation for a future contention experiment: the concurrent shipped path jitters VAE-side while
+  the sequential lean path does not (lean sd 0.5 % vs shipped 2.2 % at n=4 each) - at this n it is a
+  note, not a finding.
