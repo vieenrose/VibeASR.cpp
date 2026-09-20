@@ -1,0 +1,24 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp938: state-controlled protocol metrology, S/B/S/B)
+
+CONTEXT: Exp914 measured the settled protocol noise floor (6 reps, 3-min spacing) as sd 0.40 %/rep with
+a 1.05 % range - BEFORE the clock-state telemetry existed. Exp931-933 showed the big core has two states
+(2400000 boost / 2000000 settled) with a phase-weighted ~10 % rtf effect. So the question the loop's
+decision bar actually rests on: is that 0.40 % spread intrinsic, or was it state contamination? And does
+the standard 3-min idle spacing restore the boost state?
+
+DESIGN (order-symmetric S,B,S,B so a linear drift cancels in the between-state comparison):
+  2x chat17 (heat into settled) -> protocol immediately           = S1
+  3 min idle                      -> protocol                      = B1
+  2x chat17                       -> protocol immediately          = S2
+  3 min idle                      -> protocol                      = B2
+
+  P1  S runs: clock median 2000000, vae_s ~7.8-8.0 (2.33 s/eff-win x 3.35), rtf ~1.30-1.34.
+  P2  B runs: clock median 2400000, vae_s 7.0-7.2, rtf 1.18-1.21.
+  P3  between-state difference ~+10 % (the phase-weighted blend of VAE x1.142, prefill x1.187,
+      decode x1.028 for this clip's mix).
+  P4  within-state spread (S1 vs S2, B1 vs B2) <= 0.5 % - i.e. the A/B bar is NOT state-limited
+      provided both arms share a state (which Exp935 certified for the sweep).
+  P5  all four runs: 39 tokens, transcript 1a095c8496b4 byte-identical (state must not change text).
+  FAIL modes: a B run reading 2000000 (3-min idle does NOT restore boost -> the loop's spacing is
+  state-insufficient and its noise floor IS state-limited); an S run reading 2400000 (2x chat17 does not
+  heat enough); within-state spread >1 %; any transcript difference.

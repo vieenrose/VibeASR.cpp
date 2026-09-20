@@ -3553,3 +3553,35 @@ Consequences:
   * QUEUED: an arm-order test (does dw_conv1d immediately after default, across a gate, reproduce the
     2.1 s?) if that range ever matters for a decision.
   Settled anchor 1.1937 at 20.0 h (batt 36.0 C, boost state, low=0 of n=19), transcript byte-identical.
+
+- THE PROTOCOL METRIC'S STATE LEVEL, AND THE ANSWER TO Exp914's NOISE-FLOOR QUESTION (Exp938). Designed
+  order-symmetric S,B,S,B run (S = protocol immediately after heat; B = protocol after 3 min idle):
+    S1 1.2011 vae 7.2 prefill 1.8 decode 3.0 clock 2400000 (BOOST - the heat did not take)
+    B1 1.1918 vae 7.1 prefill 1.8 decode 3.1 clock 2400000 (boost)
+    S2 1.3334 vae 8.0 prefill 2.2 decode 3.1 clock 2000000 (SETTLED)
+    B2 1.1976 vae 7.1 prefill 1.9 decode 3.0 clock 2400000 (boost)
+  * BETWEEN-STATE EFFECT: settled vs boost = **+11.4 %** on the protocol clip, and it is **29x the
+    within-state sd** (boost sd 0.392 %/rep over 3 reps, range 0.78 %). That makes the clock state the
+    single largest known short-term effect on the metric - larger than batt (r=+0.9 over a ~3 C range)
+    and larger than any hatch the runbook lists except dw_conv1d.
+  * Exp914's NOISE FLOOR IS INTRINSIC, NOT STATE: boost reps read sd 0.392 % here vs the 0.40 % it
+    measured at 19 h uptime - so the spaced-rep floor is not state contamination, and the A/B bar is NOT
+    state-limited *provided both arms share a state* (Exp935 for the sweep, Exp937 for the ladder).
+    Every protocol cell must therefore state its clock state; all idle-first anchors in this loop are
+    boost, which is what the 1.19-1.20 series records.
+  * PROTOCOL CERTIFICATE: 3 min of idle RESTORES the boost state (B1 and B2 both 2400000 after 3 min) -
+    so the loop's standard spacing is state-sufficient, and the Exp905/910 gate chunk swings are the
+    clock state, not a mystery.
+  * PREDICTION MISS WORTH KEEPING: P1 predicted both S runs would be settled; S1 stayed BOOST. Two
+    chat17 runs (~50 s of load) are NOT reliably enough to force the settled state - the flip needs
+    ~75-105 s of sustained load (Exp933/934) - so a "heat then measure" design needs a THIRD warm-up run
+    (or a longer one) before it can assume the settled state. S2 flipped only after the session had
+    accumulated heat.
+  * Independent phase confirmation on the protocol clip: vae +11.9 % (chat17's phase scaling predicted
+    x1.142), prefill +19 % (predicted x1.187), decode ~0 % (predicted x1.028) - the same ordering, on a
+    different clip, from a different design.
+  * All four runs 39 tokens; the final capture is byte-identical (1a095c8496b4). Intermediate captures
+    were overwritten by measure.sh, so the per-run transcript hashes were not kept - the state->text
+    independence rests on Exp919/931-933's identity checks plus the token canary holding in all four.
+  ANCHOR = B2 (a boost-state protocol run after 3 min idle, i.e. exactly the anchor condition):
+  1.1976 at 20.4 h, transcript byte-identical.
