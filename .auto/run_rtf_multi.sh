@@ -110,6 +110,19 @@ for r in $(seq 1 "$REPS"); do
     done
     case "$threads" in (*[!0-9]*|'') echo "ERROR: arm '$arm' threads='$threads' is not a number" >&2; exit 2;; esac
     case "$pieces"  in (1|2|13|26) ;; *) echo "ERROR: arm '$arm' pieces='$pieces' must be 1,2,13,26 (env = field 5)" >&2; exit 2;; esac
+    # Exp902 heat pacing: the 4th consecutive sweep arm heat-trips (Exp897/901: +8-9 % step while
+    # arms 1-3 stay clean). Short arms are individually fine; the accumulation is not. Gate each arm
+    # on battery temperature: above 38.0 C wait 60 s and re-check (max 3 waits), then run anyway with
+    # a HOT flag so a heat-contaminated arm is visible, not silent. Light touch by design (the
+    # rollback ladder's 37.0 C gate would stall a quick A/B); retune if the 4th-arm step survives it.
+    HOT=""
+    for ((w = 1; w <= 3; w++)); do
+      BT=$(adb -s $DEV shell "dumpsys battery 2>/dev/null | grep 'temperature:'" 2>/dev/null | grep -oE '[0-9]+' | head -1 | tr -d '\r')
+      if [ -z "${BT:-}" ] || [ "$BT" -le 380 ] 2>/dev/null; then break; fi
+      echo "note: arm $label waiting on heat (batt ${BT})" >&2
+      sleep 60
+      if [ "$w" = 3 ]; then HOT=" HOT"; fi
+    done
     adb -s $DEV shell "$DEF_ENV $envs THREADS=$threads sh $RDIR/bench_device.sh $audio $threads $pieces $tag" \
       > .auto/multi-run-$tag.txt 2>&1
     adb -s $DEV pull $RDIR/err-$tag.log .auto/multi-err-$tag.txt >/dev/null 2>&1
@@ -118,7 +131,7 @@ for r in $(seq 1 "$REPS"); do
     rss=$(grep -oE 'hwm_kb=[0-9]+' .auto/multi-run-$tag.txt | head -1 | cut -d= -f2)
     maj=$(grep -oE 'majflt_delta=-?[0-9]+' .auto/multi-run-$tag.txt | head -1 | cut -d= -f2)
     echo "$label"$'\t'"$rtf"$'\t'"$tok"$'\t'"${rss:-0}" >> "$TSV"
-    echo "ARM $label | rep=$r | rtf=$rtf | tokens=$tok | rss_kb=${rss:-?} | majflt=${maj:-?} | cpu7_khz=$(cpufreq)"
+    echo "ARM $label | rep=$r | rtf=$rtf | tokens=$tok | rss_kb=${rss:-?} | majflt=${maj:-?} | cpu7_khz=$(cpufreq)$HOT"
   done
 done
 

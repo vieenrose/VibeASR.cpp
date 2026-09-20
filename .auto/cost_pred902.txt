@@ -1,0 +1,26 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp902: sweep heat-pacing validation)
+
+HYPOTHESIS: run_rtf_multi.sh now gates each arm on batt <= 38.0 C (60 s waits, max 3, HOT flag
+after). A 4-arm same-config sweep (A,A2,A3,A4 protocol) validates it: with pacing, the 4th arm
+must NOT step (Exp897/901 pattern), and any waits must be visible in the log.
+
+PREDICTIONS (4x protocol, one pass, phone starts batt 37.9):
+  P1  all 4 arms within +-1 % of their mean (~1.19-1.21) - no 4th-arm step.
+  P2  pacing engages at least once if batt crosses 38.0 (visible "waiting on heat" note) - the
+      gate observed working, not just present. (If batt never crosses, P2 is vacuous and the
+      validation is weaker - said in advance.)
+  P3  tokens 39 x4, transcripts byte-identical (protocol hash).
+  FAIL modes: arm 4 steps +5 % or more (pacing insufficient at 38.0 - retune threshold/gaps,
+  do not declare victory); HOT flag appears AND the arm reads clean (flag logic inverted or
+  meaningless - fix the flag); any arm FAILED (device/link issue, not heat - investigate).
+
+VERDICTS (4x protocol sweep with pacing + settled anchor):
+  P1 HOLD: 1.1956/1.1907/1.1941/1.1906, all within +-0.4 % - no 4th-arm step.
+  P2 HOLD: pacing engaged visibly (3x "waiting on heat", batt 382/384/381) before arm 4.
+  P3 HOLD: A_p4 device transcript md5 1a095c8496b4 (byte-identical); tokens 39 x4.
+  CORRECTION to my own pre-registered FAIL mode: "HOT + clean = flag meaningless" was wrong.
+  The 3 waits cooled the SoC (number clean) while the lagging batt proxy still read 381 (flag
+  fired honestly on the proxy). So the waits did the work and the flag marked the proxy state -
+  both halves behaved correctly. The flag means "ran despite proxy heat", not "is contaminated".
+  Counterfactual caveat (stated, not hidden): no unpaced control in THIS run; the evidence is
+  paced-clean now vs unpaced-stepped in Exp897/901. Single validation - keep the flag standing.

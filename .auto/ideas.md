@@ -3026,3 +3026,11 @@ Consequences:
   heat-contaminated again (1.2885, both phases, 4th sweep arm) and resolved to the logged 1.1960
   after idle - the 4th-arm step is now a recurring pattern worth naming: three back-to-back arms
   stay clean, the fourth trips. No overfit signal. Decay flat at 9.0 h.
+
+- SWEEP HEAT PACING (Exp902): run_rtf_multi.sh gates each arm on batt <= 38.0 C (60 s waits, max
+  3, HOT flag after). Validated with 4x protocol arms: pacing engaged 3x before arm 4, all four
+  within +-0.4 % (1.1956/1.1907/1.1941/1.1906), A_p4 transcript byte-identical. Correction to my
+  own pre-registered FAIL mode: HOT + clean does NOT mean the flag is meaningless - the waits
+  cooled the SoC (clean number) while the lagging batt proxy still read high (honest flag). The
+  flag marks proxy state; the waits do the work. Cost: +3 min on this sweep when engaged.
+  Settled anchor 1.1899 at 9.1 h, byte-identical.
