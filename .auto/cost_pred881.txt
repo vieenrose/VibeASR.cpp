@@ -1,0 +1,25 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp881: guard rotation #11, first rotation in the fresh-boot regime)
+
+HYPOTHESIS: the guard's job is to detect overfitting to the protocol clip. The anchor just moved 35% on
+device state. A relative instrument must TRACK the anchor across regimes: the guard premium (its excess
+over the protocol) must still be exactly its 16 extra decode tokens, priced at the CURRENT decode rate.
+If the premium breaks, either the guard is regime-fragile or something is wrong with the regime story.
+
+MECHANISM ( priced from this round's own anchor, not imported):
+  protocol fresh: rtf 1.1939, decode 3.0 s / 39 tok = 76.9 ms/tok (long-uptime: 90.3 ms/tok).
+  guard has 16 extra decode tokens and identical VAE (Exp869: both vae_s = 11.6 s).
+  predicted premium = 16 x 76.9 ms = 1.23 s on 11.94 s of gen = +10.3 % -> guard rtf 1.30-1.33.
+  NOTE the premium WIDENS in relative terms (+10.3 % vs +7.4 % long-uptime) because the regime
+  cheapened VAE (-39 %) more than decode (-17 %). A naive ratio check (+7.4 %) would FALSELY flag
+  drift here - the criterion is the TOKEN accounting, not the ratio.
+
+PREDICTIONS:
+  P1  guard rtf = 1.30-1.33 (3 interleaved reps), tokens = 55, transcript correct and complete.
+  P2  (guard_gen - protocol_gen) / 16 = 70-85 ms/token, consistent with the protocol's own 76.9.
+  P3  guard vae_s == protocol vae_s within 0.3 s (the VAE sees the same 4 windows of audio).
+  FAIL modes: premium unexplained by tokens (overfit or regime fragility - investigate, do not
+  hand-wave); tokens != 55 (wrong file or truncated push - the Exp675 class); guard FASTER than
+  protocol (impossible by construction - instrument error).
+
+AFTERWARD: the guard keeps its board only if P2 holds. The ratio band (+7.3-7.7 %) is hereby
+re-qualified as LONG-UPTIME-ONLY; the standing criterion is the per-token accounting.

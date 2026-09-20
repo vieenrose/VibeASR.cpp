@@ -2799,3 +2799,27 @@ Consequences:
   [0,0], p=1.0). So the help-text + vae_pieces-default change is output-inert on real speech, not just on
   the protocol hash. Gate mean 1.32 in the fresh-boot regime vs 1.89-1.91 long-uptime - the regime shows on
   varied real speech too, same ~30 %.
+
+- GUARD ROTATION #11, FIRST IN THE FRESH-BOOT REGIME (Exp881; predictions in .auto/cost_pred881.txt BEFORE
+  the runs). The guard must track the anchor across regimes or it is not a relative instrument. Order-
+  symmetric P,G,G,P sweep on the second independent fresh boot: protocol 1.1883/1.1944 (39 tok), guard
+  1.3085/1.3114 (55 tok) = +10.0 % premium vs +7.4 % long-uptime. Predicted +10.3 % (1.30-1.33) from the
+  mechanism, HIT: the premium is exactly the 16 extra decode tokens at the CURRENT rate - guard decode
+  4.2 s/55 = 76.4 ms/tok vs protocol 3.0/39 = 76.9, guard vae_s 7.1 vs protocol 7.0-7.1 (same 4 windows),
+  transcript fluent and complete. No overfit signal.
+  STANDING RULE CHANGE: the ratio band (+7.3-7.7 %) is LONG-UPTIME-ONLY - it widens mechanically when VAE
+  cheapens more than decode (-39 % vs -17 % here), so a naive ratio check would have cried wolf. The
+  criterion is now the per-token accounting (P2-style), which is regime-independent. A guard certified by
+  ratio alone is certified for one regime only.
+- SECOND FRESH BOOT REPRODUCES THE REGIME (Exp881): protocol 1.1939 at uptime ~25 min on an independent
+  boot, transcript byte-identical. Decay points so far: 6 min 1.22 / 25 min 1.19 / 9.75 h 1.18-1.24 - i.e.
+  NO decay within 10 h; the slow state accumulates over days. The 24-72 h points are still the ones that
+  matter (QUEUED decay series stands).
+- UNKNOWN REBOOT ACTOR (device hygiene, open): this boot's sys.boot.reason = "reboot,shell" (clean,
+  shell-UID-initiated) ~21 min before the session, fingerprint unchanged. Not me (my only reboot preceded
+  35000 s of uptime), not host cron (checked - unrelated project), no other pi session. Leading hypothesis:
+  the phone's own scheduled power on/off (ColorOS) - which, if daily, also explains Exp880's spontaneous
+  reboot AND bounds the slow-state accumulation to ~day scale, consistent with everything measured. Verify
+  from the phone UI when it is next in hand; if a third unexplained reboot appears, audit host-side adb
+  access. A device that reboots itself on a schedule is a metrology feature (fresh states for free), not a
+  fault - provided the schedule is KNOWN, which it currently is not.
