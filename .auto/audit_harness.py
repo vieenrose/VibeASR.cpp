@@ -1274,6 +1274,11 @@ except (OSError, AttributeError):
 # protocol capture exists but the TSV is missing or older than it, runs are escaping recording.
 # (Sweep arms neither pull last_out.txt nor append TSV, so they cannot trip this - both refresh on
 # the next measure.sh run. PARSE_ONLY touches neither either.)
+# Exp907: the TSV grew a 12th column `extra_env` (EXTRA_ENV per row, empty = default config),
+# because the Exp906 ladder proved config-less rows confound every raw correlation. The header
+# migrates one-time in the write path, so a healthy file always ends it with extra_env; data
+# rows predating the migration keep 11 columns (history is never rewritten) and only the latest
+# row - always written by the current script - is held to 12.
 _cap = os.path.join(HERE, 'last_out.txt')
 _tsv = os.path.join(HERE, 'device_state.tsv')
 if not os.path.exists(_cap):
@@ -1284,8 +1289,8 @@ elif not os.path.exists(_tsv):
 else:
     try:
         _lines = [l for l in open(_tsv, encoding='utf-8', errors='ignore').read().splitlines() if l.strip()]
-        _hdr_ok = _lines and _lines[0].startswith('ts\tuptime_s')
-        _last_ok = len(_lines) > 1 and len(_lines[-1].split('\t')) == 11
+        _hdr_ok = _lines and _lines[0].startswith('ts\tuptime_s') and _lines[0].rstrip().endswith('extra_env')
+        _last_ok = len(_lines) > 1 and len(_lines[-1].split('\t')) == 12
         if not _hdr_ok or not _last_ok:
             bad("check 18: device_state.tsv malformed (header/column check) - the telemetry write "
                 "is broken, not just absent")

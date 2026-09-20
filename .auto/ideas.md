@@ -3076,3 +3076,11 @@ Consequences:
   device_state.tsv has no config column, so ladder hatch arms confound any raw correlation
   (demoed: +0.90 batt-r collapses, uptime fakes significance). Queued fix: log EXTRA_ENV per
   row so analyses filter to default-config; clean n=17 reproduces batt +0.896 exactly.
+
+- TELEMETRY CONFIG COLUMN SHIPPED (Exp907, harness): device_state.tsv gains 12th column extra_env
+  (EXTRA_ENV per row, empty = default; appended at end, indices 0-10 stable; legacy header migrates
+  one-time, data history never rewritten); check 18 moves 11 -> 12 in lockstep (fault 18's plant
+  is column-agnostic). Proven: default 1.1941 (col12 empty), axpy run carries its env string with
+  byte-identical transcript (inert 8th time; pooled +0.8 % within hatch bar after order-symmetric
+  retest killed the warm-second-run hypothesis). Full audit 129/0 green; selftest --only 18 green.
+  Settled anchor 1.1922. Pre-907 rows lack config but are identifiable (the 30 ladder rows by ts).

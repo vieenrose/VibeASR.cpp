@@ -1,0 +1,31 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp907: harness - telemetry config column)
+
+HYPOTHESIS (Exp906 gap): device_state.tsv rows carry no config, so hatch arms confound any raw
+correlation (demoed sign flips). Fix: a 12th column `extra_env` holding EXTRA_ENV (empty =
+default config), appended at END so indices 0-10 are stable; measure.sh migrates a legacy
+header one-time (data rows untouched - history is never rewritten). Check 18 moves 11 -> 12
+in lockstep (fault 18's hide-the-TSV plant is column-agnostic, unaffected).
+
+  P1  after one default run: header ends with extra_env; new row has 12 cols, col12 empty.
+  P2  full audit green (check 18 passes on the migrated file).
+  P3  selftest --only 18 green (plant still fires, revert exact).
+  P4  one axpy-hatch run (EXTRA_ENV='VAE_DW_AXPY_OFF=1', inert 7 rounds): col12 carries the
+      string; transcript byte-identical (inert 8th time); rtf within noise of default.
+  FAIL modes: any audit red outside check 18; migration touching data rows; PARSE_ONLY
+  writing a row; col12 leaking tabs/newlines (env strings cannot contain them - assert by
+  inspection, the printf uses \t separators).
+
+VERDICTS:
+  P1 HOLD: header migrated (ends extra_env, data rows untouched); default run 1.1941,
+  12-col row, col12 empty.
+  P2 HOLD: full audit 129 passed, 0 failures (1 pre-existing WARN: chat.wav==chat69.wav
+  asset collision, unrelated to this change).
+  P3 HOLD: selftest --only 18 green (plant fires check 18, revert exact, tree clean).
+  P4 HOLD on mechanics + identity, cost read honestly: axpy run records col12 =
+  'VAE_DW_AXPY_OFF=1', transcript 1a095c8496b4 byte-identical (inert 8th time). Cost:
+  first pair (def,axpy) 1.1941/1.2125 (+1.5 %) looked warm-second-run; order-symmetric
+  retest (axpy,def) 1.1922/1.1922 (+0.0 %) kills the order hypothesis. Pooled axpy
+  1.2024 vs default 1.1932 = +0.8 %, within the +-1.5 pp hatch bar, consistent with
+  inert (ladder n=2 said -0.1 %). No cost revision; the column works as designed.
+  Round anchor: latest settled default 1.1922 (batt 36.9, full split recovered from
+  last_err.txt via PARSE_ONLY - same run, no new device time).

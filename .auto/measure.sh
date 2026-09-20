@@ -201,7 +201,15 @@ echo "$TAG majflt=${MAJFLT:-0}"
 # write must never break a measurement, and PARSE_ONLY must never write a measurement row.
 if [ "$PARSE_ONLY" != 1 ] && [ -n "${RTF:-}" ]; then
   _tsv=.auto/device_state.tsv
-  [ -f "$_tsv" ] || printf 'ts\tuptime_s\tprocs\tmem_avail_mb\tcpu7_khz\tbatt_c\trtf\tvae_s\tlm_s\ttokens\tfingerprint\n' > "$_tsv"
+  # Exp907: a 12th column `extra_env` (EXTRA_ENV, empty = default config). The Exp906 ladder
+  # proved rows without config confound every raw correlation (30 hatch arms flipped batt-r and
+  # faked uptime significance), and EXTRA_ENV is exactly the confound source for measure.sh rows.
+  # Appended at END so columns 0-10 are stable; legacy headers migrate one-time, data rows are
+  # never rewritten. Env assignment strings cannot contain tabs/newlines, so the TSV stays clean.
+  [ -f "$_tsv" ] || printf 'ts\tuptime_s\tprocs\tmem_avail_mb\tcpu7_khz\tbatt_c\trtf\tvae_s\tlm_s\ttokens\tfingerprint\textra_env\n' > "$_tsv"
+  if ! head -1 "$_tsv" | grep -q 'extra_env'; then
+    sed -i '1s/$/\textra_env/' "$_tsv"
+  fi
   _battc=$(python3 -c "print(round(${BATTT:-0}/10,1))" 2>/dev/null || echo "?")
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%s)" "${UPT:-?}" "${NPROC:-?}" "${MEMAV:-?}" "${KHZ:-?}" "$_battc" "$RTF" "${VAE:-?}" "${LMS:-?}" "${TOK:-?}" "${FP:-?}" >> "$_tsv" 2>/dev/null || true
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%s)" "${UPT:-?}" "${NPROC:-?}" "${MEMAV:-?}" "${KHZ:-?}" "$_battc" "$RTF" "${VAE:-?}" "${LMS:-?}" "${TOK:-?}" "${FP:-?}" "${EXTRA_ENV:-}" >> "$_tsv" 2>/dev/null || true
 fi
