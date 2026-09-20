@@ -194,3 +194,14 @@ echo "$TAG majflt=${MAJFLT:-0}"
 [ -n "${DEC:-}" ] && echo "$TAG decode_s=$DEC"
 [ -n "${LOAD:-}" ] && echo "$TAG load_s=$LOAD"
 [ -n "${BATTT:-}" ] && echo "$TAG batt_temp_c=$(python3 -c "print(round(${BATTT}/10,1))")"
+# Exp894: device-state telemetry used to be PRINTED (note: lines) but never SAVED - so the only
+# per-run state record was batt_temp_c, and any uptime/memory/process correlation the loop might
+# ever want died with the terminal scrollback (discovered while trying to retrospectively test
+# whether MemAvailable explains the fresh-regime excursions). Append one TSV line per run; the
+# write must never break a measurement, and PARSE_ONLY must never write a measurement row.
+if [ "$PARSE_ONLY" != 1 ] && [ -n "${RTF:-}" ]; then
+  _tsv=.auto/device_state.tsv
+  [ -f "$_tsv" ] || printf 'ts\tuptime_s\tprocs\tmem_avail_mb\tcpu7_khz\tbatt_c\trtf\tvae_s\tlm_s\ttokens\tfingerprint\n' > "$_tsv"
+  _battc=$(python3 -c "print(round(${BATTT:-0}/10,1))" 2>/dev/null || echo "?")
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%s)" "${UPT:-?}" "${NPROC:-?}" "${MEMAV:-?}" "${KHZ:-?}" "$_battc" "$RTF" "${VAE:-?}" "${LMS:-?}" "${TOK:-?}" "${FP:-?}" >> "$_tsv" 2>/dev/null || true
+fi

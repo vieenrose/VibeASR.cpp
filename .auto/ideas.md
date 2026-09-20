@@ -2949,3 +2949,11 @@ Consequences:
   guard decode 76.4 ms/tok vs protocol 76.9, VAE 7.1/7.1 identical, transcript fluent. No overfit
   signal. Postscript: immediate anchor 1.3368 (5th consecutive run) settled to the logged 1.1983
   after 3 min idle - fourth heat-discipline confirmation. Decay flat at 7.6 h.
+
+- DEVICE-STATE TELEMETRY PERSISTENCE (Exp894): per-run state (uptime/procs/mem/cpu7/fingerprint)
+  was printed but never saved - only batt_temp_c persisted, so retrospective mechanism tests were
+  impossible. measure.sh now appends one TSV line per run (write can never break a measurement,
+  PARSE_ONLY never writes); guarded by check 18 (capture newer than TSV = FAIL) + fault 18
+  (hide the TSV). Seeded with 3 spaced settled anchors: 1.1891/1.1904/1.1892 (sd 0.0007 - the
+  tightest triple of the loop), batt cooling throughout. Full sweep 19/19 fire, 0 silent.
+  Decay point at ~7.7 h: 1.1896 pooled, flat.

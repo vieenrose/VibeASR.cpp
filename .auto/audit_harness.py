@@ -1266,6 +1266,37 @@ try:
 except (OSError, AttributeError):
     bad("check 17: tier.env or demo source unreadable for the tier-default arm")
 
+# ---- 18. device-state telemetry must actually be recorded (Exp894) --------------------------
+# Exp880 added per-run device-state notes (uptime/procs/mem/cpu7/fingerprint) and Exp884-893 used
+# them - but they were PRINTED, never SAVED, so the only persisted state per run was batt_temp_c.
+# When Exp894 went to test whether MemAvailable explains the fresh-regime excursions, the dataset
+# did not exist. measure.sh now appends one TSV line per run; this check keeps that honest: if a
+# protocol capture exists but the TSV is missing or older than it, runs are escaping recording.
+# (Sweep arms neither pull last_out.txt nor append TSV, so they cannot trip this - both refresh on
+# the next measure.sh run. PARSE_ONLY touches neither either.)
+_cap = os.path.join(HERE, 'last_out.txt')
+_tsv = os.path.join(HERE, 'device_state.tsv')
+if not os.path.exists(_cap):
+    ok("check 18: no protocol capture on disk, nothing that must have been recorded")
+elif not os.path.exists(_tsv):
+    bad("check 18: .auto/last_out.txt exists but device_state.tsv is missing - device-state "
+        "telemetry is not being recorded")
+else:
+    try:
+        _lines = [l for l in open(_tsv, encoding='utf-8', errors='ignore').read().splitlines() if l.strip()]
+        _hdr_ok = _lines and _lines[0].startswith('ts\tuptime_s')
+        _last_ok = len(_lines) > 1 and len(_lines[-1].split('\t')) == 11
+        if not _hdr_ok or not _last_ok:
+            bad("check 18: device_state.tsv malformed (header/column check) - the telemetry write "
+                "is broken, not just absent")
+        elif os.path.getmtime(_cap) > os.path.getmtime(_tsv) + 1:
+            bad("check 18: .auto/last_out.txt is NEWER than device_state.tsv - the latest run escaped "
+                "device-state telemetry recording")
+        else:
+            ok(f"check 18: device_state.tsv recording ({len(_lines) - 1} runs logged, latest matches capture)")
+    except OSError:
+        bad("check 18: device_state.tsv unreadable")
+
 # ---- report -------------------------------------------------------------------
 print(f"harness audit: {len(oks)} checks passed, {len(warns)} warnings, {len(fails)} failures\n")
 if '--verbose' in sys.argv:

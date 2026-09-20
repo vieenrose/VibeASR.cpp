@@ -1,0 +1,16 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp894: device-state telemetry persistence)
+
+HYPOTHESIS: per-run device state (uptime/procs/mem/cpu7/fingerprint) is printed but never saved,
+so retrospective mechanism tests are impossible. Persist one TSV line per measure.sh run, guard
+it with audit check 18 + fault 18, and seed the dataset with 3 spaced settled anchors (which
+double as ~8 h decay points).
+
+PREDICTIONS:
+  P1  3 anchors read 1.18-1.22 settled (decay flat at ~8 h; uptime ~27300-27900 s).
+  P2  device_state.tsv gains exactly 3 lines (+header), 11 columns each; latest line's rtf
+      matches the capture hash run.
+  P3  audit check 18 passes (127+1 checks); fault 18 fires naming the telemetry gap.
+  P4  full selftest sweep: 19/19 plantable fire (18 existing + new fault 18), 0 silent.
+  FAIL modes: anchors trend or scatter (heat/decay - apply the normal discipline, the TSV
+  records the state for the analysis); TSV malformed (the write is broken - fix, do not relax
+  the check); any old fault MISSes (my audit edit broke a sibling - revert and investigate).

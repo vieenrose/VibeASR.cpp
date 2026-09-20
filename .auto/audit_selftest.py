@@ -214,6 +214,18 @@ def plant_help_default():
     return snap_write(p, s2.decode())
 
 
+def plant_telemetry_gap():
+    # Check 18 compares last_out.txt against device_state.tsv, so hide the TSV: with a capture
+    # present and no TSV, the check must fail naming the telemetry gap. Rename (not delete), so
+    # the revert is exact. If no TSV exists the plant is INVALID rather than silent - it means the
+    # audit is already red on check 18 and there is nothing to prove.
+    p, q = '.auto/device_state.tsv', '.auto/device_state.tsv.selftest_hidden'
+    if not os.path.exists(p):
+        raise RuntimeError('no device_state.tsv to hide; audit should already fail check 18')
+    os.rename(p, q)
+    return lambda: os.rename(q, p)
+
+
 def plant_unguarded_grep():
     # Reproduce the Exp876 class in one line: an unguarded $(grep ...) assignment in a set -e script.
     return snap_append('.auto/checks.sh', '\nZZ_SELFTEST=$( grep -oE zzz .auto/config.json | head -n1 )\n')
@@ -239,6 +251,7 @@ FAULTS = [
      'MISMATCH|missing on device'),
     ('15 set -e grep',      'a grep in $( ) can abort a set -e script',   plant_unguarded_grep,   'unguarded command substitution'),
     ('17 usage defaults',   'a usage line promises a default the struct lacks', plant_help_default, 'check 17.*-c'),
+    ('18 telemetry gap',    'runs stop being recorded in device_state.tsv',   plant_telemetry_gap,  'not being recorded'),
     ('7e derivation',         'a clip note describes audio that was not used', plant_false_derivation,
      'derivation NOT proven|derivation .*payload lengths|is NOT a prefix'),
     ('14 tool self-tests',    'a scorer self-test starts failing',           plant_selftest,      'selftest FAILED|self-test FAILED'),
