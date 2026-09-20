@@ -1,0 +1,18 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp950: mandatory re-validation after the Exp949 src change)
+
+CONTEXT: prompt.md's constraint is explicit - "Full re-validation (17 s + 69 s + 40-utt LibriSpeech WER) is
+required before any result is trusted for the final report". Exp949 changed demo/asr_streaming.cpp (an
+error path only), so the 40-utt gate was run (gate949: b=0/c=0 of 731 vs gate944, 0/40 differing) but the
+17 s and 69 s legs were not. RESULTS.md's reproducibility RULE also says the executable hash must be
+refreshed in the commit that changes src/demo: it still quotes 84efcee2 (the Exp639-era build) while the
+current binary is ed4cb821 (host == device).
+
+  P1  protocol: 39 tokens, transcript 1a095c8496b4, rtf 1.18-1.21 (boost state).
+  P2  17 s: 106 tokens EXACT (the shipped canary), rtf ~1.34 (boost, matching the Exp939 cell 1.3418).
+  P3  69 s: 446 tokens EXACT, rtf ~1.42-1.47 (the Exp939/940 cells were 1.4695/1.4273; the state decides).
+  P4  RSS ~2192 MB (17 s) / ~2198 MB (69 s), majflt 0 throughout, and the delivered-frequency column
+      records the state per run.
+  P5  the executable hash in RESULTS.md is refreshed to the current binary and the host/device copies match
+      (the audit's check 5 already asserts the latter).
+  FAIL modes: any token canary off (the src change leaked into the normal path - it must not); a transcript
+  hash change; the docs left quoting the old executable hash.
