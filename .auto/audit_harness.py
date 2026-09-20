@@ -533,25 +533,56 @@ if '--skip-device' not in sys.argv:
                 continue
             tstart, tlen = tr
             if rule.get('concat'):
-                parts = []
+                # Exp936: part grammar extended for long250 (peer-prompted SILENCE idea). A part is:
+                #   "clip.wav"               -> the whole data range of clip.wav
+                #   ["clip.wav", start, len] -> a RANGED part, byte offsets relative to the FILE
+                #   {"silence_bytes": N}     -> N synthetic zero bytes (an inserted gap)
+                # Every part is hashed on the device and compared with the target's data range, and the
+                # declared lengths must sum to the target's payload - so a wrong range, a wrong gap or a
+                # rebuilt source all fail loudly instead of being described in prose.
+                parts = []          # (label, device shell fragment, byte length)
                 for pn in rule['concat']:
-                    if pn not in dev_size or pn not in dev_head:
+                    if isinstance(pn, dict):
+                        n = int(pn.get('silence_bytes') or 0)
+                        if n <= 0:
+                            parts = None
+                            bad(f"derivation {tgt}: a silence part must be a positive byte count")
+                            break
+                        parts.append((f'SILENCE:{n}', f'head -c {n} /dev/zero', n))
+                        continue
+                    if isinstance(pn, list):
+                        if len(pn) != 3:
+                            parts = None
+                            bad(f"derivation {tgt}: a ranged part must be [name, start_byte, len_byte]")
+                            break
+                        name, pstart, plen = str(pn[0]), int(pn[1]), int(pn[2])
+                    else:
+                        name, pstart, plen = pn, None, None
+                    if name not in dev_size or name not in dev_head:
                         parts = None
-                        warn(f"derivation {tgt} = concat({','.join(rule['concat'])}): {pn} not on device")
+                        warn(f"derivation {tgt} = concat(...): {name} not on device")
                         break
-                    pr = wav_data_range(dev_head[pn], dev_size[pn])
+                    pr = wav_data_range(dev_head[name], dev_size[name])
                     if not pr:
                         parts = None
-                        warn(f"derivation {tgt} = concat(...): {pn} has no data chunk")
+                        warn(f"derivation {tgt} = concat(...): {name} has no data chunk")
                         break
-                    parts.append((pn, pr[0], pr[1]))
+                    if pstart is None:
+                        pstart, plen = pr[0], pr[1]
+                    if pstart < pr[0] or plen <= 0 or pstart + plen > pr[0] + pr[1]:
+                        parts = None
+                        bad(f"derivation {tgt}: part {name}[{pstart}:{pstart + plen}] lies outside that "
+                            f"clip's data range [{pr[0]}, {pr[0] + pr[1]}] - the RANGE is wrong")
+                        break
+                    parts.append((f'{name}@{pstart}+{plen}',
+                                  f'tail -c +{pstart + 1} {RDIR}/{name} | head -c {plen}', plen))
                 if parts:
                     if sum(p[2] for p in parts) != tlen:
                         bad(f"derivation {tgt}: declared as concat({', '.join(p[0] for p in parts)}) but the "
                             f"payload lengths sum to {sum(p[2] for p in parts)} B, not the target's {tlen} B "
                             "- one of the clips was rebuilt independently")
                         continue
-                    seg = ''.join(f'tail -c +{st + 1} {RDIR}/{nm} | head -c {ln}; ' for nm, st, ln in parts)
+                    seg = ''.join(f'{cmd}; ' for _, cmd, _ in parts)
                     h_parts = sh('adb -s ' + DEV + ' shell ' + shlex.quote(f'({seg}) | md5sum'),
                                  timeout=240).stdout
                     h_tgt = sh('adb -s ' + DEV + ' shell '

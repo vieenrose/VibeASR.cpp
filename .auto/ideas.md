@@ -3499,3 +3499,28 @@ Consequences:
   * ANCHOR RESOLVES THE Exp934 FLAG: 1.1927 at 19.0 h (batt 36.3 C, boost state, transcript
     byte-identical) - back in the normal band, so the 1.2159 point was a one-off ambient excursion, not
     drift. The new telemetry paid for itself in the first round after shipping.
+
+- long250 PROVENANCE MACHINE-VERIFIED (Exp936; peer-prompted, credits their SILENCE:n idea). long250.wav
+  backs every long-form cell (Exp879/898/916/931) and was the ONE asset whose composition was described in
+  prose but never checked. Its sources are all still on the device, so this was a grammar gap, not lost
+  provenance:
+    long250 data range 12,038,400 B = holdout_en.wav data 6,698,880 B (139.56 s)
+                                    + 59,520 zero bytes (the inserted 1,240 ms gap at 24 kHz mono s16)
+                                    + first 5,280,000 B of holdout_zh.wav (110 s)
+  * GRAMMAR EXTENDED (audit_harness.py): a concat part is now any of
+      "clip.wav"                whole data range (as before),
+      ["clip.wav", start, len]  a RANGED part, byte offsets relative to the FILE,
+      {"silence_bytes": N}      N synthetic zero bytes (device-side `head -c N /dev/zero`).
+    A ranged part is bounds-checked against that clip's real data range, the declared lengths must sum to
+    the target's payload, and the concatenation is hashed ON THE DEVICE and compared with the target's
+    data range - so a wrong range, a wrong gap length or a rebuilt source each fail loudly.
+  * RESULT: `derivation proven: long250.wav == concat(holdout_en.wav@44+6698880, SILENCE:59520,
+    holdout_zh.wav@44+5280000) byte for byte` (audit --verbose). 131 checks / 1 explained WARN / 0 fail.
+  * CONTROL (Exp660 rule): planted silence_bytes = 59,522 (one sample too long) -> FAIL with
+    "the payload lengths sum to 12038402 B, not the target's 12038400 B - one of the clips was rebuilt
+    independently"; restored -> green. Also re-ran selftest fault 7e (it rewrites chat155's concat): still
+    FIRES with the new grammar and the extra entry present, so the coverage did not regress.
+  * By-product: the existing chat138/chat155 rules were already using ranged parts (whole-data-range), so
+    their audit lines now show the explicit ranges (chat69@224+3311352 twice; chat138@44+6622704 +
+    chat17@44+816000) - the same proof, stated legibly.
+  Settled anchor 1.1963 at 19.5 h (batt 35.9 C, boost state, low=0 of n=19), transcript byte-identical.

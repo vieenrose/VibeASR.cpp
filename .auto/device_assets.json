@@ -189,6 +189,21 @@
    "file": "chat17.wav",
    "note": "first 408,000 frames (17.000 s) of chat69 - the derivation the ledger recorded at Exp675.",
    "prefix_of": "chat69.wav"
+  },
+  {
+   "concat": [
+    "holdout_en.wav",
+    {
+     "silence_bytes": 59520
+    },
+    [
+     "holdout_zh.wav",
+     44,
+     5280000
+    ]
+   ],
+   "file": "long250.wav",
+   "note": "Exp936: PROVEN byte-for-byte. 250.8 s of UNIQUE audio = all of holdout_en.wav (139.56 s) + an inserted 1,240 ms gap (59,520 zero bytes at 24 kHz mono s16) + the first 110 s of holdout_zh.wav (5,280,000 B). The clip behind every long-form cell (Exp879/898/916/931), machine-verified instead of described. Peer-prompted (SILENCE:n idea from the CUDA loop)."
   }
  ],
  "known_extras": {
