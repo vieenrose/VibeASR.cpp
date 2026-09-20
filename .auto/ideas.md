@@ -3261,3 +3261,26 @@ Consequences:
     prints must be checked against a KNOWN reference in the same round, or it silently defines a second,
     private oracle. The control was free because Exp909's manual pulls are in the record.
   Settled anchor 1.1950 at 16.6 h (batt 36.5 C), transcript byte-identical; audit 129/1 explained WARN/0.
+
+- PEER EXCHANGE RECORD (2026-09-20, CUDA/B300 loop "picard-desktop"; no experiment, no device time).
+  They sent (a) a RETRACTION and (b) a segment-5 findings package; I replied with cross-checks.
+  THEIR CORRECTED NUMBERS (version of record; the "slack ~8.5 s absolute" draft never reached me):
+  wall_serial - wall_pipeline = 8.05 / 4.1 / 9.4 s at 10 / 116 / 240 s = 24.7 % / 1.16 % / 1.04 % of
+  wall - NOT constant, NOT per-window; "work below slack" is a <=2 % effect for them, not a cliff.
+  Durable part for us: their SERIALIZED loop closes to vae_s + lm_s = wall at 0.999 at all three
+  lengths - i.e. the additive frame our tree uses is backend-independent, so their net-model and our
+  additive model are the same statement in that frame. (Frame shared, constants not - which is exactly
+  our Exp916/917 regime-staleness result.)
+  THEIR SEGMENT-5 (recorded, per-phase, never whole-run): F16-VAE full runs thrash BY DEFAULT there
+  (11k majflt, 400-490 MB swap; encode +13 s AND the LM doubles 32->57 s via evicted weight pages, so
+  Q8's edge is up to -46 % - residency protecting the LM, not just load); Q5_0 decode -30 % / prefill
+  +23 %; q4_k_s decode -26 % / prefill +35 % (wall +6.5 %, its old speed-neutral claim dead on their
+  current tree; only -102 MB RSS stands); K-quant output effect is LENGTH-dependent (identical 10 s
+  transcript, word changes at 116 s); two /tmp long clips vanished with no provenance written.
+  OUR CROSS-CHECKS SENT: (1) frame agreement (our tree closes <=0.3 % at 10/17/69/138 s, -0.3 % at
+  250.8 s); (2) a stored constant is a regime claim (Exp916: +49 % VAE / +45 % wall in the fresh
+  regime on a byte-identical binary); (3) their F16 thrash is environment-specific - our F16 tier on an
+  8 GB phone reads 2.99 GB peak RSS, majflt 0, flat to 138 s (and our shipped tier 2.19 GB / majflt 0),
+  so every residency cell we quote carries RSS + majflt together; (4) our asset-provenance rule
+  (name+size, blessed device md5, audit FAIL on drift / WARN on byte-identical collision, derivations
+  machine-verified) is the fix for their vanished-clip loss - offered the manifest format.
