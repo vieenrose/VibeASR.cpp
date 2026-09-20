@@ -1,0 +1,24 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp931: heat-vs-length attribution for the VAE per-window rate)
+
+CONTEXT: per-effective-window VAE rate measured across lengths is NOT flat: protocol (4 windows, eff
+3.35) 7.1 s -> 2.12 s/eff-win; chat69 (24, 23.44) 49.3 -> 2.10; chat138 (48, 47.04) 105.3 -> 2.24;
+long250 (86, 85.42) 191.7 -> 2.24. Exp904 concluded the 48/86-window elevation is intra-run
+SELF-HEATING, but its test (hot-start vs cool-start runs agreeing) cannot separate heat from a
+length/geometry effect, because both arms heat identically during their own run.
+
+INSTRUMENT: one long250.wav run with LATENCY_TRACE=1 gives per-window vae_ms ("LT w=N vae=..."),
+while a host sampler records the battery temperature every ~15 s during the same run. If the elevation
+is heat, it must appear as a WITHIN-RUN rise and must track the sampled temperature.
+
+  P1  per-window VAE rises across the run: mean(last 10 windows) / mean(first 10) >= 1.05.
+  P2  per-window VAE correlates with the sampled batt temp, r >= 0.5 (Pearson, temps interpolated at
+      each window's time from run start).
+  P3  sum(LT vae) == the run's vae_s total within 1 % (the trace is the same counter).
+  P4  THE DISCRIMINATOR: windows 1-5 (batt <= ~37 C) must read the SETTLED short-clip rate. Convert
+      per-window ms to s/eff-win using each window's frame fraction (full window = 26 frames; the
+      flushed last window is partial): if windows 1-5 give ~2.10-2.14 s/eff-win, heat is confirmed;
+      if they already give ~2.24, heat is REFUTED and a length effect is real (then the long-cell
+      "+5 % intra-run bias" caveat is wrong and must be revised).
+  FAIL modes: LT lines absent (knob did not reach the device); per-window sum != vae_s; fewer than 10
+  batt samples during the run; a monotone rise with FLAT batt (would implicate cache/arena growth
+  rather than heat - different mechanism, would need the arena-offset sweep).

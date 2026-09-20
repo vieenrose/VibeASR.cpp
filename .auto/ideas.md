@@ -3317,3 +3317,39 @@ Consequences:
   the three planted faults that must fire, and the two operational traps (bless via explicit device
   paths, never a remote loop that expands $f locally -> d41d8cd9 empty-stdin; assert absence with a full
   list or count, never head/tail). Nothing owed back.
+
+- INTRA-RUN HEAT vs LENGTH: IT IS A DISCRETE BIG-CORE CLOCK STEP, NOT A LENGTH EFFECT (Exp931).
+  Mechanism resolved with two instruments: per-window LATENCY_TRACE ("LT w=N vae=...") and a new
+  committed sampler, .auto/batt_sampler.sh (batt temp + cpu7/cpu0 scaling_cur_freq every N s during a
+  run; control: numeric columns, and a bad DEV prints "?" loudly). Both runs: long250.wav, same binary/tier.
+    COOL start (35.1 C): vae 189.9 s, rtf 1.2767. Per-window VAE: w1-35 = 2037-2078 ms (FLAT),
+      w36 = 2313 (the flip), w36-85 = 2323-2399 ms (FLAT). Step at t~120 s.
+    HOT start (39.0 C, ~2 min after the first run): vae 196.8 s, rtf 1.3174. Per-window: w2-10 =
+      2029-2077 ms (fast), w11+ = 2307-2340 ms. Step at t~40 s. cpu7 sampled 2400000 kHz at t=20/30/41 s
+      and 2000000 at t=0/10/51+ -> the flip coincides with the governor's 2.4 -> 2.0 GHz transition.
+  * THE TWO STATES: 2.045 s/eff-window (2.4 GHz boost) vs 2.335 s/eff-window (2.0 GHz settled), ratio
+    1.142 for a clock ratio of 1.200 -> the VAE kernels are ~70 % clock-scaled, consistent with the
+    elementwise-traffic profile (Exp661/665). Within a state the rate is flat to ~1 % across 85 windows.
+  * CONSEQUENCE: there is NO length dependence in the VAE per-window rate. The observed length trend
+    (protocol 2.12, chat69 2.09, chat138 2.23, long250 2.24 avg) is just the fraction of the run spent in
+    the settled state: short clips finish inside the boost window, >=2 min clips straddle the step.
+    Long-cell caveat restated: a 138 s/250 s cell is a STATE AVERAGE - comparable across lengths only
+    within one clock state, which is why long-form rates transfer (Exp879/916) but absolutes do not.
+  * Exp904's hot-vs-cool chat138 agreement (VAE 105.3/104.5) is re-explained: both runs reached the
+    settled state early, so both averages are "settled" numbers - the design could not see the step.
+    Its verdict ("intra-run heat, not length-dependence") was directionally right; the mechanism is a
+    discrete CLOCK STEP, not a smooth ramp.
+  * Batt-vs-per-window correlation is NOT the discriminant: r(vae_ms, batt) = +0.58, r(prefill_ms, batt)
+    = +0.93, but batt and window index are collinear inside one run. The hot-start arm is the
+    discriminant (same clip, step moves 36 -> 11).
+  * TELEMETRY DEFECT (flagged, no published number changes): device_state.tsv's cpu7_khz column is
+    sampled ONCE, pre-run, and reads 1430000 in every row, while during-run samples read 2400000 then
+    2000000 - the column does not describe the measured run's clock. Use it only as run context, never
+    as a within-run state variable.
+  * Also visible per-window: w1 carries a +20 % VAE premium in both runs (2482/2178 ms vs the 2045
+    plateau) - the known first-window page-in effect, now measured directly.
+  * METHOD WOUND: the first attempt wrote `cd VibeASR.cpp && sampler & actual-run ...`, and `&`
+    backgrounds the WHOLE and-list - measure.sh never ran (cwd stayed the parent, rc=127) while the
+    wait burned 600 s, and run_experiment still reported PASSED. Rule: keep `cd` OUTSIDE any
+    backgrounded group, and never trust PASSED without checking that the intended artifact exists.
+  Settled anchor 1.1941 at 17.6 h (batt 37.5 C), transcript byte-identical.
