@@ -3168,3 +3168,16 @@ Consequences:
     ALL v4.8-era gate sets are in that list - hyp-gate845/852/878/880/885/890/895/900/905/910 plus
     hyp-tile864 - so the current binary's output identity is recorded against the whole gate history,
     not just the last two gates. Host-only, 0.4 s.
+
+- REPRODUCE-PATH BOARD (Exp915, ~50 rounds since Exp865g): executed RESULTS.md's documented binary
+  recipe VERBATIM - `LM_FILE=lm-q8head.gguf VAE_FILE=vae-encoder-convint8.gguf ./.auto/measure.sh` -
+  from the committed tree. Result 1.1887, tokens 39, transcript `1a095c8496b4` (= the protocol
+  reference), checks OK, RSS 2191.5 MB, majflt 0. So a reader following the docs still gets the
+  shipped system, not a neighbouring tier (the Exp859 failure mode where the block named the F16-conv
+  reference and returned 1.9372).
+  * SCOPE, stated honestly: the build was an incremental no-op (the whole command took 22.8 s, same as
+    --skip-build), so this round validates the documented command + runtime identity, NOT a
+    from-scratch compile. The clean-wipe rebuild remains Exp57/Exp610 (artifacts bit-exact).
+  * Audit re-run as the LAST write of the round (loop rule): 129 checks / 1 explained WARN / 0
+    failures - check 10 keeps the command naming the tier, check 5 keeps host/device bin + .so hashes
+    in sync.
