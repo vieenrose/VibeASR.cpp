@@ -3614,3 +3614,36 @@ Consequences:
     ascending one-session row.
   Anchor (protocol, boost, after cooldown - also refreshed the capture the 138 s run had left stale):
   1.1950 at 20.9 h, transcript byte-identical, audit green.
+
+- BOOST-START LADDER + A NEW SCATTER CAUSE: A PHASE-SELECTIVE LM TRANSIENT (Exp940). Design: 3 min idle
+  before each cell (the user-representative condition; a long cell can never be boost-only, so
+  "state-homogeneous" means a controlled STARTING state). Shipped tier, one session.
+    clip    Exp940 (boost-start)   Exp939 (no idle)   delta      clock / boost fraction
+    10 s    1.2373*                1.1937             +3.6%*     2400000 (*LM transient, see below)
+    17 s    1.3494                 1.3418             +0.6%      2400000
+    69 s    1.4273                 1.4695             -2.9%      2400000 -> FULLY BOOST (vae 2.112 s/eff-win)
+    138 s   1.5441                 1.5823             -2.4%      2000000, 27 % boost (vs Exp939's 0 %)
+  * START-STATE EFFECT CONFIRMED on long cells (2.4-2.9 %; P5 predicted 3-5 %, slightly high). The 138 s
+    boost fraction came in at 27 % vs the predicted 40-55 % (near-miss on both counts).
+  * REFINED FLIP MODEL: the 69 s cell stayed FULLY boost after a 3 min idle even though its compute is
+    ~98 s, while Exp939's 69 s cell (two preceding cells, ~50 s of prior load) flipped mid-run. So the
+    threshold is CUMULATIVE load since a sufficient idle (~75-120 s, temperature-dependent), not a
+    property of one run's duration - consistent with Exp931's single continuous 250 s run flipping at
+    t~120 s.
+  * ***NEW SCATTER CAUSE (the round's real find)***: among the 49 protocol rows whose vae_s is EXACTLY
+    7.1 (identical VAE work), lm_s reads 4.8 (25x), 4.9 (21x) and **5.3 (3x)** - a ~6 % occurrence, and
+    this round's 10 s cell was one of them (rtf 1.2373, lm 5.3, decode 3.4 vs 3.0, prefill 1.9 vs 1.8).
+    It is NOT explained by any instrument we have: cpu7 min=med=max=2400000 with low=0 of 20 samples,
+    majflt 0 (no page I/O), procs 831 and mem 4486 both mid-range, batt 37.0 normal, RSS normal, and the
+    VAE is byte-for-byte the same work. PHASE-SELECTIVE, so not a global clock throttle.
+    Consequences: (1) the telemetry column records the governor's REQUEST, not the delivered frequency -
+    a run can be slowed below the request with the request pinned at max; (2) this is a 4th distinct
+    cause of protocol scatter (clock state, batt/heat, window-1 page-in, and now this), and at +3.6 % it
+    is ~9x the within-state sd, so a single anchor can be an outlier - which is exactly why this loop
+    reads anchors as a SERIES and brackets keeps; (3) most plausible mechanism: the LM's 39 sequential
+    per-token steps (small GEMVs + barriers) absorb transient interference while the VAE's bulk work
+    averages it out. TESTABLE (queued): LATENCY_TRACE per-window decode on a slow run - is the +0.4 s
+    spread across all windows (uniform per-token slowdown) or concentrated (one stall)?
+  * All cells kept their token canaries (39/106/446/876); RSS rose with the KV allocation; majflt 0.
+  Anchor (protocol, boost, lm 4.8 - the transient did NOT recur, confirming it is transient):
+  1.1962 at 21.3 h, transcript byte-identical, audit green.

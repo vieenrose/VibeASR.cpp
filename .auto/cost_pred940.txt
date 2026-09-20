@@ -1,0 +1,22 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp940: boost-START ladder - controlled starting state per cell)
+
+CONTEXT: Exp939 measured the fresh ladder with NO idle between cells, so the 69 s cell flipped mid-run
+(~48 % boost) and the 138 s cell was settled end-to-end (2.333 s/eff-win exactly), giving 1.4695 / 1.5823.
+A long cell can never be boost-only (the run itself crosses the flip after ~75-105 s of load), so
+"state-homogeneous" means a controlled STARTING state. 3 min idle restores boost (Exp938), which is also
+the user-representative condition (a transcription starts after idle).
+
+DESIGN: 10 s (immediate) -> 17 s -> 3 min idle -> 69 s -> 3 min idle -> 138 s, shipped tier, one session.
+The 69/138 s cells are PAIRED against Exp939's warm-started values for the same clips.
+
+  P1  10 s: 1.19-1.20, boost (2400000).
+  P2  17 s: 1.33-1.35, boost.
+  P3  69 s after idle: boost-start, flip lands mid-run -> rtf 1.42-1.45 (BELOW Exp939's 1.4695), with a
+      boost fraction HIGHER than Exp939's 48 % (the idle delays the flip).
+  P4  138 s after idle: boost-start -> boost fraction ~40-55 % (vs Exp939's 0 %), rtf 1.50-1.54
+      (BELOW Exp939's 1.5823) and s/eff-win between 2.05 and 2.33, not equal to either plateau.
+  P5  the start-state effect on a long cell is ~3-5 % (the difference P3/P4 predict), i.e. large enough
+      that a long-cell ladder must quote its starting condition.
+  P6  RSS rises with length, majflt 0, token canaries exact (39/106/446/876), transcripts unchanged.
+  FAIL modes: a long cell reading rtf at or above Exp939's warm-start value (idle did not help); a long
+  cell reading the settled plateau exactly (idle did not restore boost); any token deviation.
