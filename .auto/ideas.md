@@ -3149,3 +3149,22 @@ Consequences:
     (~6 min + cool-down). RULE: multi-run instruments write to a log file (tee) FIRST - never pipe an
     experiment through tail, the verdict is the product, not the METRIC tail.
   Settled anchor 1.1968 at 13.5 h (batt 37.4 C after 8 min idle), transcript byte-identical.
+
+- NOISE FLOOR RE-DERIVED AT 13.5-14 h UPTIME + FREE EQUIVALENCE-MAP REFRESH (Exp914).
+  * 6 protocol reps, 3-min spacing, one device state per rep (all other_busy 1-2%, cpu7_khz 1.43 GHz,
+    tokens 39, transcript 1a095c8496b4): 1.1987 / 1.1878 / 1.1931 / 1.1948 / 1.1991 / 1.2004.
+    mean 1.1957, sd 0.397 %/rep, range 1.1878-1.2004 = 1.05 %. Batt fell 37.5 -> 35.7 C across the
+    series while rtf rose +0.14 % first-vs-last (+0.105 %/rep) - i.e. NOT batt-driven this time.
+    Excluding the rep2 dip (the coolest batt reading is also the fastest): sd 0.260 %, range 0.61 %.
+  * READING: the settled floor at long uptime is 0.26-0.40 %/rep, i.e. consistent with Exp884's
+    long-uptime 0.233 % within n=6 uncertainty, but the observed RANGE is wider than the "+-0.3 %"
+    that note quoted. PRACTICAL RULE, unchanged in direction but restated: unpaired single-run deltas
+    below ~0.5 % are not evidence; keep the 3-rep interleaved A/B (interleaving cancels the common
+    drift) and the >=2 % ship bar. Do not tighten the bar to +-0.3 % - one 6-rep sample range was 1 %.
+  * Session anchors today span 1.1922-1.2009 (0.7 %) across batt 35.7-38.4 C - which is the same
+    width as one 6-rep batch, so the between-batch variation is dominated by state, not by the
+    measurement procedure.
+  * FREE: equivalence map regenerated vs hyp-bound835 (83 archived sets): 11 are byte-identical, and
+    ALL v4.8-era gate sets are in that list - hyp-gate845/852/878/880/885/890/895/900/905/910 plus
+    hyp-tile864 - so the current binary's output identity is recorded against the whole gate history,
+    not just the last two gates. Host-only, 0.4 s.

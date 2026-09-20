@@ -1,8 +1,8 @@
 # output-equivalence map vs hyp-bound835
-generated 2026-09-18 by .auto/equiv_map.py - paired token distance, tool tokeniser
+generated 2026-09-20 by .auto/equiv_map.py - paired token distance, tool tokeniser
 reference: 729 tokens / 40 utterances; stamp: `VAE_FILE=vae-encoder-convint8.gguf LM_FILE=lm-q8head.gguf THREADS=2 MASK=C0 PIECES=1 EXTRA_ENV= BIN=541d8b9349bb8525409dc25618521b64`
 
-**2 of 74 archived sets are byte-identical to the reference:** hyp-gate845, hyp-gate852
+**11 of 83 archived sets are byte-identical to the reference:** hyp-gate845, hyp-gate852, hyp-gate878, hyp-gate880, hyp-gate885, hyp-gate890, hyp-gate895, hyp-gate900, hyp-gate905, hyp-gate910, hyp-tile864
 
 Everything else differs by >=1 token. These are RAW TOKEN DIFFERENCES (presence), not McNemar
 correctness discordants - for accuracy claims use `compare_arms.py --gate A B refs.json`. Per
