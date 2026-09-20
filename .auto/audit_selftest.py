@@ -166,12 +166,16 @@ def plant_dup_device_clip():
 
 
 def plant_headline_drift():
+    # Exp946: this plant used to replace the LITERAL '**Headline (era v4.8):** phone RTF **12.24 -> 1.85',
+    # so the Exp945 regime rewrite (1.85 -> 1.19) made it INVALID - the board reported that loudly, but
+    # the consequence was that the headline CHECK went untested until someone read the INVALID line.
+    # Match the FORM (a headline line's arrow) instead of the number, so a doc rewrite cannot disarm it.
     p = 'RESULTS.md'
     s = open(p).read()
-    s2 = s.replace('**Headline (era v4.8):** phone RTF **12.24 → 1.85',
-                   '**Headline (era v4.8):** phone RTF **12.24 → 2.94', 1)
-    if s2 == s:
+    m = re.search(r'(\*\*Headline[^\n]*?\*\*\s*phone RTF\s*\*\*12\.24\s*\u2192\s*)(\d+\.\d+)', s)
+    if not m:
         raise RuntimeError('headline prose line not found - plant invalid (docs reworded?)')
+    s2 = s[:m.start(2)] + '2.94' + s[m.end(2):]
     return snap_write(p, s2)
 
 
@@ -199,6 +203,26 @@ def plant_selftest():
     if txt2 == txt:
         raise RuntimeError('fixture not found - the plant is invalid, not the check')
     return snap_write(p, txt2)
+
+
+def plant_bad_silence():
+    # Exp946: the derivation grammar grew synthetic SILENCE parts at Exp936 (long250.wav). The existing
+    # 7e plant rewrites a whole concat; this one perturbs a SILENCE length by ONE SAMPLE, which is the
+    # exact failure mode the arithmetic check exists for (a clip rebuilt with a different gap) and which
+    # was demonstrated by hand at Exp936 but never entered the board.
+    p = '.auto/device_assets.json'
+    import json as _json
+    man = _json.loads(open(p).read())
+    hit = False
+    for r in man.get('derives') or []:
+        if r.get('file') == 'long250.wav':
+            for part in r.get('concat') or []:
+                if isinstance(part, dict) and 'silence_bytes' in part:
+                    part['silence_bytes'] = int(part['silence_bytes']) + 2   # +1 s16 sample
+                    hit = True
+    if not hit:
+        raise RuntimeError('long250 silence part not found - plant invalid (manifest reworded?)')
+    return snap_write(p, _json.dumps(man, indent=1, sort_keys=True))
 
 
 def plant_false_derivation():
@@ -269,6 +293,8 @@ FAULTS = [
     ('18 telemetry gap',    'runs stop being recorded in device_state.tsv',   plant_telemetry_gap,  'not being recorded'),
     ('7e derivation',         'a clip note describes audio that was not used', plant_false_derivation,
      'derivation NOT proven|derivation .*payload lengths|is NOT a prefix'),
+    ('7f silence part',       'a derivation gap is one sample too long',      plant_bad_silence,
+     'payload lengths sum|NOT proven'),
     ('14 tool self-tests',    'a scorer self-test starts failing',           plant_selftest,      'selftest FAILED|self-test FAILED'),
     ('1 syntax',            'a harness script stops parsing',              plant_syntax,        'syntax'),
     ('2 host paths',        'a script references a missing file',          plant_path,          'not exist|missing|no such'),

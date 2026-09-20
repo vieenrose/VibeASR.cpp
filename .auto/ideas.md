@@ -3772,3 +3772,22 @@ Consequences:
     device_state.tsv's uptime_s (the single source), never carry it forward.
   * This is the same class as the loop's other record defects (Exp654 scorer, Exp655 McNemar, Exp675
     asset drift): the number that a human reads first is not the number the ledger can produce.
+
+- COVERAGE BOARD RE-RUN AFTER THE SCHEMA AND GRAMMAR CHANGES (Exp946): 20/20 plantable checks fire, 0
+  silent or invalid, 3 accepted-uncontrolled. It found TWO things, one of them mine from last round:
+  * PLANT INVALIDATED BY MY OWN DOC REWRITE (the find that matters): `plant_headline_drift` replaced the
+    LITERAL '**Headline (era v4.8):** phone RTF **12.24 -> 1.85', so Exp945's regime rewrite (1.85 -> 1.19)
+    made the plant INVALID. The board reported that loudly (it counts INVALID separately from MISS), but
+    the consequence was that the headline CHECK went untested until someone read the INVALID line - i.e. a
+    doc rewrite can silently disarm a control that is coupled to the prose it edits. FIXED by matching the
+    FORM (regex on the headline line's arrow) instead of the number, and re-verified with --only 9 (FIRED).
+    GENERAL RULE: a plant that quotes the text it plants into is coupled to that text; match structure, not
+    strings, whenever the target is prose.
+  * NEW PLANT ADDED for machinery that had none: the derivation grammar grew synthetic SILENCE parts at
+    Exp936 (long250.wav) and the only derivation plant (7e) rewrites a whole concat, so the arithmetic
+    path was untested on the board. `plant_bad_silence` perturbs the gap by ONE s16 sample (+2 B);
+    --only 7f FIRED with the exact message ("payload lengths sum to 12038402 B, not the target's
+    12038400 B"). Coverage 19 -> 20.
+  * The 14-column TSV migration (Exp942) is covered by fault 18, which is column-agnostic by construction
+    (Exp907) - it still FIRED.
+  Anchor 1.1924 at 19.2 h (delivered 94, batt 35.6 C), transcript byte-identical.
