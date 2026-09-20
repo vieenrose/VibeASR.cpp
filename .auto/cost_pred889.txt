@@ -1,0 +1,12 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp889: guard rotation #12)
+
+HYPOTHESIS: routine rotation by cadence (#11 was Exp881), with one confirmation question: does the
+fresh-regime premium replicate at ~+10 % (per-token criterion, Exp881) rather than drifting back
+toward the long-uptime +7.4 % ratio? Two confirmations retire the ratio band for good.
+
+PREDICTIONS (order-symmetric P,G,G,P, one pass, ~1 min total - heat negligible):
+  P1  protocol = 1.18-1.22 (decay flat at 6.6 h uptime).
+  P2  guard = protocol x (1.09-1.11), tokens 55, i.e. ~1.30-1.33.
+  P3  (guard_gen - protocol_gen)/16 = 70-85 ms/token; guard vae_s == protocol vae_s within 0.3 s.
+  FAIL modes: premium outside the token accounting (overfit or regime fragility); tokens != 55;
+  guard transcript degenerate (fluency check by eye on the pulled log).

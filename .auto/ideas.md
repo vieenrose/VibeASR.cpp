@@ -2911,3 +2911,13 @@ Consequences:
   ignoring intercepts/flush/KV - corrected in P1r-P4r BEFORE the clean run, and the lesson is
   recorded: predictions from shortcuts test arithmetic, not systems. Settled protocol 1.1943 at
   6.6 h (decay flat).
+
+- GUARD ROTATION #12 (Exp889): order-symmetric P,G,G,P, protocol 1.1948/1.1961, guard 1.3075/1.3103
+  (55 tok) = +9.5 % premium. Second confirmation of the per-token criterion (Exp881: +10.0 %):
+  guard decode 76.4 ms/tok vs protocol 76.9, VAE identical 7.1/7.1, transcript fluent. The ratio
+  band (+7.3-7.7 %) is now retired for good - two independent fresh-regime rotations land +9.5-10 %
+  via token accounting, never +7.4 %. No overfit signal.
+  Postscript: the round's own anchor run immediately after the rotation read 1.3254 (5th consecutive
+  run, batt 38.1) and resolved to 1.1961 after 3 min idle (batt 37.2, other_busy 1 %) - third
+  confirmation of the heat discipline, and the reason the logged metric is the settled run, not the
+  rotation mean. Decay point at 6.7 h: 1.1961, flat.
