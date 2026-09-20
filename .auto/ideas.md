@@ -2964,3 +2964,30 @@ Consequences:
   series 1.32/1.33/1.35/1.35 - flat, and chunk-2 reads 1.376 +- 0.001 across three gates, which is
   the tightest sub-number in the whole gate instrument (chunk halves are fixed utterance sets, so
   chunk-2 is a 20-utt fixed-work benchmark with 0.1 % reproducibility).
+
+- THIN AUDIT: DORMANT LEVERS vs THE FRESH REGIME (Exp896, paper - no device time claimed). Every
+  parked/dismissed avenue re-examined for a changed assumption. Verdict: NONE - no revivals.
+  * Q4_0 LM (-1.8 % overall, Exp73): tradeoff is dequant-compute vs bandwidth; the regime cheapened
+    compute MORE than bandwidth, so the dequant saving is worth relatively LESS fresh. Still
+    discard, arguably more so. No retry.
+  * Lean boundary batch (-2.6 %, held for parity): accuracy objection already resolved (b=0/c=0 on
+    468 zh tokens, Exp842/846); remaining blocker is product-owner call on a non-metric tier, not
+    measurement. Nothing I can unblock by running. Stays queued.
+  * -c 8192 default (+112 MB, 0 % speed, sessions 2x): priced (Exp880), product call. Stays queued.
+  * Gelu fusions (producer +4.2 % by weight-panel eviction; consumer +3.3 % by gather serialization):
+    mechanism-closed both sides (Exp822/865). A regime scales rates, not dependency structure.
+    No retry.
+  * K-quants for VAE (Q6_K +29 %): NEON super-block dequant cost on A78 (Exp196). ISA fact, not a
+    threshold. No retry. Q5_K/Q4_K dead by interpolation. No retry.
+  * CONT permuted-view (SIGABRT wall): needs a 3rdparty change (off-limits). No retry.
+  * ThinLTO/PGO/OMP (-t6/8, split pools, affinity): nulls on thread-independent axes. No retry.
+  * Granularity (p1/p2/p13/p26 mapped): RAM ratios are structural. No retry.
+  * dw_axpy removal (inert 6x, confirmed again Exp883): still inert. No retry.
+  * xwin carry (11.5-12 % long-file drift): context-window mechanism, not a tuning artifact.
+    No retry.
+  * Training/QAT/distillation, Mali GPU, KleidiAI/i8mm, fork upgrade: out of scope / hardware
+    facts. No retry.
+  * mm_m2 tail (+0.2-0.8 %, kept): shipped, free, zero risk. Nothing to revive.
+  Rule applied: a discard is revisited only on a CHANGED ASSUMPTION with a named mechanism, never
+  on a new regime alone - regimes rescale thresholds but do not rewrite mechanisms. The two queued
+  product calls (-c default, lean batch) are the only shippable value left, and both need the user.
