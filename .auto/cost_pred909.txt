@@ -1,0 +1,11 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp909: guard rotation #17)
+
+HYPOTHESIS: cadence rotation (#16 was Exp905). Standing expectation: premium ~+10 % by
+per-token accounting, 7th confirmation. Order-symmetric P,G,G,P one pass (heat pacing built
+in since Exp902); phone mildly warm at start (batt 38.0 post-Exp908 anchor).
+
+  P1  protocol = 1.18-1.23 (39 tok, transcript byte-identical across P arms and to 1a095c8496b4).
+  P2  guard = protocol x (1.09-1.11), tokens 55 both arms, transcripts byte-identical, fluent.
+  P3  (guard_gen - protocol_gen)/16 = 70-85 ms/token; guard vae_s == protocol vae_s within 0.3 s.
+  FAIL modes: premium outside token accounting; tokens != 55/39; any transcript mismatch;
+  4th-arm heat step (pacing should prevent; if HOT flags appear, note engagement).

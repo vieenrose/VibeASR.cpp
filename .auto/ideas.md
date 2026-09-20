@@ -3089,3 +3089,13 @@ Consequences:
   content-derived, config edges loud) - no regression 22 rounds on. Prediction footnote: I quoted
   Exp886's as-is read instead of its same-session fix; the board matched the fixed expectation.
   Lesson: quote the commit, not the log's mid-round state. Anchor 1.1939, byte-identical.
+
+- GUARD ROTATION #17 (Exp909): order-symmetric P,G,G,P in one pass (pacing active, no HOT waits).
+  protocol 1.1955, guards 1.3093/1.3103 (55 tok both) = +9.56 % premium; per-token
+  (13.098-11.955)/16 = 71 ms/tok, VAE 7.1/7.1 identical, decode 4.2 vs 3.0 s, prefill 1.8 both.
+  Transcripts verified from the DEVICE arm captures (run_rtf_multi pulls only err-*.log, so I pulled
+  out-Pproto1/Gguard1/G2guard1/P2proto1.log explicitly): P arms = 1a095c8496b4 (both), G arms =
+  849cca7df5bc (both, pairwise identical). 7th per-token confirmation of the premium; NO 4th-arm step
+  (P2 1.1898 is the low arm, -0.5 % vs P1). All cost_pred909.txt predictions met (P1 1.18-1.23,
+  premium 1.09-1.11, 70-85 ms/tok, tokens 39/55). Settled anchor 1.1948 at 12.1 h (batt 35.7 C,
+  majflt 0), byte-identical. Anchor decay series flat 6 m-12.1 h (1.19-1.22).
