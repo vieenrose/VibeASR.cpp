@@ -1,0 +1,24 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp899: 17 s fresh ladder cell)
+
+HYPOTHESIS: the fresh ladder has 10 s (1.19), 69 s (1.41), 138 s (~1.55) but no 17 s cell.
+chat17.wav (17.28 s, 6 windows, flushed canary 106 tokens) tests the per-window VAE rate at a
+third length and completes the short end where the tail flush matters most.
+
+MECHANISM (effective windows, geometry): 17.28/2.9333 = 5.89 windows, pf_last ~0.11, so
+N_eff = 5.89. Fresh VAE rate 2.10 s/eff-window (protocol 2.107, chat69 2.086/2.103 - use 2.10).
+Rows: 6x28 - 3 flushed = 165 x ~20 ms. Decode: 106 tok x ~77 ms + small KV.
+
+PREDICTIONS (settled run; phone at batt 37.8 - if it reads >5 % high, cool and retry once):
+  P1  vae_s = 11.5-13.0 s (5.89 x 2.10 = 12.4).
+  P2  prefill_s = 3.0-3.8 s; decode_s = 8.0-9.0 s.
+  P3  rtf = 1.35-1.45, tokens = 106 (flushed canary; padded was 108).
+  FAIL modes: tokens != 106 (wrong clip); VAE/row rate off >10 % from 2.10 (the per-window
+  rate is length-dependent after all - the regime-transfer story breaks); heat (batt >= 38.5
+  with elevation - cool and re-run, do not log).
+
+VERDICTS (settled chat17 run, batt 37.7):
+  P1 HOLD: VAE 11.8 (rate 2.003 s/eff-window vs 2.10 - within 5 %, no FAIL).
+  P2 HOLD (edges): prefill 3.0 (band floor), decode 7.9 (0.1 under band floor, 74.5 ms/tok -
+  both trivially within noise; bands were a touch high, not the system low).
+  P3 HOLD (edge): rtf 1.3399 (0.01 under band floor), tokens 106 EXACT (flushed canary).
+  Fresh ladder now complete (provisional cells): 10 s 1.19 / 17 s 1.34 / 69 s 1.41 / 138 s ~1.55.

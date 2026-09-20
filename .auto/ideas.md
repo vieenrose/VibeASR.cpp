@@ -3010,3 +3010,8 @@ Consequences:
   vs +112 arithmetic - the ~+30 MB second-order excess matches Exp880's sweep pattern; real,
   product-irrelevant, documented not chased. The product recommendation is now evidence, not
   arithmetic; the ship decision stays the user's. Settled anchor 1.1952 at 8.5 h.
+
+- 17 s FRESH LADDER CELL (Exp899): settled chat17 reads VAE 11.8 s (2.003 s/eff-window, within
+  5 % of the 2.10 rate), prefill 3.0, decode 7.9 (74.5 ms/tok), rtf 1.3399, tokens 106 EXACT
+  (flushed canary). All bands held (two edge-kisses low, within noise). Fresh ladder complete
+  (provisional): 10 s 1.19 / 17 s 1.34 / 69 s 1.41 / 138 s ~1.55. Settled anchor 1.1928 at 8.6 h.
