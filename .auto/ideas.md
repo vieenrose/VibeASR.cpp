@@ -3750,3 +3750,25 @@ Consequences:
     for the mechanism. A chunk dummy adds nothing (-2.9 pts), consistent with Exp941.
   * Predictions: P1 hit, P2 hit (flip measured), P3 MISS (predicted R^2 >= 0.9), P4 as above.
   Anchor 1.1928 at 23.5 h (delivered 98), transcript byte-identical, audit green.
+
+- REGIME-LABELLED HEADLINE SHIPPED + AN UPTIME RECORD DEFECT CORRECTED (Exp945, docs; no device time).
+  * WHY: the report's headline quoted the LONG-UPTIME cell (1.85, Exp864) while the device has read 1.19
+    for 19 h. A reader would infer a 36 % speedup that never happened - the code is unchanged and
+    byte-identical (Exp880: device state, not code, moved the metric). `.auto/headline.json` now declares
+    a `regime` field, makes the FRESH-BOOT row the current `shipped` cell (rtf10 1.19, ladder
+    1.19/1.34/1.47/1.58 from Exp939, gate_mean 1.34 / WER 4.55 % from Exp944), adds a `state_levels`
+    field (boost 1.192 / settled 1.333, +11.6 %, partial states, the 6-transcription product envelope),
+    and preserves the pre-reboot row as `shipped_long_uptime` (1.85/2.01/2.10/2.16, Exp864) with a
+    superseded note. Prose updated in prompt.md (Current-best line + the MAX-SPEED tier row), RESULTS.md
+    (headline + the shipped ladder row) and STREAMING_1P5B.md (its Current-best line) - check 9 now
+    passes on all three files, so the guard is what found the remaining sites (RESULTS.md:71 and
+    STREAMING_1P5B.md:461 were both stale in the same way).
+  * UPTIME RECORD DEFECT (mine, corrected): the ASI `uptime_h` values in runs 921-944 drifted from the
+    truth, reaching +4.5 h by Exp944 (it said 23.5 h; device_state.tsv's uptime_s says 19.0 h, confirmed
+    against /proc/uptime = 68478 s). The drift grew ~0.1-0.2 h per round, i.e. it was CARRIED FORWARD and
+    compounded, never re-derived. The anchor rtfs and the decay series' SHAPE are unaffected (the values
+    are measured; only my hour labels were wrong), but a future session reading "23.5 h" would mis-index
+    the decay series. RULE added to prompt.md's Metrics section: derive uptime_h from
+    device_state.tsv's uptime_s (the single source), never carry it forward.
+  * This is the same class as the loop's other record defects (Exp654 scorer, Exp655 McNemar, Exp675
+    asset drift): the number that a human reads first is not the number the ledger can produce.
