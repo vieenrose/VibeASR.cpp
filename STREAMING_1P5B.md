@@ -148,6 +148,29 @@ needs `drop_caches` (root; adbd runs as uid 2000, no `su`). Bound if it ever mat
 by roughly 3x until the weights are resident (~0.4 s of unavoidable stall for 1.6 GB, and that is a LOWER bound
 because the measured rate is page-cache-served, not flash).
 
+### Device state is a measurement axis: a rebooted phone runs the same binary ~1/3 faster (Exp880)
+
+Every band cell in this document was measured on a phone with days of uptime - and a reboot moves them all.
+A spontaneous device reboot (uptime 367 s, caught because `adb` dropped) produced protocol 1.19-1.31 and
+138 s 1.49-1.59 against the long-uptime band of 1.85 / 2.16, with byte-identical transcripts (md5 `1a095c8496b4`)
+and the same 39 tokens / 876 tokens / 48 windows. A wall-clock cross-check rules out a lying clock:
+the binary's 13.2 s total vs 13.63 s host-measured wall. A DELIBERATE `adb reboot` reproduced the fast regime
+(~1.31 at ~5 min uptime), so the regime follows the reboot, not a one-time update (build fingerprint
+`OPPO/CPH2371 ... R.203be74`, patch 2025-10-01, recorded in `.auto/device_fingerprint.txt`). At 9.75 h uptime
+the phone still read 1.18-1.24, so the slow state accumulates over DAYS, not hours - and the "what remains
+unmeasured" paragraph of the page-cache section above is now measured: post-boot is not a first-pass stall,
+it is a ~30 % regime on every phase (VAE 11.6 -> 7.1 s, LM 7.0 -> 4.8 s on the protocol clip).
+Mechanism, partially: sustained cpu7 under load reads 1.43 GHz now vs the ledger's constant 1.3 GHz (+10 %),
+which leaves ~20 % to the memory subsystem / accumulated background load - unseparated. Majflt 25-36 on the
+first post-boot runs (page-cache refill) does not offset it.
+Consequences, all enforced: (1) `measure.sh` prints `note: device uptime_s=... procs=... mem_avail_mb=...
+cpu7_khz=...` next to every measurement and WARNS when uptime is under 900 s - a short-uptime number is never
+comparable to a band cell, so the harness says so instead of letting a 1.3x read as a code win; (2) the tier
+bands stay LONG-UPTIME numbers (headline.json untouched - the 1.85-era cells remain the comparable set);
+(3) the loop still lacks the decay curve - QUEUED: protocol samples at ~10 min / 2 h / 6 h / 24 h / 72 h after
+one reboot, idle between runs, to map the slow-state timescale and decide whether bands need a state qualifier
+or a reboot-before-keep protocol.
+
 ### Resource limits: descriptors and threads (measured, Exp856)
 
 Sampled every 10 s through a 138 s run (48 windows, 29 samples): **file descriptors = 3, constant** (min = max = 3,
@@ -209,8 +232,19 @@ and 329 s on sparse read speech** - the limit is DENSITY, not seconds, because p
 windows, 728 tokens): 36.5 positions/window, 3140 positions total, and it COMPLETED - which is the limit
 law confirmed from below, since 4096 positions at that density would allow 112 windows = 329 s (Exp849's
 bracketing gave the same law at chat density: 46.5 pos/window, 88 windows, 258 s).
-`n_ctx = 16384` reaches ~16 min but the KV cache grows from 112 MB to ~450 MB (28.0 KB per position). The old code
-comment attached the 15-minute figure to 4096 - it belongs to 16384.
+`n_ctx = 16384` reaches ~16 min. PRICED, not asserted (Exp880): on the 10 s protocol clip, `-c 8192` and
+`-c 16384` read -0.8 % and -1.8 % vs `-c 4096` across 3 interleaved reps each (noise, and the sign is
+favourable - there is no fixed reservation cost); on `chat138.wav` (1813 positions used) an order-symmetric
+A,B,B,A sweep reads `-c 16384` at +0.4 % (an earlier +2.4 % with a fixed arm order was ordering bias, resolved
+by the reversal). So raising `-c` costs 0 % of the metric at every length and only RAM: the KV buffer is
+COMMITTED at load, not reserved - measured RSS rises 27.4 KB/position (+165 MB at 8192, +388 MB at 16384,
++1681 MB at 65536, all majflt 0), matching the 28.0 KB/position arithmetic. Product form: `-c 8192` doubles
+the session to ~8.6 min dense / ~11 min sparse for +112 MB committed. The old code comment attached the
+15-minute figure to 4096 - it belongs to 16384.
+Failure modes of `-c` (runbook must match all three): (1) exhaustion mid-stream exits 1 with `decode failed`
+OR `frames failed` and no final summary; (2) an ABSURD `-c` (28 GB of KV at `-c 1048576`) dies SILENTLY at
+context creation - the log ends at `llama_new_context_with_model`, no error, no summary, empty transcript
+(Exp880: not matched by the Exp849 rule, and a fresh failure class for any `-c` larger than RAM).
 
 **Position cost law** (same run, 53 windows, R2 0.88, standard error 0.56 us/position, measured to P = 2450):
 

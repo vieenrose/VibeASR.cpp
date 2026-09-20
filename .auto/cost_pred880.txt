@@ -1,0 +1,48 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp880 discipline, first used Exp871)
+
+HYPOTHESIS: Exp849/Exp879 tell the product to "raise -c for longer sessions" and assert those levers
+"do not affect the metric". That claim was never MEASURED - Exp849 only ever ran SMALLER -c, on runs
+that DIED. Test what a larger n_ctx costs at FIXED audio, and whether its memory cost is RESIDENT
+(touched at init) or VIRTUAL (reserved only). The two answers imply opposite product advice.
+
+MECHANISM (from the cost model, Exp870/871, in my own units):
+  decode = 95.8 ms/token + 13.22 us x P_used, prefill = 33.9 ms/row + 5.0 us x P_used.
+  P_used depends on the audio and the tokens emitted, NOT on n_ctx. So n_ctx appears in NO term of the
+  model => at fixed audio, rtf must be flat. n_ctx is a RESERVATION; the model prices USE.
+
+PREDICTIONS (protocol clip stream_10s_24k.wav, 39 tokens, P_used ~ 67 positions):
+  P1  rtf(-c 8192)  == rtf(-c 4096) within +-0.3 %   (protocol noise floor sd 0.233 %/rep, Exp867h)
+  P2  rtf(-c 16384) == rtf(-c 4096) within +-0.3 %
+      FAIL mode: a fixed cost proportional to n_ctx (zeroing/mapping the KV buffer, worse TLB or slot
+      bookkeeping) would show as a monotone rtf rise with n_ctx. That is the real question.
+  P3  KV bytes per position = 28.0 KB (28 layers x 2 x 2 kv_heads x 128 dim x F16; the code comment
+      says exactly this and Exp849 used it for its +338 MB claim). Two admissible outcomes, and which
+      one happens decides the product advice:
+        P3a TOUCHED at init  -> RSS(+8192) = +112 MB, RSS(+16384) = +345 MB   (resident cost, real)
+        P3b RESERVE only     -> RSS(+8192) ~= RSS(+16384) ~= RSS(4096) +- 5 MB (virtual only: raising
+                               -c is cheaper than the docs claim, and the "+338 MB" note is wrong)
+      Whichever it is, the DECISION-RELEVANT statement is RSS, not the 28 KB/position arithmetic.
+  P4  load_s may rise with a bigger reservation (it is EXCLUDED from rtf by construction) - if it does,
+      that is where the cost of n_ctx lands, not in the metric.
+  P5  Plumbing control: ARGS='-c 1048576' must FAIL, not run (28 GB KV on an 8 GB phone). If it runs,
+      either the flag never reached the binary (Exp865c class) or the allocation is lazy - and in the
+      latter case P3b needs re-interpreting, so this arm is not optional.
+  P6  Long-clip control (chat138, 1813 positions): rtf(-c 16384) == rtf(-c 4096) within +-0.5 %. At the
+      long end the product claim lives; a fixed reservation penalty would be visible there too, and if
+      only one clip can show the RSS law under a real session, it is this one.
+
+AFTERWARD: if P1/P2/P6 hold, the honest product statement becomes "raise -c: costs 0 % of the metric
+and <R> MB of RSS"; if P3b, "costs 0 % and no measurable RAM until the positions are used".
+
+VERDICTS (measured after the predictions above):
+  P1 HOLD: c8192 -0.8 % vs c4096 (3+3 interleaved reps, same 39 tokens).
+  P2 HOLD: c16384 -1.8 % vs c4096. No fixed reservation cost; the sign is favourable.
+  P3a TOUCHED AT INIT: RSS 2139.1 / 2303.6 / 2527.6 / 3820.2 MB at 4096/8192/16384/65536 =
+  +27.4 KB/position linear. The "+338 MB" note was arithmetic; the measurement agrees with it.
+  Product form: -c 8192 doubles the session for +112 MB committed at 0 % of the metric.
+  P4 NOTED: load_s 0.8-1.2 s across arms, no n_ctx trend worth naming (excluded from rtf anyway).
+  P5 CONFIRMED: -c 1048576 dies at context creation, silently (log ends at
+  llama_new_context_with_model; no error, no summary, empty transcript). Runbook now has 3 modes.
+  P6 AMENDED: fixed-order arms read +2.4 % at chat138; order-symmetric A,B,B,A reads +0.4 %.
+  The first number was ordering bias, the second is the answer: -c is free at the long end too.
+  Plumbing throughout: ARGS reaches the binary (device log shows n_ctx = 1048576 on the probe arm).

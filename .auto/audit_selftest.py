@@ -16,7 +16,8 @@ must be visible, not implied.
   ./.auto/audit_selftest.py --list       show the matrix without running anything
 
 Nothing here ships a change. Every plant is reverted in a finally block, and the last thing the run
-does is a clean audit that must be green.
+does is a clean audit that must be green. Plants are host-side text edits only (fault 17 touches a
+tracked source file, but only through a byte snapshot that is restored - the Exp874 rule).
 """
 import os, re, shutil, subprocess, sys, tempfile, glob
 
@@ -201,6 +202,18 @@ def plant_false_derivation():
     return snap_write(p, _json.dumps(man, indent=1, sort_keys=True))
 
 
+def plant_help_default():
+    # Check 17 compares the usage text against the struct in demo/asr_streaming.cpp, so corrupt the
+    # STRUCT side: n_ctx 4096 -> 4444 must make check 17 fail naming -c. A byte snapshot (not a git
+    # revert) restores it - the Exp874 rule.
+    p = 'demo/asr_streaming.cpp'
+    s = open(p, 'rb').read()
+    s2 = s.replace(b'int n_ctx = 4096;', b'int n_ctx = 4444;', 1)
+    if s2 == s:
+        raise RuntimeError('struct-default anchor for -c not found; check 17 cannot be planted')
+    return snap_write(p, s2.decode())
+
+
 def plant_unguarded_grep():
     # Reproduce the Exp876 class in one line: an unguarded $(grep ...) assignment in a set -e script.
     return snap_append('.auto/checks.sh', '\nZZ_SELFTEST=$( grep -oE zzz .auto/config.json | head -n1 )\n')
@@ -225,6 +238,7 @@ FAULTS = [
     ('5 device binary hash',  'a lib on the phone is not the one on the host', plant_stale_device_lib,
      'MISMATCH|missing on device'),
     ('15 set -e grep',      'a grep in $( ) can abort a set -e script',   plant_unguarded_grep,   'unguarded command substitution'),
+    ('17 usage defaults',   'a usage line promises a default the struct lacks', plant_help_default, 'check 17.*-c'),
     ('7e derivation',         'a clip note describes audio that was not used', plant_false_derivation,
      'derivation NOT proven|derivation .*payload lengths|is NOT a prefix'),
     ('14 tool self-tests',    'a scorer self-test starts failing',           plant_selftest,      'selftest FAILED|self-test FAILED'),
@@ -247,6 +261,9 @@ UNCOVERED = [
      'timing in the session, so it is planted by accident far more often than on purpose (Exp679)'),
     ('12 sweep resolves to tier', 'has its own --dry negative control inside audit_harness (Exp865c), '
      'which is why it is not repeated here'),
+    ('16 capture identity', 'WARN-only by design (a non-protocol capture is legitimate mid-session), and '
+     'this driver matches FAIL lines - it cannot fire here by construction. Manual control instead: '
+     'point .auto/last_out.txt at a long-clip capture and confirm the WARN names its window count.'),
 ]
 
 if '--only' in sys.argv:

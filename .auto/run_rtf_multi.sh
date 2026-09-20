@@ -73,6 +73,15 @@ fi
 TSV=.auto/multi-$$.tsv
 : > "$TSV"
 adb -s $DEV push .auto/bench_device.sh $RDIR/ >/dev/null 2>&1
+# Exp880: the pre-flight the tool always lacked. Tonight an adb outage left EVERY arm with empty
+# rtf and the sweep still printed a summary and exited 0 - the Exp877 vacuous-run class, in the
+# sweep instead of the runner. Also check for a co-runner first: against a live second asr_streaming
+# every arm would read ~2x slow and look like a real (terrible) result, the Exp679 class.
+LIVE=$( { adb -s $DEV shell "ps -A -o NAME" 2>/dev/null | tr -d '\r' | grep -c asr_streaming; } || true )
+if [ "${LIVE:-0}" -gt 0 ] 2>/dev/null; then
+  echo "WARNING: $LIVE asr_streaming already running on device - kill it first; arms run now are PROVISIONAL" >&2
+fi
+adb -s $DEV get-state >/dev/null 2>&1 || { echo "ERROR: device $DEV unreachable - refusing to emit a vacuous sweep" >&2; exit 2; }
 B=$(adb -s "$DEV" shell "dumpsys battery" | grep -oE 'temperature: [0-9]+' | grep -oE '[0-9]+' | head -1 | tr -d '\r')
 echo "note: batt_temp_c=$(python3 -c "print(round(${B:-0}/10,1))")"
 # Exp844: device STATE next to every measurement. Exp841/843 showed the same binary spans ~1 % of RTF across
@@ -117,6 +126,12 @@ echo "=== summary ==="
 python3 - "$TSV" "$REPS" <<'PYEOF'
 import statistics, sys
 rows = [l.rstrip('\n').split('\t') for l in open(sys.argv[1]) if l.strip()]
+# Exp880: a sweep with no measurements must FAIL, not print a header and exit 0. Tonight an adb
+# outage produced exactly that (every arm FAILED, rc 0) and it took a manual re-read to notice.
+missed = [r for r in rows if len(r) < 2 or not r[1]]
+if missed or not rows:
+    print(f"FAILED: {len(missed)} of {len(rows)} runs produced no RTF - no summary, investigate before re-running")
+    sys.exit(1)
 order = []
 for l in rows:
     if l[0] not in order:

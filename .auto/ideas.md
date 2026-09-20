@@ -2733,3 +2733,69 @@ Consequences:
     moved the capture aside before erroring), and audit check 16 states what the capture holds - 4 window
     lines = protocol, otherwise a WARN, and WARNs when it is missing. Rule: a hash is only as good as the
     file's provenance; quote the capture's window-line count next to any identity claim.
+
+- A REBOOT MOVES EVERY BAND CELL ~1/3, AND NOBODY RECORDED UPTIME FOR 879 RUNS (Exp880). A spontaneous
+  device reboot (adb dropped; uptime 367 s on recovery) produced protocol 1.19-1.31 and 138 s 1.49-1.59
+  against the long-uptime band 1.85 / 2.16 - same binary, byte-identical transcripts (md5 1a095c8496b4),
+  same 39/876 tokens, same chunk counts. Three controls, not one: (1) a host wall-clock cross-check
+  (binary 13.2 s vs 13.63 s host) rules out a lying clocksource; (2) a DELIBERATE `adb reboot` reproduced
+  the fast regime (~1.31 at ~5 min uptime), so it follows the reboot, not a one-time update; (3) the build
+  fingerprint is unchanged (OPPO/CPH2371 R.203be74, patch 2025-10-01, in .auto/device_fingerprint.txt).
+  Still fast at 9.75 h uptime (1.18-1.24), so the slow state accumulates over DAYS - the decay curve is
+  unmapped (QUEUED: protocol samples at ~10 min / 2 h / 6 h / 24 h / 72 h after one reboot, idle between,
+  to decide between a state qualifier and a reboot-before-keep protocol). Partial mechanism: sustained
+  cpu7 under load reads 1.43 GHz now vs the ledger's constant 1.3 GHz (+10 %), leaving ~20 % to the memory
+  subsystem / accumulated background load. This also closes the page-cache section's "genuinely UNMEASURED"
+  paragraph: post-boot is not a first-pass stall, it is a ~30 % regime on every phase.
+  ENFORCED, not noted: measure.sh prints uptime/procs/mem/cpu7/fingerprint with EVERY measurement and WARNs
+  under 900 s uptime; headline.json stays LONG-UPTIME (the comparable set); docs carry the regime in
+  STREAMING_1P5B.md without touching a band cell.
+  RULE FOR THE NEXT SURPRISE: a ~30 % same-tokens speedup is a STATE change until proven otherwise - run the
+  wall cross-check and read /proc/uptime BEFORE theorizing (my first reading was "the sweep is broken").
+
+- `-c` PRICED, NOT ASSERTED (Exp880; predictions in .auto/cost_pred880.txt BEFORE the runs). Exp849 told the
+  product to "raise -c" and claimed it "does not affect the metric" - measured only on runs that DIED.
+  Protocol clip, 3 interleaved reps x 4 arms: 4096 -> 1.3679, 8192 -> 1.3569 (-0.8 %), 16384 -> 1.3428
+  (-1.8 %), 65536 -> 1.3575 (-0.8 %). P1/P2 HOLD: no fixed reservation cost (the sign is even favourable).
+  Long end, chat138 (1813 positions used): an order-symmetric A,B,B,A sweep reads 16384 at +0.4 % - the
+  +2.4 % from a fixed-order run was ORDERING BIAS, resolved by the reversal (P6 amended, not failed).
+  Memory: the KV buffer is COMMITTED at load, not reserved - RSS rises 27.4 KB/position (+165 MB at 8192,
+  +388 MB at 16384, +1681 MB at 65536), matching the 28.0 KB/position arithmetic, majflt 0 throughout.
+  So P3a, and the product form is "`-c 8192` doubles the session for +112 MB at 0 % of the metric".
+  Third `-c` failure mode for the runbook: `-c 1048576` dies SILENTLY at context creation (log ends at
+  llama_new_context_with_model, no error, no summary, empty transcript) - not matched by Exp849's
+  "decode failed / frames failed" rule. Plumbing proof for all of the above: the absurd arm's device log
+  shows `n_ctx = 1048576`, i.e. ARGS reaches the binary (the Exp865c class, checked first).
+
+- THE SHIPPED BINARY LIED ABOUT ITS OWN DEFAULTS (Exp880, fixed). `-h` said `-c (default: 16384)` while the
+  struct defaulted to 4096, and `--vae-pieces (default: 13)` while the code defaulted to 2 (asr_server.cpp's
+  text is consistent - its default really is 16384, which is where the copy came from). Fix: help states the
+  true defaults, AND the vae_pieces struct default is now 1 = the shipping tier, so a bare invocation
+  reproduces the gated config (verified: no --vae-pieces -> RTF 1.1898, 39 tokens, 4 windows - previously it
+  would have measured p2, the Exp859 class). All harness paths pass --vae-pieces explicitly, so no measured
+  cell moves; the protocol run after the rebuild is byte-identical (1a095c8496b4).
+  Guard: audit check 17 derives flag->field->default from each binary's own source and requires every numeric
+  "(default: N)" to equal the struct (13 claims across both binaries), plus a second arm requiring the
+  vae_pieces code default to equal tier.env PIECES (bare == shipping tier, by the single-declaration doctrine).
+  Fault 17 (n_ctx 4096 -> 4444 in the struct) makes it fail naming -c.
+  AND THE SWEEP EARNED ITS KEEP AGAIN: check 7d (undeclared device clips, Exp873) was SILENT -
+  its chat17-sized dup plant produced only the dirty-tree FAIL. Root cause: the size filter that limits
+  md5 requests was either/or - manifest 'bytes' if any entry has them, else live device sizes. Exp879's
+  long250 entry added the manifest's ONLY bytes field, which silently replaced the fallback with a
+  one-element set and disarmed collision detection for every other clip size. So a manifest edit made
+  AFTER the last sweep broke a guard the sweep had certified - the rule 're-run the sweep when the
+  manifest changes' is now written next to the rule 're-run it when the audit changes'. Fix: UNION both
+  sources (a cost filter must never shrink the verdict set when information is ADDED). Re-run: 18/18
+  plantable fire, 0 silent; check 16 declared UNCOVERED with reason (WARN-only by design, and the driver
+  matches FAIL lines - manual control done instead: a 1-window capture makes it WARN, restore verified
+  byte-identical). Lesson for the ledger: performance filters on guards need a monotonicity argument,
+  not just a passing test - the test passes on the day the filter is written and rots the day the data
+  changes shape.
+  Also closed the hole tonight's adb outage exposed: run_rtf_multi.sh printed FAILED for every arm and exited
+  0 - the Exp877 vacuous-run class in the sweep. It now pre-flights the device (refuses a vacuous sweep),
+  warns on a co-runner (Exp679), and exits 1 when any run produced no RTF.
+  GATE (this round, required by the any-src-change rule): 40/40, WER 4.55 % (S=29 D=2 I=2 - the identical
+  error profile to Exp878), paired b=0/c=0 of 731 tokens vs BOTH hyp-gate852 and hyp-bound835 (CI exactly
+  [0,0], p=1.0). So the help-text + vae_pieces-default change is output-inert on real speech, not just on
+  the protocol hash. Gate mean 1.32 in the fresh-boot regime vs 1.89-1.91 long-uptime - the regime shows on
+  varied real speech too, same ~30 %.

@@ -72,6 +72,24 @@ if command -v adb >/dev/null 2>&1; then
   sleep 1
   CPU2=$(adb -s $DEV shell "head -1 /proc/stat" 2>/dev/null | tr -d '\r' | awk '{print $2+$3+$4+$7+$8+$9, $2+$3+$4+$5+$6+$7+$8+$9}')
   LOAD=$(adb -s $DEV shell "head -1 /proc/loadavg" 2>/dev/null | tr -d '\r' | awk '{print $1}')
+  # Exp880: DEVICE STATE is now sampled next to every measurement, because a phone that was REBOOTED
+  # minutes ago runs this byte-identical binary ~1/3 faster than one that has been up for days (the
+  # same run that read 1.85 for 40 eras of this loop read 1.22 at uptime 444 s). Every band cell in the
+  # ledger is a LONG-UPTIME number; a short-uptime number is not comparable to them, so say the state
+  # out loud rather than arguing about it later (the Exp841/844 "two-state" saga was this axis, unseen).
+  UPT=$( { adb -s $DEV shell "cat /proc/uptime" 2>/dev/null | tr -d '\r' | awk '{print int($1)}'; } || true )
+  NPROC=$( { adb -s $DEV shell "ps -A -o NAME" 2>/dev/null | wc -l; } || true )
+  MEMAV=$( { adb -s $DEV shell "grep MemAvailable /proc/meminfo" 2>/dev/null | tr -d '\r' | awk '{print int($2/1024)}'; } || true )
+  KHZ=$( { adb -s $DEV shell "cat /sys/devices/system/cpu/cpu7/cpufreq/scaling_cur_freq" 2>/dev/null | tr -d '\r'; } || true )
+  echo "note: device uptime_s=${UPT:-?} procs=${NPROC:-?} mem_avail_mb=${MEMAV:-?} cpu7_khz=${KHZ:-?} (band cells are long-uptime; see Exp880)" >&2
+  # Exp880: the OS build is part of device state too (a patch applied at a reboot is a confound for any
+  # "the band moved after the reboot" argument). One getprop per run; the reference copy lives in
+  # .auto/device_fingerprint.txt.
+  FP=$( { adb -s $DEV shell "getprop ro.build.fingerprint" 2>/dev/null | tr -d '\r'; } || true )
+  echo "note: device fingerprint=${FP:-?}" >&2
+  if [ "${UPT:-99999}" -lt 900 ] 2>/dev/null; then
+    echo "WARNING: device uptime is ${UPT}s - POST-REBOOT regime. This is NOT the band: the same binary reads materially faster here (Exp880). Do not keep, compare, or report a number taken in this state without the long-uptime control run alongside it." >&2
+  fi
   BUSYFRAC=$(echo "$CPU1 $CPU2" | awk '{db=$3-$1; dt=$4-$2; if (dt>0) printf "%.0f", 100*db/dt; else print 0}')
   echo "note: device other_busy=${BUSYFRAC}% load1=${LOAD:-?} (loadavg is context only on this device)" >&2
   if [ "${BUSYFRAC:-0}" -gt 25 ] 2>/dev/null; then

@@ -629,10 +629,14 @@ if '--skip-device' not in sys.argv:
             return None
         unlisted = sorted(n for n in dev_size if n not in man and not is_known(n))
         undeclared_harmless = []
-        doc_sizes = {spec.get('bytes') for spec in man.values() if spec.get('bytes')}
-        if not doc_sizes:
-            # no sizes recorded, so compare against the sizes we just read for the blessed clips
-            doc_sizes = {dev_size[n] for n in man if n in dev_size and not n.startswith('HOST ')}
+        # UNION, not either/or (Exp880): the manifest's 'bytes' coverage is sparse (one entry in
+        # 37), and the old either/or meant ADDING a single bytes field silently replaced the
+        # device-size fallback with a one-element set - Exp879's long250 entry disarmed this whole
+        # check for every other clip size, and only the selftest's chat17-sized dup caught it.
+        # A size filter is a cost control; it must never shrink the verdict set when the manifest
+        # gains information, so both sources always apply.
+        doc_sizes = ({spec.get('bytes') for spec in man.values() if spec.get('bytes')} |
+                     {dev_size[n] for n in man if n in dev_size and not n.startswith('HOST ')})
         # md5 is requested only for clips whose SIZE could collide (a size filter keeps it to one cheap
         # adb call), but EVERY unlisted clip is reported - otherwise an undeclared clip that happens to be
         # a unique size stays invisible, which is the hole this section exists to close.
@@ -1184,6 +1188,83 @@ if os.path.exists(cap):
 else:
     warn(".auto/last_out.txt is absent - no protocol capture to hash; re-run "
          "./.auto/measure.sh --skip-build before quoting an output-identity claim")
+
+# ---- 17. a binary's usage text must state its own defaults (Exp880) -------------------------
+# Exp880 found the SHIPPED binary telling users "-c <n> (default: 16384)" while the struct
+# defaulted to 4096, and "--vae-pieces ... (default: 13)" while the code defaulted to 2 - so a
+# bare invocation silently ran a different config than the docs described, and NO other check could
+# see it (check 11 only proves a flag EXISTS in the parser, never what the help PROMISES it does).
+# Derived entirely from the same source file, so the rule cannot drift from the code: for every
+# flag whose parser line assigns a struct field (p.FIELD = std::stoi/std::stof), the "(default:
+# VAL)" on that flag's usage line must equal the struct's "TYPE FIELD = VAL". Scope is numeric
+# flags only: float display (0.7 vs 0.7f) is compared numerically, and string/bool help lines
+# (sampling, text/json) are skipped by construction - a numeric rule applied to them could only lie
+# (Exp660). A second arm closes the Exp859 class for the one flag whose default IS the shipping
+# config: --vae-pieces' code default must equal tier.env PIECES, so a bare binary reproduces the
+# gated tier (if the tier ever changes, the default must change in the same commit).
+def _usage_defaults(path):
+    try:
+        src = open(path, encoding='utf-8', errors='ignore').read()
+    except OSError:
+        return None
+    fields = {}                       # FIELD -> numeric struct default
+    for m in re.finditer(r'^\s*(?:int|float)\s+(\w+)\s*=\s*([^;,\s]+)', src, re.M):
+        try:
+            fields[m.group(1)] = float(m.group(2).rstrip('f'))
+        except ValueError:
+            pass                      # string default - out of scope by design
+    flag2field = {}
+    lines = src.splitlines()
+    for i, ln in enumerate(lines):
+        m = re.search(r'(?:arg|\ba)\s*==\s*"(-{1,2}[a-z][\w-]*)"', ln)
+        if m:
+            for j in range(i, min(i + 3, len(lines))):
+                fm = re.search(r'p(?:arams)?\.(\w+)\s*=\s*std::sto[if]\s*\(', lines[j])
+                if fm:
+                    flag2field[m.group(1)] = fm.group(1)
+                    break
+    claims = []
+    for ln in lines:
+        if 'fprintf' not in ln or '(default:' not in ln:
+            continue
+        f = re.search(r'"\s{0,4}(-{1,2}[a-z][\w-]*)', ln)
+        d = re.search(r'\(default:\s*([^)]+)\)', ln)
+        if not f or not d:
+            continue
+        try:
+            want = float(d.group(1).strip().rstrip('f'))
+        except ValueError:
+            continue                  # string/bool default - out of scope by design
+        field = flag2field.get(f.group(1))
+        if field is None or field not in fields:
+            continue                  # flag with no numeric struct field - nothing to assert
+        claims.append((f.group(1), field, want, fields[field]))
+    return claims
+n17 = 0
+for rel in (os.path.join('demo', 'asr_streaming.cpp'), os.path.join('src', 'asr_server.cpp')):
+    claims = _usage_defaults(os.path.join(ROOT, rel))
+    if claims is None:
+        bad(f"check 17: {rel} not readable - usage-default check has no ground truth")
+        continue
+    for flag, field, want, have in claims:
+        n17 += 1
+        if abs(want - have) > 1e-9:
+            bad(f"check 17: {rel} -h promises {flag} (default: {want:g}) but the struct defaults "
+                f"{field} = {have:g} - a bare invocation measures a different system than the docs describe")
+ok(f"check 17: {n17} usage-text defaults match their struct defaults in both binaries")
+try:
+    tier_pieces = re.search(r'^PIECES=(\d+)', open(os.path.join(HERE, 'tier.env')).read(),
+                            re.M).group(1)
+    dsrc17 = open(os.path.join(ROOT, 'demo', 'asr_streaming.cpp'),
+                   encoding='utf-8', errors='ignore').read()
+    m17 = re.search(r'^\s*int\s+vae_pieces\s*=\s*(\d+)', dsrc17, re.M)
+    if m17 and m17.group(1) != tier_pieces:
+        bad(f"check 17: demo vae_pieces default = {m17.group(1)} but tier.env ships "
+            f"PIECES={tier_pieces} - a bare invocation is not the shipping tier (Exp859 class)")
+    else:
+        ok("check 17: binary vae_pieces default equals tier.env PIECES (bare == shipping tier)")
+except (OSError, AttributeError):
+    bad("check 17: tier.env or demo source unreadable for the tier-default arm")
 
 # ---- report -------------------------------------------------------------------
 print(f"harness audit: {len(oks)} checks passed, {len(warns)} warnings, {len(fails)} failures\n")

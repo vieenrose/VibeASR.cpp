@@ -59,10 +59,11 @@ struct stream_params {
     int n_ctx = 4096;
     int n_batch = 512;
     int max_tokens_per_chunk = 256;
-    int vae_pieces = 2;   // window split count; must divide 26 (frames).
-                          // 2x41600 is the measured optimum with the lifetime
-                          // (graph-allocator) activation buffers; 26 is the RAM-lean
-                          // end of the curve; 13 the historical gate protocol.
+    int vae_pieces = 1;   // window split count; must divide 26 (frames).
+                          // DEFAULT IS THE SHIPPED TIER (Exp880): a bare invocation with no
+                          // --vae-pieces must reproduce the gated configuration, not p2 (which
+                          // is +1.2 % slower and heavier - the Exp859 class: a default that
+                          // silently measures a different system than the docs describe).
     bool xwin = false;    // cross-window carry: VAE cache persists across hops
                           // (full-context features, no overlap recompute)
     int xwin_reset = 8;   // reset carry every N hops (0 = never). Bounds KV/context
@@ -78,10 +79,10 @@ static void print_usage(const char * prog) {
     fprintf(stderr, "  --lm-model <path>      Streaming LM GGUF, e.g. Q4_K_M (required)\n");
     fprintf(stderr, "  --audio <path>         Input WAV file (required, resampled to 24k mono)\n");
     fprintf(stderr, "  -t <n>                 Threads (default: 4)\n");
-    fprintf(stderr, "  -c <n>                 Context size (default: 16384)\n");
+    fprintf(stderr, "  -c <n>                 Context size (default: 4096)\n");
     fprintf(stderr, "  --max-tokens <n>       Max new tokens per chunk (default: 256)\n");
-    fprintf(stderr, "  --vae-pieces <n>       Window split count, must divide 26 (default: 13)\n");
-    fprintf(stderr, "                         1 = legacy full-window encode; 13/26 = cached pieces\n");
+    fprintf(stderr, "  --vae-pieces <n>       Window split count, must divide 26 (default: 1)\n");
+    fprintf(stderr, "                         1 = full-window encode (the shipped tier); 13/26 = cached pieces\n");
     fprintf(stderr, "  --xwin                   Cross-window VAE carry (full-context\n");
     fprintf(stderr, "                         features, skips overlap recompute)\n");
     fprintf(stderr, "  --xwin-reset <n>        Reset carry every N hops, 0 = never\n");
