@@ -2878,3 +2878,14 @@ Consequences:
   25-45m 1.19 / 92-108m 1.19 / 5h 1.20 protocol and 1h 1.32 / 5h 1.33 gate-mean - two instruments,
   same answer: no hour-scale decay. The slow state needs days; the 24-72 h points stand as theQueued
   deciders. Stamp verified tier + current binary before proceeding (BIN=744bf770, unchanged).
+
+- FAULT BOARD ROTATION, AND ITS BAND WAS REGIME-STALE (Exp886). fault_inject.sh as-is: 11 pass,
+  2 fail - both fails exactly as predicted (lie_dur 1.4557 and trunc_half 1.4957 vs the hardcoded
+  [1.5, 4.0], calibrated long-uptime), every exit-code/signature probe green. A lie_dur re-run at
+  +0.3 s VAE over guard closed the numerator scare (heat at batt 38.9, not a header-driven window
+  count - denominator 10.00 s content-derived, 55 tokens). Fix: the band is now same-session
+  relative to a healthy baseline H ([0.5H, 2.5H], lie_dur additionally [0.7H, 1.3H] guardlike) -
+  regime-proof by construction; re-run 13/13 green, including under a heat-elevated H=1.3374 that
+  would break any absolute band. Rule generalized: any ABSOLUTE acceptance band on a timed quantity
+  is a regime-stale guard waiting to happen - anchor same-session or document the regime it was
+  calibrated in. Settled anchor 1.1983 at 5.3 h uptime (decay flat).

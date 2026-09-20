@@ -66,23 +66,37 @@ open(os.path.join(out, 'audio_header_only.wav'), 'wb').write(b[:44])
 open(os.path.join(out, 'audio_empty.wav'), 'wb').write(b'')
 PYGEN
 
-# $1 = fixture path, $2 = expect (run|err), $3 = label. For run: rtf must stay in a plausible band, because a
-# metric that trusted the header field would report a FALSE speedup here (lie_dur would read ~0.5, not ~2.0).
+# $1 = fixture path, $2 = expect (run|err), $3 = label, $4 = tight band ("" or "guardlike").
+# For run: rtf must stay in a plausible band, because a metric that trusted the header field would
+# report a FALSE speedup here (lie_dur would read ~0.5, not ~2.0). The band is SAME-SESSION
+# RELATIVE, anchored to a healthy baseline H taken below: it used to be the absolute [1.5, 4.0],
+# calibrated long-uptime, and the fresh regime failed it at ~1.3-1.5 with a healthy binary (Exp886 -
+# a regime-stale guard, not a broken loader). Fixture content is the GUARD clip (55 tokens), so
+# expect guard-like rates (~1.3 fresh), not protocol-like ones.
 aprobe() {
-  local clip=$1 exp=$2 label=$3 out rtf
+  local clip=$1 exp=$2 label=$3 tight=${4:-} out rtf lo hi
   out=$(SKIP_BUILD=1 "$HERE/measure.sh" --clip "$clip" 2>&1 | grep -oE "METRIC (rtf|tokens)=[0-9.]+" | tr '\n' ' ')
   rtf=$(printf '%s' "$out" | grep -oE "rtf=[0-9.]+" | head -1 | cut -d= -f2)
   if [ "$exp" = err ]; then
     if [ -z "$rtf" ]; then PASS=$((PASS+1)); printf "%-26s PASS  refused to load (no metric produced)\n" "$label";
     else FAIL=$((FAIL+1)); printf "%-26s FAIL  expected a clean refusal, got rtf=%s\n" "$label" "$rtf"; fi
   else
-    if [ -n "$rtf" ] && python3 -c "import sys;sys.exit(0 if 1.5 <= float('$rtf') <= 4.0 else 1)"; then
-      PASS=$((PASS+1)); printf "%-26s PASS  rtf=%s (content-derived denominator, no header-driven speedup)\n" "$label" "$rtf";
-    else FAIL=$((FAIL+1)); printf "%-26s FAIL  rtf=%s out of [1.5,4.0] - check what sets the duration\n" "$label" "${rtf:-none}"; fi
+    lo=$(python3 -c "print(round(0.5*float('$HEALTHY_RTF'),3))"); hi=$(python3 -c "print(round(2.5*float('$HEALTHY_RTF'),3))")
+    if [ -z "$rtf" ]; then FAIL=$((FAIL+1)); printf "%-26s FAIL  no metric produced\n" "$label";
+    elif ! python3 -c "import sys;sys.exit(0 if $lo <= float('$rtf') <= $hi else 1)"; then
+      FAIL=$((FAIL+1)); printf "%-26s FAIL  rtf=%s outside [0.5H,2.5H]=[%s,%s] (H=%s) - check what sets the duration\n" "$label" "$rtf" "$lo" "$hi" "$HEALTHY_RTF";
+    elif [ "$tight" = guardlike ] && ! python3 -c "import sys;h=float('$HEALTHY_RTF');sys.exit(0 if 0.7*h <= float('$rtf') <= 1.3*h else 1)"; then
+      FAIL=$((FAIL+1)); printf "%-26s FAIL  rtf=%s vs healthy %s - not guard-like, denominator may follow the header\n" "$label" "$rtf" "$HEALTHY_RTF";
+    else PASS=$((PASS+1)); printf "%-26s PASS  rtf=%s (H=%s, content-derived denominator)\n" "$label" "$rtf" "$HEALTHY_RTF"; fi
   fi
 }
+# Healthy baseline for the relative band (also refreshes the protocol capture afterwards - the fixture
+# arms above overwrite .auto/last_out.txt with non-protocol transcripts).
+HEALTHY_RTF=$(SKIP_BUILD=1 "$HERE/measure.sh" 2>/dev/null | grep -oE 'METRIC rtf=[0-9.]+' | head -1 | cut -d= -f2)
+[ -n "$HEALTHY_RTF" ] || { echo "ERROR: no healthy baseline - cannot judge the audio arms" >&2; exit 2; }
+echo "fault_inject: healthy baseline H=$HEALTHY_RTF"
 aprobe "$AF/audio_trunc_half.wav"   run "WAV truncated (hdr 10s/5s)"
-aprobe "$AF/audio_lie_dur.wav"      run "WAV header lies 4x duration"
+aprobe "$AF/audio_lie_dur.wav"      run "WAV header lies 4x duration" guardlike
 aprobe "$AF/audio_header_only.wav"  err "WAV header only (44 B)"
 aprobe "$AF/audio_empty.wav"        err "WAV empty (0 B)"
 

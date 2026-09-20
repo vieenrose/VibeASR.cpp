@@ -1,0 +1,45 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp886: fault-board rotation in the fresh regime)
+
+HYPOTHESIS: fault_inject.sh's `aprobe` asserts RTF arms land in the hardcoded band [1.5, 4.0] -
+calibrated LONG-UPTIME (protocol 1.85). In the fresh regime the same arms read ~35 % lower, so
+the board should FAIL on the band while every exit-code probe passes. That pattern (band fails,
+signatures pass) diagnoses a REGIME-STALE GUARD, not a broken binary - and the fix is a
+same-session relative band, not new numbers.
+
+MECHANISM: fixtures derive from the guard clip (slice10b, 55 tokens), so content-derived rates
+are guard-like (~1.31 fresh): lie_dur (10 s content, header says 40 s) must read ~1.3, i.e. BELOW
+the 1.5 floor; trunc_half (5 s) ~1.3-1.5, borderline. A header-trusting reader would print ~0.3
+for lie_dur - the anti-cheat property is intact, only the band is stale.
+
+PREDICTIONS (board run AS-IS, no edits first):
+  P1  healthy control PASS (exit 0, 39 tokens).
+  P2  all four model-corruption probes PASS with exit 1 + loud signature (regime-independent).
+  P3  all three cprobes PASS (exit codes + messages, regime-independent).
+  P4  header_only + empty PASS (clean refusal, no metric).
+  P5  lie_dur FAILS the [1.5,4.0] band reading ~1.2-1.4 (predicted regime artifact) while its
+      value proves content-derived denominator (nowhere near ~0.3).
+  P6  trunc_half reads ~1.2-1.5 - FAIL or borderline PASS on the stale band (either way the band,
+      not the binary, is what needs changing).
+  FAIL mode of the HYPOTHESIS (not of the board): lie_dur reads ~0.3 (header-driven denominator
+  = the Exp850b bug class is BACK - escalate immediately); any exit-code probe FAILs (real
+  robustness regression - gate before anything else).
+
+AFTERWARD: replace [1.5,4.0] with a same-session relative band anchored to a healthy measure.sh
+baseline H taken at board start: run-arms must land in [0.5H, 2.5H], and lie_dur additionally in
+[0.7H, 1.3H] (content 10 s guard audio reads guard-like; header-driven would read H/4). Then
+re-run the board green. The band becomes regime-proof by construction.
+
+VERDICTS (board as-is, then fixed, then settled anchor):
+  P1 HOLD (healthy PASS, from the full log: 11 pass 2 fail as predicted).
+  P2/P3/P4 HOLD (all exit-code probes PASS with loud signatures - regime-independent).
+  P5 CONFIRMED: lie_dur rtf=1.4557 FAILs [1.5,4.0] while proving content-derived denominator
+  (10.00 s audio shown, header ignored; nowhere near ~0.3). Regime artifact, as predicted.
+  P6 CONFIRMED borderline: trunc_half rtf=1.4957 FAILs by 0.004 - the band, not the binary.
+  NUMERATOR SCARE CLOSED: lie_dur re-run settled reads 1.3522 with 55 tokens and VAE 7.4 vs
+  guard 7.1 (+0.3 s at batt 38.9 = heat, not a header-driven window count). No Exp850b-class bug.
+  FIXED BOARD: 13 pass, 0 fail with the relative band (H=1.3374 heat-elevated baseline - and the
+  relative band passed correctly UNDER the heat that would break any absolute band, which is the
+  point of anchoring same-session). lie_dur 1.4565 in [0.94,1.74] guardlike tight band: PASS.
+  SETTLED ANCHOR after 3 min idle: 1.1983 (uptime 5.3 h, other_busy 1 %, byte-identical) - the
+  5.3 h decay point, flat. Note batt read 37.9 here yet the number is dead-center: the 37.0 gate
+  threshold is conservative (fine for a guard - better conservative than blind).
