@@ -3084,3 +3084,8 @@ Consequences:
   byte-identical transcript (inert 8th time; pooled +0.8 % within hatch bar after order-symmetric
   retest killed the warm-second-run hypothesis). Full audit 129/0 green; selftest --only 18 green.
   Settled anchor 1.1922. Pre-907 rows lack config but are identifiable (the 30 ladder rows by ts).
+
+- FAULT BOARD DUE BY CADENCE (Exp908): 13/13 green (model truncations loud, audio denominators
+  content-derived, config edges loud) - no regression 22 rounds on. Prediction footnote: I quoted
+  Exp886's as-is read instead of its same-session fix; the board matched the fixed expectation.
+  Lesson: quote the commit, not the log's mid-round state. Anchor 1.1939, byte-identical.

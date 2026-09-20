@@ -1,0 +1,23 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp908: fault-board rotation)
+
+HYPOTHESIS: 22 rounds since Exp886 (prior interval ~21 - due by cadence). No src changes since,
+so expected-null: the board reads exactly as at Exp886. Timely after Exp907's measure.sh edit
+(the board parses DEV from measure.sh and exercises the binary the harness ships).
+
+FROM Exp886:
+  P1  11 pass + exactly the 2 predicted band fails (lie_dur, trunc_half vs hardcoded
+      [1.5,4.0] - a regime-stale guard, not a broken loader; fail VALUES inside the old band).
+  P2  every exit-code/signature probe passes (truncations fail loudly, healthy control exit 0
+      with real output, unknown-flag probe exits 1).
+  FAIL modes: any NEW fail (a probe that passed at Exp886 failing now = regression, stop and
+  investigate); healthy control degraded; band-fail values moving OUTSIDE the old band.
+
+VERDICTS (board 13/13 green):
+  All 6 model/signature probes PASS (healthy 39 tok exit 0; 4 truncations fail loudly with
+  signatures; unknown --kv-type exits 1). All 4 audio probes PASS (trunc_half 1.3460, lie_dur
+  1.3050 - content-derived denominators; header-only/empty refused). All 3 config edges PASS.
+  PREDICTION ERROR (mine, not the board's): P1 quoted Exp886's AS-IS read (11+2 band fails)
+  instead of its SHIPPED fix (commit d0312ce re-anchored the band same-session -> 13/13).
+  The board did exactly what the fixed version should: 13/13. Lesson: quote the commit, not
+  the log description's mid-round state. P2 HOLDS fully.
+  Anchor 1.1939 (batt 38.0 warm post-board, still in band; transcript 1a095c8496b4).
