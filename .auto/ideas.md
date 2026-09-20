@@ -3222,3 +3222,20 @@ Consequences:
     CONTROL: planted `vae = A + B*eff` (ignoring the override) -> selftest FAILS with
     "--vae-rate did not fire: 114.3 != 68.15" and "inert"; restored byte-identical -> green.
   Audit 129/1 explained WARN/0 failures after the change.
+
+- ROLLBACK LADDER DUE BY CADENCE (Exp918): 15 arms x 2 interleaved reps (rep2 reversed, batt gate <=37.0 C,
+  no HOT/flags, 30/30 arms ran) on the unchanged binary. Default 1.1937 (rep1 1.1952 / rep2 1.1922 -
+  bracket spread 0.25%, so the default anchors itself across the 42-min ladder). Full log: .auto/ladder918.log.
+  * IDENTITY: 12 arms byte-identical to the reference `1a095c8496b4`; `flush_off` reproduces the historical
+    pre-flush protocol `55ac39b635cb` exactly (as designed); `ct_block` (37 tok, hash `ad1953f30010`) and
+    `ALL_OFF` (38 tok, c4031e597b20) differ BY DESIGN (layout revert = system change).
+  * COSTS (vs default, seconds-first per the Exp883 rule): stack_off +4.68 s (+39.2 %), ct_block +2.12 s
+    (+17.8 %), flush_off +1.57 s (+13.1 %), dw_conv1d +1.25 s (+10.4 %), gelu_bias +0.77 s (+6.4 %),
+    bound_batch +0.48 s (+4.1 %), gelu_batch +0.41 s (+3.4 %), norm_fuse +0.38 s (+3.2 %), dw_lpad
+    +0.34 s (+2.8 %), ls_fuse +0.26 s (+2.2 %), cont_tile_off +0.24 s (+2.0 %), mm_m2 +0.02 s (+0.2 %),
+    dw_axpy -0.1 % (INERT, 8th confirmation).
+  * ONE ARM OUTSIDE THE HISTORICAL BAND, flagged not explained: dw_conv1d's overhead now reads +10.4 %
+    (absolute +1.25 s) vs +12.8 % (+1.53 s) at Exp883 and +1.38 s at Exp906 - a mild monotonic decline
+    across three ladders at identical arm order, so not arm-order/heat. Everything else
+    is within +-1.5 pp (stack_off +39.2 vs +38.6, flush +13.1 vs +12.7 exact). Re-check at the next ladder;
+    until then quote the runbook in seconds.
