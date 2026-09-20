@@ -142,11 +142,18 @@ adb -s $DEV push .auto/bench_device.sh $RDIR/ > /dev/null 2>&1 || exit 1
 # both A/B arms then ran the SAME configuration and the sweep's "parity" meant the knob never fired (the
 # Exp764 failure class). Honour an EXTRA_ENV assignment by dropping our copy of that variable; bench_device.sh
 # still defaults them.
-_e=${EXTRA_ENV:-}; _lm=""; _vf=""; _mk=""; _th=""
+_e=${EXTRA_ENV:-}; _lm=""; _vf=""; _mk=""; _th=""; _ar=""
 case " $_e " in *" LM_FILE="*) ;; *) _lm="LM_FILE=${LM_FILE:-lm-q8head.gguf} ";; esac
 case " $_e " in *" VAE_FILE="*) ;; *) _vf="VAE_FILE=$VAE_FILE ";; esac
 case " $_e " in *" MASK="*)    ;; *) _mk="MASK=${MASK:-C0} ";; esac
 case " $_e " in *" THREADS="*) ;; *) _th="THREADS=${THREADS:-2} ";; esac
+# Exp948: ARGS= is a CLI passthrough that bench_device.sh appends to the binary's argv, but this script
+# never forwarded it, so `ARGS="-c 8192" ./.auto/measure.sh` was a SILENT NO-OP - the device shell has no
+# host environment, so the variable never arrived and the arm measured the default (found by running a
+# -c 8192 arm that produced byte-identical output to -c 4096; the Exp764/Exp832 class). Two fixes: (a)
+# forward ARGS like the four knobs above, (b) if EXTRA_ENV already carries ARGS=, keep THAT copy so the
+# two paths cannot disagree.
+case " $_e " in *" ARGS="*) ;; *) _ar="ARGS='${ARGS:-}' ";; esac
 if [ "$PARSE_ONLY" != 1 ]; then
 # Exp942: DELIVERED-frequency histogram. cpu7's scaling_cur_freq (the 5th TSV column and the med/min/max
 # from bench_device.sh) is the governor's REQUEST; this is what the core actually delivered. Read
@@ -154,7 +161,7 @@ if [ "$PARSE_ONLY" != 1 ]; then
 # (calibrated: 100.3 units per second of wall), and the 2.4 GHz share is the state indicator. Needed
 # because Exp940's LM transient had the request pinned at max while the run was 10 % slower.
 TIS0=$( { adb -s $DEV shell "cat /sys/devices/system/cpu/cpu7/cpufreq/stats/time_in_state" 2>/dev/null; } || true )
-adb -s $DEV shell "$_e $_lm$_vf$_mk$_th sh $RDIR/bench_device.sh ${AUDIO} ${THREADS:-2} ${PIECES:-1} loop" > .auto/last_run.txt 2>&1 || exit 1
+adb -s $DEV shell "$_e $_lm$_vf$_mk$_th$_ar sh $RDIR/bench_device.sh ${AUDIO} ${THREADS:-2} ${PIECES:-1} loop" > .auto/last_run.txt 2>&1 || exit 1
 TIS1=$( { adb -s $DEV shell "cat /sys/devices/system/cpu/cpu7/cpufreq/stats/time_in_state" 2>/dev/null; } || true )
 cat .auto/last_run.txt | tail -n 2
 adb -s $DEV pull $RDIR/out-loop.log .auto/last_out.txt > /dev/null 2>&1

@@ -1,0 +1,22 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp948: what happens PAST the n_ctx=4096 position cap?)
+
+CONTEXT: the loop knows the session cap is density-borne (~258 s of dense chat, ~329 s of sparse read
+speech) and has measured clips that APPROACH it (long250 completed at 3140 positions), but it has NEVER
+run a clip that exceeds it - and `-c 8192` was only ever compared on clips that fit either way (Exp898:
+long250 gave 728 tokens at both). So the product-critical path "a user records >4.3 min of dense audio"
+is untested. New asset chat276.wav = chat138 twice (275.95 s, derivation PROVEN byte-for-byte, blessed):
+predicted ~95 windows, ~1734 tokens -> ~4394 positions by the loop's own 28/window + tokens rule, i.e.
+~7 % past the cap.
+
+DESIGN: same clip twice, default -c 4096 then ARGS="-c 8192" (a KV-size change only), transcripts kept.
+
+  P1  BOTH runs complete (exit 0, no abort) - the cap is handled, not crashed on.
+  P2  the 4096 run is TRUNCATED: tokens ~1616 (1734 x 4096/4394), i.e. 100-130 fewer than the 8192 run.
+  P3  the 8192 run matches the length expectation (~1734 tokens) and its transcript's tail is the audio's
+      tail; the 4096 transcript should be missing that tail (the decisive content check, not just counts).
+  P4  RSS: the 8192 arm should be ~+112 MB higher (4096 positions x 27.4 KB/position, Exp880) - i.e.
+      ~2310 MB vs ~2198 MB - and both majflt 0.
+  P5  no garbage: both transcripts fluent, no NaN/repetition collapse (the Exp850 silent-corruption class).
+  FAIL modes: an abort/crash (=> a real product robustness bug on >4.3 min dense audio); tokens NOT lower
+  at 4096 (=> the cap is not where the loop thinks, or the demo resets/reuses the KV); garbage past the
+  cap (=> silent corruption); RSS unchanged at 8192 (=> -c is not doing what the ledger says).

@@ -1141,7 +1141,7 @@ except Exception as e:
 # characters, so the scorer correctly returned 0.50 against an expectation of 0.25. The scorer was right;
 # the fixture was wrong; and because no harness step ever ran --selftest, a red test sat there for
 # hundreds of runs. Same lesson as Exp660 for TESTS rather than CHECKS.
-SELFTEST_TOOLS = ['compare_arms.py', 'rss_soak.py', 'score_mixed.py', 'score_stream.py']
+SELFTEST_TOOLS = ['compare_arms.py', 'rss_soak.py', 'score_mixed.py', 'score_stream.py', 'deliv_share.py']
 for t in SELFTEST_TOOLS:
     p_ = os.path.join(HERE, t)
     if not os.path.exists(p_):

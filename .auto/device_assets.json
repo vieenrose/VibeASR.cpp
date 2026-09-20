@@ -64,6 +64,10 @@
    "md5": "c7226cdee7fe67856d089f69a3578f03",
    "note": "17 s ladder cell (Exp675)"
   },
+  "chat276.wav": {
+   "md5": "ae4ef609b41450aaa7d72c92ad234f02",
+   "note": "Exp948: 275.95 s dense chat (chat138 twice), built to EXCEED the n_ctx=4096 position cap (~4394 predicted) and probe the past-the-limit behaviour - an untested product path (dense session cap ~258 s)."
+  },
   "chat69.wav": {
    "cell": "69 s ladder cell",
    "md5": "cb919d2dd8f2003169ef66257fd362b7",
@@ -204,6 +208,22 @@
    ],
    "file": "long250.wav",
    "note": "Exp936: PROVEN byte-for-byte. 250.8 s of UNIQUE audio = all of holdout_en.wav (139.56 s) + an inserted 1,240 ms gap (59,520 zero bytes at 24 kHz mono s16) + the first 110 s of holdout_zh.wav (5,280,000 B). The clip behind every long-form cell (Exp879/898/916/931), machine-verified instead of described. Peer-prompted (SILENCE:n idea from the CUDA loop)."
+  },
+  {
+   "concat": [
+    [
+     "chat138.wav",
+     44,
+     6622704
+    ],
+    [
+     "chat138.wav",
+     44,
+     6622704
+    ]
+   ],
+   "file": "chat276.wav",
+   "note": "Exp948: PROVEN byte-for-byte - 275.95 s = chat138 played twice (two full data ranges), the same construction as chat138 = chat69 twice."
   }
  ],
  "known_extras": {
