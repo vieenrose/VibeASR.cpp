@@ -2943,3 +2943,9 @@ Consequences:
   the script since Exp848, so this was a pure rotation, no new predictions needed. Settled anchor
   1.2039 at 7.5 h (decay flat); the immediate post-board anchor read 1.3391 warm and settled on
   the normal 5-min discipline.
+
+- GUARD ROTATION #13 (Exp893): order-symmetric P,G,G,P, protocol 1.1948/1.1971, guard 1.3109/1.3126
+  (55 tok) = +9.7 % premium. Third confirmation of the per-token criterion (+10.0/+9.5/+9.7 %):
+  guard decode 76.4 ms/tok vs protocol 76.9, VAE 7.1/7.1 identical, transcript fluent. No overfit
+  signal. Postscript: immediate anchor 1.3368 (5th consecutive run) settled to the logged 1.1983
+  after 3 min idle - fourth heat-discipline confirmation. Decay flat at 7.6 h.

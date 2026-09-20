@@ -1,0 +1,12 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp893: guard rotation #13)
+
+HYPOTHESIS: cadence rotation (#12 was Exp889) with the standing confirmation question: premium
+at ~+10 % by per-token accounting (now 3 for 3 across rotations #11/#12 if it holds here).
+Phone mildly warm at start (batt 38.0, ~1 min after last round) - absolute numbers may sit
+~1-2 % high; the PREMIUM is the verdict, computed within the same 60 s window.
+
+PREDICTIONS (order-symmetric P,G,G,P, one pass):
+  P1  protocol = 1.19-1.23.
+  P2  guard = protocol x (1.09-1.11), tokens 55.
+  P3  (guard_gen - protocol_gen)/16 = 70-85 ms/token; guard vae_s == protocol vae_s within 0.3 s.
+  FAIL modes: premium outside token accounting; tokens != 55; degenerate transcript.
