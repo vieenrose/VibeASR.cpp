@@ -3446,3 +3446,27 @@ Consequences:
     for pricing - the clip-level fit with slow-fraction rescaling is. Do not quote a KV slope from the
     per-window fit.
   Settled anchor 1.1878 at 18.4 h (batt 36.2 C), transcript byte-identical.
+
+- DURING-RUN CLOCK TELEMETRY SHIPPED (Exp934, harness; nothing else shipped). Closes the defect flagged
+  at Exp931: device_state.tsv's `cpu7_khz` is ONE pre-run sample and reads 1430000 in every historical
+  row, while a run actually sits at 2400000 (boost) then 2000000 (settled) - the step that Exp931-933
+  showed is the dominant short-term driver (prefill x1.187, VAE x1.142, decode x1.028).
+  * FIX (mirrors the Exp907 append-only pattern): bench_device.sh samples the big core's governor request
+    inside its EXISTING 0.5 s polling loop (one extra file read, free) and emits
+    `cpu7_khz_min/med/max` in the exit line; measure.sh parses them, prints `METRIC cpu7_khz_med=`, and
+    appends a 13th TSV column `cpu7_khz_med` (header migrates one-time; history never rewritten),
+    with audit check 18 moved 12 -> 13 in lockstep.
+  * CONTROL = the same experiment that proves it (6 x chat17 back-to-back from a 36.2 C device):
+      new column: 2400000 / 2400000 / 2400000 | 2000000 / 2000000 / 2000000
+      VAE:        11.8      / 11.8      / 11.8      | 13.5      / 13.4      / 13.5
+      RTF:        1.3436    / 1.3417    / 1.3425    | 1.4788    / 1.4764    / 1.4808
+    The new column flips at exactly the run where VAE and RTF flip (+10.3 %), and every run's
+    min == med == max (single-state, no straddle). The OLD pre-run column reads 1430000 in ALL SIX rows
+    across that 10 % change - the defect, restated as a measurement (P1/P2/P3 all hit).
+  * Audit green at 13 columns; selftest fault 18 still fires (column-agnostic by construction). The
+    flip timing again tracks the start temperature: 36.2 C -> between runs 3 and 4 (~105 s of load),
+    vs Exp933 37.1 C -> between 2 and 4.
+  * Anchor 1.2159 at 18.7 h (batt 36.3 C), transcript byte-identical. FLAGGED, not hidden: this is the
+    highest point of the session series (typical 1.188-1.199), and the new telemetry says state does NOT
+    explain it - the run was in the BOOST state (median 2400000, and vae_s 7.2 vs the usual 7.0-7.1). So
+    it is ambient/other; re-check at the next anchor rather than calling it drift.

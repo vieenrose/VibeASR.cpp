@@ -1,0 +1,19 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp934: during-run clock telemetry)
+
+DEFECT (proven at Exp931/933): device_state.tsv's cpu7_khz is ONE pre-run sample and reads 1430000 in
+every historical row, while a run actually sits at 2400000 (boost) then 2000000 (settled) - the step
+that is the dominant short-term driver (prefill x1.187, VAE x1.142, decode x1.028). FIX: bench_device.sh
+now samples the big core's governor request in its existing 0.5 s loop and emits min/med/max; measure.sh
+records the median as a new 13th TSV column and a METRIC line.
+
+CONTROL (this run, which is also a reproduction of Exp933): 6 back-to-back chat17 runs from a ~36 C
+device.
+  P1  the NEW column separates the states: cpu7_khz_med = 2400000 for the early runs and 2000000 for the
+      later ones, with the flip at the same run as the VAE plateau flip (Exp933: between runs 2 and 4).
+  P2  the OLD pre-run column does NOT separate them: same value (to the sample) across all six runs -
+      that is the defect, restated as a measurement.
+  P3  every run emits `METRIC cpu7_khz_med=...` and all six keep the 106-token canary.
+  P4  audit check 18 passes with the 13-column header/last row, and selftest fault 18 still fires
+      (it is column-agnostic by design, Exp907).
+  FAIL modes: no state flip in the column (fix did not fire); min==max (sampler broken); the column
+  constant while the VAE plateau flips (wrong file sampled); check 18 red after the migration.

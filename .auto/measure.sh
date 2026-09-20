@@ -169,6 +169,10 @@ LOAD=$( grep -oE 'load: [0-9.]+s' .auto/last_err.txt | head -n 1 | awk '{print $
 PEAKKB=$( grep -oE 'peak_kb=[0-9]+' .auto/last_run.txt | cut -d= -f2 || true )   # pipefail-safe: absent line != failed run (Exp876)
 HWMKB=$( grep -oE 'hwm_kb=[0-9]+' .auto/last_run.txt | cut -d= -f2 || true )   # pipefail-safe: absent line != failed run (Exp876)
 MAJFLT=$( grep -oE 'majflt_delta=-?[0-9]+' .auto/last_run.txt | cut -d= -f2 || true )   # pipefail-safe: absent line != failed run (Exp876)
+# Exp934: the big core's MEDIAN governor request DURING the run (bench_device.sh emits min/med/max).
+# The old cpu7_khz column is a single PRE-RUN sample and cannot describe a run that crosses the
+# 2400000 -> 2000000 step (Exp931-933). Optional: absent on an old binary, so never required.
+KHMED=$( grep -oE 'cpu7_khz_med=[0-9?]+' .auto/last_run.txt | cut -d= -f2 || true )
 BATTT=$( adb -s $DEV shell "dumpsys battery 2>/dev/null | grep 'temperature:'" 2>/dev/null | grep -oE '[0-9]+' | head -n 1 || true )   # pipefail-safe: absent line != failed run (Exp876)
 [ -z "${RTF:-}" ] && { echo "FAILED: no RTF parsed"; tail -n 5 .auto/last_err.txt; exit 1; }
 # Exp876: a pipefail-safe parse must not turn a MISSING optional line into a silently missing metric.
@@ -193,6 +197,7 @@ echo "$TAG majflt=${MAJFLT:-0}"
 [ -n "${PRE:-}" ] && echo "$TAG prefill_s=$PRE"
 [ -n "${DEC:-}" ] && echo "$TAG decode_s=$DEC"
 [ -n "${LOAD:-}" ] && echo "$TAG load_s=$LOAD"
+[ -n "${KHMED:-}" ] && echo "$TAG cpu7_khz_med=$KHMED"
 [ -n "${BATTT:-}" ] && echo "$TAG batt_temp_c=$(python3 -c "print(round(${BATTT}/10,1))")"
 # Exp894: device-state telemetry used to be PRINTED (note: lines) but never SAVED - so the only
 # per-run state record was batt_temp_c, and any uptime/memory/process correlation the loop might
@@ -206,10 +211,16 @@ if [ "$PARSE_ONLY" != 1 ] && [ -n "${RTF:-}" ]; then
   # faked uptime significance), and EXTRA_ENV is exactly the confound source for measure.sh rows.
   # Appended at END so columns 0-10 are stable; legacy headers migrate one-time, data rows are
   # never rewritten. Env assignment strings cannot contain tabs/newlines, so the TSV stays clean.
-  [ -f "$_tsv" ] || printf 'ts\tuptime_s\tprocs\tmem_avail_mb\tcpu7_khz\tbatt_c\trtf\tvae_s\tlm_s\ttokens\tfingerprint\textra_env\n' > "$_tsv"
+  [ -f "$_tsv" ] || printf 'ts\tuptime_s\tprocs\tmem_avail_mb\tcpu7_khz\tbatt_c\trtf\tvae_s\tlm_s\ttokens\tfingerprint\textra_env\tcpu7_khz_med\n' > "$_tsv"
   if ! head -1 "$_tsv" | grep -q 'extra_env'; then
     sed -i '1s/$/\textra_env/' "$_tsv"
   fi
+  # Exp934: 13th column `cpu7_khz_med` = the big core's median request DURING the run (the 5th column
+  # `cpu7_khz` is a single PRE-RUN sample, which reads 1430000 while a run actually sits at 2400000 then
+  # 2000000). Same append-only rule as Exp907: history is never rewritten, the header migrates one-time.
+  if ! head -1 "$_tsv" | grep -q 'cpu7_khz_med'; then
+    sed -i '1s/$/\tcpu7_khz_med/' "$_tsv"
+  fi
   _battc=$(python3 -c "print(round(${BATTT:-0}/10,1))" 2>/dev/null || echo "?")
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%s)" "${UPT:-?}" "${NPROC:-?}" "${MEMAV:-?}" "${KHZ:-?}" "$_battc" "$RTF" "${VAE:-?}" "${LMS:-?}" "${TOK:-?}" "${FP:-?}" "${EXTRA_ENV:-}" >> "$_tsv" 2>/dev/null || true
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%s)" "${UPT:-?}" "${NPROC:-?}" "${MEMAV:-?}" "${KHZ:-?}" "$_battc" "$RTF" "${VAE:-?}" "${LMS:-?}" "${TOK:-?}" "${FP:-?}" "${EXTRA_ENV:-}" "${KHMED:-?}" >> "$_tsv" 2>/dev/null || true
 fi
