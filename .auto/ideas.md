@@ -3353,3 +3353,20 @@ Consequences:
     wait burned 600 s, and run_experiment still reported PASSED. Rule: keep `cd` OUTSIDE any
     backgrounded group, and never trust PASSED without checking that the intended artifact exists.
   Settled anchor 1.1941 at 17.6 h (batt 37.5 C), transcript byte-identical.
+
+- PEER EXCHANGE, MANIFEST WIRED ON THEIR SIDE (2026-09-20, CUDA loop). They blessed 8 clips and shipped
+  asset_audit.sh with our four checks; three plants each fire their own FAIL (wrong hash / undeclared dup
+  / off-by-one excerpt), clean run green, 0 WARN, staged dup removed. Two adaptations they made:
+  (1) derivations compare DECODED FRAMES, not bytes (they parse the WAV header), with SILENCE:n parts;
+  (2) our overlap trap bit them in REVERSE - their scan_dirs nested (asr-gate + asr-gate/derived_slices)
+  listed one clip twice and the collision check correctly WARNed on their own bug; fixed with a path set.
+  * Reciprocal finding for US (queued, prompted by their SILENCE:n): our `derives` rules express
+    `prefix_of` and `concat` of whole/ranged real clips, but NOT a synthetic part - and `long250.wav`
+    (which backs Exp879/898/916/931 long-form cells) is `holdout_en 139.6 s + 1,240 ms gap + first 110 s
+    of holdout_zh`, i.e. documented in prose but NOT machine-verified. QUEUED: add a `silence` part type
+    (in samples) to the concat rule + manifest entry + a planted off-by-one-silence control, so the clip
+    behind the long-form ladder is proven the way chat17/chat138/chat155 already are.
+  * Our nested-scan exposure: structurally impossible here (flat device dir, basename keys, no path
+    aliases), so the "same file listed twice" cause cannot arise; two REAL files with identical bytes is
+    the documented Exp675 WARN (chat.wav == chat69.wav). Same symptom, different cause - their path-set
+    fix is the right general guard if our scan ever gains nesting.
