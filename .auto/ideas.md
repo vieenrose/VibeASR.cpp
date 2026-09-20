@@ -3065,3 +3065,14 @@ Consequences:
   run back-to-back in one thermal state, or the series point carries a qualifier. Telemetry
   n=17: batt r=+0.90 decisive; procs-watch attenuates to -0.26 (ns, resolving to noise).
   Settled anchor 1.1938 at 10.8 h, byte-identical, checks OK - decay flat 6m-10.8h.
+
+- ROLLBACK LADDER DUE BY CADENCE (Exp906): 15 arms x 2 reps on the unchanged binary (23 rounds
+  since Exp883). Identity exactly as Exp883: 12 byte-identical (1a095c8496b4), flush_off =
+  55ac39b635cb both reps, ct_block/ALL_OFF differ by design (37/38 tok), all arms STABLE.
+  Costs all within +-1.5 pp (flush exact, axpy inert 7th time); absolute seconds transfer
+  (stack 4.65 s, dw_conv1d 1.38 s). Default rep spread +0.09 % - heat controls exemplary.
+  Ladder default mean 1.1974. No repricing needed. Two by-products: (1) a 15-arm gated ladder
+  exceeds one 40-min tool call when waits engage - split reps next time; (2) TELEMETRY GAP:
+  device_state.tsv has no config column, so ladder hatch arms confound any raw correlation
+  (demoed: +0.90 batt-r collapses, uptime fakes significance). Queued fix: log EXTRA_ENV per
+  row so analyses filter to default-config; clean n=17 reproduces batt +0.896 exactly.

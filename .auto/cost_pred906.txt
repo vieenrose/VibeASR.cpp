@@ -1,0 +1,33 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp906: rollback ladder re-run on the current binary)
+
+HYPOTHESIS: 23 rounds since Exp883 (prior interval 19 - due by cadence). NO src changes since
+(the tree at c2909b6 ships the same binary BIN=744bf77), so this is expected-null hygiene:
+every hatch must reproduce its Exp883 cost and identity. Same heat controls as Exp883
+(rep2 reversed + batt<=37.0C gate per arm); a larger default rep spread indicts heat, not hatches.
+
+FROM Exp883 gated run, tolerance +-1.5 pp:
+  P1  dw_conv1d +12.8 | gelu_bias +5.0 | gelu_batch +3.7 | dw_lpad +2.7 | bound_batch +4.1 |
+      cont_tile +2.1 | norm_fuse +3.9 | ls_fuse +2.3 | mm_m2 +0.8 | dw_axpy +0.1 (inert 7th time?) |
+      flush_off +12.7 | stack_off +38.6 | ct_block +17.9 | ALL_OFF +45.0
+  P1b (absolute seconds, the transferable quote): dw_conv1d ~1.5 s | stack ~4.6 s |
+      bound_batch ~0.5 s | flush ~1.5 s (all +-10 %).
+  P2  identity: 12/15 arms byte-identical to default (1a095c8496b4); flush_off reproduces the
+      pre-Exp829 protocol EXACTLY (55ac39b635cb); ct_block + ALL_OFF differ (37-38 tok).
+  P3  every arm deterministic across its 2 reps (no UNSTABLE); default rep1-vs-rep2 within 1.5 %.
+  FAIL modes: any identity change with no src change (stop everything); UNSTABLE any arm;
+  default rep spread > 1.5 % (heat control failed - costs provisional, re-run cooled).
+
+VERDICTS (30/30 arms; first run_experiment timed out at 40 min with 29/30 done - the script
+was killed mid-cool_down before rep2 default; missing arm run manually after, batt-gated):
+  P1 HOLD: all 14 arms within +-1.5 pp of Exp883 (worst: dw_conv1d +11.5 vs +12.8 = 1.3 pp;
+  ALL_OFF +43.9 vs +45.0 = 1.1 pp; flush +12.7 EXACT). dw_axpy -0.1 % inert 7th time.
+  P1b HOLD: absolute overheads transfer (dw_conv1d 1.38 s, stack 4.65 s, bound_batch 0.42 s,
+  flush 1.52 s - all within ~10 % of Exp883 seconds).
+  P2 HOLD: 12/15 byte-identical (1a095c8496b4); flush_off = 55ac39b635cb BOTH reps (no
+  separate cooled run needed this time); ct_block 37 tok / ALL_OFF 38 tok as documented.
+  P3 HOLD: every arm STABLE across reps (max rep spread ~0.9 %).
+  P4 (heat control): default rep1 1.1969 vs rep2 1.1980 = +0.09 % - exemplary; no HOT flags.
+  Ladder default mean 1.1974 (n=2). No src change, no identity change, no repricing needed.
+  INSTRUMENT LESSON: a 15-arm batt-gated ladder no longer fits one 40-min run_experiment when
+  cool_down waits engage (this one took ~42 min + the manual arm). Next time split reps
+  across two tool calls (rep1 / rep2) or budget 60 min.
