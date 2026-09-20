@@ -3524,3 +3524,32 @@ Consequences:
     their audit lines now show the explicit ranges (chat69@224+3311352 twice; chat138@44+6622704 +
     chat17@44+816000) - the same proof, stated legibly.
   Settled anchor 1.1963 at 19.5 h (batt 35.9 C, boost state, low=0 of n=19), transcript byte-identical.
+
+- THE ROLLBACK LADDER IS STATE-STABLE (Exp937) + the dw_conv1d arm's variance characterized and my
+  Exp918 "decline" note RETRACTED. Hypothesis: unlike the 2-min guard sweep (Exp935), a 15-arm ladder is
+  10-40 min with ~35-45 s arms (stack_off/ALL_OFF), so the 2400000 -> 2000000 step should land mid-ladder.
+  * ANSWER: it does NOT. One rep, 15 arms, 16 min: EVERY arm ran at clock median 2400000, no HOT and no
+    gate-blind flags. The Exp902 cool_down gate (batt <= 37.0 C) plus the per-arm structure keeps the
+    ladder in the boost state, so every historical ladder cost is state-clean. Wiring shipped:
+    rollback_audit.sh now prints each arm's during-run clock median and carries it into the summary table.
+  * COST REPRODUCIBILITY vs Exp918 (single rep here, so drift is not cancelled - read as a cross-check):
+    14 of 15 arms within +-1 pp - stack_off +38.6 (was +39.2), ct_block +17.1 (+17.8), flush_off +13.1
+    (+13.1), bound_batch +4.3 (+4.1), gelu_bias +5.9 (+6.4), gelu_batch +2.9 (+3.4), norm_fuse +3.3
+    (+3.2), dw_lpad +2.5 (+2.8), ls_fuse +1.5 (+2.2), cont_tile +2.0 (+2.0), mm_m2 +0.4 (+0.2),
+    dw_axpy -0.0 (-0.1).
+  * THE ONE EXCEPTION - dw_conv1d (the tap-chain fallback): +18.1 % here (vae 9.2 s, overhead 2.1 s) vs
+    +10.4 % (1.25 s) at Exp918, +1.38 s at Exp906, +1.53 s at Exp883. THREE interleaved same-session reps
+    (Exp937b) read +12.0 % (rtf 1.3451/1.3310/1.3455, vae 8.6/8.4/8.6, overhead 1.4 s) with a +-1.1 %
+    spread - i.e. tight WITHIN a session but up to +-0.5 s BETWEEN ladders, and this ladder's own arm-2
+    value (2.1 s) is 50 % above the interleaved same-session value (1.4 s), so it is not session-level
+    state either - it looks arm-order/gate-dependent (arm 2 runs right after arm 1 across a cool_down
+    gate; the interleaved reps run back-to-back).
+  * BY-PRODUCT / plausible mechanism: the tap chain costs +166 MB RSS (2410 vs 2244 MB) - it touches far
+    more pages than the fused kernel, which is a natural reason for extra sensitivity.
+  * RETRACTION (mine): the Exp918 line "mild monotonic decline across three ladders, so not
+    arm-order/heat" was a trend read from three noisy points. Correct statement: high CROSS-ladder
+    variance (1.25-2.17 s), tight within-session repeatability, +166 MB RSS. RUNBOOK: quote the
+    dw_conv1d fallback as a RANGE (1.3-2.2 s) or with interleaved reps, never as a single point.
+  * QUEUED: an arm-order test (does dw_conv1d immediately after default, across a gate, reproduce the
+    2.1 s?) if that range ever matters for a decision.
+  Settled anchor 1.1937 at 20.0 h (batt 36.0 C, boost state, low=0 of n=19), transcript byte-identical.

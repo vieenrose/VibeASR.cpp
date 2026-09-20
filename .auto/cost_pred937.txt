@@ -1,0 +1,23 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp937: is the rollback ladder state-stable?)
+
+CONTEXT: Exp935 certified the 4-arm guard sweep state-stable (all arms boost) - but that sequence is
+~2 min with gaps. The rollback ladder is 15 arms (30 with reps) over 10-40 min, and its slow arms
+(stack_off +39 %, ALL_OFF +44 %, ct_block +18 %) each run ~33-45 s of sustained load, so the
+2400000 -> 2000000 step (Exp931-933) is much more likely to land mid-ladder. Exp883's control already
+exists for HEAT drift (reversed rep 2) and the Exp902-style cool_down gate waits on batt <= 37.0 C; this
+round adds the missing observable: rollback_audit.sh now prints each arm's DURING-RUN clock median.
+
+DESIGN: REPS=1 (15 arms in listed order), which is exactly the worst case for a one-way state drift
+(no reversal to cancel it). Costs from a single rep are drift-contaminated and are NOT quoted as costs;
+the question is the STATE SEQUENCE.
+
+  P1  the clock medians stay 2400000 for the early arms and may flip to 2000000 later; the arm index of
+      the flip is recorded, and the arms after it show a proportional rtf step (not a smooth ramp).
+  P2  if the ladder is state-stable (all 15 arms 2400000), then the Exp902 cool_down gate + the
+      per-arm structure is sufficient, and every historical ladder cost is state-clean.
+  P3  the transcript identity is unaffected by state: 12 arms byte-identical to the default reference,
+      flush_off = 55ac39b635cb, ct_block/ALL_OFF differ by design.
+  P4  the open dw_conv1d flag (+10.4 % / +1.25 s at Exp918 vs +12.8 % / +1.53 s at Exp883) is only
+      re-read if the arms it compares are in the SAME state - otherwise it stays open.
+  FAIL modes: a flip between the default arm and a hatch arm (that would mean every ladder cost quoted
+  across the flip is a state difference, not a hatch cost); an arm with no clock field (wiring broken).
