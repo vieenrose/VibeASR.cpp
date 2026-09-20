@@ -1,0 +1,28 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp891: chat69 prefill structure, second settled rep)
+
+HYPOTHESIS: Exp888's settled chat69 matched VAE to +-1 % but read prefill 13.6 s vs ~12.5 s rows-only
+(+1.8 s KV term arguable either way) - one rep cannot separate residual heat from a structural
+offset. A second settled rep (cooled to <= 36.5 first, other_busy checked) decides it.
+
+PREDICTIONS (single settled chat69 run, 446 tokens):
+  P1  VAE = 47-49 s again (2.05 +- 0.1 s/eff-window - the crisp leg, must replicate).
+  P2  prefill <= 13.0 s -> first rep was heat, structure clean (close the question).
+      prefill >= 13.5 s twice -> structural offset real (~+1 s unexplained - record, do not chase;
+      it is 1 % of wall and below any ship bar).
+  P3  decode 33-37 s, tokens 446, transcript = blessed chat69 text (hash check vs ladder ref).
+  P4  rtf 1.30-1.42 (ladder cell refinement; long-uptime 2.10).
+  FAIL modes: tokens != 446 (wrong clip); VAE outside 47-49 (the crisp leg breaks - escalate,
+  the model itself is suspect); batt > 37.5 at start (provisional - cool longer, do not log).
+
+VERDICTS (second settled chat69 rep, cooled to 36.5 first):
+  P1 HOLD in substance: VAE 49.3 (band said 47-49 - 0.3 over the edge, but the RATE is what
+  matters: 49.3/23.44 = 2.103 vs protocol 2.107, matches to 0.2 %). The crisp leg replicates.
+  P2 DECIDED: prefill 13.6 s EXACTLY again (two settled reps, sd 0.0). Per the pre-registered rule
+  this is a systematic +1.1 s over rows-only - but it is the KV term, not an anomaly: with-KV
+  prediction was 14.3 (rows 12.5 + scaled KV 1.8), measured 13.6 twice. So the term EXISTS with
+  magnitude ~60 % of the scaled guess - refines the fresh KV slope downward, well within its
+  uncertainty. Structure holds completely; question CLOSED (no revisit needed).
+  P3 HOLD: decode 35.1 in [33,37]; tokens 446 exact; transcript fluent (24 windows).
+  token-level note: 590 words for 446 subword tokens + speaker tags - consistent.
+  P4 HOLD in substance: rtf 1.4203 (band top 1.42 - the prefill +1.1 s is the entire excess).
+  Fresh chat69 cell firms to ~1.41-1.42 (two settled reps) vs 2.10 long-uptime.

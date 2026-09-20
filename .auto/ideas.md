@@ -2928,3 +2928,11 @@ Consequences:
   (1.3333/1.3759) vs 1.32/1.33 - slight creep, heat-consistent (chunk 1 starts warm at batt 37.4;
   chunk 2 matches gate885's chunk 2 to 0.1 %; the chunk1->chunk2 step inside every gate is the
   heat signature, not content, since utterance halves are fixed).
+
+- CHAT69 PREFILL STRUCTURE, SECOND SETTLED REP (Exp891): prefill 13.6 s EXACTLY again (sd 0.0
+  across two settled reps) - per the pre-registered rule a systematic +1.1 s over rows-only, but
+  analysis shows it IS the KV term (with-KV prediction 14.3, measured 13.6 twice): the term exists
+  at ~60 % of the scaled guess, refines the fresh KV slope, no anomaly. VAE 49.3 (2.103 vs 2.107
+  s/eff-window, 0.2 %), decode 35.1, tokens 446, rtf 1.4203. Structure holds completely with all
+  terms accounted for; question CLOSED. Fresh chat69 cell firms to ~1.41-1.42 (two reps).
+  Settled anchor 1.1951 at 7.2 h, byte-identical.
