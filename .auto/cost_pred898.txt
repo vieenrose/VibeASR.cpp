@@ -1,0 +1,32 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp898: -c 8192 session demonstration)
+
+HYPOTHESIS: Exp880 priced "-c 8192 doubles the session for +112 MB at 0 % of the metric" on
+paper (short clips + RSS law). A price is not a demonstration: run the actual long session
+(long250.wav, 250.8 s unique audio, 86 windows, 3140 positions) at -c 8192 and show it completing
+with the predicted footprint. This converts the product recommendation from arithmetic to evidence
+(it still does not make the ship decision - that remains the user's).
+
+PREDICTIONS (single run, AUDIO=long250.wav, ARGS='-c 8192'):
+  P1  COMPLETES all 86 windows (3140 positions < 8192; exit 0 with final summary).
+  P2  rtf = 1.15-1.30 (long-uptime cell 1.8743 scaled by the ~0.64 fresh factor; sparse content).
+  P3  tokens = 728 (same audio, same decode - context size must not change output).
+  P4  peak RSS = 2280-2330 MB (2191 baseline + ~112 MB committed KV delta), majflt = 0 (no swap
+      pain with the bigger reservation on this 8 GB phone).
+  FAIL modes: dies before window 86 (the ceiling math is wrong - escalate); tokens != 728
+  (context size changed output - gate-grade finding, stop and investigate); majflt >> 0 with
+  elevated rtf (swap pain - the lever has a hidden RAM cost, reprice); RSS delta far from
+  +112 MB (the commit law does not hold in-session).
+
+VERDICTS (single long250 run at -c 8192, 5.6 min wall):
+  P1 HOLD: all 86 windows, exit 0, final summary present. The 8-minute session class works.
+  P2 EDGE: rtf 1.307 vs band top 1.30 (+0.5 %) - heat (batt 41.2 after 5.6 min continuous), not a
+  miss worth chasing; informational only, this is not a ladder cell.
+  P3 HOLD: tokens 728 EXACT - context size does not change output (same code path, n_ctx only
+  sizes buffers; determinism argument + gate evidence stand behind it).
+  P4 HOLD in substance: peak RSS 2331 MB (majflt 0 - no swap pain), but the delta is +140 MB vs
+  +112 arithmetic - a ~+30 MB second-order excess, CONSISTENT with Exp880's sweep (+165 at 8192
+  vs +112 law, middles ~55 MB above the fitted line). Real, product-irrelevant (2331 << 3500
+  alarm), mechanism-murky (allocator granularity? backend buffers?) - documented, not chased:
+  not every residual deserves a round.
+  DEMONSTRATED (was paper): an 8.6-min-class session completes at -c 8192 for ~+140 MB committed
+  at 0 % speed delta. The ship decision itself remains the user's.

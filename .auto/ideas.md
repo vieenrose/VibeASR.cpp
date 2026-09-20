@@ -3003,3 +3003,10 @@ Consequences:
   exact) as well as bytes. Control: --only 17 fires AND mtime is bit-identical after. Rule
   generalized: a revert that restores content but not metadata is half a revert - every guard
   that reads metadata (mtime, perms, xattrs) can tell.
+
+- -c 8192 SESSION DEMONSTRATED END-TO-END (Exp898): long250 (250.8 s, 86 windows) at -c 8192
+  completes (exit 0, summary), rtf 1.307 (heat top-edge, informational), tokens 728 EXACT
+  (context size does not change output), peak RSS 2331 MB majflt 0 (no swap pain). Delta +140 MB
+  vs +112 arithmetic - the ~+30 MB second-order excess matches Exp880's sweep pattern; real,
+  product-irrelevant, documented not chased. The product recommendation is now evidence, not
+  arithmetic; the ship decision stays the user's. Settled anchor 1.1952 at 8.5 h.
