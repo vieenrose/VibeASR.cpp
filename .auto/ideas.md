@@ -3041,3 +3041,14 @@ Consequences:
   otherwise). Short-term variance is heat alone; mem/procs carry no independent signal in the
   6-9 h window. Scope kept honest: narrow ranges rule out strong short-term effects only; the
   slow state (days) is unmeasured by construction. Settled anchor 1.1948 at 9.1 h.
+
+- LONG CLIPS ARE NOT THERMOMETRICALLY VALID IN ONE PASS (Exp904): two chat138 runs (hot start
+  and cooled start) agree within 0.8 % (VAE 105.3/104.5, prefill 32.9/32.5, decode 73.4/73.3)
+  because both heat identically during their 3.7 min (end batt 40.0-40.2 both) - and both exceed
+  the settled bands by ~5 %. Ruling: intra-run heat, not length-dependence (settled 24-window
+  rate matches 4-window; both runs share one self-heating profile). Consequence: long clips buy
+  PRECISION (Exp867h stands - it is about repeatability, and paired designs cancel the bias) but
+  their ABSOLUTE levels carry ~+5 % intra-run bias fresh. Short settled runs measure levels;
+  long runs measure rates-with-bias. Fresh 138 s cell 1.52-1.53 stays heat-influenced provisional.
+  Corroboration (rough): fresh decode slope ~6.6 us/pos vs 13.22 (about half) matches the regime
+  asymmetry. Settled anchor 1.1924.

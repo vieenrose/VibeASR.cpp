@@ -1,0 +1,42 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp904: chat138 fresh settled cell)
+
+HYPOTHESIS: regime-transfer evidence exists at 4 windows (protocol) and 24 windows (chat69);
+138 s (48 windows, 876 tokens, P~2200) tests the per-window VAE rate and the decode law at a
+third length, and firms the provisional fresh 138 s cell (~1.55 hot) into a settled number.
+chat138 = chat69 played twice (Exp875) - same content, double length, so content is controlled
+and any surprise is length, not audio.
+
+MECHANISM (effective windows): 48 windows, final-window flush fraction small (pf from geometry;
+use N_eff ~= 47.5). Fresh VAE rate 2.10 s/eff-window. Rows ~= 48x28 - flushed ~= 1330 x ~20 ms.
+Decode 876 x ~77 ms + KV term at P~1100 mean.
+
+PREDICTIONS (settled run, batt 37.6 at start):
+  P1  vae_s = 96-102 s (47.5 x 2.10 = 99.8).
+  P2  prefill_s = 26-30 s; decode_s = 70-78 s (loose, P-dependence + KV).
+  P3  rtf = 1.42-1.50, tokens = 876 (flushed canary).
+  FAIL modes: tokens != 876 (wrong clip); VAE rate off >10 % from 2.10 (length-dependence -
+  the transfer story breaks at 48 windows); heat (batt >= 39 with elevation - the 2.5-min run
+  heats itself; intra-run warming of late windows is an admitted caveat, not a failure).
+
+VERDICTS (two long runs agree with each other, both miss the bands the same way):
+  Clean run: VAE 104.5 (2.20 s/eff-window, +4.8 % over 2.10), prefill 32.5, decode 73.3,
+  rtf 1.5242, tokens 876. Hot run: 105.3/32.9/73.4/1.5342. They agree within 0.8 % DESPITE
+  different start temps (36.9 vs 37.6) because both heat identically DURING their 3.7 min
+  (both end batt 40.0-40.2).
+  RULING: intra-run heat, not length-dependence. Evidence: (1) settled 24-window rate (2.09)
+  matches 4-window (2.11) - no length effect where heat is controlled; (2) both 48-window runs
+  share the same self-heating profile and the same overshoot; (3) decode (evenly spread across
+  windows) matches its band while VAE/prefill (front-loaded? no - interleaved per window...)
+  overshoot together. Hmm - (3) is weak as stated: all phases interleave per window, so heat
+  should hit all three. Decode matched because its band was LOOSE (+-5 % with KV uncertainty)
+  while VAE's was tight (+-3 %). The honest form: the VAE leg exceeds its tight band by 2 pp,
+  consistent with ~+1.5 C mean intra-run warming at fresh-regime heat sensitivity.
+  CONSEQUENCE (the durable finding): a 3.7-min run cannot produce a settled 48-window number -
+  the run heats itself. Long clips buy precision (variance, Exp867h - stands, it is about
+  repeatability) but their ABSOLUTE levels carry ~+5 % intra-run-heat bias in the fresh regime.
+  Short settled runs measure levels; long runs measure rates-with-bias. Both have their place,
+  now written down. Fresh 138 s cell: 1.52-1.53 heat-influenced provisional (settled-equivalent
+  unmeasured - would need per-window timing the binary does not emit).
+  CORROBORATION (rough, not a refit): decode 83.7 ms/tok at mean P~1100 vs 76.9 at P~67 ->
+  slope ~6.6 us/position vs 13.22 long-uptime (~half) - matches the regime asymmetry (attention
+  compute cheapened ~40 %) to within its large error bars.
