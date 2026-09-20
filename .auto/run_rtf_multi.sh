@@ -126,12 +126,22 @@ for r in $(seq 1 "$REPS"); do
     adb -s $DEV shell "$DEF_ENV $envs THREADS=$threads sh $RDIR/bench_device.sh $audio $threads $pieces $tag" \
       > .auto/multi-run-$tag.txt 2>&1
     adb -s $DEV pull $RDIR/err-$tag.log .auto/multi-err-$tag.txt >/dev/null 2>&1
+    # Exp919: also pull the arm's STDOUT (where the [n/m] window lines are). Until now the transcript
+    # identity had to be pulled by hand after the sweep (Exp909), because bench_device.sh sends the app's
+    # stdout to out-<tag>.log and the runner only fetched err-<tag>.log. Identity is the guard board's
+    # contract, so the tool now measures it. Control: on the Exp919 sweep the P arms must read the
+    # protocol hash and the G arms a common different hash, matching Exp909's manual pulls.
+    adb -s $DEV pull $RDIR/out-$tag.log .auto/multi-out-$tag.txt >/dev/null 2>&1
+    # Exp919b: hash the WHOLE pulled stdout file, matching the loop's canonical protocol hash
+    # (1a095c8496b4 = md5 of the 4-window capture). The first version hashed only the '^[n/m]' lines,
+    # which is a different (also stable) oracle - the known-value control caught the mismatch.
+    tx=$(md5sum .auto/multi-out-$tag.txt 2>/dev/null | cut -c1-12 || true)
     rtf=$(grep -oE 'RTF: [0-9.]+' .auto/multi-err-$tag.txt | head -1 | awk '{print $2}')
     tok=$(grep -oiE 'tokens: [0-9]+' .auto/multi-err-$tag.txt | head -1 | awk '{print $2}')
     rss=$(grep -oE 'hwm_kb=[0-9]+' .auto/multi-run-$tag.txt | head -1 | cut -d= -f2)
     maj=$(grep -oE 'majflt_delta=-?[0-9]+' .auto/multi-run-$tag.txt | head -1 | cut -d= -f2)
-    echo "$label"$'\t'"$rtf"$'\t'"$tok"$'\t'"${rss:-0}" >> "$TSV"
-    echo "ARM $label | rep=$r | rtf=$rtf | tokens=$tok | rss_kb=${rss:-?} | majflt=${maj:-?} | cpu7_khz=$(cpufreq)$HOT"
+    echo "$label"$'\t'"$rtf"$'\t'"$tok"$'\t'"${rss:-0}"$'\t'"${tx:-none}" >> "$TSV"
+    echo "ARM $label | rep=$r | rtf=$rtf | tokens=$tok | rss_kb=${rss:-?} | majflt=${maj:-?} | tx=${tx:-none} | cpu7_khz=$(cpufreq)$HOT"
   done
 done
 

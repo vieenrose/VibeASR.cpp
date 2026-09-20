@@ -3239,3 +3239,25 @@ Consequences:
     across three ladders at identical arm order, so not arm-order/heat. Everything else
     is within +-1.5 pp (stack_off +39.2 vs +38.6, flush +13.1 vs +12.7 exact). Re-check at the next ladder;
     until then quote the runbook in seconds.
+
+- GUARD ROTATION #18 + THE ARM-TRANSCRIPT INSTRUMENT (Exp919). Two passes of the order-symmetric P,G,G,P
+  sweep, because the first pass heat-stepped and the second started warm (both logged):
+      pass A (batt 36.9 cold start): P1 1.1962, G 1.3059, G2 1.3081, P2 1.2054 (4th arm +0.8 %)
+      pass B (immediately after):    P1 1.2342 (HEAT, +3.2 % vs A-P1), G 1.3111, G2 1.3130,
+                                     P2 1.1906 (clean - the Exp902 pacing waited twice on heat first)
+  Clean protocol points are A-P1 (1.1962) and B-P2 (1.1906) -> mean 1.1934; all four guard arms mean
+  1.3095 -> premium **+9.73 %**, (13.0953-1.1934*10)/16 = **72.6 ms/token** (predicted 70-85). Coolest
+  guard pair only: +9.52 %, 71.0 ms. 8th per-token confirmation; series #14..18 = 9.6 / 9.5 / 9.65 / 9.56
+  / 9.73 - flat. The 4th-arm step this time appeared in PASS A's P2 and in PASS B's first arm, which is
+  the Exp897/901/902/905 recurring pattern (three clean arms, the fourth or a warm start trips).
+  * INSTRUMENT SHIPPED (Exp909's gap): run_rtf_multi.sh now pulls `out-<tag>.log` itself and prints the
+    transcript hash per arm (`tx=`), so the guard board's identity claim is measured by the tool instead
+    of by a manual pull. FIRST VERSION USED THE WRONG ORACLE - it hashed only the `^[n/m]` window lines
+    (8750f02531f4 / ff345ffab10c) while the loop's canonical reference is the WHOLE capture file
+    (1a095c8496b4 / 849cca7df5bc). The pre-registered control ("P arms must read the reference hash")
+    caught it; fixed to `md5sum` of the pulled file and re-run: P arms 1a095c8496b4, G arms 849cca7df5bc
+    exactly, on both arms of both roles.
+  * LESSON (5th instance of this class): a new instrument that "fires" is not enough - the value it
+    prints must be checked against a KNOWN reference in the same round, or it silently defines a second,
+    private oracle. The control was free because Exp909's manual pulls are in the record.
+  Settled anchor 1.1950 at 16.6 h (batt 36.5 C), transcript byte-identical; audit 129/1 explained WARN/0.

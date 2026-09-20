@@ -1,0 +1,14 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp919: guard rotation #18)
+
+HYPOTHESIS: cadence rotation (#17 was Exp909). Standing expectation: premium ~+9.5-10 % by per-token
+accounting, 8th confirmation. Order-symmetric P,G,G,P one pass; batt ~36.9 C (post-ladder, settled).
+
+NEW INSTRUMENT THIS ROUND: run_rtf_multi.sh now pulls out-<tag>.log itself and prints the transcript
+hash per arm (tx=...). Control: P arms must read tx=1a095c8496b4 and G arms a common different hash -
+Exp909 measured these by hand (1a095c8496b4 / 849cca7df5bc), so a mismatch means the new pull is wrong.
+
+  P1  protocol = 1.18-1.23 (39 tok, tx=1a095c8496b4).
+  P2  guard = protocol x (1.09-1.11), tokens 55 both arms, tx identical G==G.
+  P3  (guard_gen - protocol_gen)/16 = 70-85 ms/token; guard vae_s == protocol vae_s within 0.3 s.
+  FAIL modes: premium outside token accounting; tokens != 55/39; any tx mismatch; 4th-arm heat step;
+  tx column missing/empty (new knob must FIRE - the Exp660 rule).
