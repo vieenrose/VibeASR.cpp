@@ -2957,3 +2957,10 @@ Consequences:
   (hide the TSV). Seeded with 3 spaced settled anchors: 1.1891/1.1904/1.1892 (sd 0.0007 - the
   tightest triple of the loop), batt cooling throughout. Full sweep 19/19 fire, 0 silent.
   Decay point at ~7.7 h: 1.1896 pooled, flat.
+
+- GATE REGRESSION, DUE BY CADENCE (Exp895): 40/40, WER 4.55 % (S=29 D=2 I=2 - identical profile
+  five gates running), paired b=0/c=0 of 731 vs BOTH hyp-gate890 and hyp-gate852 (CI [0,0], p=1.0).
+  Output stability across 5 gates and both regimes. Gate mean 1.35 (1.3195/1.3755) at ~8 h uptime:
+  series 1.32/1.33/1.35/1.35 - flat, and chunk-2 reads 1.376 +- 0.001 across three gates, which is
+  the tightest sub-number in the whole gate instrument (chunk halves are fixed utterance sets, so
+  chunk-2 is a 20-utt fixed-work benchmark with 0.1 % reproducibility).
