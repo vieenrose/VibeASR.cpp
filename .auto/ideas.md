@@ -3181,3 +3181,26 @@ Consequences:
   * Audit re-run as the LAST write of the round (loop rule): 129 checks / 1 explained WARN / 0
     failures - check 10 keeps the command naming the tier, check 5 keeps host/device bin + .so hashes
     in sync.
+
+- RATE-CEILING / LONG-FORM BOARD IN THE FRESH REGIME (Exp916, ~36 rounds since Exp879): ran the 250.8 s
+  unique clip (`AUDIO=long250.wav`, default tier, cool 36.0 C start, end batt 40.1 C): 86 windows /
+  85.42 effective / 728 tokens / 3140 positions -> vae 191.7 s, prefill 63.7 s, decode 67.3 s,
+  wall gen 322.7 s (rtf 1.2866 - heat-biased, NOT a ladder cell), RSS 2218.3 MB, majflt 0, load 0.8 s.
+  * The linear structure transfers to a new length in the fresh regime:
+      VAE    2.244 s/effective-window vs the settled 2.10 -> +6.9 %, which is the intra-run self-heating
+             bias a 250 s single pass carries (Exp904), not a rate change.
+      prefill 26.4 ms/row measured; the fresh-scaled model (x0.628 on the Exp870 constants, KV term at
+             ctx=1469) predicts 65.3 s vs 63.7 s measured = -2.5 %. Crisp even at 86 windows.
+      decode  92.4 ms/token: still the LOOSE leg. The two fresh reps (protocol 76.9 @ ctx 58, chat69
+             78.2 @ ctx 522) imply a ~2.8 us/position slope, but this clip implies ~10.7 us/position -
+             i.e. the slope is instrument-dependent, exactly what Exp891/904 flagged. Do not quote a
+             decode law from this clip; decode pricing stays at the phase-scalar level.
+  * Session limit not hit: 3140 positions completes under the DEFAULT -c 4096, so long250 is reachable
+    without -c 8192 (Exp898's 8192 session was about the 400+ s end, not this clip). RSS 2218.3 MB
+    reproduces Exp879's 2218 MB at the same position count.
+  * HAZARD FOUND (queued, not fixed this round): `.auto/cost_fit.sh --predict` still carries the Exp870
+    LONG-UPTIME constants (A=0.39, B=3.343, PM=29.82, ...), so in the fresh regime it over-predicts
+    VAE 286.0 s vs 191.7 measured (+49 %) and wall 467.1 s vs 322.7 (+45 %) while its output line still
+    claims "validated: vae +-0.2 %, wall +-0.1 %". The loop's practice (Exp888/891) applies fresh
+    scalars by hand; the TOOL does not say so. This is the Exp896 class - an absolute timed number
+    without a regime qualifier - and it is the next file to fix (with a control, per Exp660).
