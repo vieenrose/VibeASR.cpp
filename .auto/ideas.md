@@ -3810,3 +3810,30 @@ Consequences:
     only instrument that can see sub-request throttling (Exp940's LM transient had the request pinned at
     max). No arm was half-flipped, so no premium requalification is needed.
   Anchor 1.1982 at 19.4 h (delivered 94, batt 36.8 C), transcript byte-identical.
+
+- PAST THE CONTEXT CAP: MEASURED, AND A HARNESS DEFECT FOUND ON THE WAY (Exp948). The loop knew the
+  session cap was density-borne (~258 s of dense chat) and had measured clips APPROACHING it, but had
+  never run one PAST it. New asset `chat276.wav` = chat138 twice (275.95 s dense, blessed, derivation
+  PROVEN byte-for-byte with the Exp936 grammar: concat(chat138@44+6622704, chat138@44+6622704)) -
+  predicted ~4394 positions by the loop's own 28/window + tokens rule, i.e. ~7 % past the cap.
+  * AT THE DEFAULT -c 4096: the run FAILS HARD - exit 1, `frames failed`, window 85 of 95, and NO final
+    summary (the per-window text up to 85 IS printed to stdout, so a caller can still salvage a partial
+    transcript, but the process reports failure). 85 windows x 28 rows + ~1580 tokens ~ 3960 positions,
+    and the next window's 28 rows cannot fit - so the cap is hit exactly where the model says. The
+    source comment (demo/asr_streaming.cpp:55) documents this behaviour; it is now MEASURED with the
+    boundary. PRODUCT FACT: a dense recording past ~4.3 min yields a hard failure, not a graceful
+    truncation, on the shipped default.
+  * AT -c 8192 (the same clip): COMPLETES - 95/95 windows, **1752 tokens**, rtf 1.6818, RSS 2335.5 MB
+    (+144 MB vs 2191.5; the KV alone is +117 MB by 28 KB/position), majflt 0, exit 0. So the long-dense
+    product recommendation (-c 8192) now has a ROBUSTNESS justification, not just a session-length one.
+  * HARNESS DEFECT FOUND (the Exp764/Exp832 class): `ARGS="-c 8192" ./.auto/measure.sh` was a SILENT
+    NO-OP - measure.sh never forwarded ARGS to the device shell, so my first "8192" arm ran at 4096 and
+    produced a byte-identical failure (85/95, same last window). Worse, the documented
+    `EXTRA_ENV="ARGS=..."` form cannot carry a value WITH A SPACE either (the device shell splits
+    `ARGS=-c 8192 sh ...` into `ARGS=-c` + a stray token). FIXED: measure.sh now forwards
+    `ARGS='<value>'` QUOTED, and honours an ARGS= already inside EXTRA_ENV so the two paths cannot
+    disagree. Proven by an output change, per the Exp832 rule: n_ctx 4096 -> 8192 in the banner, and the
+    default stays 4096.
+  * Also: the new tool .auto/deliv_share.py was picked up by the audit's "an unrun test is not a test"
+    check (Exp874) - added to SELFTEST_TOOLS so its --selftest runs with the board (135 checks now).
+  Anchor 1.1968 at 19.8 h (batt 38.6 C, delivered 97), transcript byte-identical.
