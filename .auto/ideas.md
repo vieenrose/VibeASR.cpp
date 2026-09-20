@@ -2921,3 +2921,10 @@ Consequences:
   run, batt 38.1) and resolved to 1.1961 after 3 min idle (batt 37.2, other_busy 1 %) - third
   confirmation of the heat discipline, and the reason the logged metric is the settled run, not the
   rotation mean. Decay point at 6.7 h: 1.1961, flat.
+
+- GATE REGRESSION, DUE BY CADENCE (Exp890): 40/40, WER 4.55 % (S=29 D=2 I=2 - identical profile
+  four gates running), paired b=0/c=0 of 731 vs BOTH hyp-gate885 and hyp-gate852 (CI [0,0], p=1.0).
+  Output stability now proven across 4 gates and both device regimes. Gate mean 1.35
+  (1.3333/1.3759) vs 1.32/1.33 - slight creep, heat-consistent (chunk 1 starts warm at batt 37.4;
+  chunk 2 matches gate885's chunk 2 to 0.1 %; the chunk1->chunk2 step inside every gate is the
+  heat signature, not content, since utterance halves are fixed).
