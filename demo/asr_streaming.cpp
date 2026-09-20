@@ -518,7 +518,22 @@ int main(int argc, char ** argv) {
         }
         if (own_cache) vae_cache_free(xvc);
         n_windows = n_chunks;  // for the summary line below
-    } else
+    } else {
+    // Exp949: the context-exhaustion path used to be a bare "frames failed" + return 1 with NO summary, so a
+    // recording longer than the context failed hard and the partial transcript was lost to the caller (the
+    // per-window text did reach stdout, but nothing said why the run stopped). Measured at Exp948: the default
+    // -c 4096 covers ~258 s of DENSE audio (chat276 = 276 s died at window 85 of 95; the same clip completes at
+    // -c 8192). This path is unreachable for any input that fits, so normal outputs are unchanged - verified by
+    // the protocol transcript hash and the 40-utt gate. The original message is kept verbatim because the
+    // fault board greps for it. NB the lambda must live INSIDE a braced block: inserted directly after `} else`
+    // it became the else-branch's substatement, went out of scope immediately, and the build failed (Exp949b).
+    auto context_note = [&](int at_window) {
+        fprintf(stderr, "context exhausted at window %d/%d: n_ctx=%d is full, so %d window(s) of the audio "
+                        "were NOT transcribed\n", at_window, n_windows, params.n_ctx, n_windows - at_window);
+        fprintf(stderr, "  raise -c for longer sessions (-c 4096 ~= 258 s of dense audio, -c 8192 ~= 8.6 min, "
+                        "+112 MB of KV)\n");
+        fprintf(stderr, "  partial transcript (%d tokens so far):\n%s\n", total_tokens, full_text.c_str());
+    };
     for (int w = 0; w < n_windows; w++) {
         // LATENCY_TRACE=1: per-window leaves of the latency tree (ms, cumulative
         // counters differenced). Zero cost when unset; measurement only.
@@ -745,13 +760,13 @@ int main(int argc, char ** argv) {
                 fprintf(stderr, "boundary embedding lookup failed\n"); return 1;
             }
             if ((pos = feed_embeds(lctx, chunk_emb.data(), win_frames + 2, n_embd, pos,
-                                   params.n_batch)) < 0) { fprintf(stderr, "frames failed\n"); return 1; }
+                                   params.n_batch)) < 0) { fprintf(stderr, "frames failed\n"); context_note(w + 1); return 1; }
         } else {
-            if ((pos = feed_token(lctx, t_start, pos)) < 0) { fprintf(stderr, "sp_start failed\n"); return 1; }
+            if ((pos = feed_token(lctx, t_start, pos)) < 0) { fprintf(stderr, "sp_start failed\n"); context_note(w + 1); return 1; }
             if ((pos = feed_embeds(lctx, speech_emb.data(), win_frames, n_embd, pos, params.n_batch)) < 0) {
-                fprintf(stderr, "frames failed\n"); return 1;
+                fprintf(stderr, "frames failed\n"); context_note(w + 1); return 1;
             }
-            if ((pos = feed_token(lctx, t_end, pos)) < 0) { fprintf(stderr, "sp_end failed\n"); return 1; }
+            if ((pos = feed_token(lctx, t_end, pos)) < 0) { fprintf(stderr, "sp_end failed\n"); context_note(w + 1); return 1; }
         }
         g_prefill_ms += now_ms() - t0;
         ggml_mm_set_phase(3);   // lm_decode
@@ -788,6 +803,7 @@ int main(int argc, char ** argv) {
         printf("[%d/%d] %s\n", w + 1, n_windows, text.c_str());
         fflush(stdout);
     }
+    }   // end of the windowed (non-xwin) branch opened by `} else {` above
 
     double gen_s = (now_ms() - gen_start) / 1000.0;
     double total_s = (now_ms() - total_start) / 1000.0;

@@ -3837,3 +3837,26 @@ Consequences:
   * Also: the new tool .auto/deliv_share.py was picked up by the audit's "an unrun test is not a test"
     check (Exp874) - added to SELFTEST_TOOLS so its --selftest runs with the board (135 checks now).
   Anchor 1.1968 at 19.8 h (batt 38.6 C, delivered 97), transcript byte-identical.
+
+- SHIPPED: THE CONTEXT-EXHAUSTION PATH NOW REPORTS INSTEAD OF JUST FAILING (Exp949, src change).
+  Exp948 measured that a dense recording past ~4.3 min dies at the default -c 4096 with a bare
+  "frames failed" and NO summary, losing the partial transcript to the caller (only the per-window text
+  on stdout survived). Fix (demo/asr_streaming.cpp, +21/-5): on the four feed_* failure paths, print
+    frames failed                                     <- kept VERBATIM (the fault board greps for it)
+    context exhausted at window 86/95: n_ctx=4096 is full, so 9 window(s) of the audio were NOT transcribed
+      raise -c for longer sessions (-c 4096 ~= 258 s of dense audio, -c 8192 ~= 8.6 min, +112 MB of KV)
+      partial transcript (N tokens so far): <the accumulated text>
+  It still exits 1 (a long recording past the context IS a failure), but now it is an actionable one.
+  * VERIFICATION (all four legs): (a) protocol transcript byte-identical (1a095c8496b4, 39 tokens);
+    (b) the cheap `-c 16` probe fires the new message in ~5 s ("context exhausted at window 1/4");
+    (c) the real 276 s clip at -c 4096 now reports "window 86/95, 9 window(s) NOT transcribed" plus
+    **5,239 bytes of partial transcript** (the 85 windows), where before there was nothing;
+    (d) the MANDATORY gate for a src change: gate949 40/40, WER 4.55 % (S=29 D=2 I=2 - the identical
+    profile, 11th gate), paired b=0/c=0 of 731 vs gate944 and 0/40 differing transcripts, so the change
+    is output-neutral on every input that fits (it is unreachable there by construction).
+  * SELF-INFLICTED WOUND, recorded in the code comment: the lambda was first placed directly after
+    `} else`, which made it the else-branch's SUBSTATEMENT - out of scope immediately - and the build
+    failed. Worse, my `;`-chained command reported success because checks.sh ran (and passed) against the
+    STALE binary: the "harness says PASSED while the intended artifact was not produced" class (Exp931,
+    Exp941). The `rc=` of the build step must be checked, not the chain's.
+  Anchor 1.1921 at 20.2 h (batt 38.7 C, delivered 96), transcript byte-identical.
