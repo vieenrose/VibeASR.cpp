@@ -1,0 +1,31 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp884: fresh-regime noise floor + protocol re-derivation)
+
+HYPOTHESIS: every keep/ship decision in this loop rests on a noise model (prompt.md: "distrust
+single-run deltas < ~10%", Exp841 sigma 0.19%, Exp867h sd 0.233%/rep) derived LONG-UPTIME. The
+fresh regime is heat-sensitive (+18% excursions, Exp882) and its settled scatter is UNMEASURED -
+so current decisions use someone else's thresholds. Re-derive: 6 protocol reps, 3-min idle spacing
+(Exp882's resolution time), one session, settled phone (batt 36.7 C, uptime 91 min at start).
+
+PREDICTIONS:
+  P1  settled sd <= 0.35 %/rep (long-uptime: 0.233 %). If larger, the fresh regime needs more reps
+      per decision than the old protocol's 3 - the ship bar moves.
+  P2  all 6 reps within +-1 % of 1.19 (no heat excursions at 3-min spacing - tests the spacing).
+  P3  no monotonic trend across the ~20 min series (slope p > 0.1): at settled temp and 91-111 min
+      uptime, decay must be invisible on this timescale, or the decay series needs hour spacing.
+  P4  batt_temp stays <= 37.5 C throughout (spacing sheds each run's heat - tests the mechanism).
+  FAIL modes: sd > 0.5 % (reps are not exchangeable - find the hidden variable); a trend (early
+  decay - escalate the decay series immediately); an excursion despite spacing (3 min is NOT
+  enough - the Exp882 conclusion was lucky).
+
+AFTERWARD: update prompt.md's THERMAL DISCIPLINE (still quotes the Exp15/16 long-uptime numbers)
+with the fresh-regime protocol actually measured here. This is also the 91-111 min decay point.
+
+VERDICTS (6 reps, 3-min spacing, one session, settled phone):
+  values: 1.1890 / 1.1939 / 1.1937 / 1.1963 / 1.1940 / 1.1916, batt 36.5 -> 34.6 (cooling throughout).
+  P1 HOLD: sd 0.209 %/rep - the settled noise floor is regime-independent (long-uptime 0.233 %).
+  The 3-rep A/B and the ship bar transfer unchanged to the fresh regime.
+  P2 HOLD: all reps within +-0.3 % of the mean (band asked +-1 %) - 3-min spacing sheds each run.
+  P3 HOLD: no trend (rise-then-fall, slope ~0) - decay invisible at 92-108 min uptime; hour spacing
+  for the decay series is safe, and the 24-72 h points remain the ones that matter.
+  P4 HOLD: batt never exceeded 36.5 and fell throughout - the spacing sheds heat by construction.
+  Transcript byte-identical throughout (1a095c8496b4).

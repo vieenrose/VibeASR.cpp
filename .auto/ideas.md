@@ -2861,3 +2861,11 @@ Consequences:
   ladder. Also closed pre-round: VAE_DW_CT_OFF is deliberately NOT a ladder arm (RESULTS.md documents
   it debug-only since Exp710 - it changes the transcript, failing the ladder's contract by design);
   checking the ledger first saved a wrong "fix".
+
+- FRESH-REGIME NOISE FLOOR, MEASURED (Exp884): 6 protocol reps at 3-min spacing, one settled session:
+  1.1890/1.1939/1.1937/1.1963/1.1940/1.1916, sd 0.209 %/rep vs 0.233 % long-uptime - the settled noise
+  floor is REGIME-INDEPENDENT, so the 3-rep A/B, the ship bar, and the confidence discipline transfer
+  unchanged PROVIDED runs are spaced (back-to-back fresh runs are not exchangeable: +18 % excursions,
+  Exp882). No trend over the 20 min => decay invisible at 92-108 min; prompt.md's THERMAL DISCIPLINE
+  updated with the fresh-regime protocol instead of the Exp15/16 long-uptime numbers. Transcript
+  byte-identical throughout. This doubles as the 92-108 min decay point: 1.1931.

@@ -109,12 +109,18 @@ train/use cycle (tested, no gain; kept for reproducibility).
 - Do NOT overfit to the 10 s slice: ideas must be justified by mechanism
   (profiling data in secondary metrics), not by the clip's content. When in
   doubt, cross-check on the 17 s clip before keeping.
-- THERMAL DISCIPLINE (learned Exp15/16): back-to-back runs drift up to +60%
+- THERMAL DISCIPLINE (learned Exp15/16, re-derived for the fresh regime Exp884): back-to-back runs drift up to +60%
   (heat soak + platform throttling; NOT code). Protocol: 5-min idle cooldown
   before any keep-decision run; bracket keeps as A/B/A (candidate between two
   baseline-config runs in one session); distrust single-run deltas < ~10%.
   Confidence score < 1.0x = noise. Majflt telemetry distinguishes swap pain
   (has been 0 throughout).
+  FRESH-REGIME ADDENDUM (Exp882/884): the rebooted phone is MORE heat-sensitive (+18 % excursions
+  after ~15 back-to-back runs, at other_busy 1-2 % so it is heat, not contention; resolves in 3 min
+  idle). Settled noise floor is regime-independent: 6 spaced reps read sd 0.21 %/rep (long-uptime
+  0.23 %), range +-0.3 %, no trend over 20 min - so the 3-rep A/B and the ship bar transfer unchanged,
+  PROVIDED runs are spaced ~3 min apart. Back-to-back fresh-regime runs are not exchangeable.
+  Decay series (settled points): 6m 1.22 / 25-45m 1.19 / 92-108m 1.1931 (this round) / 9.75h 1.18-1.24.
 
 ## What's Been Tried
 - Exp4 (KEEP, recommended tier): VAE selective Q8_0-mixed (large weights only,
