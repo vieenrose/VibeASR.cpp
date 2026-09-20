@@ -2889,3 +2889,15 @@ Consequences:
   would break any absolute band. Rule generalized: any ABSOLUTE acceptance band on a timed quantity
   is a regime-stale guard waiting to happen - anchor same-session or document the regime it was
   calibrated in. Settled anchor 1.1983 at 5.3 h uptime (decay flat).
+
+- SESSION MEMORY ROTATION, FRESH REGIME (Exp887): two independent 3-run chat69 soaks with 3-min
+  gaps (full logs soak887a/b.log): peaks invariant to 0.2 MB both soaks (~2198 MB, same as
+  long-uptime - allocation-driven), medians flat (no trend, and no Exp865f ~20 MB step either
+  time - whether the step correlates with back-to-back heat is open but verdict-irrelevant),
+  slope honestly INCONCLUSIVE, fd 3 / threads 2 / majflt 0 throughout. NO SESSION GROWTH, second
+  regime. Soak rtf trended with heat (1.40 -> 1.47, batt to 39.3) despite gaps - 95-s runs heat
+  faster than 3-min gaps shed; soak rtf is not a ladder cell and memory verdicts are heat-immune.
+  Self-inflicted wounds, both documented: (1) the first attempt ran back-to-back AND lost its
+  verdict to tool truncation - heat discipline applies to every multi-run instrument, and long
+  outputs get teed to a file I own; (2) my prediction quoted the lean token canary (432) for a
+  shipped-tier run - the ledger's 446 was exact, caught in 30 s. Settled anchor 1.2003 at 6.2 h.

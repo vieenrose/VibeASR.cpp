@@ -1,0 +1,41 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp887: session-memory soak rotation, fresh regime)
+
+HYPOTHESIS: Exp865f's verdict (no session growth; peak invariant to 0.1 MB; median ~20 MB steps
+are a device two-state switch, not a trend) was measured LONG-UPTIME. A memory board that old
+(~22 rounds) must be re-run on the current tree and regime, with the identical instrument
+(rss_soak --repeat 3 on chat69, 24 windows/run) so the numbers are comparable cell-for-cell.
+
+PREDICTIONS (two independent 3-run soaks, chat69, ONE sampler each):
+  P1  peak per run invariant within 0.5 MB within a soak AND across both soaks (~2198 MB -
+      allocation-driven, so regime-independent by construction).
+  P2  per-run steady medians: EITHER flat within a few MB OR a ~20 MB step between runs (the
+      Exp865f two-state switch). A MONOTONE climb across run1->run3 in EITHER soak = growth -
+      escalate, do not average away.
+  P3  fd FLAT at 3, threads 2-3, majflt 0 on every run (resource-limit edges, Exp856/865f).
+  P4  chat69 rtf fresh ~1.35-1.45 (ladder cell; long-uptime 2.10) with 432 tokens (post-flush
+      canary, Exp830/847 - a different count fails the run, not the soak).
+  FAIL modes: peak climbs monotonically (a real leak on the current tree - gate + bisect);
+  median climbs monotonically without steps (slow growth the peak misses); fd != 3 or threads
+  drift (descriptor/thread leak - the Exp856 class); tokens != canary (wrong clip pushed).
+
+AFTERWARD: if P1-P3 hold on both soaks, session memory stays closed and the two-state median
+pattern keeps its "state switch, not trend" reading in a second regime.
+
+VERDICTS (two independent 3-run soaks, chat69, 3-min gaps, full logs teed to soak887a/b.log):
+  P1 HOLD both soaks: peaks A 2198.3/2198.2/2198.4, B 2198.2/2198.4/2198.4 (spread 0.2 MB) -
+  invariant -> NO SESSION GROWTH. Fresh-regime peaks = long-uptime peaks (allocation-driven).
+  P2 HOLD in the flat variant both soaks: medians A 2177.0/2178.9/2176.9, B 2176.6/2176.9/2177.1 -
+  no trend AND no ~20 MB step. The Exp865f two-state step did not reproduce under heat discipline;
+  whether the step correlates with back-to-back heat is now an open micro-question (not pursued -
+  the verdict-relevant statement, no growth, is unaffected either way). Slope honestly
+  INCONCLUSIVE (unresolvable at device noise - the tool says so instead of picking).
+  P3 HOLD: fd 3 constant, threads 2, majflt 0 every run.
+  P4 CORRECTED: tokens 446 x6 (my prediction quoted the LEAN canary 432; the ledger's shipped
+  canary 39/106/446/876 is exact - caught by RESULTS.md in 30 s). rtf 1.40-1.47 with a heat
+  trend across each soak (batt to 39.2-39.3) despite 3-min gaps: 95-s runs heat faster than the
+  gaps shed. Soak rtf is not a ladder cell; the memory verdicts are heat-immune (HWM).
+  ROUND'S OWN HEAT VIOLATION, documented: the first attempt ran back-to-back (6 min, batt 40.8)
+  and its verdict was lost to tool truncation - re-run properly with gaps + tee. Heat discipline
+  applies to EVERY multi-run instrument, and long tool outputs must be captured to a file I own.
+  SETTLED ANCHOR after 3 min idle: 1.2003 at 6.2 h uptime (other_busy 1 %, byte-identical) -
+  decay flat. (Batt read 38.0 with a dead-center number: the 37.0 gate threshold is conservative.)
