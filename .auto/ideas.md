@@ -3791,3 +3791,22 @@ Consequences:
   * The 14-column TSV migration (Exp942) is covered by fault 18, which is column-agnostic by construction
     (Exp907) - it still FIRED.
   Anchor 1.1924 at 19.2 h (delivered 94, batt 35.6 C), transcript byte-identical.
+
+- GUARD ROTATION #19, NOW DELIVERED-STATE CERTIFIED (Exp947): premium +9.77 % (9th per-token
+  confirmation), and every arm is certified in the boost state by the request-INDEPENDENT instrument.
+    Pproto 1.1902 (deliv 97 %) | Gguard 1.3082 (96 %) | G2guard 1.3047 (96 %) | P2proto 1.1943 (96 %)
+    premium = guard mean / P1 = +9.77 %, per-token (13.0645-11.902)/16 = 72.7 ms, P2 +0.3 % (no 4th-arm
+    step); transcripts P = 1a095c8496b4, G = 849cca7df5bc (pairwise identical). Premium series now
+    9.6/9.5/9.65/9.56/9.73/9.42/9.01/9.88/9.77 - range 9.0-9.9, flat.
+  * INSTRUMENT EXTRACTED AND EXTENDED: the delivered-share parse now lives in `.auto/deliv_share.py`
+    (with a --selftest proving 99 % boost / 0 % settled / -1 on an unchanged dump) instead of being
+    inline in measure.sh, and run_rtf_multi.sh reads time_in_state around every arm and prints
+    `deliv2400=` in the ARM line. Reason: the loop's two copies of a rule drift apart (Exp869/Exp816
+    class), and the sweep is the primary A/B tool, so its arms should be self-describing with the state
+    variable of record.
+  * AGREEMENT CHECK (P4, and the round's real content): the request-based clock field and the delivered
+    share agree on all four arms (request med 2400000 AND delivered 96-97 %). Exp935 certified this sweep
+    with the request column alone; it is now certified with the request-independent one too, which is the
+    only instrument that can see sub-request throttling (Exp940's LM transient had the request pinned at
+    max). No arm was half-flipped, so no premium requalification is needed.
+  Anchor 1.1982 at 19.4 h (delivered 94, batt 36.8 C), transcript byte-identical.

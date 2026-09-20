@@ -123,8 +123,15 @@ for r in $(seq 1 "$REPS"); do
       sleep 60
       if [ "$w" = 3 ]; then HOT=" HOT"; fi
     done
+    # Exp947: per-arm DELIVERED state (Exp942's column, extracted into .auto/deliv_share.py). The
+    # request-based clock fields below come from bench_device.sh's own sampling; this is the
+    # request-independent one, and it is what certifies that every arm ran in the same state.
+    adb -s $DEV shell "cat /sys/devices/system/cpu/cpu7/cpufreq/stats/time_in_state" > /tmp/tis0.$$ 2>/dev/null || true
     adb -s $DEV shell "$DEF_ENV $envs THREADS=$threads sh $RDIR/bench_device.sh $audio $threads $pieces $tag" \
       > .auto/multi-run-$tag.txt 2>&1
+    adb -s $DEV shell "cat /sys/devices/system/cpu/cpu7/cpufreq/stats/time_in_state" > /tmp/tis1.$$ 2>/dev/null || true
+    dv=$( { python3 .auto/deliv_share.py /tmp/tis0.$$ /tmp/tis1.$$ 2>/dev/null; } || true )
+    rm -f /tmp/tis0.$$ /tmp/tis1.$$
     adb -s $DEV pull $RDIR/err-$tag.log .auto/multi-err-$tag.txt >/dev/null 2>&1
     # Exp919: also pull the arm's STDOUT (where the [n/m] window lines are). Until now the transcript
     # identity had to be pulled by hand after the sweep (Exp909), because bench_device.sh sends the app's
@@ -145,8 +152,8 @@ for r in $(seq 1 "$REPS"); do
     tok=$(grep -oiE 'tokens: [0-9]+' .auto/multi-err-$tag.txt | head -1 | awk '{print $2}')
     rss=$(grep -oE 'hwm_kb=[0-9]+' .auto/multi-run-$tag.txt | head -1 | cut -d= -f2)
     maj=$(grep -oE 'majflt_delta=-?[0-9]+' .auto/multi-run-$tag.txt | head -1 | cut -d= -f2)
-    echo "$label"$'\t'"$rtf"$'\t'"$tok"$'\t'"${rss:-0}"$'\t'"${tx:-none}"$'\t'"${kmd:-?}" >> "$TSV"
-    echo "ARM $label | rep=$r | rtf=$rtf | tokens=$tok | rss_kb=${rss:-?} | majflt=${maj:-?} | tx=${tx:-none} | clock=${kmn:-?}/${kmd:-?}/${kmx:-?}kHz$HOT"
+    echo "$label"$'\t'"$rtf"$'\t'"$tok"$'\t'"${rss:-0}"$'\t'"${tx:-none}"$'\t'"${kmd:-?}"$'\t'"${dv:-?}" >> "$TSV"
+    echo "ARM $label | rep=$r | rtf=$rtf | tokens=$tok | rss_kb=${rss:-?} | majflt=${maj:-?} | tx=${tx:-none} | clock=${kmn:-?}/${kmd:-?}/${kmx:-?}kHz | deliv2400=${dv:-?}%$HOT"
   done
 done
 

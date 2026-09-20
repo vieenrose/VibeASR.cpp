@@ -1,0 +1,17 @@
+PREDICTIONS WRITTEN BEFORE MEASUREMENT (Exp947: guard rotation #19, now delivered-state certified)
+
+CONTEXT: the guard rotation is the loop's anti-overfit board (never-optimized clip vs the protocol) and is
+~27 rounds overdue (last Exp919). Exp942's delivered-frequency column is now wired into the sweep's ARM
+line (via the extracted .auto/deliv_share.py), so this rotation can certify the arms' STATE the same way
+Exp935 did with the request column - but request-independently.
+
+  P1  every arm reads deliv2400 in the 90s (boost) or the arms are split between states; either way the
+      value is recorded per arm, which is the point.
+  P2  premium = guard/protocol ~ +9.0-10.0 % (series: 9.42/9.01/9.88 in Exp935, 9.56/9.73 at Exp909/919),
+      i.e. the 9th per-token confirmation, with per-token accounting 67-75 ms.
+  P3  transcripts: P arms 1a095c8496b4, G arms 849cca7df5bc (both pairwise identical).
+  P4  the delivered share AGREES with the request-based clock field (boost arms: request 2400000 med AND
+      delivered >= 90; if they disagree, one of the two instruments is wrong and that is the round's find).
+  FAIL modes: a premium outside +8.5..+10.5 % (would suggest state contamination); an arm whose delivered
+  share is mid-range (a half-flipped arm -> its rtf is a state average, so the premium must be requalified);
+  deliv2400 absent on any arm (wiring broken).
