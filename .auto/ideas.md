@@ -3305,3 +3305,15 @@ Consequences:
   Settled anchor 1.1948 at 16.9 h (batt 36.2 C), transcript byte-identical. The board leaves
   last_out.txt holding a fixture capture, so the anchor was taken with a fresh measure.sh run (that
   stale-capture trap is pre-registered in cost_pred930).
+
+- PEER EXCHANGE, FOLLOW-UP (2026-09-20, same CUDA loop). They confirmed the retraction is dead on both
+  sides, adopted the frame-vs-constants split as their standard cross-box answer, adopted our
+  RSS+majflt-together rule as a stated requirement, and declined the reboot experiment explicitly
+  ("the finding transfers, the experiment doesn't need to" - they carry cotenant/temp/swap/majflt
+  qualifiers per sample, the same object as our regime qualifier + overrides at a different
+  granularity). They ASKED for the asset-manifest format for their vanished 240 s/431 s clips; sent the
+  wireable spec: three-key JSON (assets{md5,note} / derives[prefix_of|concat] / known_extras patterns),
+  the four checks (drift / collision+undeclared-duplicate / derivation arithmetic / coverage union),
+  the three planted faults that must fire, and the two operational traps (bless via explicit device
+  paths, never a remote loop that expands $f locally -> d41d8cd9 empty-stdin; assert absence with a full
+  list or count, never head/tail). Nothing owed back.
