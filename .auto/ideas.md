@@ -5146,3 +5146,27 @@ Consequences:
     accuracy-neutral, because the 40-utt gate is read speech and cannot see that class of effect. The sets
     stay watchdogs - measure, never optimize.
 Anchor (armed protocol capture restored). Tool committed in the same iteration, per the standing rule.
+
+- CONSOLIDATED: "MEASUREMENT MODEL" SECTION IN STREAMING_1P5B.md (Exp1017, docs). The ledger had 4,700 lines of
+  state-model findings and the repo's own streaming document still carried the pre-Exp968 two-regime story,
+  so a reader could not tell what a number in it was measured in. New section, placed before the phone
+  evaluation, states the seven things a reader needs and cites the evidence for each:
+    1. the three clock states with their markers (armed 1.22-1.25 / mean 2.0-2.4 GHz; unarmed 1.67-1.70 /
+       ~1.79 GHz; screen off 1.85 / ~1.28 GHz) and the exact arm recipe with its escapes
+       (NO_ARM / ARM_STREAM / ARM_PERIOD / ARM_SPARSE / ARM_DENSE_S) and the ~50-60 ms per-injected-event cost;
+    2. the witnesses (deliv2400, mean MHz, ge2000) and why the 2.4 share alone misled a whole epoch (Exp974),
+       plus the <2000 MHz guard and audit check 19 that keeps it in the harness;
+    3. the uptime drift (1.1939 -> 1.2242 across 12-40 h, +0.17 %/h, delivered flat, survives the controls,
+       not identifiable as a two-parameter law, no idle recovery) and the ruling to quote uptime with numbers;
+    4. that the gate is armed and records its witness, that its WER has been bit-stable for fifteen gates while
+       its MEAN varies ~5 % session to session (state probe, not a cell);
+    5. that read speech is not corpus parity, with the boundary batch's three-set profile as the example, and
+       the `.auto/hardaudio_watch.sh` rule;
+    6. the decode law (83.5 ms + 11.4 us/position, validated 2.3x out of range) and why a single ms/token
+       figure is meaningless;
+    7. where the machine-readable state lives (`.auto/headline.json`, `device_state.tsv`) and that the audit
+       (137 checks, 22 planted) enforces doc/state agreement.
+  Verified after the commit: audit 137 / 1 explained WARN / 0 failures, and the section's headline numbers
+  cross-check against the TSV (armed protocol rows: n=58, mean 1.2177, consistent with the stated 1.22-1.25
+  band). Fresh armed protocol cell this round 1.2232 at 32.9 h.
+Anchor (armed protocol) 1.2232 at 32.9 h (derived); witness 2032.3 MHz, transcript 1a095c8496b4.
