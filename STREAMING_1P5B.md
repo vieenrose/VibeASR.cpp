@@ -305,6 +305,15 @@ cells of the day, which is how a whole class of "capped" readings appeared befor
 mean falls below 2000 MHz prints a WARNING and must be retried, not averaged; audit check 19 fails if that
 guard is ever removed from the harness.
 
+**The witness is a step, not a line** (measured on 99 armed protocol rows, 1507-2383 MHz). Above 2000 MHz the
+mean predicts almost nothing: -2.16 +/- 0.64 ms per 100 MHz (n=85, R2=0.12), and the mean rtf above the knee is
+1.2335 +/- 0.0093. Below it the metric jumps +98 +/- 9 ms (+7.9 %, R2=0.556 - a better fit than the linear
+model's 0.501 with fewer degrees of freedom). So the correct model is **"boosted or not", with the knee at the
+guard's own threshold**, and a linear MHz coefficient fitted across the knee (-16.5 ms/100 MHz) is an artifact
+of pooling both sides. Using that linear slope to "correct" measurements produces nonsense: Exp1024 did it to
+rollback-ladder arms and got NEGATIVE hatch costs, which Exp1025 then reproduced with a paired ABAB - the hatch
+really costs +3.97 % (cycles +3.69 % / +4.25 %) and the witness gap inside a pair explains only ~0.1 % of it.
+
 **3. The metric drifts with device UPTIME inside one boot.** Armed protocol cells read 1.1939 at 12-20 h of
 uptime and 1.2242 at 26-40 h (same arm era, delivered share flat), i.e. ~+0.17 %/h, and the effect survives
 control for background process count, available memory and battery temperature. A two-parameter

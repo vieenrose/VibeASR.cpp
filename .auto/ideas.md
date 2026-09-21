@@ -5359,3 +5359,28 @@ peak_rss 2191.4-2191.6 MB, capture refreshed (protocol, 4 windows).
   * Doc fix: the Exp679 co-runner rule's command must be `ps -A -o PID,STAT,RSS,NAME` (toybox has STAT, not
     STATE) - as written it errored `ps: bad -o`. measure.sh's own guard was always correct (`ps -A -o NAME`).
 Anchor: the ladder's own default arm, 1.2235 mean of 2 reps (witnesses 2314.7 / 2326.9 MHz), uptime 35.4 h.
+
+- PAIRED PRICING OF bound_batch + THE WITNESS IS A STEP, NOT A LINE (Exp1025). Did what Exp1024 prescribed:
+  2 cycles of A-B-B-A (A = default, B = BOUND_BATCH_OFF=1), 8 armed runs, witness per run, hash per run.
+  * A: 1.2286 / 1.2328 / 1.2215 / 1.2286 (mean 1.22788, sd 0.38 %, witnesses 2038-2047 MHz)
+    B: 1.2782 / 1.2741 / 1.2778 / 1.2765 (mean 1.27665, sd 0.15 %, witnesses 2074-2094 MHz)
+    -> **cost +3.97 %** per cycle +3.69 % / +4.25 %, all eight transcripts byte-identical (1a095c8496b4).
+    The ladder's raw +4.1 % was right: this arm's price is 4.0 %, which is what the lean-tier boundary-batch
+    decision needs (the lean tier leaves the batch OFF: it keeps the +0.64 pp zh advantage and gives up the
+    -7.1 pp overlap gain, at ~4 % speed).
+  * **WHAT Exp1024's confound REALLY WAS.** Fitting the 99 armed 10 s rows by region: above 2000 MHz the
+    slope is only -2.16 +/- 0.64 ms/100 MHz (n=85, R2=0.12; mean 1.2335 +/- 0.0093) while a STEP model
+    1[mhz<2000] gives +98 +/- 9 ms (+7.9 %) with R2=0.556 - better than the pooled linear fit's 0.501. So the
+    state->metric curve is a KNEE at the guard's own threshold and the linear -16.5 ms/100 MHz coefficient is
+    an artifact of pooling both sides. That single fact explains why Exp1024's correction produced negative
+    hatch costs (it applied a pooled slope to differences that were all ABOVE the knee), and why the ladder's
+    costs were not inflated at all: every arm sat above the knee, and inside a pair the 45 MHz gap explains
+    ~0.1 % of a 3.97 % cost.
+  * **Corrections shipped:** Exp1024's "ladder costs are upper bounds" caveat is RETRACTED - the ladder is
+    unbiased for arms measured in the same session, because the witness is flat above 2000 MHz. The durable
+    rule: never use a linear MHz coefficient from this device; use the step model (boosted / not), and treat
+    the guard threshold as an experimentally located knee rather than a convention. Doc: the measurement-model
+    section's witness rule now carries the numbers. (Fifth case where my *interpretation* of a prior round was
+    wrong while the measurements stood - Exp1013 regex, Exp1019 bimodality, Exp1020 uptime slope, Exp1022c
+    unwitnessed H, Exp1024 confound story.)
+Anchor (paired A mean) 1.2279 at 35.9 h (derived); B mean 1.2767; witnesses 2038-2094 MHz, all above the knee.
