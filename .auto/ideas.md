@@ -5497,3 +5497,15 @@ Anchor 1.2238 (2 reps: 1.2197 @ 2030.0, 1.2279 @ 2041.3 MHz) at 36.6 h uptime (d
     (/tmp/lt_<arm>.txt) and print a per-arm row with the window count, and check every field is non-empty
     before believing a capture belongs to the arm that claims it.
 Anchor 1.2217 (2 reps: 1.2253 @ 2038.0, 1.2180 @ 2318.0 MHz) at 36.8 h uptime (derived).
+
+- ASSUMPTION CHANGED FOR A CLOSED AXIS (from Exp1029, recorded per the loop rule "do not revive a discarded
+  idea without a changed assumption"). "Persistent pre-allocated VAE arena (page-zeroing)" was closed at Exp156
+  because minflt was judged non-discriminating - i.e. there was no way to see whether arena residency mattered.
+  That assumption no longer holds: LATENCY_TRACE now resolves the FIRST window from the rest, and the first
+  window is +114/+136 ms (+5.5/+6.6 %) on the 10 s clip with the plateau at w2, majflt = 0. So there IS a
+  discriminating signal (~100 ms) and a candidate mechanism (cold cache/TLB residency of the weight arena).
+  SIZED BEFORE SPENDING A RUN: removing it entirely would move the protocol cell from 1.2217 to ~1.209, i.e.
+  -1.1 % - BELOW the loop's 2 % shipping bar - though it is ~2-3 % on the 40-utt gate and ~5 % of a streaming
+  session's first window, so its value is latency-shaped, not throughput-shaped. If anyone retries, the cheap
+  first probe is a discard-first-window variant (encode a silence window before the timed region, or madvise/
+  prefault the weight arena at load) measured with LT w1 vs w2 - NOT a general arena rewrite.
