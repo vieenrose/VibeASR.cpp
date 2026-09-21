@@ -1,1 +1,1 @@
-exit=0 peak_kb=2244012 hwm_kb=2244012 majflt_delta=0 minflt_delta=271327 cpu7_khz_min=1300000 cpu7_khz_med=1300000 cpu7_khz_max=1300000 cpu7_khz_low=31 cpu7_khz_n=31
+exit=0 peak_kb=2244428 hwm_kb=2244428 majflt_delta=0 minflt_delta=270966 cpu7_khz_min=1300000 cpu7_khz_med=1300000 cpu7_khz_max=1300000 cpu7_khz_low=31 cpu7_khz_n=31

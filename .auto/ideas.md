@@ -4530,6 +4530,25 @@ Consequences:
     only this one can be quoted with a state.
   Anchor 1.3504 (250 s, armed, 2063 MHz) at ~29.9 h, tokens 728 exact.
 
+- GUARD ROTATION #21 + ANOTHER ARM GAP FOUND (Exp986). Four arms (1 rep, unarmed because
+  run_rtf_multi.sh has no arm - see below):
+      Pproto 1.8525 (39 tok) | Gguard 1.9837 (55 tok) | G2guard 1.9876 (55 tok) | P2proto 1.8547 (+0.1 %)
+    => premium = guard mean / P1 = **+7.19 %**, with the two guard arms agreeing to 0.2 % and P2 to 0.1 %,
+    i.e. the sweep is internally clean and the ratio is state-conditional again (armed series 9.0-9.9 %,
+    Exp961's capped-state value was +7.3 %). The anti-overfit board says: the never-optimized slice still
+    tracks the protocol at exactly the decode-token premium (+16 tokens), and no arm is half-flipped.
+  * THIRD INSTRUMENT GAP OF THIS CLASS, found by looking rather than by a failure: `run_rtf_multi.sh` - the
+    loop's primary A/B tool, used for every guard rotation - does NOT arm either, so its arms run in the
+    UNARMED state (Pproto 1.85 vs the armed protocol's 1.25). A/B RATIOS are preserved (all arms share
+    the state, which is why 21 rotations of premiums remain comparable within a state), but the ABSOLUTE
+    numbers printed in an ARM line are not comparable to measure.sh's armed cells. Queued: either arm the
+    sweep (starts to matter when an arm is short enough to be state-sensitive) or label its output as
+    unarmed; the same fix eval40 just got.
+  * ARMED PROTOCOL CELL REPRODUCED, 4th rep: 1.2463 with witness 2050.5 MHz (armed reps now
+    1.2440/1.2533/1.2465/1.2463 -> mean 1.2475, spread 0.7 %), capture refreshed to the protocol
+    transcript 1a095c8496b4 so the audit's "capture is not the protocol clip" WARN clears.
+  Anchor (armed protocol) 1.2463 at ~30.1 h, transcript byte-identical.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
