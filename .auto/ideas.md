@@ -4954,6 +4954,24 @@ Consequences:
   Anchor (armed protocol, 2-rep mean) 1.2258 at 31.6 h (derived); witnesses 2328.5 / 2326.5 MHz,
   transcript byte-identical.
 
+- REPRODUCE-PATH BOARD RE-RUN ON THE CURRENT TREE (Exp1008, ~93 rounds since Exp915): RESULTS.md's
+  documented recipe, executed verbatim, still produces the shipped system - which matters more than usual
+  because every harness script in it (measure.sh, eval40.sh) has been rewritten in the meantime.
+      model recipe   `check_tensors.py` on both ggufs: VAE 562 tensors; LM 339 with the documented type mix
+                     (q4_0_4x4 x196, q6_K x1, q8_0 x1) and `ok token_embd.weight: q6_K`
+      binary recipe  `./.auto/setup.sh` (NDK cross-build, -mcpu=cortex-a78) -> built clean, only the NDK's
+                     own CMake deprecation warning; `setup done: build-android/bin/asr_streaming`
+      measure line   `LM_FILE=lm-q8head.gguf VAE_FILE=vae-encoder-convint8.gguf ./.auto/measure.sh` ->
+                     rtf 1.2259, 39 tokens, RSS 2191.4 MB, majflt 0, witness 2326.5 MHz
+      hashes         host bin = docs bin = device bin = ed4cb82172ceec4d23c3b7db0fc405eb (all three agree)
+      transcript     capture 1a095c8496b4 = the frozen reference
+  * So the documented path still lands on the shipped system: identical executable hash on host and device,
+    documented model types, reference transcript - and the two `check 10`-style guards (doc command must
+    name the tier; host/device hashes must match) were re-verified by running the recipe rather than by
+    reading it. The build was incremental (Exp915 made the same caveat; a from-scratch artifact claim stays
+    Exp57/610), so what this round proves is the COMMAND + tier + runtime identity, not a clean rebuild.
+  Anchor (documented-recipe run) 1.2259 at 31.7 h (derived); transcript 1a095c8496b4.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
