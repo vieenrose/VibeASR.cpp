@@ -4679,6 +4679,24 @@ Consequences:
     a state sample and must be retried rather than averaged.
   Anchor (armed protocol, clean) 1.2519 at ~32.2 h, transcript byte-identical (1a095c8496b4).
 
+- GUARD ROTATION #22 (ARMED) + THE WITNESS IS EFFECTIVELY BINARY (Exp994). Sweep with the arm now
+  active (Exp987's fix), 1 rep, internally clean:
+      Pproto 1.2405 (39 tok) | Gguard 1.3732 (55 tok) | G2guard 1.3750 (55 tok) | P2proto 1.2512 (+0.9 %)
+      witness per arm: 2297-2330 MHz, deliv2400 92-95 %, ge2000 93-95 % -> premium = **+10.77 %**
+  * This is the second ARMED rotation (Exp987 gave +9.57 %) and the first to exceed the historical
+    9.0-9.9 % band; the two armed rotations together put the premium at **10.2 +/- 0.6 %**, while the
+    unarmed control (Exp986) was +7.2 %. The anti-overfit board still tracks the protocol at exactly the
+    decode-token premium (+16 tokens), so nothing about the guard slice has drifted - the ratio is simply
+    a state-conditional quantity, as Exp961/986/987 established.
+  * WITNESS GRANULARITY, NOW WITH A MATCHED PAIR: two protocol reps 30 s apart read **1.2452 at 2337.0 MHz
+    and 1.2453 at 2043.9 MHz** - identical rtf to 0.01 % across a 293 MHz difference in the mean. Together
+    with the Exp993 levels (flagged runs ~1.30 at ~1965 MHz; unarmed ~1.67-1.85 at ~1300) this says the
+    metric is effectively BINARY in the witness: above ~2000 MHz the run is at the armed level and the
+    exact mean does not predict the rtf. So the guard's 2000 MHz line is the right threshold, and no
+    finer-grained state bookkeeping is worth keeping - a useful negative result for the instrument's
+    design (do not start regressing rtf on mean MHz).
+  Anchor (armed protocol rep) 1.2452 at ~32.6 h, transcript byte-identical (1a095c8496b4).
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
