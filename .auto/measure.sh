@@ -253,17 +253,34 @@ echo "$TAG majflt=${MAJFLT:-0}"
 if [ -n "${TIS0:-}" ] && [ -n "${TIS1:-}" ]; then
   printf '%s\n' "$TIS0" > /tmp/tis0.$$
   printf '%s\n' "$TIS1" > /tmp/tis1.$$
-  DELIV=$( { python3 -c "
-import sys
+  # Exp975: `cpu7_deliv2400_pct` alone is NOT a state witness - it is the share of the ONE 2.4 GHz
+  # step, so a run the governor steers to 2150000 reads 0 % and looked "capped" (Exp974: rtf 1.53 at
+  # 2150000 vs 2.02 at 1300000, both reporting deliv2400=0). Emit the whole picture from the same
+  # histogram: the 2.4 share, the MEAN delivered MHz (one number that names the P-state), and the share
+  # at >= 2.0 GHz. The mean is the durable disambiguator; it is also recorded in the TSV.
+  _tis=$( { python3 -c "
 def rd(p):
-    return {l.split()[0]: int(l.split()[1]) for l in open(p) if len(l.split()) == 2}
+    return {int(l.split()[0]): int(l.split()[1]) for l in open(p) if len(l.split()) == 2}
 a, b = rd('/tmp/tis0.$$'), rd('/tmp/tis1.$$')
 d = {k: b.get(k, 0) - a.get(k, 0) for k in set(a) | set(b)}
-tot = sum(v for v in d.values() if v > 0)
-print(round(100 * d.get('2400000', 0) / tot) if tot > 0 else -1)
+d = {k: v for k, v in d.items() if v > 0}
+tot = sum(d.values())
+if tot <= 0:
+    print('-1 -1 -1')
+else:
+    # UNITS: time_in_state keys are kHz. Emit the mean in MHz (1 decimal) so the column NAME and the
+    # value agree - the first cut emitted kHz under a `mhz` header, caught by reading the value back
+    # (2376516 vs 2376.5) before committing.
+    print(round(100 * d.get(2400000, 0) / tot), round(sum(f * v for f, v in d.items()) / tot / 1000, 1),
+          round(100 * sum(v for f, v in d.items() if f >= 2000000) / tot))
 " 2>/dev/null; } || true )
   rm -f /tmp/tis0.$$ /tmp/tis1.$$
+  DELIV=$(printf '%s' "${_tis:-}" | awk '{print $1}')
+  MHZ=$(printf '%s' "${_tis:-}" | awk '{print $2}')
+  GE2=$(printf '%s' "${_tis:-}" | awk '{print $3}')
   [ -n "${DELIV:-}" ] && echo "$TAG cpu7_deliv2400_pct=$DELIV"
+  [ -n "${MHZ:-}" ] && echo "$TAG cpu7_deliv_mhz=$MHZ"
+  [ -n "${GE2:-}" ] && echo "$TAG cpu7_deliv_ge2000_pct=$GE2"
 fi
 [ -n "${BATTT:-}" ] && echo "$TAG batt_temp_c=$(python3 -c "print(round(${BATTT}/10,1))")"
 # Exp894: device-state telemetry used to be PRINTED (note: lines) but never SAVED - so the only
@@ -278,7 +295,7 @@ if [ "$PARSE_ONLY" != 1 ] && [ -n "${RTF:-}" ]; then
   # faked uptime significance), and EXTRA_ENV is exactly the confound source for measure.sh rows.
   # Appended at END so columns 0-10 are stable; legacy headers migrate one-time, data rows are
   # never rewritten. Env assignment strings cannot contain tabs/newlines, so the TSV stays clean.
-  [ -f "$_tsv" ] || printf 'ts\tuptime_s\tprocs\tmem_avail_mb\tcpu7_khz\tbatt_c\trtf\tvae_s\tlm_s\ttokens\tfingerprint\textra_env\tcpu7_khz_med\tcpu7_deliv2400_pct\tscreen\n' > "$_tsv"
+  [ -f "$_tsv" ] || printf 'ts\tuptime_s\tprocs\tmem_avail_mb\tcpu7_khz\tbatt_c\trtf\tvae_s\tlm_s\ttokens\tfingerprint\textra_env\tcpu7_khz_med\tcpu7_deliv2400_pct\tscreen\tcpu7_deliv_mhz\n' > "$_tsv"
   if ! head -1 "$_tsv" | grep -q 'extra_env'; then
     sed -i '1s/$/\textra_env/' "$_tsv"
   fi
@@ -300,6 +317,12 @@ if [ "$PARSE_ONLY" != 1 ] && [ -n "${RTF:-}" ]; then
   if [ "$(head -1 "$_tsv" | awk -F'\t' '{print $NF}')" != screen ]; then
     sed -i '1s/$/\tscreen/' "$_tsv"
   fi
+  # Exp975: 16th column `cpu7_deliv_mhz` = MEAN delivered big-core frequency (MHz) over the run's
+  # counted time. Added because deliv2400 cannot distinguish "capped at 1.3 GHz" from "governed at
+  # 2.15 GHz" (Exp974), while the mean names the P-state directly. Append-only.
+  if [ "$(head -1 "$_tsv" | awk -F'\t' '{print $NF}')" != cpu7_deliv_mhz ]; then
+    sed -i '1s/$/\tcpu7_deliv_mhz/' "$_tsv"
+  fi
   _battc=$(python3 -c "print(round(${BATTT:-0}/10,1))" 2>/dev/null || echo "?")
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%s)" "${UPT:-?}" "${NPROC:-?}" "${MEMAV:-?}" "${KHZ:-?}" "$_battc" "$RTF" "${VAE:-?}" "${LMS:-?}" "${TOK:-?}" "${FP:-?}" "${EXTRA_ENV:-}" "${KHMED:-?}" "${DELIV:--1}" "${SCR2:-UNKNOWN}:arm=${ARMED:-?}" >> "$_tsv" 2>/dev/null || true
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%s)" "${UPT:-?}" "${NPROC:-?}" "${MEMAV:-?}" "${KHZ:-?}" "$_battc" "$RTF" "${VAE:-?}" "${LMS:-?}" "${TOK:-?}" "${FP:-?}" "${EXTRA_ENV:-}" "${KHMED:-?}" "${DELIV:--1}" "${SCR2:-UNKNOWN}:arm=${ARMED:-?}" "${MHZ:--1}" >> "$_tsv" 2>/dev/null || true
 fi

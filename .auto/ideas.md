@@ -4272,6 +4272,24 @@ Consequences:
   policy, like the batt<=37.0 C gate the ladder already has); (3) then re-take the ladder.
   Anchor 1.4475 (best 69 s cell, khz_med 2400000, deliv 99) at ~27.6 h, transcript byte-identical.
 
+- SHIPPED: THE FULL P-STATE PIC IS NOW RECORDED (Exp975, harness change). measure.sh already read the
+  whole `time_in_state` histogram twice per run and threw away everything but the 2.4 GHz share; it now
+  emits three state witnesses from the same read: `cpu7_deliv2400_pct` (unchanged), `cpu7_deliv_mhz`
+  (MEAN delivered big-core MHz - the number that NAMES the P-state) and `cpu7_deliv_ge2000_pct` (share at
+  >= 2.0 GHz). The mean is also the 16th TSV column.
+  * VALIDATED WITH BOTH CONTROLS (screen-ON armed vs NO_ARM after a 2-min screen-off):
+      armed   rtf 1.2252  khz_med 2400000  deliv2400 97 %  MEAN 2376.5 MHz  ge2000 97 %
+      NO_ARM  rtf 1.8538  khz_med 1300000  deliv2400  0 %  MEAN 1284.0 MHz  ge2000  0 %
+    The witness is sensitive (2380 vs 1280) and the two states are now distinguishable by a single
+    number, which is what deliv2400 could not do (Exp974: a 2150000 run also read 0 % but was the FAST
+    long cell of the day, 1.53 vs 2.02).
+  * UNITS BUG CAUGHT BY READING THE VALUE BACK, same iteration: time_in_state keys are kHz, so the first
+    cut emitted 2376516 under a column named `mhz`. Fixed to MHz-with-one-decimal before committing; the
+    two pre-release rows written minutes earlier were corrected in place (same iteration, documented -
+    they were produced by the intermediate version and are the only rows affected). Audit green (135/1/0),
+    fault 18 re-proven to fire (coverage 1/1), TSV now 16 columns with the header migrated append-only.
+  Anchor (state 3, default arm) 1.2296 at ~27.8 h, transcript byte-identical.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas

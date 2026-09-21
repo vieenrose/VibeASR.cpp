@@ -1310,7 +1310,9 @@ except (OSError, AttributeError):
 # 13th, `cpu7_khz_med` = the big core's median governor request DURING the run (the 5th column is a
 # single pre-run sample that cannot see the 2400000 -> 2000000 step of Exp931/932/933). Exp972 added a
 # 15th, `screen` ("ON:arm=1" - the display state and whether the boost arm ran), because Exp968-971
-# showed the screen/arm state moves the protocol metric ~40 % on the SAME binary. The header migrates
+# showed the screen/arm state moves the protocol metric ~40 % on the SAME binary. Exp975 added a 16th,
+# `cpu7_deliv_mhz` (MEAN delivered big-core MHz), because deliv2400 is the share of ONE step and so
+# cannot tell "capped at 1.3 GHz" from "governed at 2.15 GHz" (Exp974). The header migrates
 # one-time in the write path, so a healthy file always ends it with the newest column; data rows
 # predating each migration keep their old column count (history is never rewritten) and only the latest
 # row - always written by the current script - is held to the current width.
@@ -1324,8 +1326,8 @@ elif not os.path.exists(_tsv):
 else:
     try:
         _lines = [l for l in open(_tsv, encoding='utf-8', errors='ignore').read().splitlines() if l.strip()]
-        _hdr_ok = _lines and _lines[0].startswith('ts\tuptime_s') and _lines[0].rstrip().endswith('screen')
-        _last_ok = len(_lines) > 1 and len(_lines[-1].split('\t')) == 15
+        _hdr_ok = _lines and _lines[0].startswith('ts\tuptime_s') and _lines[0].rstrip().endswith('cpu7_deliv_mhz')
+        _last_ok = len(_lines) > 1 and len(_lines[-1].split('\t')) == 16
         if not _hdr_ok or not _last_ok:
             bad("check 18: device_state.tsv malformed (header/column check) - the telemetry write "
                 "is broken, not just absent")
