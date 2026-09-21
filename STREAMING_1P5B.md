@@ -279,6 +279,59 @@ passing the flag exits 1 with `Unknown arg`. Treating it as an available option 
 change plus a full accuracy gate, and its benefit is capacity, not speed (the position term is ~4.9x traffic-bound). To re-test the boundary cheaply, do NOT run a 4-minute clip - run the 138 s ladder clip with
 a small `-c` (e.g. `-c 1536` dies at window 31/48), which reaches the same code path in a fraction of the runtime.
 
+## Measurement model - how to read any number in this repo (Exp968-1016)
+
+Every performance number here is a measurement of a *device state*, not just of code, and the harness now
+sets and records that state. Read this before comparing two numbers from different sections or sessions.
+
+**1. Three clock states, settable and witnessed.** The two big cores deliver very different frequencies
+depending on whether the phone has recent user activity and its display is on:
+
+| state | how it is produced | protocol clip (10 s) | mean delivered | witness |
+|---|---|---|---|---|
+| **armed** | screen on + an activity event (`.auto/measure.sh` does this automatically) | **1.22-1.25** | 2.0-2.4 GHz | `cpu7_deliv_mhz` >= 2000 |
+| **unarmed** | screen on, no recent activity (what a bare wake leaves) | 1.67-1.70 | ~1.79 GHz | ~1790 |
+| **screen off** | display off | 1.85 | ~1.28 GHz | ~1280 |
+
+The arm is a burst (wake + three volume-key pairs, UI-indifferent) followed by a `KEYCODE_WAKEUP` stream
+every 3 s that spans the run, stopped afterwards; `NO_ARM=1` disables it, `ARM_STREAM=0` keeps the burst
+only, `ARM_PERIOD`/`ARM_SPARSE`/`ARM_DENSE_S` tune it. Each injected event costs ~50-60 ms of device CPU
+(measured), which is why the stream is sparse and why the number is state-qualified rather than inflated.
+
+**2. Witnesses, and a guard.** `measure.sh` emits the 2.4 GHz share (`cpu7_deliv2400_pct`), the MEAN
+delivered frequency (`cpu7_deliv_mhz`, also a TSV column) and the share at >= 2.0 GHz. The 2.4 GHz share
+alone is *not* sufficient: a run the governor steers to 2.15 GHz reads 0 % while being one of the fastest
+cells of the day, which is how a whole class of "capped" readings appeared before Exp974. An ARMED run whose
+mean falls below 2000 MHz prints a WARNING and must be retried, not averaged; audit check 19 fails if that
+guard is ever removed from the harness.
+
+**3. The metric drifts with device UPTIME inside one boot.** Armed protocol cells read 1.1939 at 12-20 h of
+uptime and 1.2242 at 26-40 h (same arm era, delivered share flat), i.e. ~+0.17 %/h, and the effect survives
+control for background process count, available memory and battery temperature. A two-parameter
+(uptime + arm) fit is not identifiable, and a 20-minute idle does not recover it. **Quote the uptime with
+any number**, and read cross-epoch differences as "+2.5 to 4 % between epochs" rather than as code.
+
+**4. The accuracy gate is armed too, and its WER column is the bit-stable part.** `.auto/eval40.sh` arms
+each gate identically and records `gate_mean_mhz`. The 40-utterance WER has returned the identical S/D/I
+profile for fifteen consecutive gates with zero discordant tokens of 731 against the frozen reference
+(paired McNemar), while the gate's *mean rtf* varies by ~5 % across sessions - read the mean as a state
+probe, the WER as the gate.
+
+**5. Read speech is not corpus parity.** The 40-utt gate is read speech; a change can be output-identical
+there and still move hard audio (measurement, Exp1010-1014: the v4.7 boundary batch is worth -7.1 pp on
+overlapped speech, +0.64 pp on zh-TW, and is token-identical on consumer-mic English). Use
+`.auto/hardaudio_watch.sh` (three watchdog sets, one command, references in its footer) for any change to
+decode structure, boundary handling, quantization or the window protocol.
+
+**6. Decode is a law, not a number.** `LATENCY_TRACE` per-window fits give
+`ms/token = 83.5 + 11.4 us x KV-position` (two clips agreeing within 2 %, validated 2.3x out of range), so a
+single ms/token figure is an average over a drifting quantity - quote the law or an interval.
+
+**7. The machine-readable state.** `.auto/headline.json` is the single statement of the era, tier ladders
+and device-state rules; `audit_harness.py` (137 checks, 22 proven by planted faults) fails if the prose in
+this file, `RESULTS.md`, `README.md` or `.auto/prompt.md` disagrees with it. `.auto/device_state.tsv` holds
+one row per run with the state witnesses, so any claim above can be re-derived from data.
+
 ## Phone evaluation (OPPO CPH2371, Dimensity 1300, 8 GB RAM, Android 13)
 
 Cross-built with NDK r26d (`arm64-v8a`, `android-33`, `GGML_ARM_DOTPROD=ON`;
