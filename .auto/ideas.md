@@ -5468,3 +5468,32 @@ arm bimodality, and per Exp1025 both sit above the knee, so their 0.13 % rtf gap
     the factor only spans 1.05-1.31, so it is collinear with the intercept and cannot be separated from these
     data. Exp532's direct measurement stays the authority for the level.
 Anchor 1.2238 (2 reps: 1.2197 @ 2030.0, 1.2279 @ 2041.3 MHz) at 36.6 h uptime (derived).
+
+- FIRST-WINDOW WARM-UP FOUND - ANSWERS THE PER-PROCESS vs PER-CLIP QUESTION (Exp1029).
+  LATENCY_TRACE=1 gives per-window leaves (`LT w=N vae=.. prefill=.. decode=..`), so Exp973's boost-constant
+  story could be tested directly instead of inferred from a regression intercept. Armed, same binary:
+    10 s rep1  w1=2174  mid(w2..w3)=2060  -> **+114 ms (+5.5 %)**      10 s rep2  w1=2195  mid=2060 -> **+136 ms (+6.6 %)**
+    69 s (24w) w1=2145  mid(w2..w23)=2068 -> **+77 ms (+3.7 %)**
+  Per-window VAE repeatability across the two 10 s reps: -0.96 / -0.05 / +0.15 % - the measurement is good to
+  ~1 %, so a +5 % effect is ~5 sigma, not noise. The plateau is reached at w2 (2187 / 2047 / 2042).
+  * **Verdict: it is a per-PROCESS warm-up confined to the first window, not a governor ramp and not per-clip.**
+    Three independent reasons: it decays within ~2 s (a governor ramp lasts 10-20 s, Exp973); the arm has
+    already boosted the cores before t=0, and the witnesses confirm it (2323.8 / 2042.0 / 2330.0 MHz); and
+    majflt = 0 in every run, so it is not file-backed page faulting - the natural cause is cold residency
+    (cache lines + TLB) of the ~2.2 GB weight arena, paid once and then reused by every later window.
+  * The LM side shows NO first-window penalty: prefill w1 = 517-522 ms vs 523-583 ms mid-run (the long clip's
+    later prefills are HIGHER, exactly the Exp989 decode law in context position). So this is VAE-side.
+  * This closes Exp1028's queued question and refines the gate's 255 +/- 98 ms additive term: ~100 +/- 30 ms of
+    it is this warm-up (constant in ms, so it amortizes against clip length - which is the corr(rtf, 1/dur) =
+    +0.234 gradient), and it is per-process, which is why the gate (one process per utterance) shows it and
+    the long clips barely feel it (+3.7 % on one window out of 24).
+  * PRODUCT READING (worth more than the loop number): a streaming session pays this ONCE at start - about 5 %
+    on its first 3 s window, then nothing. If a session-start-latency claim is ever made, cite this run rather
+    than the steady-state ladder.
+  * HARNESS LESSON (a silent bug of the Exp679 class): my first loop over arms pointed the 69 s arm at a wrong
+    clip path, so measure.sh produced nothing and the analysis silently re-read the PREVIOUS run's capture -
+    both arms printed identical LT lines and only the empty `rtf=`/`tok=` fields exposed it, and output
+    truncation then hid the one header that was empty. Fix used here: write each arm's capture to its own file
+    (/tmp/lt_<arm>.txt) and print a per-arm row with the window count, and check every field is non-empty
+    before believing a capture belongs to the arm that claims it.
+Anchor 1.2217 (2 reps: 1.2253 @ 2038.0, 1.2180 @ 2318.0 MHz) at 36.8 h uptime (derived).
