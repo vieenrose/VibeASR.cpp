@@ -4322,6 +4322,33 @@ Consequences:
   state-qualified ladder; (3) re-read the historical delivered-share notes under the corrected units.
   Anchor (boost, 10 s cell, accepted) 1.2231 at ~28.2 h, transcript byte-identical (1a095c8496b4).
 
+- ***THE STIMULUS TYPE MATTERS: A REPEATED KEYCODE_WAKEUP STREAM RESTORES THE BOOST P-STATE (Exp977).***
+  17 s cell (the one that has been failing the >= 2000 MHz accept rule), four arms, each with measure.sh's
+  normal burst plus optionally a DIFFERENT continuous stimulus through the run:
+      A control (volume pairs only)   rtf 1.6666  khz_med 1300000  MEAN 1787.0 MHz  <- current recipe
+      B continuous KEYCODE_HOME       rtf 1.8015  khz_med 1300000  MEAN 1588.7 MHz  <- no help
+      C continuous KEYCODE_WAKEUP     rtf 1.4902  khz_med 2400000  MEAN 2153.4 MHz  <- -10.6 %, boost P-state
+      D control repeat (A again)      rtf 1.8078  khz_med 1300000  MEAN 1596.5 MHz  <- same state as A
+  So this is not "any user activity": a HOME-key stream does nothing, while a repeated WAKEUP key (a key
+  event carrying the WAKE/display hint) lifts the mean delivered frequency by ~370-560 MHz and the 17 s
+  cell from 1.67-1.81 to 1.49. Mechanistically plausible (the power HAL's no-user-activity timer is what
+  the volume pair resets only weakly) and testable further - and it is the first recipe change that has
+  moved a LONG cell's P-state since the decay appeared.
+  * HONEST SCOPE: A and D are two runs of the same state and they differ by 8 % in rtf (means 1787 vs
+    1596), so the control itself is not tight; C's advantage is nonetheless large and it is corroborated
+    by the independent witness (khz_med 2400000 vs 1300000, deliv 78 % vs 27 %). Treat it as a strong
+    lead, not a settled 10 % number, until it is run on the 69 s/138 s cells with reps.
+  * CAVEAT ON THE STIMULUS ITSELF: pressing WAKEUP repeatedly while the screen is already on is a benign
+    no-op for the UI (it cannot navigate or change app state), which is why it is preferred over taps,
+    and it is equally available to a product-side arm-up. It is NOT part of the shipped tier, and no
+    rtf claim rests on it - it is a measurement-protocol lever.
+  QUEUED (next): (1) run the WAKEUP stream on the 69 s and 138 s cells, 2 reps each, to see whether the
+  long-cell boost is recoverable at all; (2) if it is, re-ship the arm recipe in measure.sh (WAKEUP
+  preferred over volume pairs, with the same NO_ARM escape and a guard that it actually changes the
+  witness) and re-take the ladder; (3) if it is not, publish the state-qualified ladder and stop.md the
+  device-state archaeology, because the campaign's deliverable does not depend on it.
+  Anchor (17 s, WAKEUP-stimulus arm) 1.4902 at ~28.3 h, transcript byte-identical (1a095c8496b4).
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
