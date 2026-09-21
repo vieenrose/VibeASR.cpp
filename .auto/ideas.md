@@ -3930,3 +3930,24 @@ Consequences:
     the per-window-overhead vs per-token-slope decomposition is underdetermined from the slow run alone
     (w4's 96 ms/tok on 5 tokens can be read either way). If the transient clears next session, take it
     before any other measurement.
+
+- THE SLOW-LM STATE PERSISTS: 5/5 OVER ~17 MIN, LT REPLICATE IDENTICAL (Exp953). Two more protocol arms
+  (~2 min after Exp952's LT run, batt 33.7-33.9 C, cool): clean anchor 1.2217 (lm 5.2, decode 3.4,
+  delivered 97) + LT arm 1.2242 (delivered 93), transcript 1a095c8496b4 both. So the slow state has now
+  survived FIVE consecutive reps over ~17 min - it is not flickering. The LT replicate is striking:
+  w1 1073/1072, w2 942/942, w3 867/858, w4 478/481 ms vs Exp952 (all within 9 ms) - the slow state's
+  per-window signature replicates almost exactly, i.e. it is a STABLE alternate level, not noise.
+  * ONSET lines up with the behavior board: Exp951's anchor (immediately pre-board) was fast
+    (1.1980, lm 4.9); every run since the 7.6-min board is slow. Heat is excluded (batt fell 36.6 ->
+    33.7 with no movement); background work is not visible (top talker system_server 2.9 %, other_busy
+    3-5 %, no dex2oat); delivered frequency says boost (93-97). What the board could have left behind is
+    unknown - candidate Prime Suspect is untested, so no mechanism is claimed.
+  * BASE-RATE NOTE: the historical slow fraction was ~6 % (3/49, Exp940). Five consecutive slows at a
+    6 % base rate has p ~ 8e-7 - so either the base rate is wrong (the 49-row sample was taken in a
+    different device regime) or the board (or something coincident with it) flipped the device into a
+    persistent slow-LM state. Both readings agree the phenomenon deserves its own hunt, not a footnote.
+  * PLAN: run the cadence-due gate next (~15 min of varied workload + time). If the post-gate anchor is
+    fast again, the state clears on the ~30-min timescale and the gate's per-utterance timestamps may show
+    WHEN. The fast-baseline LT capture is still queued - it is now the more valuable half, since the slow
+    signature is already replicated twice.
+  Anchor 1.2217 at 23.8 h (batt 33.7 C, delivered 97), transcript byte-identical.
