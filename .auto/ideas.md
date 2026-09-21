@@ -5411,3 +5411,31 @@ Anchor (paired A mean) 1.2279 at 35.9 h (derived); B mean 1.2767; witnesses 2038
     (truthiness instead of indexing) printed a threshold as a residual, and polyfit's slope is ms/MHz not
     ms/100 MHz (which made the above-knee slope look 100x smaller than Exp1025's -2.16; it agrees at -2.0).
 Anchor (P mean) 1.2306 at 36.0 h (derived); witnesses 2041.8 / 2043.3 MHz; G mean 1.3564 (55 tok).
+
+- GATE BOARD #16 + THE GATE SERIES AS AN INSTRUMENT (Exp1027, 21 rounds since Exp1005).
+  * **WER: 40/40, 4.55 % (S=29 D=2 I=2 H=695) - the 16th consecutive identical gate.** Paired b=0 / c=0 of 731
+    against BOTH the frozen reference (hyp-gate852) and the previous gate (hyp-gate1005). Gate mean rtf 1.3789
+    with gate-state.log witness 2127.2 MHz (armed; wall 458 s).
+  * **NEW FREE INSTRUMENT, found while doing nothing new:** eval40.sh has been writing per-utterance times to
+    hyp-<tag>/rtf.log (line 134) and a gate-state.log since Exp983, so 23 archived gates can be compared
+    PAIRED, per clip - speed as well as text - with zero device time. Structure within one gate (n=40):
+    sd 6.32 % relative, range 1.188-1.569, and **corr(rtf, tokens) = -0.40**: the 4-token-shortest clips are
+    the SLOWEST per second of audio (slowest 4 are 14-35 tokens, fastest 4 include an 84-token one), because
+    each utterance is its own process and pays the state-independent model load. That is the per-clip-overhead
+    column Exp645 described, now with its correlation measured.
+  * **THE ARM, MEASURED ON 40 CLIPS INSTEAD OF ONE.** The only clean armed/unarmed pair in the archive is
+    gate982 (unarmed 1.8920) vs gate984 (armed 1.3808) - same era, same tree, differing ONLY by Exp983's
+    arming: **-27.0 % (per-utt sd 4.33 %), and FLAT across the clip-length halves (-27.25 % short / -26.84 %
+    long)**. A model where a state-independent 0.6 s load sits inside ~19 s of wall predicts -26.2 %; observed
+    -27.0 %. Cross-corpus agreement with the protocol clip's -29.4 % (Exp983's 1.8727 -> 1.3217) is a strong
+    independent confirmation that the arm is a state effect and not a clip artifact.
+  * **RETRACTION (my own first pass, same round):** pooling ALL 19 unarmed gates gives "+26.2 % arm value" -
+    invalid, because the unarmed pool spans device eras with different absolute speeds (gate means cluster at
+    ~2.66 (gate721/778/791/m2), ~1.91 (gate845/852/878), ~1.31-1.37 (gate880-949, the fast post-reboot era),
+    ~1.84-1.89 (gate954/982)). The gate mean is an ERA RECORD, which is exactly why Exp1005 called it a state
+    probe and not a ladder cell - now demonstrated with 23 rows. Only within-era paired pairs are admissible.
+  * Session spread between two ARMED gates: gate1005 1.3180 (witness 2284) vs gate1027 1.3789 (2127) = +4.62 %
+    (per-utt sd 3.27 %). Both sit above the knee, where 157 MHz is worth ~0.2 %, so this is session-level
+    state spread - consistent with Exp1005's +-5 % characterization, and NOT evidence of a regression.
+Anchor 2.2e+00? no: protocol 2-rep mean 1.2245 at 36.3 h (derived; witnesses 2033.1 partial / 2322.0 full -
+the known bimodality, and per Exp1025 both above the knee so the 0.13 % gap between them is state noise).
