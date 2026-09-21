@@ -4083,3 +4083,6 @@ Consequences:
   fails on its own planted fault (0 silent/invalid); 3 classes accepted as uncontrolled (co-runner -
   would poison the session; sweep-resolves-to-tier - own --dry control; capture-identity - WARN-only by
   design, manual control documented). Final clean-tree audit green. No device time, no file changes.
+
+- WATCH, 17th CAPPED REP (Exp966): post-wake anchor 1.8429 (request 1300000, delivered 7, batt 31.1 C),
+  byte-identical, speeds quarantined. All boards current; noise/rate/fast-LT need boost.
