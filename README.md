@@ -27,6 +27,39 @@ To enable efficient edge CPU deployment, we replace the original Qwen2.5-7B lang
 
 ---
 
+## Autoresearch: Phone Streaming Optimization (`streaming-1.5B`)
+
+An autonomous experiment loop (965 runs, branch `autoresearch/phone-rtf-20260909`) optimized
+on-device streaming inference of the 1.5B variant on a Dimensity 1300 phone (OPPO, Android 13,
+CPU-only, 2 big cores), with accuracy gates on every change.
+
+<div align="center">
+
+| Tier | 10 s RTF | 69 s RTF | WER (40-utt gate) | Peak RSS |
+|:---|:---:|:---:|:---:|:---:|
+| Baseline (F16 VAE + Q4_K_M LM) | 12.24 | — | — | 3.3 GB |
+| **MAX-SPEED v4.8 (default)** | **1.19** | 1.47 | 4.55% | 2.19 GB |
+| MAX-SPEED-LEAN (p13, sub-2 GB) | 2.08 | 2.32 | 4.65% | 1.75 GB |
+
+</div>
+
+- **−90% RTF** via three waves: A78 codegen + mmap loader, blocked-int8 LM/VAE kernels, then fused
+  elementwise ops (depthwise-conv1d kernel, layer-scale+residual, gelu+bias, rms_norm·gamma, in-kernel
+  causal pad), blocked-int8 conv weights, tail-GEMV, boundary-batch prefill, and a final-window flush.
+- **Accuracy-guarded, not overfit**: the 40-utt LibriSpeech gate reads zero discordant tokens vs the
+  frozen reference across 12 consecutive gates (paired McNemar, not just WER parity); a never-optimized
+  guard clip, fault/behavior/rollback/soak boards, and a 40-utt WER re-gate on every source change.
+- **Read-speech qualifier**: the 4.55% WER is LibriSpeech test-clean; on held-out consumer-mic English
+  the same system reads ~30% (domain gap measured, never optimized against).
+- **State discipline**: numbers are quoted with device regime and clock state (fresh-boot boost 1.19 vs
+  settled +11.6%; the same binary reads 1.85 long-uptime) — see `.auto/headline.json` for the
+  machine-readable current claim.
+
+Details: [STREAMING_1P5B.md](STREAMING_1P5B.md) (tier ladder) · [RESULTS.md](RESULTS.md) (all cells)
+· `.auto/ideas.md` (full experiment ledger) · `.auto/headline.json` (current claim).
+
+---
+
 ## Key Results
 
 ### Model Size
@@ -93,39 +126,6 @@ To enable efficient edge CPU deployment, we replace the original Qwen2.5-7B lang
 </div>
 
 > **Note:** The accuracy benchmarks above are evaluated on standard-accent speech corpora. Performance on accented or dialectal speech not represented in the training data may degrade more significantly, as is common with ASR models trained on specific data distributions.
-
----
-
-## Autoresearch: Phone Streaming Optimization (`streaming-1.5B`)
-
-An autonomous experiment loop (965 runs, branch `autoresearch/phone-rtf-20260909`) optimized
-on-device streaming inference of the 1.5B variant on a Dimensity 1300 phone (OPPO, Android 13,
-CPU-only, 2 big cores), with accuracy gates on every change.
-
-<div align="center">
-
-| Tier | 10 s RTF | 69 s RTF | WER (40-utt gate) | Peak RSS |
-|:---|:---:|:---:|:---:|:---:|
-| Baseline (F16 VAE + Q4_K_M LM) | 12.24 | — | — | 3.3 GB |
-| **MAX-SPEED v4.8 (default)** | **1.19** | 1.47 | 4.55% | 2.19 GB |
-| MAX-SPEED-LEAN (p13, sub-2 GB) | 2.08 | 2.32 | 4.65% | 1.75 GB |
-
-</div>
-
-- **−90% RTF** via three waves: A78 codegen + mmap loader, blocked-int8 LM/VAE kernels, then fused
-  elementwise ops (depthwise-conv1d kernel, layer-scale+residual, gelu+bias, rms_norm·gamma, in-kernel
-  causal pad), blocked-int8 conv weights, tail-GEMV, boundary-batch prefill, and a final-window flush.
-- **Accuracy-guarded, not overfit**: the 40-utt LibriSpeech gate reads zero discordant tokens vs the
-  frozen reference across 12 consecutive gates (paired McNemar, not just WER parity); a never-optimized
-  guard clip, fault/behavior/rollback/soak boards, and a 40-utt WER re-gate on every source change.
-- **Read-speech qualifier**: the 4.55% WER is LibriSpeech test-clean; on held-out consumer-mic English
-  the same system reads ~30% (domain gap measured, never optimized against).
-- **State discipline**: numbers are quoted with device regime and clock state (fresh-boot boost 1.19 vs
-  settled +11.6%; the same binary reads 1.85 long-uptime) — see `.auto/headline.json` for the
-  machine-readable current claim.
-
-Details: [STREAMING_1P5B.md](STREAMING_1P5B.md) (tier ladder) · [RESULTS.md](RESULTS.md) (all cells)
-· `.auto/ideas.md` (full experiment ledger) · `.auto/headline.json` (current claim).
 
 ---
 
