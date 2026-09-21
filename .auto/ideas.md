@@ -5609,3 +5609,16 @@ Anchor 1.2282 (3 reps 1.2250 / 1.2298 / 1.2299, witnesses 2029.7 / 2037.0 / 2328
   * Guard demo: anchor rep1 read 1.3883 @ 1811.6 MHz with batt 40.4 C after the soak -> flagged, cooled 200 s,
     then 1.2238 @ 2327.5 and 1.2334 @ 2043.2. The cooldown-and-re-probe recipe from Exp1030 works in production.
 Anchor 1.2286 (2 clean reps; 1 flagged partial excluded) at 38.8 h uptime.
+
+- ASSUMPTION CHANGED FOR A CLOSED DECISION (from Exp1032, per the "no revival without a changed assumption" rule).
+  Exp846 declined to enable the boundary batch on the RAM-lean tier because it "would cost 3 tokens in 468
+  (p=1.0) to buy -2.6 % on a non-metric tier". Two things have changed since: (a) the 3-token/0.64 pp zh
+  difference is now known NOT to be a measurable cost (paired b=7/c=6, McNemar p=1.0, CI [-0.85,+2.14] pp), and
+  (b) a benefit that did not exist in Exp846's framing was found and paired-supported - the batch is worth
+  +7.1 pp on overlapped speech (b=0/c=6, p=0.031), which is exactly where the lean tier now sits, 7.1 pp behind
+  the default tier. So the trade is no longer "accuracy cost vs speed on a non-metric tier"; it is "7.1 pp of
+  diarization accuracy on overlap for 2.6 % of that tier's speed". If the lean tier is ever positioned for
+  multi-speaker use, this is the item to revisit - the work is lifting the `pieces==1 && !defer` gate so the
+  batch also applies on the deferred path (Exp835 noted it flips ONE token at p13, which is a gate-run
+  requirement, not a blocker), then re-gating: 40-utt byte-identity is not expected for this class, so use the
+  paired test plus the hard-audio watchdog.
