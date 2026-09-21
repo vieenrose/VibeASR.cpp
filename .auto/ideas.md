@@ -4596,6 +4596,30 @@ Consequences:
     (mean 1.2458, spread 1.5 %), the last two at mean 2040-2340 MHz.
   Anchor (armed protocol, default 3 s stream) 1.2349 at ~30.6 h, transcript byte-identical.
 
+- ***THE "LM TRANSIENT" IS CONTEXT-LENGTH DEPENDENCE OF DECODE - TWO-PARAMETER LAW, REPRODUCED (Exp989).***
+  The loop's oldest open instrument question was the decode leg: per-token cost never fitted a law across
+  clips (Exp916 implied ~2.8-10.7 us/position depending on which pair you used) and Exp940's phase-
+  selective "LM transient" (lm 5.2 / decode 3.4 on the protocol clip, VAE identical) was filed as an
+  unexplained 4th cause of scatter. Running the armed state with LATENCY_TRACE settles it:
+      clip    windows  decode total  tokens  overall     fit: ms/tok = a + b*positions        R^2
+      69 s      24        39.5 s      446    88.6      83.2 + 11.54 us/pos              0.51
+      138 s     30        50.8 s      661*   90.6      83.7 + 11.26 us/pos              0.56
+  (*the 138 s trace covers 30 of 48 windows - the run was flagged PROVISIONAL at 28 % other-busy; its fit
+  nevertheless matches the 69 s one, which is the reassuring part.)
+  * The per-window pattern is a MONOTONE RISE, not a step: first quarter 84.2 -> last quarter 93.2 ms/token
+    on the 69 s cell (+10.8 %) and 84.9 -> 96.0 on the 138 s cell (+13.1 %), while the VAE's per-window cost
+    stays flat (2.18 s first vs 2.09 last at 69 s) - exactly the phase selectivity Exp940 measured.
+  * So the mechanism is the KV length: decode cost grows ~11.4 us per additional context position, from a
+    ~83.5 ms/token intercept, and the two clips agree on BOTH parameters to ~2 %. That also explains why
+    every cross-clip decode "law" failed: each cell averages a drifting quantity over its own position
+    range, so a single number per clip is a different mixture every time.
+  * CONSEQUENCE FOR REPORTING: quote decode as the law (or as an interval), never as one ms/token figure;
+    the long-cell cells in the ladder inherit this drift and should be read as averages whose value
+    depends on the position range. The historical "transient" is therefore not a device fault at all -
+    it is context, and any future claim of the form "decode suddenly got slower" must first be checked
+    against the position range it was measured over.
+  Anchor (armed 69 s cell) 1.5545 at ~31.0 h, token canary 446 exact, mean 2110.6 MHz.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
