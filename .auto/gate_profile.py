@@ -147,3 +147,10 @@ if __name__ == '__main__':
     print(f'  by duration half: short {r["lo"]*100:+.2f}%  long {r["hi"]*100:+.2f}%   <- a CLIP-SELECTIVE test')
     print('  CAVEAT: se(mean) is the clip-level error only. The session/state term is common to all clips, so a')
     print('  one-run-per-arm comparison carries the SESSION spread (~2.3% sd over same-config gates), not this se.')
+    # Exp1049, measured from the armed same-config archive (each dir classified by its OWN gate-state.log, the
+    # un-stamped gate982 excluded as a distance not a pair): the mean reads -4.32 / -0.97 / +0.14 / +0.14 / +0.46 %
+    # -> |mean| up to ~4-5 % is ordinary SESSION LEVEL. Exp1044's tighter 0.35 % envelope was derived from four
+    # rotations that happened to share a level and is retracted. Judge SELECTIVITY by the sign test and by halves
+    # DISAGREEING; a large mean whose halves agree is the state talking, not the change.
+    print('  ENVELOPE (Exp1049, armed same-config archive): |mean| up to ~4-5% is ordinary session LEVEL (sd 1.8%).')
+    print('  A large mean whose HALVES AGREE is state; selectivity needs the sign test or halves that disagree.')
