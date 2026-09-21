@@ -3900,3 +3900,33 @@ Consequences:
     were 48/47 %) and it fits the model: the mix moves the metric roughly proportionally.
   Anchor (clean boost, after 5 min idle) 1.1980 at 20.7 h (batt 36.4 C, delivered 97), transcript
   byte-identical.
+
+- BEHAVIORAL CONTRACTS ROTATION (Exp952, ~40 rounds since Exp912): 11/11 PASS, 0 fail on the
+  current binary - silence/noise/music labels, 48 kHz stereo resample, short36 sub-piece (17 tok),
+  twospk_overlap splits speakers, twospk one-tag = closed Exp650 recorded not failed, ladder canaries
+  EXACT 39/106/446/876. The board's binary line reads ed4cb82172ceec4d23c3b7db0fc405eb = the hash
+  RESULTS.md quotes after Exp950's refresh, so the reproducibility row is still current. Invocation note
+  (cost nothing, record it): the harness scripts break when called as `VibeASR.cpp/.auto/x.sh` from the
+  session workDir - after `cd $(dirname $0)/..` the second relative `cd $(dirname $0)` resolves against
+  the NEW cwd. Always `cd VibeASR.cpp && .auto/x.sh` (same class as Exp935's path trap).
+  Anchor this round 1.2248 at 23.7 h (batt 34.2 C, delivered 96), transcript byte-identical -
+  but see the transient note: it is NOT a clean anchor.
+
+- LM TRANSIENT HUNT, FIRST LIGHT (Exp952 - the Exp940 queued test, run while the phenomenon was live).
+  Three consecutive protocol anchors read lm 5.2 / decode 3.4 (rtf 1.2255 / 1.2248 / 1.2193, ~+2.5-3 %
+  over the 1.19-1.20 band) with VAE 7.0/7.1 identical, delivered 94/96/94 (boost), request pinned at
+  2400000, majflt 0, minflt normal, and a quiet device (top talker system_server 2.9 %, no dex2oat).
+  The second rep came after a 4-min idle with batt 36.6 -> 34.2 C and did NOT move (0.06 %) - so this is
+  not heat, and the Exp940 signature (phase-selective: VAE byte-identical work, LM-only excess) reproduces
+  exactly, now 3x in a row after a 7.6-min board where the historical rate was ~6 % (board-aftermath state
+  is an untested confound - do not claim the base rate moved).
+  * The third rep ran with LATENCY_TRACE=1 (EXTRA_ENV, so the telemetry row carries the flag and the
+    correlation dataset stays clean): per-window decode w1 1072 ms / 13 tok, w2 942 / 11, w3 858 / 10,
+    w4 481 / 5 (prefill normal all windows, VAE normal). Against the usual ~77 ms/tok pace EVERY window
+    is elevated (~+70-95 ms each) - the +0.4 s is spread across all four windows, NOT one stall. That
+    supports Exp940's mechanism (the LM's sequential per-token steps absorb transient interference while
+    the VAE's bulk work averages it out) and argues against a single interrupt/stall model.
+  * QUEUED: a fast-baseline LT capture (same 4 windows, lm 4.8-4.9) for a window-by-window subtraction -
+    the per-window-overhead vs per-token-slope decomposition is underdetermined from the slow run alone
+    (w4's 96 ms/tok on 5 tokens can be read either way). If the transient clears next session, take it
+    before any other measurement.
