@@ -5923,3 +5923,24 @@ Anchor 1.2287 (3 reps 1.2312 / 1.2253 / 1.2296, witnesses 2036.3 / 2032.0 / 2039
     139/1/0 with only the known asset-collision WARN.
 Anchor 1.2291 (3 reps 1.2295 / 1.2302 / 1.2277, witnesses 2331.9 / 2331.1 / 2041.9 MHz, sd 0.10 % - the tightest
 session in a while) at 42.3 h uptime; the guard rotation's own P reps bracket it (1.2293 / 1.2353).
+
+- GATE #18 + BEHAVIOR 11/11 IN ONE ROUND, AND gate_profile PASSES ITS FIRST LIVE ROTATION (Exp1044, 6 and 5 rounds).
+  * Gate: 40/40, WER 4.55 % (S=29 D=2 I=2) - **18th consecutive identical profile**, paired b=0/c=0 of 731 against
+    BOTH the frozen hyp-gate852 and the previous rotation hyp-gate1037. Armed mean 1.3834 @ witness 2092.5 MHz.
+    The Exp1037 harness work worked in anger: the argument guard and the run+skipped coverage assertion were
+    exercised by a real gate (n asserted == 40, not assumed).
+  * **First live use of `.auto/gate_profile.py` in a rotation**: gate1037 vs gate1044 reads mean **-0.32 %**,
+    per-clip sd 2.47 %, 18/40 vs 22/40, sign test p=0.64, duration halves -0.20 % short / -0.44 % long -> inside the
+    documented normal envelope, no clip-selective signal. Envelope correction worth recording: I had written the
+    band as +0.06..+0.26 %, but it is symmetric - quote it as |mean| <~ 0.35 % with p > 0.05 and both halves the
+    same sign, else investigate.
+  * Behavior board 11/11 with canaries EXACT 39 / 106 / 446 / 876, plus the out-of-domain set (music labelled,
+    48 kHz stereo resampled, sub-piece graceful) and both diarization cases.
+  * THERMAL LESSON (the witness guard justifying itself again): the first anchor rep after ~17 min of continuous
+    device work (gate then behavior) read **1.4069 at 1793.3 MHz with batt 41.1 C** - deep partial-arm/thermal,
+    +15 % off the session, and correctly flagged and excluded rather than averaged. The current discipline cools
+    200 s only AFTER such a rep appears. QUEUED (cheap): measure the first anchor rep with a pre-cooldown whenever
+    the previous device action was a board - either a fixed 120 s wait, or read the previous row's batt_temp_c and
+    wait when it exceeds 40 C. That saves one wasted ~55 s run per heavy board day.
+Anchor 1.2218 (clean reps 1.2203 / 1.2232 at 2033.9 / 2030.0 MHz, sd 0.12 %; one 1793.3 MHz / 41.1 C rep flagged
+and excluded) at 42.7 h uptime.
