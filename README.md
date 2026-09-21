@@ -60,10 +60,16 @@ CPU-only, 2 big cores), with accuracy gates on every change.
   elementwise ops (depthwise-conv1d kernel, layer-scale+residual, gelu+bias, rms_norm·gamma, in-kernel
   causal pad), blocked-int8 conv weights, tail-GEMV, boundary-batch prefill, and a final-window flush.
 - **Accuracy-guarded, not overfit**: the 40-utt LibriSpeech gate reads zero discordant tokens vs the
-  frozen reference across 12 consecutive gates (paired McNemar, not just WER parity); a never-optimized
-  guard clip, fault/behavior/rollback/soak boards, and a 40-utt WER re-gate on every source change.
+  frozen reference across **15 consecutive gates** (paired McNemar, not just WER parity); a never-optimized
+  guard clip, fault/behavior/rollback/soak boards, a 40-utt WER re-gate on every source change, and a
+  three-set **hard-audio watchdog** (`.auto/hardaudio_watch.sh`) for changes the read-speech gate cannot see.
 - **Read-speech qualifier**: the 4.55% WER is LibriSpeech test-clean; on held-out consumer-mic English
-  the same system reads ~30% (domain gap measured, never optimized against).
+  the same system reads **26.4%**, and 29.6% on Common Voice `en` (domain gap measured, never optimized
+  against).
+- **Hard audio is not uniformly worse OR uniformly unchanged**: on a 45 s overlapped/4-voice probe the
+  shipped stack now reads **17.7% WER** (was 25.9% at v4.1) with 4/4 speaker tags and attribution 0.42 —
+  and that whole gain traces to ONE shipped change (the v4.7 boundary-token batch), which costs 0.64 pp on
+  zh-TW and is output-identical on read speech and on consumer-mic English monologue.
 - **State discipline**: numbers are quoted with the measurement state and its witness — see
   `.auto/headline.json` for the machine-readable current claim.
 
