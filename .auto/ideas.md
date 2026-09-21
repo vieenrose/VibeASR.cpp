@@ -5046,6 +5046,31 @@ Consequences:
     the gate), so no correction was needed; the ledger now carries the mechanism.
   Anchor (v2 probe, default arm, armed) 1.1572 at 32.2 h (derived); witness 2369.9 MHz, 136 tokens.
 
+- HARD-AUDIO ACCURACY AUDIT OF THE WHOLE v4.2-v4.8 SERIES, ON THE WATCHDOG SETS (Exp1012 - measurement
+  only, the sets stay never-optimized). Exp1011 showed a speed-shipped change (the boundary batch) was
+  worth 7 pp on overlap audio while being invisible on the read-speech gate, so the natural question is
+  whether the rest of the series moved the OTHER hard sets. Ran both held-out sets on the current stack and
+  compared with the archived v4.1-era transcripts - token/character-level, which needs no statistical power:
+      holdout_en (220 ref tokens)  WER **0.2636** (S=41 D=6 I=11 H=173) - IDENTICAL to the archived v4.1
+                                  transcript: 225 normalized tokens both sides, **0 differing** (byte-level
+                                  text identity, the sensitive test)
+      holdout_zh (468 ref tokens)  WER **0.1538** (S=62 D=8 I=2 H=398) vs the archived v4.1 **0.1474**;
+                                  character-level diff: **17 of 521 archived characters differ (3.3 %)**, in
+                                  10 spans (e.g. 联合 -> 莲和, 快有三十 -> 派了30, 进商店 -> 金项链)
+      gate_ms_v2 (85 ref tokens)   WER 0.2588 -> **0.1765**, isolated to BOUND_BATCH_OFF (Exp1011)
+  * READING: across v4.2-v4.8 the shipped output is (a) EXACTLY unchanged on consumer-mic English monologue,
+    (b) changed by a handful of substitutions on zh (~3 % of characters; the WER delta +0.64 pp is BELOW
+    this loop's own power limit at 468 tokens, so it is NOT a claim in either direction - Exp655's rule), and
+    (c) much better on overlapped speech (the one place a change is large enough to claim). That is a
+    coherent, mechanistic picture rather than a set of loose parity assertions, and it is the strongest
+    statement the loop can make about hard audio without buying >=1400 tokens (Exp655).
+  * METHOD NOTE: my first attempt at the zh diff used a whitespace tokenizer, which treats a whole Chinese
+    sentence as one token (99 vs 61 'tokens') - meaningless. Fixed to a character-level comparison, and the
+    en case was checked both ways (word-level 0/225 and character-level) so the two languages are compared
+    in units that actually exist in them. Second time this session a tokenizer choice nearly produced a
+    false finding (the Exp654 fold_script bug was the first).
+  Anchor (en watchdog run, armed) 1.1804 at 32.3 h (derived); witness 2375.3 MHz, 408 tokens.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
