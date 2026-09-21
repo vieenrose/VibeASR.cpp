@@ -4027,3 +4027,10 @@ Consequences:
   (chat==chat69 collision, marked stale) / 0 fail - tree, scripts, bin/.so sync, tier, assets all
   consistent after the capped-series commits. Watch anchor 1.8475 (delivered 6, batt 30.4 C),
   byte-identical, speeds quarantined. No reboot authorization yet.
+
+- EQUIV-MAP REFRESH (Exp960, host-only): stdout map vs bound835 now covers 87 sets, 15 byte-identical
+  incl. hyp-gate954 (was 11 of 83 at Exp914; +gates 941/944/949/954) - the new gate joins the identity
+  lineage, free confirmation the capped series changed no text. Deliberately did NOT rewrite
+  .auto/equiv-map.md: the committed file is stale (Sep 16, vs gate791, 66 sets) but migrating its
+  reference is a doc decision for an unblocked round, not a capped-watch round.
+  Watch anchor 1.8413 (delivered 7), 14th capped rep, byte-identical, speeds quarantined.
