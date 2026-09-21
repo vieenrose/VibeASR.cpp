@@ -6005,3 +6005,8 @@ excluded after a 200 s cool) at 43.3 h uptime.
   * Hard-audio watchdog by cadence (5 rounds): all three sets reproduce EXACTLY - gate_ms_v2 0.1765 / attr 0.4235
     / tags 4/4, holdout_en 0.2636 / 0.4907 (token-identical to the archived v4.1 transcript), holdout_zh 0.1538 /
     0.6674. Five rounds of measurement-only work moved no accuracy claim.
+  * Sensitivity, measured rather than assumed: adding the one session taken after the analysis moved the slope
+    from +0.210 +/- 0.083 (t=2.53, 35 sessions) to **+0.177 +/- 0.080 %/h (t=2.20, 36 sessions)** - so the slope
+    is worth roughly +/- 0.08 %/h and each new heavy session shifts it. Quote "+0.2 %/h, t~2.2-2.5", not 3 digits.
+Anchor 1.2278 (3 reps 1.2299 / 1.2319 / 1.2215 at 2322.8 / 2038.3 / 2024.6 MHz, sd 0.43 %, no flagged rep) at
+44.2 h uptime; audit 141/1/0 (the new tool added two covered checks).
