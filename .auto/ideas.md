@@ -6010,3 +6010,31 @@ excluded after a 200 s cool) at 43.3 h uptime.
     is worth roughly +/- 0.08 %/h and each new heavy session shifts it. Quote "+0.2 %/h, t~2.2-2.5", not 3 digits.
 Anchor 1.2278 (3 reps 1.2299 / 1.2319 / 1.2215 at 2322.8 / 2038.3 / 2024.6 MHz, sd 0.43 %, no flagged rep) at
 44.2 h uptime; audit 141/1/0 (the new tool added two covered checks).
+
+- GUARD #27 + FAULT BOARD, AND A COVERAGE-BASE SEQUENCING RULE (Exp1048, both aged 5 rounds).
+  * Guard rotation, interleaved P,G,G,P armed: P 1.2336 / 1.2278 (mean 1.2307), G 1.3576 / 1.3615 (mean 1.3596)
+    -> **premium +10.47 %**. Armed series 9.57 / 10.77 / 10.26 / 10.22 / 10.37 / 10.26 / 10.47 = **10.3 +/- 0.4 %
+    over 27 rotations**, so ~45 rounds of protocol-local work have not widened the gap between the tuned protocol
+    and the never-touched slice. Identity too: P = 1a095c8496b4 (reference) and G = **849cca7df5bc, byte-identical
+    to every archived rotation** - the guard clip's OUTPUT has held for 27 rotations, not just its ratio.
+    Witnesses 2319-2383 MHz, all above the knee (no state correction needed or applied).
+  * Fault board **13/13 PASS**, healthy baseline H = 1.2484 (armed): truncated/lying headers still MEASURED with the
+    content-derived denominator (1.4069 / 1.3597 = relative bands, which is why they survive regime changes),
+    44 B and 0 B refused with no metric, config edges loud (n_ctx under one window, pieces=0, pieces not dividing
+    26, unknown --kv-type), and a truncated VAE tail caught.
+  * SEQUENCING RULE FOUND (coverage board came back **23/24 with 1 INVALID, not silent**): check 18's plant refuses
+    to run unless `.auto/last_out.txt` currently holds the PROTOCOL capture, and the fault board I had just run
+    leaves a diagnostic (non-protocol) capture there. After the round's anchor reps refreshed the capture, the same
+    board returned **24/24, 0 silent, 0 invalid**. So: run the coverage board AFTER the protocol capture is current
+    (anchors last is not enough - anchors must come BEFORE coverage), or accept a named INVALID rather than a green.
+  * Two scary-looking lines that were NOT problems, both checked before concluding (Exp1023's rule): the board's
+    `FAIL check 19: the arm state-guard is MISSING` line is the PLANT FIRING (its fault renames that message) -
+    the guard is intact at measure.sh:351; and the audit's 141->140/2WARN during the fault board is Exp1023's
+    window-count WARN for the board's own diagnostic captures.
+  * MY OWN MISPARS, 4th instance of "the measurement you ran was not the measurement you meant": my ad-hoc
+    instrumentation printed `winlines=0` from `grep -c '^window '`, but the capture's window lines are formatted
+    `[1/4] `, so the correct expression gives **4** and the capture was healthy the whole time. RULE: when adding a
+    diagnostic to a file another tool already parses, COPY that tool's counting expression (check 18 keys on the
+    window count; my invented pattern keyed on a word that never appears).
+Anchor 1.2276 (3 reps 1.2197 / 1.2293 / 1.2339 at 2024.0 / 2033.3 / 2342.8 MHz, sd 0.58 %, no flagged rep) at
+44.6 h uptime; audit 141/1/0, coverage 24/24.
