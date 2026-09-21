@@ -4697,6 +4697,26 @@ Consequences:
     design (do not start regressing rtf on mean MHz).
   Anchor (armed protocol rep) 1.2452 at ~32.6 h, transcript byte-identical (1a095c8496b4).
 
+- THE ARMED PROTOCOL CELL, POOLED: **1.2444 +/- 0.0055 (0.44 %/rep, n=19)** (Exp995). Six further reps in
+  a quiet window (other_busy 1-2 %, 30 s apart) read 1.2418 / 1.2386 / 1.2487 / 1.2352 / 1.2423 / 1.2497 -
+  six CLEAN runs in a row (witnesses 2043-2383 MHz), no flag. Pooling every armed protocol row in
+  device_state.tsv gives mean 1.2444, sd 0.0055, range 1.2349-1.2533: **the headline claim is reproducible
+  to well under 1 %**, which is the first time this session can say that for the primary metric.
+  * THE PARTIAL-ARM MODE, CHARACTERISED (closing the last open instrument question): n=8 rows with witnesses
+    1507 / 1525 / 1534 / 1904 / 1933 / 1958 / 1963 / 1965 MHz read 1.299-1.480 (mean 1.3735) - a separate
+    cluster, and 6/6 clean immediately after the flagged batch means it is NOT a fixed ~1-in-3 random
+    rate: the flagged cluster appeared in the window when the device was being driven by back-to-back runs
+    plus host edits, and the quiet window produced none. Practical rule (now the reporting rule): a flagged
+    run is a STATE SAMPLE - retry it, never average it into the armed cell.
+  * WITNESS BIMODALITY WITHIN THE ARMED LEVEL, again: the 19 armed reps' witnesses split into ~2035-2061
+    (12 reps) and ~2334-2383 (7 reps) while the rtf is the same to within noise. Two distinct P-state
+    mixes, one metric level - consistent with Exp994's matched pair and with the guard's 2000 MHz
+    threshold being the only boundary that matters.
+  * `headline.json`'s shipped.rtf10 moved 1.25 -> **1.24** with its provenance rewritten to the 19-rep
+    pooled mean + the retry rule (check 9 tolerates 1 %, so the prose sites stay green - the machine-readable
+    file now carries the statistics instead of one rep).
+  Anchor (armed protocol, pooled 6-rep mean) 1.2427 at ~32.9 h, transcript byte-identical (1a095c8496b4).
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
