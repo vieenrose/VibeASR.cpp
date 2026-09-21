@@ -298,6 +298,28 @@ def plant_arm_guard():
                                    'PLANTED-ARM-GUARD-GONE:', 1))
 
 
+def plant_ledger_stale():
+    # Exp1013: check 8 (the LIVE ledger must cite a recent run) had a three-digit regex, so from run 1000 on
+    # it could never see a current citation and reported a permanent gap. The plant makes the ledger stale on
+    # purpose by rewriting its newest "ExpNNNN" citation to an old number: the audit must FAIL naming the gap.
+    p = '.auto/ideas.md'
+    s = open(p, encoding='utf-8').read()
+    import re
+    m = [int(x) for x in re.findall(r'Exp(\d{3,})', s)]
+    if not m:
+        raise RuntimeError('no ExpNNN citation found in the ledger; check 8 cannot be planted')
+    # Exp1013b: replacing only the LAST occurrence did not fire, because the ledger cites the newest run in
+    # several places - so the plant must age ALL occurrences of the newest citation (the check reads max()).
+    # Exp1013c: the check only fires when the gap exceeds 12 runs, so ageing just the NEWEST citation leaves
+    # the second-newest within the window and stays green. The plant must age every citation inside that
+    # window (newest-20 .. newest) - the threshold is part of the fault's shape, not an obstacle to it.
+    newest = max(m)
+    out = re.sub(r'Exp(\d{3,})', lambda mo: 'Exp999' if int(mo.group(1)) > newest - 20 else mo.group(0), s)
+    if out == s:
+        raise RuntimeError('plant was a no-op; check 8 cannot be planted this way')
+    return snap_write(p, out)
+
+
 FAULTS = [
     ('5 device binary hash',  'a lib on the phone is not the one on the host', plant_stale_device_lib,
      'MISMATCH|missing on device'),
@@ -319,6 +341,8 @@ FAULTS = [
     ('4 config source',     'measure.sh points at another device',         plant_dev_mismatch,  'device .*state|not found'),
     ('7 duplicate clip',    'an undeclared copy of a documented clip',     plant_dup_device_clip, 'BYTE-IDENTICAL|no manifest'),
     ('7 wav header',        'a clip\'s data chunk disagrees with its size', plant_asset_header,  'data chunk'),
+    ('8 ledger stale',      'the live ledger stops citing a recent run',      plant_ledger_stale,
+     'runs behind the log|ledger is'),
     ('8 frozen reference',  'the gate reference set disappears',           plant_ref_missing,   'refs.json|frozen reference'),
     ('9 headline',          'the prose headline disagrees with headline.json', plant_headline_drift, 'headline|headline.json'),
     ('10 command tier',     'a documented command runs a non-shipped file', plant_wrong_tier,   'shipped tier'),

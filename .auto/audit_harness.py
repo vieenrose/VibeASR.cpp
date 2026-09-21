@@ -752,7 +752,12 @@ log = os.path.join(ROOT, '..', '.auto', 'log.jsonl')
 if os.path.exists(log) and os.path.exists(live):
     runs = [int(m) for m in re.findall(r'"run":\s*(\d+)', open(log, encoding='utf-8', errors='replace').read())]
     newest = max(runs) if runs else 0
-    cited = [int(n) for n in re.findall(r'Exp(\d{3})', open(live, encoding='utf-8', errors='replace').read())]
+    # Exp1013: this regex was `Exp(\d{3})` - a THREE-digit assumption that silently truncated every citation
+    # once the loop passed run 1000 ('Exp1012' parsed as 101), so the check reported a 13-run gap and would
+    # have kept reporting one no matter how current the ledger was. A guard whose pattern cannot represent
+    # the values it compares is the Exp770/869 class: it must be re-proven at the boundary, and the fix is
+    # `\d{3,}` (3 or more digits) rather than a wider fixed width.
+    cited = [int(n) for n in re.findall(r'Exp(\d{3,})', open(live, encoding='utf-8', errors='replace').read())]
     gap = newest - (max(cited) if cited else 0)
     if gap > 12:
         bad(f"LIVE ledger is {gap} runs behind the log (newest run {newest}, newest citation "

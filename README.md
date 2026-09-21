@@ -38,7 +38,7 @@ CPU-only, 2 big cores), with accuracy gates on every change.
 | Tier | 10 s RTF | 17 s | 69 s RTF | 138 s | WER (40-utt gate) | Peak RSS |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|
 | Baseline (F16 VAE + Q4_K_M LM) | 12.24 | — | — | — | — | 3.3 GB |
-| **MAX-SPEED v4.8 (default)** | **1.25** | 1.46 | 1.56 | 1.65 | 4.55% | 2.19 GB |
+| **MAX-SPEED v4.8 (default)** | **1.24** | 1.46 | 1.56 | 1.65 | 4.55% | 2.19 GB |
 | MAX-SPEED-LEAN (p13, sub-2 GB) | 1.45 | 1.54 | 1.61 | 1.65 | 4.68% | 1.75 GB |
 
 </div>

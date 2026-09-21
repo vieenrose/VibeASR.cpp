@@ -1,6 +1,6 @@
 # Results — VibeVoice-ASR-Streaming 1.5B on phone CPU (RTF)
 
-**Headline (era v4.8):** phone RTF **12.24 → 1.25 (−89.8 %)** on the 10 s protocol clip in the
+**Headline (era v4.8):** phone RTF **12.24 → 1.24 (−89.9 %)** on the 10 s protocol clip in the
 **armed measurement state** (burst + wake-hint stream; mean delivered ~2045 MHz), at
 **equal-or-better accuracy** (40-utt WER 4.55 % vs 4.55 % for the original
 configuration), with **less RAM** (2.19 GB vs 2.99 GB) and a **1.2 s** model load.

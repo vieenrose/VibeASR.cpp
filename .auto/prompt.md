@@ -5,7 +5,7 @@ Minimize inference RTF of `./asr_streaming` (VibeVoice-ASR-Streaming-1.5B:
 VAE + LM-Q4_K_M, `--vae-pieces 13`) on the connected OPPO phone
 (Dimensity 1300, 8 GB RAM, Android 13, arm64) via `adb`, CPU only.
 Baseline (original protocol): RTF ~12.4-13.3 on the 10 s slice.
-**Current best: 1.25 v4.8 (MAX-SPEED, ARMED measurement state = burst + wake-hint stream, mean delivered ~2045 MHz) = -89.8 %; the historical 1.19 cell was the SAME binary at mean ~2377 MHz, and the unarmed device reads 1.67-1.85, so ALWAYS quote the state (and its cpu7_deliv_mhz witness) with a number (Exp968-980). RAM-lean
+**Current best: 1.24 v4.8 (MAX-SPEED, ARMED measurement state = burst + wake-hint stream, mean delivered ~2045 MHz) = -89.8 %; the historical 1.19 cell was the SAME binary at mean ~2377 MHz, and the unarmed device reads 1.67-1.85, so ALWAYS quote the state (and its cpu7_deliv_mhz witness) with a number (Exp968-980). RAM-lean
 v4.7 (p13 + defer ON) 2.10 @ 1.75 GB (whole row re-measured in one session, Exp847). Rows below marked F16/BALANCED/FAST-LM are
 DEAD tiers kept only as history.**
 > **State is declared once, in `.auto/headline.json`** (era + both tier ladders + the protocol hash), and
