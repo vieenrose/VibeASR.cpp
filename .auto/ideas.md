@@ -5325,3 +5325,37 @@ Anchor unchanged (armed protocol 1.2334 at 34.7 h; the post-board rep is appende
     Cheap version of the rule: read the call site before designing the fix - here it cost one grep.
 Anchor (armed protocol mean) 1.2282 at 35.0 h (derived); witnesses 2039.3 / 2035.2 MHz, tokens 39,
 peak_rss 2191.4-2191.6 MB, capture refreshed (protocol, 4 windows).
+
+- ROLLBACK LADDER ROTATION + A CONFOUND IN ITS OWN WITNESS COLUMN (Exp1024, ~27 rounds since Exp996).
+  15 arms x 2 reps, order reversed on rep2, thermal gate. **Identity contract holds**: reference hash
+  1a095c8496b4 with 12/15 arms byte-identical, and the same three documented exceptions -
+  `ct_block` (37 tok, ad1953f30010), `flush_off` (55ac39b635cb = the pre-Exp829 protocol hash, exactly as
+  documented), `ALL_OFF` (38 tok, c4031e597b20). Reps agree to 0.3 % on every arm.
+  * **Costs in the armed state** (vs the default arm): stack_off +39.1, ALL_OFF +44.9, ct_block +17.1,
+    flush_off +12.8, dw_conv1d +12.7, bound_batch +4.1, gelu_batch +3.8, norm_fuse +3.1, dw_lpad +2.9,
+    cont_tile_off +2.3, ls_fuse +2.1, mm_m2 +0.6, dw_axpy +0.5 %.
+  * **THE FINDING:** the mean delivered MHz is *not* an innocent covariate here - corr(arm cost, mean_mhz) =
+    **+0.65** across the 30 arm-runs. The default arm reads 2320.8 MHz while the hatches read 2042-2297, and
+    the slowest arms (ALL_OFF 2297, stack_off 2233, ct_block 2245) read the HIGHEST clocks. Normalizing each
+    arm to the default's clock with the pooled telemetry sensitivity (-16.9 +/- 1.7 ms per 100 MHz, n=94
+    armed 10 s rows, R2=0.52) makes dw_axpy and mm_m2 go **negative** (-3.3 %, -3.2 %) - and turning a fusion
+    OFF cannot make the system faster. So the clock-vs-rtf slope is partly REVERSE-causal: within one session
+    at fixed clip length, mean MHz is partly an *effect* of how long the run kept the cores busy (plus the
+    Exp973 boost time constant of 10-20 s, which makes the FIRST arm of a session read the highest clock of
+    all, default at 2315 MHz).
+  * **Consequences.** (1) Ladder costs are **upper bounds**, not point estimates - quote them that way in the
+    runbook; where one arm's price actually matters (the lean-batch decision touches bound_batch = +4.1 % raw,
+    possibly ~+1 %), price it with a paired ABAB (4 runs, alternating arm/default, Exp974/978's design), which
+    cancels the initial-condition difference. (2) The witness stays a valid **screen** (reject mean < 2000,
+    Exp979+) but must never be used as a **regressor** in within-session comparisons - that refines Exp994's
+    "effectively binary above 2000 MHz" observation with the mechanism.
+  * **Reaffirms Exp1023 from the other side:** every ladder arm IS recorded in device_state.tsv with its
+    EXTRA_ENV label (checked 5 of 30 rows), so hatch costs are queryable from telemetry and no writer is
+    missing. Only the ladder's *summary table* is state-confounded.
+  * Free telemetry fits taken while the ladder ran (host-only, no co-runner): rtf sensitivity to the mean
+    clock is -16.9 +/- 1.7 ms/100 MHz on the 10 s clip (n=94, R2=0.52) and -31.1 +/- 3.9 ms/100 MHz on 69 s
+    (n=21, R2=0.77) - i.e. longer cells are ~1.4x more clock-sensitive, which explains the 138 s HI/LO spread
+    (1.5255 vs 1.6292) far better than code does. Both slopes now carry the reverse-causation caveat above.
+  * Doc fix: the Exp679 co-runner rule's command must be `ps -A -o PID,STAT,RSS,NAME` (toybox has STAT, not
+    STATE) - as written it errored `ps: bad -o`. measure.sh's own guard was always correct (`ps -A -o NAME`).
+Anchor: the ladder's own default arm, 1.2235 mean of 2 reps (witnesses 2314.7 / 2326.9 MHz), uptime 35.4 h.
