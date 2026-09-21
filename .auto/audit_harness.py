@@ -21,7 +21,7 @@ would corrupt results:
 
 Exit code is non-zero if any check fails, so it can gate a session.
 
-Usage: .auto/audit_harness.py [--skip-device]
+Usage: .auto/audit_harness.py [--skip-device] [--bless] [--verbose]
 """
 import fnmatch
 import glob
@@ -40,6 +40,19 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..'))
 RDIR = '/data/local/tmp/vibeasr'
 fails, warns, oks = [], [], []
+
+# Exp1034: STRICT ARGUMENT CHECKING. Every previous argument was matched with `'--x' in sys.argv`, so any
+# other token was IGNORED - a typo of the state-changing --bless (`--bles`) or of --skip-device ran a
+# different audit than the one intended and still printed "all green". That is the "silent, not loud" class
+# this harness exists to kill, and it is the same fix Exp1015 applied to measure.sh (where a misspelled
+# --clip meant the DEFAULT clip was measured and reported as the new one). Valid flags are listed in the
+# module docstring, so check 13's docs-vs-parser rule stays satisfiable.
+_KNOWN_FLAGS = {'--skip-device', '--bless', '--verbose'}
+_unknown = [a for a in sys.argv[1:] if a.startswith('-') and a not in _KNOWN_FLAGS]
+if _unknown:
+    print(f"ERROR: unknown argument(s) {' '.join(_unknown)} "
+          f"- valid: {', '.join(sorted(_KNOWN_FLAGS))} (see the module docstring)", file=sys.stderr)
+    sys.exit(2)
 
 
 def ok(msg):

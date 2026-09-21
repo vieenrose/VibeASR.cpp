@@ -5643,3 +5643,28 @@ Anchor 1.2286 (2 clean reps; 1 flagged partial excluded) at 38.8 h uptime.
   * Doc: RESULTS.md's Exp1032 layer reworded from "the defer flag moves the output (656 vs 641 tokens)" to the
     accurate statement above.
 Anchor 1.2297 (3 reps 1.2288 / 1.2278 / 1.2326, witnesses 2332.1 / 2332.0 / 2044.6 MHz) at 39.0 h uptime.
+
+- COVERAGE BOARD + audit_harness.py COULD NOT BE TYPED AT (Exp1034, 10 rounds since Exp1023).
+  * **Coverage: 24/24 plantable checks fire on their own fault, 0 silent/invalid**, 3 classes accepted as
+    uncontrolled and re-verified as such: 7b co-runner (needs a second resident process, which would poison
+    every timing in the session - so it is planted by accident far more often than on purpose), 12 sweep
+    resolves-to-tier (has its own --dry negative control inside audit_harness, Exp865c), 16 capture identity
+    (WARN-only by design; the driver matches FAIL lines so it cannot fire - manual control documented).
+  * **Found while doing nothing but typing: audit_harness.py ignored unknown arguments.** Every flag was tested
+    with `'--x' in sys.argv`, so `--bles` (a typo of the STATE-CHANGING --bless) or `--skip-devic` ran a
+    different audit than the operator asked for and still printed "all green" - the exact silent-not-loud class
+    this audit exists to kill, and the same fix Exp1015 applied to measure.sh, where a misspelled --clip meant
+    the default clip got measured and reported as the new one. Also the module's Usage line listed only
+    --skip-device while three flags are actually read, so the docs could not be checked against the parser.
+  * Fix: a strict guard at the top (any argv token starting with '-' outside {--skip-device, --bless, --verbose}
+    prints the valid set and exits 2) and a complete Usage docstring so check 13's docs-vs-parser rule is
+    satisfiable. Proven BOTH directions, per the standing rule that a self-check is untrustworthy until a
+    planted fault makes it fail: `--help` / `--bles` / `--skip-devic` all exit 2 with the valid list named; the
+    clean run is unchanged at 137/1/0; and check 13's plant still FIRES (1/1), so the guard did not quietly
+    disable the check that audits documented flags.
+  * Generalizes: any tool in .auto/ that reads arguments by membership test should get the same guard. measure.sh
+    already does (Exp1015). Candidates without one: rss_soak.py has one ("ERROR: unknown flag '--help'" - it is
+    strict, verified today), rollback_audit.sh / fault_inject.sh / hardaudio_watch.sh were not checked - a cheap
+    future sweep if any of them is ever used in a hurry.
+Anchor 1.2265 (3 reps 1.2248 / 1.2301 / 1.2245, witnesses 2323.9 / 2332.6 / 2322.5 MHz - a fully armed session,
+sd 0.26 %) at 39.2 h uptime (derived).
