@@ -5019,6 +5019,33 @@ Consequences:
     Audit green after the commit (134/3 warnings/0 failures).
   Anchor (v2 probe run, shipped tier, armed) 1.1483 at 32.1 h (derived); witness 2358.1 MHz, 136 tokens.
 
+- WHICH SHIPPED CHANGE MOVED THE OVERLAP-PROBE WER? THE BOUNDARY BATCH, ISOLATED (Exp1011). Exp1010 found the
+  shipped v2 WER at 17.65 % vs 25.88 % for the archived v4.1 transcript. Bisecting with the archive's own
+  escape hatches on the v2 probe (each arm armed, all witnesses 2319-2370 MHz, so like-for-like):
+      default (v4.8)      136 tok  WER **0.1765**  attr 0.4235
+      FLUSH_TAIL_OFF=1    136 tok  WER  0.1765     attr 0.4235   (no effect)
+      **BOUND_BATCH_OFF=1  138 tok  WER  0.2471**   attr 0.4235   <- REVERTS to the old level
+      GGML_CONT_TILE_OFF=1 136 tok WER  0.1765     attr 0.4235   (no effect)
+      VAE_DW_LPAD_OFF=1   136 tok  WER  0.1765     attr 0.4235   (no effect)
+  * So the v4.7 single-pass boundary-token prefill (Exp834/835) is the cause: **-7.1 pp on this probe**
+    (0.2471 with the batch off -> 0.1765 on), and with the batch off the current stack reproduces 0.2471,
+    which is where the v4.6-era stack sat (the archived v4.1 transcript's extra 1.2 pp is older still).
+    Attribution is 0.4235 in EVERY arm, so this is a recognition effect, not a separation one.
+  * WHY THIS MATTERS BEYOND THE NUMBER: the boundary batch was SHIPPED AS A SPEED ITEM - priced at -2.6 % RTF
+    on zh and gated on the 40-utt read-speech set (paired b=0/c=0 of 731, "output-identical"). That gate
+    was true and narrow: on READ SPEECH the change is invisible, while on OVERLAP audio it is worth 7 pp.
+    So the batch is a genuine accuracy feature on hard audio, and the loop's 40-utt gate would never have
+    found it. (Same shape as Exp655's hard-audio quantization story: read-speech parity does not imply
+    corpus parity.)
+  * IT ALSO PRICES THE LEAN TIER'S DECISION: the lean tier deliberately does NOT enable the boundary batch
+    (it cost 3 tokens in 468 on zh, Exp846), and its v2 WER is exactly the batch-off number (0.2471 vs
+    the hatched arm's 0.2471). So the lean tier's ~350 MB saving includes a **7.1 pp overlap-probe WER
+    cost**, which the earlier zh-token accounting could not see. That is new input for the queued lean-batch
+    product decision - recorded as a measurement, not a recommendation.
+  DOCS: nothing in RESULTS.md claimed the batch was accuracy-neutral on hard audio (the claim was scoped to
+    the gate), so no correction was needed; the ledger now carries the mechanism.
+  Anchor (v2 probe, default arm, armed) 1.1572 at 32.2 h (derived); witness 2369.9 MHz, 136 tokens.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
