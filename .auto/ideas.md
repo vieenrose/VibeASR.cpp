@@ -5509,3 +5509,25 @@ Anchor 1.2217 (2 reps: 1.2253 @ 2038.0, 1.2180 @ 2318.0 MHz) at 36.8 h uptime (d
   session's first window, so its value is latency-shaped, not throughput-shaped. If anyone retries, the cheap
   first probe is a discard-first-window variant (encode a silence window before the timed region, or madvise/
   prefault the weight arena at load) measured with LT w1 vs w2 - NOT a general arena rewrite.
+
+- HARD-AUDIO WATCHDOG ROTATION + THE WARM-UP IS PER-ADDRESS-SPACE (Exp1030, 14 rounds since Exp1015).
+  * **Watchdog: all three sets reproduce EXACTLY** - gate_ms_v2 WER 0.1765 / attr 0.4235 (rtf 1.1569, 136 tok),
+    holdout_en 0.2636 / 0.4907 (1.2605, 408 tok), holdout_zh 0.1538 / 0.6674 (1.3520, 641 tok). Fourteen rounds
+    of measurement-only work produced zero hard-audio drift. The watchdog's own witness column did useful work:
+    the zh row read 1993.1 MHz - below the knee - so its rtf is a partial-state sample (text unaffected).
+  * **Mechanism probe (Exp1029's follow-up): is the first-window warm-up shared-cache or per-process?** Three
+    A/B pairs, 2 s apart, armed. **B - A = +6 / -1 / +16 ms, mean +7 +/- 5 ms (SE, n=3)** - a preceding process
+    that shares the page cache and L3 removes NONE of the warm-up. So the cause is per-address-space (TLB /
+    page-table walks over the 2.2 GB arena), which is why majflt=0 and why a load-time prefault cannot help;
+    only touching the buffers inside the new process before the timed region can. Fix recipe corrected above.
+  * Reproduced Exp1029 with 6 more armed samples: w1 penalty +124 / +129 / +144 ms here vs +114 / +136 there;
+    8-sample mean ~= +131 ms, spread 30 ms. The mechanism is now nailed; the size is unchanged.
+  * INCIDENTAL AND WORTH KEEPING: in the PARTIAL-ARM state (witnesses 1831-1909 MHz) the same penalty measured
+    +214 / +227 / +262 ms (mean +234), i.e. ~1.8x the armed value. A pure clock argument (2300/1870 = 1.23x)
+    covers part but not all of it - and this came from a different session/thermal state, so treat it as an
+    observation, not a law. Practical meaning: warm-up matters most exactly when the device is already degraded.
+  * Instrument discipline, the rule working in production: the FIRST probe attempt was silently partial-arm -
+    all six witnesses 1831-1909 MHz, rtf 1.31-1.38 - caught by the witness column, and "retry, never average"
+    applied. A 240 s idle restored the armed state. New recipe for future rounds: after a long board (the
+    watchdog ran 571 s right before), cool down ~4 min and re-probe the witness before timing anything.
+Anchor 1.2265 (3 reps 1.2275 / 1.2256 / 1.2265, sd 0.08%, witnesses 2035.6 / 2324.2 / 2329.0 MHz) at 37.4 h.
