@@ -3951,3 +3951,31 @@ Consequences:
     WHEN. The fast-baseline LT capture is still queued - it is now the more valuable half, since the slow
     signature is already replicated twice.
   Anchor 1.2217 at 23.8 h (batt 33.7 C, delivered 97), transcript byte-identical.
+
+- GATE REGRESSION: ACCURACY HOLDS 12th TIME; DEVICE ENTERS A STICKY CAPPED STATE (Exp954). Gate954:
+  40/40 scored, WER 4.55 % (S=29 D=2 I=2 - the identical profile TWELVE gates running), paired b=0/c=0
+  of 731 vs BOTH gate949 and gate852 (CI exactly [0,0], McNemar p=1.0), 0/40 differing transcripts
+  (byte-identical set). Stamp verifies the tier + BIN ed4cb821 = current binary, so this is output
+  determinism on the unchanged system, not a config difference. Accuracy board current.
+  * THE SPEED NUMBERS THIS ROUND ARE QUARANTINED, NOT PRODUCT: gate mean 1.8376 (fresh band 1.31-1.38)
+    and four post-gate protocol anchors 1.8633 / 1.8550 / 1.8574 / 1.8520 - cpu7 request PINNED at
+    1300000 (30/30 samples), delivered 0-2 %, and ALL phases ~1.6x (vae 11.6-11.8, prefill 3.2-3.3,
+    decode 3.6, load 1.2). Both instruments agree here (request AND delivered), so this is visible, not
+    sub-request. Distinct from the Exp952/953 slow-LM state, which had boost clocks + LM-only excess.
+  * NOT thermal, NOT battery: batt 30-32 C (coolest readings of the session), thermalservice status 0
+    (no throttle; CPU 35.7, skin 34.5), battery level 100, no saver. The device was found Asleep (Doze);
+    waking it (KEYCODE_WAKEUP -> Awake) plus 20 min idle did NOT lift the cap - one 2.4 GHz sample
+    appeared once (delivered 2 %) then vanished. The cap is STICKY, persisting through wake + idle on a
+    cool, unthrottled device. 40-utterance gate + probes cannot move it; only longer time (or a reboot,
+    which is a regime event and NOT done casually) might.
+  * TRANSITION HYPOTHESIS (unproven, noted): the Exp952/953 slow reps (1.22, delivered 93-97, LM-only)
+    may be the onset of this parking (governor flapping before sticking) - the gate then ran fully
+    capped. Do not claim; the two signatures differ (phase-selective vs global).
+  * LONG-UPTIME PARALLEL (hypothesis, checkable): capped 1.85-1.86 == Exp864's long-uptime 1.85 for the
+    SAME binary. The fabled regime gap may be governor parking after days screen-off, not silicon or OS
+    drift. If a reboot is ever done deliberately, re-baseline immediately and compare against THIS number.
+  * RULE: a protocol anchor must show delivered >= 90 before any number is trusted - and now also check
+    the REQUEST median (1300000 here would have failed even the old instrument). State-quarantined runs
+    are reported, never averaged into bands.
+  Anchor (capped, quarantined) 1.8633 at ~24.2 h (batt 32.2 C, delivered 0), transcript byte-identical
+  - the transcript surviving a 1.6x clock cap unchanged is itself a robustness datum.
