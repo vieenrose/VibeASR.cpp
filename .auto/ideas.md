@@ -4007,3 +4007,7 @@ Consequences:
   (stayon unavailable, governor files denied, no thermal/battery cause, no background culprit).
   NEXT: reboot-as-regime-event vs extended wait vs repurpose the downtime - asked the user (Exp956).
   Anchor (capped, quarantined) ~1.84 at ~24.5 h, byte-identical.
+
+- CAP STILL STUCK, 11th CAPPED REP (Exp957): post-wake anchor 1.8403, request 1300000, delivered 6,
+  batt 30.2 C, transcript byte-identical. No user direction on reboot yet - no reboot. Capped level is
+  stable to ~1.84-1.86 across all reps. Awaiting user decision (reboot / wait / host-only).
