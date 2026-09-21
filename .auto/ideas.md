@@ -5538,3 +5538,37 @@ Anchor 1.2265 (3 reps 1.2275 / 1.2256 / 1.2265, sd 0.08%, witnesses 2035.6 / 232
     went ahead - so the ledger shipped a sentence pointing at a correction that did not exist. Fixed in the next
     commit. Rule: when a conditional edit is followed by an append/commit, join them with && (or check $?);
     an assert that fails loudly is only protective if nothing downstream ignores its exit code.
+
+- LEAN TIER'S HARD-AUDIO ROW MEASURED ON THE TIER - AND HALF A DOCUMENTED CLAIM DIES (Exp1031).
+  * First checked the other pending item, -c: NOT worth a round. It is already fully priced - 0 % metric cost
+    (-0.8 % / -1.8 % at 8192 / 16384, Exp880; +0.4 % on chat138 by an order-symmetric ABAB), RAM cost measured
+    at 28.0 KB/position committed (+112 MB at 8192), the position law documented twice (46.5 pos/window, 258 s
+    dense at 4096), and its failure mode is an existing fault-board check. Recorded here so the loop does not
+    re-open it without a new question.
+  * The real gap: the RAM-lean tier is a SHIPPING option and its hard-audio numbers were inferred from a hatch
+    run on the SHIPPING stack, never measured on the tier. Ran the watchdog with the lean recipe
+    (PIECES=13 EXTRA_ENV=VAE_DEFER_LATE=1), armed, all three sets:
+      gate_ms_v2   rtf 1.3316  138 tok  WER 0.2471  attr 0.4235  witness 2199.3 MHz
+      holdout_en   rtf 1.4134  409 tok  WER 0.2682  attr 0.5163  witness 2101.2 MHz
+      holdout_zh   rtf 1.5313  641 tok  WER 0.1538  attr 0.6674  witness 1929.9 MHz (below the knee - that
+                     rtf is a partial-state sample; WER is state-independent)
+  * **CONFIRMED, exactly:** overlap WER 0.2471 equals the BOUND_BATCH_OFF value measured at p1 (Exp1011) to
+    four digits. So the lean tier really does pay the 7.1 pp overlap deficit, and the second independent route
+    (different tier, different encoder path, same number) makes the "the overlap delta IS the batch" claim solid.
+  * **REFUTED: "the lean tier keeps the +0.64 pp zh advantage".** The lean zh transcript is BYTE-IDENTICAL to
+    the current-stack SHIPPED transcript saved this morning (md5 c516cd094bf8 for both files, 468 tokens, WER
+    0.1538 both) - i.e. it follows the batch-ON text, not the batch-OFF text (0.1474), even though the batch is
+    inactive on that path (it is gated to pieces==1 && !defer). So the zh difference is not a clean function of
+    the batch flag; the encoder path matters too. Mechanism not established - what is established is that the
+    three-way relation (p1+batch, p1-batch, p13+defer) is not explained by the flag alone. Results.md corrected
+    in both places (the boundary-batch row and the held-out-generalization row now carry the lean row).
+  * English: 0.2682 vs shipped 0.2636 with 409 vs 408 tokens - ONE token in 220, no claim. (Old notes quoting
+    29.55/30.00 % for these sets are the pre-Exp654 scorer values, inflated by the script-folding bug.)
+  * Updated input for the pending lean-batch decision: it is now an OVERLAP-only question. Enabling the batch
+    on the lean path would (evidence: Exp1011's hatch + Exp846's p13 trial) buy ~+7 pp on overlap, cost
+    ~0.6 pp on zh (3 tokens in 468, p=1.0) and ~2.6 % of that tier's speed - and the "but we keep the zh edge"
+    argument is gone, because the tier as shipped does not have it.
+  * Free speed cells: these are the first lean-tier hard-audio rtfs (1.33 / 1.41 / 1.53 vs shipped
+    1.16 / 1.26 / 1.35 on the same three sets), i.e. the lean tier costs +14.6 / +12.1 / +13.4 % there - the
+    same +12-15 % as on read speech, so the tier gap is domain-independent.
+Anchor 1.2282 (3 reps 1.2250 / 1.2298 / 1.2299, witnesses 2029.7 / 2037.0 / 2328.5 MHz) at 38.0 h uptime.
