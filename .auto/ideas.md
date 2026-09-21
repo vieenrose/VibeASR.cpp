@@ -4889,6 +4889,25 @@ Consequences:
     written. Ledger corrected here; the rule stands.
   Anchor (armed protocol, 3-rep mean) 1.2278 at **31.3 h** (derived), transcript byte-identical.
 
+- THE UPTIME DRIFT IS NOT EXPLAINED BY ANYTHING THE LOOP RECORDS (Exp1004) - mechanism hunt CLOSED.
+  With the drift quantified, the obvious next question is WHY. The telemetry dataset (built at Exp894 for
+  exactly this kind of retrospective test) can answer part of it, and did for 48 armed-state rows spanning
+  18.3-31.3 h with full covariates:
+      r(procs, rtf)    = +0.541      r(procs, uptime)    = +0.539    -> partial r(uptime, rtf | procs) = +0.932
+      r(mem_avail,rtf) = -0.082      r(batt, rtf)        = -0.480    -> partial r(uptime, rtf | mem)   = +0.952
+  So the drift SURVIVES controlling for every recorded covariate: process count (820-852, a 4 % range),
+  available memory (4138-4711 MB) and battery temperature explain none of it - the partial correlation of
+  uptime with the metric stays ~0.93-0.95. Two side observations: `procs` is a genuine weak correlate
+  (+0.54) but is itself collinear with uptime, and `batt` reads NEGATIVE (-0.48, hotter is faster), i.e.
+  it is a proxy for something else, not a clean thermal term.
+  * CONCLUSION (bounded, not explained): whatever decays with uptime is invisible from userspace - a vendor
+    power-HAL/scheduler/clock-tuning effect, not background load, memory pressure or heat. That BOUNDS the
+    hunt rather than opening it: the loop cannot measure further without root or a reboot, and Exp1003
+    already showed the axes cannot be separated from the archived data alone. STOP hunting it; quote
+    uptime with every number (headline.json's regime field carries the rule) and treat cross-epoch
+    comparisons as '+2.5 to 4 % between epochs'.
+  Anchor (armed protocol, 2-rep mean) 1.2260 at 31.4 h (derived), transcript byte-identical.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
