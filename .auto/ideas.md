@@ -4509,6 +4509,27 @@ Consequences:
     cleanest possible statement of what the Exp968-984 work does and does not touch.
   Anchor (armed full gate mean) 1.3808 at ~29.6 h; per-utterance canaries all in band.
 
+- LONG-FORM / RATE-CEILING BOARD UNDER THE ARMED PROTOCOL (Exp985, ~69 rounds since Exp916). 250.8 s,
+  86 windows, default `-c` (no context failure), shipped tier, shipped arm:
+      rtf 1.3504 | vae 198.6 s | lm 140.1 s (prefill 65.1, decode 75.0) | **tokens 728 EXACT** |
+      RSS 2218.3 MB | majflt 0 | witness mean 2063.2 MHz (khz_med 2150000) | screen ON:arm=wake
+  * LINEAR STRUCTURE HOLDS, and this time it is checkable against the armed ladder: VAE seconds per window
+    is 2.309 at 250 s vs 2.315 at 138 s and 2.019 at 69 s - i.e. the 138 s and 250 s cells agree to 0.3 %
+    while the short cells are slightly cheaper per window (start-up amortised over more of the clip).
+    Prefill 65.1 s also reproduces the Exp916 fresh-scaled model prediction (65.3 s, -0.3 %), so the
+    prefill law is still crisp at 86 windows.
+  * OUTPUT STABILITY AT LENGTH: 728 tokens EXACT and RSS 2218.3 MB EXACTLY equal to Exp916's cell - the
+    same output and the same footprint across a different device state, which is the length-axis version
+    of the armed/unarmed transcript identity Exp984 found on the gate.
+  * DECODE REMAINS THE LOOSE LEG (documented, not new): 75.0 s here vs 67.3 s at Exp916 (and 92.4 ms/token
+    vs the ~77 ms/token that two short fresh reps imply). The LM transient question is exactly this leg;
+    it stays queued, and no decode law should be quoted from one clip.
+  * vs Exp916's rtf 1.2866: this cell is +5 % SLOWER, which the witness explains as a lower P-state
+    (mean 2063 MHz now; Exp916 predates the witness so its P-state is unknown) - again the state, not the
+    code. Do not read this as a regression, and do not overwrite the Exp916 cell: both are honest, and
+    only this one can be quoted with a state.
+  Anchor 1.3504 (250 s, armed, 2063 MHz) at ~29.9 h, tokens 728 exact.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
