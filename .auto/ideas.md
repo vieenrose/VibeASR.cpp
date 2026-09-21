@@ -5286,3 +5286,20 @@ batt 36.8 C, tokens 39.
     content-derived denominator (1.4054 / 1.3610 vs healthy H=1.2252), empty/header-only WAVs refused, and the
     config edges (n_ctx below one window; pieces 0 / non-divisor) are loud. Board ages now: fault & soak &
     behavior & coverage current; guard Exp1006 (15), gate Exp1005 (16), rollback Exp996 (25, oldest).
+
+- TELEMETRY GAP FOUND BY ITS OWN GUARD (Exp1021c). Right after the fault board, audit check 18 FAILED with
+  "last_out.txt is NEWER than device_state.tsv - the latest run escaped device-state telemetry recording".
+  It is not a false alarm: fault_inject.sh runs asr_streaming **directly** (its `probe` calls bench/adb, not
+  measure.sh), so the board's healthy baseline H and its audio arms produce a capture and an rtf but NO state
+  row. That matters more than it looks: the board's audio verdicts are RELATIVE to H (Exp886's relative-band
+  rule), and Exp998's "the probes survived a third device regime" conclusion rests on H values that carry no
+  witness. H=1.2252 in this run is state-inferable only because it was taken between armed measure.sh runs.
+  * Interim: take one armed measure.sh rep right after the board, which restores the invariant (audit green
+    again) and gives the board's neighbourhood a witnessed anchor.
+  * QUEUED (proper fix, next round): factor measure.sh's ~30-line telemetry writer into `.auto/telemetry.sh
+    <rtf> <vae_s> <lm_s> <tokens> <extra_env>` (it must reuse deliv_share.py for the witnesses, exactly as
+    Exp987's dedup did for the guard) and call it from fault_inject.sh for its healthy baseline with
+    extra_env='fault_board'. Two call sites then share one writer, so check 18 keeps proving the write works
+    and a plant must show that removing the fault-board call is caught. Watch the Exp987 failure mode: a
+    block-spanning edit once silently deleted the arm guard from measure.sh.
+Anchor unchanged (armed protocol 1.2334 at 34.7 h; the post-board rep is appended to device_state.tsv).
