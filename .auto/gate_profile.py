@@ -49,21 +49,29 @@ def sign_p(b, c):
     return min(1.0, 2 * sum(math.comb(n, i) for i in range(0, k + 1)) / 2 ** n)
 
 
-def profile(a, b):
+def profile(a, b, tol=1e-12):
     keys = sorted(set(a) & set(b))
     if len(keys) < 2:
         sys.exit('ERROR: the two runs share fewer than 2 clips - nothing to pair')
     d = [a[k][0] / b[k][0] - 1 for k in keys]
     mean, sd = st.mean(d), st.stdev(d)
     se = sd / math.sqrt(len(d))
-    faster = sum(1 for x in d if x < 0)
+    # Exp1041: a sign test must DISCARD ties. rtfs are recorded to 4 decimals, so identical values are exact
+    # ties, and the first version counted a tie as "slower" (n - faster). Proof it was wrong: comparing a gate
+    # with ITSELF reported 0/40 faster and p=1.8e-12 instead of 40 ties / p=1.0 - an artifact 12 orders of
+    # magnitude too confident, the 5th statistic-implementation bug in this loop (Exp655, Exp1038).
+    faster = sum(1 for x in d if x < -tol)
+    slower = sum(1 for x in d if x > tol)
+    ties = len(d) - faster - slower
+    n_eff = faster + slower
+    p = 1.0 if n_eff == 0 else sign_p(faster, slower)
     # length halves by token count (a duration proxy) - where a clip-selective effect would show up
     tok = sorted(keys, key=lambda k: a[k][1])
     half = len(tok) // 2
     lo = [a[k][0] / b[k][0] - 1 for k in tok[:half]]
     hi = [a[k][0] / b[k][0] - 1 for k in tok[half:]]
-    return dict(n=len(keys), mean=mean, sd=sd, se=se, faster=faster,
-                p=sign_p(faster, len(keys) - faster), lo=st.mean(lo), hi=st.mean(hi),
+    return dict(n=len(keys), mean=mean, sd=sd, se=se, faster=faster, slower=slower, ties=ties, n_eff=n_eff,
+                p=p, lo=st.mean(lo), hi=st.mean(hi),
                 mA=st.mean([a[k][0] for k in keys]), mB=st.mean([b[k][0] for k in keys]))
 
 
@@ -93,8 +101,19 @@ def selftest():
     a = {f'c{i}': (1.05, 100) for i in range(40)}
     b = {f'c{i}': (1.00, 100) for i in range(40)}
     r = profile(a, b)
-    good = abs(r['mean'] - 0.05) < 1e-9 and r['faster'] == 0 and r['p'] < 1e-11
-    print(f"  uniform +5% shift -> mean {r['mean']*100:+.2f}%, {r['faster']}/40 faster, p={r['p']:.2g}  {'OK' if good else 'FAIL'}")
+    good = abs(r['mean'] - 0.05) < 1e-9 and r['faster'] == 0 and r['slower'] == 40 and r['ties'] == 0 and r['p'] < 1e-11
+    print(f"  uniform +5% shift -> mean {r['mean']*100:+.2f}%, {r['faster']}/{r['slower']} faster/slower, p={r['p']:.2g}  {'OK' if good else 'FAIL'}")
+    ok &= good
+    # Exp1041: a run compared with ITSELF has 40 exact ties and MUST be uninformative (p=1), not p~1e-12
+    r = profile(b, b)
+    good = r['ties'] == 40 and r['n_eff'] == 0 and abs(r['p'] - 1.0) < 1e-15
+    print(f"  self-comparison -> {r['ties']} ties, n_eff {r['n_eff']}, p={r['p']:.3g}  {'OK' if good else 'FAIL (ties counted as discordant)'}")
+    ok &= good
+    # and ties must be excluded, not halved: 18 one-sided + 22 ties is 18/18 informative pairs
+    a = {f'c{i}': (1.05 if i < 18 else 1.00, 100) for i in range(40)}
+    r = profile(a, b)
+    good = r['faster'] == 0 and r['slower'] == 18 and r['ties'] == 22 and r['n_eff'] == 18
+    print(f"  18 shifts + 22 ties -> faster/slower/ties {r['faster']}/{r['slower']}/{r['ties']}, n_eff {r['n_eff']}  {'OK' if good else 'FAIL'}")
     ok &= good
     # synthetic: a short-clip-only effect must NOT look uniform (halves must differ)
     a = {f'c{i}': (1.10 if i < 20 else 1.00, 50 + i) for i in range(40)}
@@ -123,7 +142,8 @@ if __name__ == '__main__':
     r = profile(A, B)
     print(f'{args[0]} vs {args[1]}: n={r["n"]} clips | run means {r["mA"]:.4f} vs {r["mB"]:.4f}')
     print(f'  paired per-clip: mean {r["mean"]*100:+.2f}%  sd {r["sd"]*100:.2f}%  se(mean) {r["se"]*100:.2f}%')
-    print(f'  {r["faster"]}/{r["n"]} clips faster  (corrected sign test p={r["p"]:.3g})')
+    print(f'  {r["faster"]}/{r["n"]} clips faster, {r["slower"]} slower, {r["ties"]} ties '
+          f'(sign test on {r["n_eff"]} informative pairs: p={r["p"]:.3g})')
     print(f'  by duration half: short {r["lo"]*100:+.2f}%  long {r["hi"]*100:+.2f}%   <- a CLIP-SELECTIVE test')
     print('  CAVEAT: se(mean) is the clip-level error only. The session/state term is common to all clips, so a')
     print('  one-run-per-arm comparison carries the SESSION spread (~2.3% sd over same-config gates), not this se.')

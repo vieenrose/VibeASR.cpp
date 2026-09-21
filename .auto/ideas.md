@@ -5855,3 +5855,28 @@ Anchor 1.2274 (3 reps 1.2251 / 1.2327 / 1.2244, witnesses 2028.8 / 2334.3 / 2323
     strings before any telemetry-derived statistic.
 Anchor 1.2259 (clean reps 1.2231 / 1.2287 at 2028.4 / 2317.2 MHz; one 1999.1 MHz rep flagged and excluded) at
 41.6 h uptime.
+
+- HARD-AUDIO WATCHDOG CURRENT + THE TOOL I SHIPPED LAST ROUND HAD A STATISTICS BUG IN ITS SIGN TEST (Exp1041, 9 rounds
+  since the full Exp1030-31 run).
+  * Watchdog: all three sets reproduce EXACTLY - v2 WER 0.1765 / attr 0.4235 (rtf 1.1580 @ 2370.5 MHz), holdout_en
+    0.2636 / 0.4907 (1.2544 @ 2156.0), holdout_zh 0.1538 / 0.6674 (1.3522 @ 1992.6 - BELOW the knee, so that rtf is
+    partial-state; WER is state-independent). 10 rounds of harness work moved no accuracy claim. The witness column
+    earned its keep again by flagging the zh row's state rather than letting it enter a speed table.
+  * FREE: the gate_profile "normal envelope" for future rotations, from the archived armed gates. Same-config
+    rotation pairs read mean +0.06 % to +0.26 %, per-clip sd 2.7-6.5 %, 17-22 of 40 on one side, p = 0.43-0.88.
+    So a future rotation is anomalous if the mean exceeds ~1 %, or the sign test goes p < 0.05, or the two duration
+    halves disagree in sign. gate1005 remains the documented LEVEL-SHIFT exemplar (mean -4.31 %, 34/40 one side,
+    p=8e-6) - a state effect, not a code effect.
+  * **BUG FOUND BY USING THE TOOL I SHIPPED (5th statistic-implementation bug: Exp655 McNemar threshold, Exp1038
+    impossible p=1.1, and this).** A sign test must DISCARD ties; my profile() computed `n - faster` as the other
+    side, so an exact tie counted as "slower". Caught because I ran a gate against itself as a sanity check and it
+    reported 0/40 faster with **p = 1.8e-12** - twelve orders of magnitude too confident where the honest answer is
+    40 ties and p = 1. Fixed: ties excluded, n_eff = informative pairs, p = 1 when n_eff = 0, and the tie count is
+    printed. Two new selftests (self-comparison -> 40 ties/p=1; 18 shifts + 22 ties -> n_eff=18). Honest scoping:
+    every REAL pair I have checked has 0 ties, so no previously reported p was affected - the bug was degenerate
+    today but would have bitten the first time two runs shared 4-decimal rtf values.
+  * WARN hygiene, working as designed: after the watchdog, .auto/last_out.txt held the 73-window holdout_zh capture,
+    and the audit WARNed "NOT a protocol capture - do not hash it against the protocol reference" (Exp1023's
+    discrimination by window count). One armed protocol rep restores the invariant, which the anchor run did.
+Anchor 1.2262 (clean reps 1.2225 / 1.2299 at 2034.7 / 2330.4 MHz; one 1989.8 MHz rep flagged and excluded) at
+41.9 h uptime.
