@@ -5092,6 +5092,29 @@ Consequences:
     0 failures.
   Anchor (armed protocol, fresh capture) 1.2294 at 32.5 h (derived); witness 2328.3 MHz, 39 tokens.
 
+- THE BOUNDARY BATCH'S FULL HARD-AUDIO PROFILE, AND THE ZH DIFFERENCE FULLY ATTRIBUTED TO IT (Exp1014).
+  Exp1012 left one loose end - the zh held-out differed from the archived v4.1 transcript by 17 characters -
+  so the same single-variable hatch A/B was run on the zh set. Paired, same stack, one variable:
+      holdout_zh, batch OFF   WER **0.1474**  (S=62 D=7 I=0 H=399)  637 tokens
+      holdout_zh, batch ON    WER **0.1538**  (S=62 D=8 I=2 H=398)  641 tokens   (+0.64 pp, 9 more errors)
+  * AND A CLEAN IDENTITY: the character-level diff between batch-OFF (current stack) and batch-ON is **exactly
+    the same 17 characters / 10 spans** as the earlier diff between the ARCHIVED v4.1 transcript and today's
+    batch-ON text (联合->莲和, 快有三十->派了30, 进商店->金项链, 性劳->与新毛, ...). So this ONE change accounts
+    for the ENTIRE zh output difference between v4.1 and v4.8 - nothing else in six versions touched that set.
+  * THE CHANGE'S COMPLETE ACCURACY PROFILE ACROSS THE HARD SETS (all single-variable, same stack):
+      read speech (40-utt gate)   output-identical (b=0/c=0 of 731) - how it was gated when shipped as a
+                                  SPEED item (-2.6 % RTF)
+      consumer-mic EN (220 tok)   token-IDENTICAL (0/225)
+      zh-TW held-out (468 tok)    +0.64 pp WORSE (0.1474 -> 0.1538)
+      overlap/diarization (85 tok) -7.1 pp BETTER (0.2471 -> 0.1765)
+    Which is the campaign's cleanest illustration of its own lesson: a read-speech parity gate is not a
+    corpus-parity statement, and a change can be worth 7 pp on one hard axis while costing 0.6 pp on another.
+    It also gives the queued lean-batch decision its full input: the lean tier leaves the batch off, i.e. it
+    keeps the zh advantage and gives up the overlap gain.
+  DOCS: RESULTS.md's boundary-batch row now carries this profile, so the row that documents the change also
+    documents what it does to accuracy on sets the gate cannot see (audit green after the commit, 136/1/0).
+  Anchor (holdout_zh, batch ON, armed) 1.2727 at 32.6 h (derived); witness 2187.1 MHz, 641 tokens.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
