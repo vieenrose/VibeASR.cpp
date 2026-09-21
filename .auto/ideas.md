@@ -5071,6 +5071,27 @@ Consequences:
     false finding (the Exp654 fold_script bug was the first).
   Anchor (en watchdog run, armed) 1.1804 at 32.3 h (derived); witness 2375.3 MHz, 408 tokens.
 
+- THE LEDGER-COHERENCE GUARD WENT BLIND WHEN THE RUN NUMBER PASSED 1000 (Exp1013) - found by the audit itself
+  reporting that the ledger was "13 runs behind the log" *immediately after* I had added a current entry.
+  Cause: check 8's citation regex was `Exp(\d{3})`, a THREE-digit assumption, so from run 1000 on every
+  citation parsed as its first three digits ("Exp1012" -> 101) and max(cited) could never reach the newest
+  run. It would have kept failing forever while the ledger was in fact current - a guard that cannot
+  represent the values it compares, i.e. the Exp770/869 class. Fix: `\d{3,}` (widened at the boundary, not
+  to a slightly wider fixed width).
+  * AND THE GUARD THEN REFUSED TO BE PROVEN, TWICE - which is the more instructive half. I added a plant
+    that ages the newest citation; it did NOT fire (the ledger cites the newest run in several places, so the
+    second-newest kept the check green), and after ageing all occurrences it STILL did not fire because the
+    check only trips when the gap exceeds 12 runs. Only when the plant aged EVERY citation inside that
+    12-run window did it fire. Three attempts to plant one guard: the shape of a fault has to match the
+    shape of the check, not just its subject.
+  * Coverage board now **22/22 plantable checks fire** (0 silent, 3 accepted-uncontrolled), and the two
+    WARNs it surfaced were both real and are now cleared: RESULTS.md's prose quoted 1.25 while
+    `headline.json` carries 1.24 (they were inside check 9's 1 % tolerance, so nothing failed, but the
+    literal-cell check warned), so README, RESULTS.md's headline and prompt.md now all say **1.24**; and the
+    stale non-protocol capture was refreshed with a protocol run. Audit ends 136 checks / 1 explained WARN /
+    0 failures.
+  Anchor (armed protocol, fresh capture) 1.2294 at 32.5 h (derived); witness 2328.3 MHz, 39 tokens.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
