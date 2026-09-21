@@ -4070,3 +4070,11 @@ Consequences:
   2.10-2.12 (boost band 1.47) quarantined. Soak board current.
   (The verdict block's 'threads: min=1 max=3 - thread leak?' is the known phase structure - 1 load /
   2 LM / 3 concurrent VAE, one 1 at a run boundary - per Exp913's instrument note, not a leak.)
+
+- FAULT BOARD ROTATION, CAPPED-SAFE (Exp964): 13/13 PASS - 4 model truncations loud, healthy 39tok,
+  unknown flag refused, audio probes pass on same-session relative bands (H=1.8721 capped; trunc_half
+  2.0193, lie_dur 1.9810, both guard-like vs H), header-only/empty refused, 3 config edges loud incl.
+  the required 'context exhausted' message (Exp949 guard holds). The board's relative-band design is
+  what makes it interpretable under cap - absolute bands would have false-failed (Exp886 lesson).
+  Post-board anchor 1.8517 (delivered 0), byte-identical. (measure.sh flagged 38 % other-busy on that
+  anchor - a background flare, Exp862 class; the capped verdict stands on dozens of reps, not this one.)
