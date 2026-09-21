@@ -4139,6 +4139,32 @@ Consequences:
     headline cells from a single 2x2 - re-baseline properly (several spaced reps, screen-state pinned).
   Anchor (boost, pooled 3 arms) 1.2243 at ~26.4 h, transcripts byte-identical (1a095c8496b4).
 
+- ***A THREE-STATE DEVICE MODEL, AND BOOST PERSISTS WHILE THE SCREEN STAYS ON (Exp970).*** The planned
+  A->B->A->B injection test ran, but the state never reverted while the screen stayed on - which is
+  itself the result. Screen ON throughout:
+      A1 idle 3 min   1.2170  req 2400000  deliv 96 %   <- NO injection, still boost
+      B1 inject       1.2164  req 2400000  deliv 94 %
+      A2 idle 3 min   1.2187  req 2400000  deliv 96 %   <- still boost
+      B2 inject       1.2243  req 2400000  deliv 95 %
+      C  screen OFF 3 min then wake-measure  1.6972  req 1300000  deliv 18 %   <- REVERTED
+  Conclusions: (1) once armed, full boost SURVIVES at least ~10 min of screen-on idling with no user
+  input and no injection - so continuous activity is NOT required to hold it; (2) a 3-minute screen-off
+  period DOES revert it, back to the ~18 %-delivered level. Five boost arms spread 1.2164-1.2243 (0.6 %),
+  which is the tightest grouping of the session and is consistent with the historical boost level.
+  * REFINED STATE MODEL (supersedes "capped vs boost"):
+      state 3  delivered 94-97 %  screen ON  + recent user activity (arms once; persists while screen on)
+      state 2  delivered ~18 %    screen ON, no recent activity (e.g. just after waking from screen-off)
+      state 1  delivered 0 %      screen OFF
+    rtf on the protocol clip: ~1.22 / ~1.70 / ~1.85. Every "mysterious cap" of Exp954-967 was state 2
+    measured by a loop that woke the device (KEYCODE_WAKEUP) and therefore never saw state 1 at all.
+  * STILL UNPROVEN: that the INJECTION is what arms state 3. Exp969's flip happened between two adjacent
+    arms, and Exp970 never reverted while screen-on, so causality remains untested. The next round is the
+    decisive one and the design is now cheap because state 2 is reachable on demand: screen off 3 min ->
+    wake -> measure (expect state 2) -> idle 3 min -> measure (state 2 persists?) -> inject -> measure
+    (state 3?). That A->A->B, with a known-reverted starting point, is what separates "injection arms it"
+    from "it arms itself on a timer".
+  Anchor (boost, pooled) 1.2170 at ~26.6 h, transcripts byte-identical.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
