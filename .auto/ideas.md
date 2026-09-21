@@ -5976,3 +5976,32 @@ and excluded) at 42.7 h uptime.
     threads FLAT within every run.
 Anchor 1.2298 (clean reps 1.2268 @ 2326.0 / 1.2327 @ 2043.6 MHz, sd 0.24 %; one rep flagged at 1970.3 MHz and
 excluded after a 200 s cool) at 43.3 h uptime.
+
+- UPTIME DRIFT: SLOPE SURVIVES, THE PUBLISHED LAW DOES NOT (Exp1047, free analysis + a new self-tested tool)
+  * Re-test of Exp1002's law ("1.1939 at ~16 h, +0.041 per 10 h") as a PREDICTOR against the 35 clean armed
+    sessions that have accumulated since: **mean bias -3.03 %, sd 1.78 %, worst -5.58 %** -> REJECTED. Every
+    uptime bin from 31 h up read 2.2-4.2 % BELOW that law. So the sentence "the residual is explained by uptime"
+    was resting on a formula whose LEVEL is wrong by 3 %; the direction/shape claim stands, the formula does not.
+  * What does survive, fitted properly at SESSION level (session = >300 s gap; Exp1038 showed the state term is
+    per-session, so per-row error bars understate it): **slope +0.210 +/- 0.083 %/h, t = 2.53** over 31.4-43.8 h,
+    i.e. **+2.62 % total across the span**; session residual sd 1.80 %. Agrees with Exp1020's +0.22 +/- 0.13.
+  * **No resolved curvature**: early/late residual means +0.0022 / -0.0021 against a 1.80 % residual sd, so the
+    "maybe it saturates above 40 h" idea I opened this round with is NOT supported either. Linear, or nothing.
+  * The intercept stays NOT identifiable (Exp1003's collinearity with the arm recipe), so the operational rule is
+    unchanged: quote a DERIVED uptime with every number; never normalize a cell onto another epoch.
+  * New tool `.auto/uptime_law.py`, registered in SELFTEST_TOOLS (so the coverage board runs its selftest):
+    session grouping, witness-based sub-floor exclusion, protocol-rows-only filter, slope+se+t, curvature test,
+    law-bias test, and it REFUSES to fit degenerate x. Selftests: flat -> slope exactly 0; planted +0.5 %/h
+    recovered; session split at 300 s; the 1800 MHz session lands in the excluded list; a deliberately wrong law
+    is flagged; degenerate input returns None; and (6) a noisy fit must give a sane NONZERO se.
+  * That last case earned its keep immediately: my first version computed `se_b = (s2/sxx)**5` instead of `**0.5`
+    and printed `+0.000 +/- %/h, t=1.9e27` on real data - absurd on its face, which is exactly what case (6) now
+    refuses. Proven both ways: re-planting `**5` -> selftest exit 1 quoting the garbage numbers; restore -> exit 0.
+  * Doc-drift pass (the law lived in FOUR places): README, RESULTS.md's state paragraph, STREAMING_1P5B.md rule 3,
+    and .auto/headline.json's regime field - all now quote the slope with its provenance and the rejection.
+  * Two of my own tooling slips on the way, both self-caught: an edit that matched a PREFIX of the SELFTEST_TOOLS
+    list left a dangling `]]` (syntax error, caught by compile before anything ran), and my ad-hoc analysis printed
+    the slope as %/h without dividing by the mean, overstating it by 1.24x (the tool's +0.210 is the correct one).
+  * Hard-audio watchdog by cadence (5 rounds): all three sets reproduce EXACTLY - gate_ms_v2 0.1765 / attr 0.4235
+    / tags 4/4, holdout_en 0.2636 / 0.4907 (token-identical to the archived v4.1 transcript), holdout_zh 0.1538 /
+    0.6674. Five rounds of measurement-only work moved no accuracy claim.

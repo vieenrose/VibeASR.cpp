@@ -49,11 +49,14 @@ CPU-only, 2 big cores), with accuracy gates on every change.
 > phone has recent user activity and its display on. A run whose witness falls below 2000 MHz prints a
 > warning instead of being silently reported as a speed.
 >
-> **The metric also drifts with device uptime** (+~0.17 %/h inside the boot: armed cells read 1.1939 at
-> 12-20 h of uptime and 1.2242 at 26-40 h, with the delivered share flat, so it is not the clock). The
-> row above is the ~31 h-uptime level; the historical 1.19 cells were 12-20 h-uptime cells of the SAME
-> binary. The effect survives control for background processes, memory and battery temperature, so it is
-> a vendor power-management effect we cannot measure further without root or a reboot — which is why every
+> **The metric also drifts with device uptime** inside the boot. What survives scrutiny is the **slope: +0.21 ±
+> 0.08 %/h** (t = 2.53 over 35 clean armed sessions spanning 31.4–43.8 h of uptime, fitted at session level by
+> `.auto/uptime_law.py`, which also tests and **rejects** the earlier two-parameter law "1.1939 at 16 h + 0.041
+> per 10 h" as a predictor — biased −3.0 %, worst −5.6 % — so never normalize a number onto another epoch; quote
+> the uptime with it). Raw cells read 1.1939 at 12-20 h of uptime and 1.2242 at 26-40 h, with the delivered share
+> flat, so it is not the clock. The row above is the ~31 h-uptime level; the historical 1.19 cells were 12-20
+> h-uptime cells of the SAME binary. The effect survives control for background processes, memory and battery
+> temperature, so it is a vendor power-management effect we cannot measure further without root or a reboot — which is why every
 > number here carries its state *and* its uptime.
 
 - **−90% RTF** via three waves: A78 codegen + mmap loader, blocked-int8 LM/VAE kernels, then fused

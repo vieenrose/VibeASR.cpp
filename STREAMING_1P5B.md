@@ -314,9 +314,13 @@ of pooling both sides. Using that linear slope to "correct" measurements produce
 rollback-ladder arms and got NEGATIVE hatch costs, which Exp1025 then reproduced with a paired ABAB - the hatch
 really costs +3.97 % (cycles +3.69 % / +4.25 %) and the witness gap inside a pair explains only ~0.1 % of it.
 
-**3. The metric drifts with device UPTIME inside one boot.** Armed protocol cells read 1.1939 at 12-20 h of
-uptime and 1.2242 at 26-40 h (same arm era, delivered share flat), i.e. ~+0.17 %/h, and the effect survives
-control for background process count, available memory and battery temperature. A two-parameter
+**3. The metric drifts with device UPTIME inside one boot.** The supportable statement is a **slope: +0.21 ±
+0.08 %/h** (t = 2.53, 35 clean armed sessions spanning 31.4–43.8 h, fitted at session level — `.auto/uptime_law.py`
+recomputes it and is self-tested). Raw armed cells read 1.1939 at 12-20 h of uptime and 1.2242 at 26-40 h (same
+arm era, delivered share flat), and the effect survives control for background process count, available memory and
+battery temperature. **The two-parameter law formerly quoted here (1.1939 @ 16 h + 0.041/10 h) is rejected as a
+predictor** — Exp1047 measured its bias on 35 clean sessions at **−3.0 %** (worst −5.6 %) — and there is **no
+resolved curvature**, so neither a level correction nor a "drift saturates" story is available. A two-parameter
 (uptime + arm) fit is not identifiable, and a 20-minute idle does not recover it. **Quote the uptime with
 any number**, and read cross-epoch differences as "+2.5 to 4 % between epochs" rather than as code.
 

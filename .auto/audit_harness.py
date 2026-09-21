@@ -1167,7 +1167,7 @@ except Exception as e:
 # the fixture was wrong; and because no harness step ever ran --selftest, a red test sat there for
 # hundreds of runs. Same lesson as Exp660 for TESTS rather than CHECKS.
 SELFTEST_TOOLS = ['compare_arms.py', 'rss_soak.py', 'score_mixed.py', 'score_stream.py', 'deliv_share.py',
-                  'gate_profile.py']   # Exp1038: the paired per-clip gate profiler - its sign-test selftests
+                  'gate_profile.py', 'uptime_law.py']   # Exp1038: the paired per-clip gate profiler - its sign-test selftests
                                        # are the only thing making its p-value trustworthy
 for t in SELFTEST_TOOLS:
     p_ = os.path.join(HERE, t)

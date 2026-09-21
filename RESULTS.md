@@ -16,9 +16,15 @@ CPU-only, `-t 2` pinned to the two 2.4 GHz prime cores.
 > (`cpu7_deliv_mhz`, mean delivered MHz) on the same line as the number. An armed run below 2000 MHz
 > prints a WARNING: quote the state with every speed number (Exp968–980).
 >
-> **And the metric drifts with device UPTIME inside that state** (Exp1002/1003/1004): armed protocol cells
-> read **1.1939** at 12–20 h uptime (n=14) and **1.2242** at 26–40 h (n=14, same burst arm), i.e. ~+0.17 %/h,
-> with the delivered share flat (−0.5 pp per 10 h) so it is not the clock moving. The drift survives control
+> **And the metric drifts with device UPTIME inside that state** (Exp1002/1003/1004, slope re-fitted at session
+> level in Exp1047): the number that survives is **+0.21 ± 0.08 %/h** (t = 2.53; 35 clean armed sessions spanning
+> 31.4–43.8 h; `.auto/uptime_law.py` recomputes it, grouping rows into sessions, dropping sub-floor sessions by
+> their witness, and refusing to fit degenerate input). Raw cells read **1.1939** at 12–20 h uptime (n=14) and
+> **1.2242** at 26–40 h (n=14, same burst arm), with the delivered share flat (−0.5 pp per 10 h) so it is not the
+> clock moving. **RETRACTION (Exp1047):** the two-parameter law quoted from Exp1002 (1.1939 at 16 h, +0.041 per
+> 10 h) is **rejected as a predictor** — on the 35 clean sessions it is biased **−3.0 %** (sd 1.78, worst −5.6 %),
+> so it must not be used to normalize a cell across epochs; and there is **no resolved curvature** (linear holds
+> within the 1.80 % session residual, so no "saturating at high uptime" claim either). The drift survives control
 > for background process count, available memory and battery temperature (partial r ≈ +0.93–0.95), so it is
 > a vendor power-management effect that is not measurable further from userspace; a two-parameter
 > (uptime + arm) fit is not identifiable because the axes are collinear (Exp1003). The cells above are the
