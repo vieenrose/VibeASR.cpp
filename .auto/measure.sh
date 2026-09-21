@@ -218,9 +218,21 @@ if [ "${NO_ARM:-0}" != 1 ]; then
   ARM_SENTINEL=""
   if [ "${ARM_STREAM:-1}" != 0 ]; then ARM_SENTINEL=$(mktemp /tmp/asr_arm.XXXXXX 2>/dev/null || echo ""); fi
   if [ -n "$ARM_SENTINEL" ]; then
-    ( while [ -f "$ARM_SENTINEL" ]; do
+    ( _arm_t0=$(date +%s); while [ -f "$ARM_SENTINEL" ]; do
         adb -s $DEV shell "input keyevent KEYCODE_WAKEUP" >/dev/null 2>&1 || true
-        sleep ${ARM_PERIOD:-3}
+        # Exp993: the adaptive period (dense for ARM_DENSE_S seconds, then ARM_SPARSE) is available but
+        # NOT the default: on the 69 s cell, paired interleaved comparisons disagreed in SIGN (one pair
+        # gave sparse better by 1.6 %, the next gave it worse by 1.3 %), i.e. the benefit is inside the
+        # state noise band. My first reading blamed the knob for a sub-2000 MHz protocol run (1.2992 /
+        # 1958.1 MHz) - RETRACTED: a dense-default run minutes later read 1.3008 / 1964.7 MHz with the
+        # same guard warning, and three further dense reps read 1962.8 / 2046.9 / 2057.7 MHz. The arm's
+        # outcome for the SHORT cell is itself bimodal (~1965 vs ~2050-2340 MHz), which the witness
+        # records and the guard flags; the adaptive knob was never the cause. See the ledger (Exp993).
+        if [ -n "${ARM_SPARSE:-}" ] && [ $(( $(date +%s) - ${_arm_t0:-0} )) -ge ${ARM_DENSE_S:-20} ]; then
+          sleep "$ARM_SPARSE"
+        else
+          sleep ${ARM_PERIOD:-3}
+        fi
       done ) >/dev/null 2>&1 &
     ARM_PID=$!
     sleep 1

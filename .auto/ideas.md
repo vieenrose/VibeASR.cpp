@@ -4652,6 +4652,33 @@ Consequences:
     clean 69 s armed cell remains 1.5545 (Exp989).
   Anchor (armed 69 s, heat-loaded) 1.5875 at ~31.9 h, token canary 446 exact.
 
+- THE ADAPTIVE ARM: TESTED, WITHIN NOISE, NOT SHIPPED - AND A RETRACTED ATTRIBUTION (Exp993).
+  Idea: keep the dense (3 s) stream only for the first ARM_DENSE_S=20 s and use a sparse one (10 s) after
+  that, so long cells get Exp988's cheaper sparse pattern while short cells keep the dense start.
+  Implemented in all three armed harnesses (measure.sh / run_rtf_multi.sh / eval40.sh) behind
+  `ARM_SPARSE` (unset = dense, which is also the final default).
+      protocol cell, adaptive        1.2378 (mean 2035.4 MHz)   - no regression
+      69 s paired, sparse vs dense   1.5298 vs 1.5550 (other_busy 5 vs 3)   - sparse better 1.6 %
+      69 s paired, sparse vs dense   1.5744 vs 1.5545 (adaptive run at other_busy 29, guard fired) - worse
+      69 s paired, sparse vs dense   1.6005 (mhz 1945.2, other_busy 29, guard fired)
+  So the SIGN is inconsistent across pairs and every deviation is accompanied by a state flag - i.e. the
+  adaptive arm's benefit is INSIDE the P-state noise band. It is therefore NOT shipped as a default; the
+  knob stays for deliberate use on long clips.
+  * ***RETRACTED, and this is the round's lesson: I first attributed a sub-2000 MHz PROTOCOL run (1.2992 /
+    1958.1 MHz, guard fired) to the sparse tail crossing the dense window.*** That was wrong. After
+    reverting the default, the very next dense run read **1.3008 / 1964.7 MHz with the same guard warning**,
+    and three further dense reps read 1962.8 / 2046.9 / 2057.7 MHz. The cause was DEVICE DRIFT: the arm's
+    outcome for the short cell is itself BIMODAL (a fully-armed ~2050-2340 MHz level and a partially-armed
+    ~1965 MHz level), and the witness records it while the guard flags it. The code comment was corrected
+    in the same commit; nothing was shipped on the wrong attribution. This is the 4th state level the
+    witness has isolated (armed / partially-armed / unarmed / screen-off) and the first that a knob was
+    wrongly blamed for.
+  * Armed protocol reps this round (all dense, current default) for the series: 1.2378, 1.2992 (flagged),
+    1.3008 (flagged), 1.2985 (flagged), 1.2478, 1.2519. The flagged ones cluster at ~1.30 / ~1965 MHz and
+    the clean ones at ~1.24-1.25 / ~2050 MHz - two discrete levels, not a continuum, so a flagged run is
+    a state sample and must be retried rather than averaged.
+  Anchor (armed protocol, clean) 1.2519 at ~32.2 h, transcript byte-identical (1a095c8496b4).
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas

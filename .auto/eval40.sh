@@ -86,9 +86,15 @@ if [ "${NO_ARM:-0}" != 1 ]; then
   done
   ARM_SENTINEL=$(mktemp /tmp/asr_gate_arm.XXXXXX 2>/dev/null || echo "")
   if [ -n "$ARM_SENTINEL" ]; then
-    ( while [ -f "$ARM_SENTINEL" ]; do
+    ( _arm_t0=$(date +%s); while [ -f "$ARM_SENTINEL" ]; do
         adb -s $DEV shell "input keyevent KEYCODE_WAKEUP" >/dev/null 2>&1 || true
-        sleep ${ARM_PERIOD:-3}
+        # Exp993: adaptive period (dense first ARM_DENSE_S seconds, then ARM_SPARSE if set). A gate is
+        # long, so the sparse tail is where the saving is; unset ARM_SPARSE = dense throughout.
+        if [ -n "${ARM_SPARSE:-}" ] && [ $(( $(date +%s) - ${_arm_t0:-0} )) -ge ${ARM_DENSE_S:-20} ]; then
+          sleep "$ARM_SPARSE"
+        else
+          sleep ${ARM_PERIOD:-3}
+        fi
       done ) >/dev/null 2>&1 &
     ARM_PID=$!
     sleep 1

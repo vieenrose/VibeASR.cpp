@@ -140,9 +140,16 @@ for r in $(seq 1 "$REPS"); do
       done
       A_SENT=$(mktemp /tmp/asr_sweep_arm.XXXXXX 2>/dev/null || echo "")
       if [ -n "$A_SENT" ]; then
-        ( while [ -f "$A_SENT" ]; do
+        ( _arm_t0=$(date +%s); while [ -f "$A_SENT" ]; do
             adb -s $DEV shell "input keyevent KEYCODE_WAKEUP" >/dev/null 2>&1 || true
-            sleep ${ARM_PERIOD:-3}
+            # Exp993: adaptive period - dense for the first ARM_DENSE_S seconds (what a SHORT run needs),
+            # then ARM_SPARSE if set (cheaper for long runs: each injected event costs ~44 ms of device CPU,
+            # and the 69 s cell holds boost at 10 s spacing - Exp988). Unset ARM_SPARSE = dense throughout.
+            if [ -n "${ARM_SPARSE:-}" ] && [ $(( $(date +%s) - ${_arm_t0:-0} )) -ge ${ARM_DENSE_S:-20} ]; then
+              sleep "$ARM_SPARSE"
+            else
+              sleep ${ARM_PERIOD:-3}
+            fi
           done ) >/dev/null 2>&1 &
         A_PID=$!
         sleep 1
