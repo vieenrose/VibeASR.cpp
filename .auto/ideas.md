@@ -5439,3 +5439,32 @@ Anchor (P mean) 1.2306 at 36.0 h (derived); witnesses 2041.8 / 2043.3 MHz; G mea
     state spread - consistent with Exp1005's +-5 % characterization, and NOT evidence of a regression.
 Anchor: protocol 2-rep mean **1.2245** at 36.3 h uptime (derived; witnesses 2033.1 and 2322.0 MHz - the known
 arm bimodality, and per Exp1025 both sit above the knee, so their 0.13 % rtf gap is state noise, not signal).
+
+- BEHAVIOR BOARD #12 + TWO OF MY OWN MECHANISMS RETRACTED (Exp1028, 10 rounds since Exp1018).
+  * **Board: 11/11 PASS** on the current binary - labels, 48 kHz stereo, sub-piece, overlap split, the closed
+    sequential-twospk case, and the ladder canaries EXACT: 39 / 106 / 446 / 876 tokens. No behavioral drift.
+    As Exp991 noted, behavior_watch does NOT arm, so its rtf column is unarmed-state. I deliberately left it
+    that way: deliv_share.py holds only the witness MATH (share/mean_mhz/ge2000), the arm itself lives in
+    measure.sh, and arming this board would mean duplicating the arm - the exact thing Exp987's dedup removed.
+    No decision consumes the board's rtf column, so the honest trade is "leave it, say so".
+  * Then the free gate-archive analysis, where I had to retract two mechanisms - mine from this round and mine
+    from last round:
+  * **RETRACTION 1 (this round's own finding): "the per-clip spread is window padding" was multiple-comparisons
+    overfitting.** Scanning W in 10 ms steps over 40 utterances found W=3.07 s with R2=0.233 and I read that as
+    the window grid. But the PHYSICAL window is 83,200 samples = 3.4667 s (Exp532's tail-padding note), and at
+    that W the model fits terribly: R2=0.010, corr(rtf, padded/dur)=+0.099. Choosing the best of ~550 ceil()
+    grids on 40 points manufactures R2~0.23 out of noise. Rule (new, generalizes): **when a parameter has a
+    known physical value, fit the known value FIRST; a scanned value that beats it is evidence against the
+    scan, not for the mechanism.**
+  * **RETRACTION 2 (Exp1027's mechanism, its numbers stand): "short clips are slowest because each utterance
+    pays the model load".** The binary computes `rtf = gen_s / audio.duration_sec` (demo/asr_streaming.cpp:811)
+    with the load timed SEPARATELY (load_s), so model load is not inside the gate's rtf at all. Fitting the
+    120 armed utterance-points confirms it: a 1/dur term comes out at 255 +/- 98 ms (t=2.6) and a padding term
+    adds nothing at the true W. Best supported reading: a small per-RUN additive penalty (~0.25 s) whose
+    natural cause is the per-process boost ramp (Exp973's boost constant), not the load; residual sd is 6.17 %,
+    i.e. bigger than the structural term, and consistent with the +-5 % session spread of Exp1005.
+  * Also bounded, not identified: the padding LEVEL effect is real (mean padded/dur = 1.277 over these clips,
+    so the gate's VAE really does compute ~28 % more samples than the audio contains), but across 4-25 s clips
+    the factor only spans 1.05-1.31, so it is collinear with the intercept and cannot be separated from these
+    data. Exp532's direct measurement stays the authority for the level.
+Anchor 1.2238 (2 reps: 1.2197 @ 2030.0, 1.2279 @ 2041.3 MHz) at 36.6 h uptime (derived).
