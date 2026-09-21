@@ -4908,6 +4908,20 @@ Consequences:
     comparisons as '+2.5 to 4 % between epochs'.
   Anchor (armed protocol, 2-rep mean) 1.2260 at 31.4 h (derived), transcript byte-identical.
 
+- 15th CONSECUTIVE IDENTICAL GATE, ARMED (Exp1005, ~21 rounds since Exp984). gate1005: 40/40 scored, WER
+  **4.55 %** (S=29 D=2 I=2 - the identical profile fifteen gates running), paired b=0/c=0 of 731 vs BOTH
+  gate984 and gate852 (CI exactly [0,0], McNemar p=1.0), **0/40 transcripts differing**. Witness
+  `gate-state.log`: arm=wake, mean 2283.8 MHz - fully armed. So the accuracy claim has now survived
+  fourteen consecutive output-identical gates spanning the entire device-state investigation (Exp968-1005).
+  * THE GATE MEAN IS A STATE PROBE, NOT A CELL: armed gate means so far are 1.340 (Exp944, pre-arm era),
+    1.3808 (Exp984, ~29.6 h), 1.4955 (lean tier, Exp1001) and **1.318** (this one, ~31.5 h) - a +-5 %
+    spread ACROSS sessions in the same state, which is 10x the +-0.5 % of the protocol clip's own reps.
+    A 40-utterance gate spans ~7 minutes and crosses more device-state/thermal variation than a 13 s
+    protocol run does (Exp905's chunk-swing finding), so its mean should be read as a state sample, not as
+    a ladder cell. The WER column, by contrast, has been bit-stable throughout - which is the whole point
+    of running it.
+  Anchor (armed gate mean) 1.318 at 31.5 h (derived); witness 2283.8 MHz.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
