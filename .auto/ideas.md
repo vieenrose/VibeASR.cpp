@@ -5507,8 +5507,10 @@ Anchor 1.2217 (2 reps: 1.2253 @ 2038.0, 1.2180 @ 2318.0 MHz) at 36.8 h uptime (d
   SIZED BEFORE SPENDING A RUN: removing it entirely would move the protocol cell from 1.2217 to ~1.209, i.e.
   -1.1 % - BELOW the loop's 2 % shipping bar - though it is ~2-3 % on the 40-utt gate and ~5 % of a streaming
   session's first window, so its value is latency-shaped, not throughput-shaped. If anyone retries, the cheap
-  first probe is a discard-first-window variant (encode a silence window before the timed region, or madvise/
-  prefault the weight arena at load) measured with LT w1 vs w2 - NOT a general arena rewrite.
+  first probe is a discard-first-window variant (touch/encode inside the NEW process before the timed region),
+  measured with LT w1 vs w2 - NOT a general arena rewrite, and NOT a load-time prefault: Exp1030 showed that a
+  preceding process sharing the page cache and L3 removes none of the penalty (B-A = +7 +/- 5 ms), so the cost
+  lives per address space (TLB / page-table walk), which a prefault at load cannot reach.
 
 - HARD-AUDIO WATCHDOG ROTATION + THE WARM-UP IS PER-ADDRESS-SPACE (Exp1030, 14 rounds since Exp1015).
   * **Watchdog: all three sets reproduce EXACTLY** - gate_ms_v2 WER 0.1765 / attr 0.4235 (rtf 1.1569, 136 tok),
@@ -5531,3 +5533,8 @@ Anchor 1.2217 (2 reps: 1.2253 @ 2038.0, 1.2180 @ 2318.0 MHz) at 36.8 h uptime (d
     applied. A 240 s idle restored the armed state. New recipe for future rounds: after a long board (the
     watchdog ran 571 s right before), cool down ~4 min and re-probe the witness before timing anything.
 Anchor 1.2265 (3 reps 1.2275 / 1.2256 / 1.2265, sd 0.08%, witnesses 2035.6 / 2324.2 / 2329.0 MHz) at 37.4 h.
+  * Harness hygiene found by my own command: the correction above was applied with a python edit chained to an
+    unconditional `cat >>` + commit, and the edit's assert FAILED on a text mismatch while the append and commit
+    went ahead - so the ledger shipped a sentence pointing at a correction that did not exist. Fixed in the next
+    commit. Rule: when a conditional edit is followed by an append/commit, join them with && (or check $?);
+    an assert that fails loudly is only protective if nothing downstream ignores its exit code.
