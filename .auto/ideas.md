@@ -4620,6 +4620,24 @@ Consequences:
     against the position range it was measured over.
   Anchor (armed 69 s cell) 1.5545 at ~31.0 h, token canary 446 exact, mean 2110.6 MHz.
 
+- BEHAVIORAL CONTRACTS ROTATION (Exp991, ~39 rounds since Exp952): **11/11 PASS, 0 fail** on the current
+  binary (hash ed4cb821, printed in the board's own header line): silence/noise/music labelling, 48 kHz
+  stereo resample+transcribe, sub-piece short36 (17 tok), twospk_overlap splits speakers, twospk one-tag =
+  the closed Exp650 behaviour recorded rather than failed, and ladder canaries **EXACT 39/106/446/876**.
+  So every product contract the loop has promised to keep still holds after the Exp968-990 measurement-
+  protocol work - none of which touched src/, the tier or the model files.
+  * NOTE ON STATE FOR THE TOOL CLASS: behaviour_watch.sh (like fault_inject.sh, rollback_audit.sh and
+    rss_soak.py) invokes the binary DIRECTLY, so it does not arm and its printed rtfs are unarmed-state
+    numbers. That is harmless for what these boards assert - labels, canaries, determinism, RSS, identity
+    are all state-INDEPENDENT (thirteen gate runs and the armed/unarmed transcript identity of Exp984
+    showed text does not move with the P-state) - but if a board's rtf is ever quoted as a speed, it must
+    be labelled unarmed or the board must be armed. Recorded so the next person does not have to rediscover
+    the distinction the hard way.
+  * Armed protocol anchor refreshed after the board (also restoring the capture so the audit's
+    non-protocol-capture WARN clears): **1.2385** with witness 2339.9 MHz, 39 tokens, RSS 2191.5 MB,
+    majflt 0, transcript 1a095c8496b4 - the eighth armed protocol rep, mean 1.2457.
+  Anchor (armed protocol) 1.2385 at ~31.5 h, transcript byte-identical.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
