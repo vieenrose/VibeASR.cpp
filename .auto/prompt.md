@@ -114,6 +114,15 @@ train/use cycle (tested, no gain; kept for reproducibility).
 - Phone-unfriendly requirements (CUDA/Mali/NPU backends, root-only tricks).
 
 ## Constraints
+- HARD-AUDIO CHECK (Exp1010-1015, adopted after a near-miss): the 40-utt gate is READ SPEECH and has been
+  output-identical for fourteen consecutive runs, so it cannot see changes that only matter on hard audio.
+  Any change that touches decode structure, boundary/segment handling, quantization or the window protocol
+  must ALSO be checked with `.auto/hardaudio_watch.sh` (three watchdog sets: overlap/diarization,
+  consumer-mic English, zh-TW) before it is called accuracy-neutral. Evidence: the v4.7 boundary-token
+  batch - shipped as a SPEED item and "output-identical" on the gate - is +0.64 pp WORSE on zh-TW but
+  -7.1 pp BETTER on overlapped speech, and it accounts for the entire zh output difference between v4.1
+  and v4.8. These sets are WATCHDOGS: measure and report, never optimize or tune against them.
+
 - CPU-only inference on the Oppo via adb. No new dependencies.
 - Correctness: `.auto/checks.sh` must pass (non-degenerate transcript, token
   band). Full re-validation (17 s + 69 s + 40-utt LibriSpeech WER) is required
