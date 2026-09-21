@@ -4835,6 +4835,30 @@ Consequences:
     The lean row's 'stale' flag is now gone: BOTH shipped rows have armed ladders AND armed gates.
   Anchor (armed lean gate mean) 1.4955 at ~34.2 h; gate witness 2147.4 MHz.
 
+- ***THE METRIC DRIFTS CONTINUOUSLY WITH DEVICE UPTIME - A REAL, STRONG, WITHIN-REGIME EFFECT (Exp1002,
+  host-only over 46 archived rows).*** I had named "device uptime" as the candidate for the +4 % residual
+  vs the historical 1.19; mining every armed-state protocol row (tokens 39, default config, delivered
+  share >= 90 %) turns it from a hand-wave into a law:
+      uptime 12-20 h: n=14  mean 1.1939  sd 0.0038  range 1.1879-1.2017
+      uptime 20-26 h: n= 8  mean 1.2057  sd 0.0154
+      uptime 26-40 h: n=24  mean 1.2311  sd 0.0094  range 1.2164-1.2458
+      linear fit: rtf = 1.2154 + 0.0410 per 10 h uptime, **R^2 = 0.932**
+  * FALSIFICATION TEST, AND IT PASSES: the drift could have been an artifact of the stream arm (the late
+    rows are mostly post-arm), so the 26-40 h bin was split by arm era. Within the SAME burst era:
+    1.1939 at 12-20 h vs **1.2242** at 26-40 h = +2.5 % with no arm change at all; the stream arm adds a
+    further ~+1.3 % (1.2242 -> 1.2409). And the delivered share is FLAT with uptime (-0.51 pp per 10 h,
+    mean 95.6 %), so this is not the P-state moving - the device is genuinely slower after a day of uptime
+    with the same clocks.
+  * WHAT THIS RE-FRAMES: (1) "fresh-boot vs long-uptime" was never a binary - there is a continuous
+    ~+0.17 %/h drift inside the fresh-boot regime, which is why state-hunting kept finding "mystery"
+    differences worth 1-4 %; (2) TODAY'S HEADLINE (1.24, and both armed ladder rows) is the ~34 h-uptime
+    level, and the historical 1.19 cells are 12-20 h-uptime cells of the same binary and same arm era -
+    so the two are not in conflict and the difference is now attributed, not mysterious (arm: ~1.3 %,
+    uptime: ~2.5 %, P-state: ~0.5 %); (3) the old "long-uptime regime 1.85" claim is a DIFFERENT AXIS -
+    that number was the screen-off state, which the Exp880-era readings could not distinguish from uptime.
+    `headline.json`'s `regime` field now says all of this in one machine-readable place.
+  Anchor (post-stream-arm, 26-40 h bin mean) 1.2409 at ~34.4 h; transcript byte-identical.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
