@@ -5712,3 +5712,26 @@ sd 0.26 %) at 39.2 h uptime (derived).
     SILENT because bash reports no error for either - when a harness tool takes a number or a flag, validate it
     at the top and say what would have happened otherwise (the guard's message now names the zero-arms failure).
 Anchor 1.2276 (3 reps 1.2319 / 1.2260 / 1.2250, witnesses 2037.7 / 2326.3 / 2031.4 MHz) at 39.5 h uptime.
+
+- GUARD ROTATION #25 + THE LAST TWO TOOLS THAT IGNORED THEIR ARGUMENTS (Exp1036, 9 rounds since Exp1026).
+  * Guard: Pproto 1.2302 / 1.2284, Gguard 1.3565 / 1.3572 = premium **+10.37 %**. The armed series is now
+    9.57 / 10.77 / 10.26 / 10.22 / 10.37 -> 10.2 +/- 0.5 % across 25 rotations and ~30 rounds of protocol-local
+    work: no overfit signal. The guard clip's transcript hash 849cca7df5bc is byte-identical to the archived
+    rotation's, so its OUTPUT has held too, not just its ratio.
+  * Harness: two tools left from the Exp1034 queue, now fixed and proven in BOTH directions.
+    - `hardaudio_watch.sh` used `[ "${1:-}" = "--quick" ] && QUICK=1`, so any typo (`--quik`) silently ran ALL
+      THREE sets (~10 min of device time) when the quick one was asked for. Replaced by a validated loop (which
+      also avoids the `[ cond ] && cmd` statement form that aborts under a future `set -e` - Exp679).
+      Proven: `--quik` and a stray positional exit 2 before any adb call; `--quick` still measures, giving
+      v2 WER 0.1765 / attr 0.4235 at witness 2214 MHz - exactly the documented values, so the guard did not
+      turn the watchdog into a no-op (checked by reading the DATA ROW, not the footer: the footer's en/zh lines
+      are reference text, and mistaking them for measurements would be this loop's oldest mistake).
+    - `fault_inject.sh` reads NO arguments at all (its switches are env vars, e.g. FAULT_HEALTHY=0) but silently
+      ignored anything it was given. Now exits 2 and says so; the legit invocation still passes 13/13.
+  * Still queued: `eval40.sh` - positional args, whose proof is a full gate run, so fold the guard into the next
+    gate rotation rather than spending a run on it (same logic as Exp1035's rollback ladder).
+  * A guard-state note worth keeping: the protocol rep at witness 1999.9 MHz read 1.2527, i.e. AT the knee and
+    +2.1 % vs the clean reps - the threshold is doing real work at the boundary, and the flagged rep was
+    discarded per 'retry, never average' rather than averaged in.
+Anchor 1.2284 (clean reps 1.2302 / 1.2284 / 1.2267 at 2036 / 2034 / 2331 MHz; one 1999.9 MHz rep flagged and
+excluded) at 39.9 h uptime.

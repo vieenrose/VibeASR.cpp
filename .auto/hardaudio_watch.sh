@@ -22,7 +22,17 @@ cd "$(dirname "$0")/.."
 HERE=$(cd "$(dirname "$0")" && pwd)
 EVAL=$(cd "$HERE/../.." && pwd)/eval-bilingual   # repo root is two levels up from .auto
 QUICK=0
-[ "${1:-}" = "--quick" ] && QUICK=1
+# Exp1036: VALIDATE arguments. The previous `[ "${1:-}" = "--quick" ] && QUICK=1` silently IGNORED everything
+# else, so a typo (`--quik`) ran ALL THREE sets (~10 min of device time) when the operator asked for the quick
+# one - the same silent-not-loud class as Exp1015 (measure.sh's --clip), Exp1034 (audit --bles) and
+# Exp1035 (rollback_audit's arithmetic-fed reps). Also avoids the `[ cond ] && cmd` statement form, which would
+# abort under a future `set -e` (Exp679).
+for _a in "$@"; do
+  case "$_a" in
+    --quick) QUICK=1 ;;
+    *) echo "ERROR: unknown argument '$_a' - usage: hardaudio_watch.sh [--quick]" >&2; exit 2 ;;
+  esac
+done
 
 if [ "$QUICK" = 1 ]; then SETS="gate_ms_v2:manifest_ms_v2"; else
   SETS="gate_ms_v2:manifest_ms_v2 holdout_en:manifest_holdout_en holdout_zh:manifest_holdout_zh"; fi

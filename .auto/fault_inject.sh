@@ -11,6 +11,14 @@
 set -uo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 DEV=$(grep -oE '^DEV=\S+' "$HERE/measure.sh" | head -1 | cut -d= -f2)
+# Exp1036: this board reads NO arguments - its switches are ENV VARS (FAULT_HEALTHY=0 skips the healthy control).
+# It used to IGNORE anything it was given, so a mistyped flag silently ran the whole board anyway; same class as
+# Exp1015 / Exp1034 / Exp1035.
+if [ $# -gt 0 ]; then
+  echo "ERROR: fault_inject.sh takes no arguments; its switches are env vars (e.g. FAULT_HEALTHY=0). Got: $*" >&2
+  exit 2
+fi
+
 [ -n "$DEV" ] || { echo "ERROR: could not parse DEV from measure.sh" >&2; exit 2; }
 RDIR=/data/local/tmp/vibeasr
 VAE=vae-encoder-convint8.gguf
