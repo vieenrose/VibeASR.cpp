@@ -4184,6 +4184,29 @@ Consequences:
     named state (queued: arm-up step in measure.sh + guard, then spaced reps per cell).
   Anchor (state 3) 1.2285 at ~26.9 h, transcripts byte-identical (1a095c8496b4).
 
+- SHIPPED: THE BOOST-ARM AND SCREEN-STATE RECORDING ARE NOW PART OF THE MEASUREMENT PROTOCOL (Exp972,
+  harness change - measure.sh + audit check 18; nothing in src/ or the shipped tier recipe).
+  * `measure.sh` now ARMs before measuring (KEYCODE_WAKEUP + three VOLUME_DOWN/UP pairs - UI-indifferent,
+    net-zero drift, exactly the Exp969-971 causal recipe) and records the display state in a new 15th TSV
+    column `screen` as "ON:arm=1". `NO_ARM=1` disables it, so state 2 remains measurable on purpose.
+  * VALIDATED WITH BOTH CONTROLS, after a deliberate 2-min screen-off disarm each time:
+      NO_ARM=1 : note screen_before=OFF screen_after=OFF arm_ran=0 | rtf 1.8504  deliv 0 %   (state 1)
+      default  : note screen_before=OFF screen_after=ON  arm_ran=1 | rtf 1.2288  deliv 93 %  (state 3)
+    The knob fires (output + state change), the arm is reproducible (1.2283 / 1.2288 across two rounds),
+    and the TSV shows the 15-column row with the state string. Audit green; fault 18 re-proven to FIRE
+    (coverage 1/1) after the lockstep edit - the migration is append-only, older rows keep 14 columns.
+  * SELF-INFLICTED BUG, caught by the read-back before it could ship as a lie: the first version read
+    `mScreenState` from `dumpsys power`, where that field does not exist, and recorded `UNKNOWN:arm=1`
+    while happily reporting a boost-state run. The field lives in `dumpsys display`. Fix + comment in
+    place; the lesson is the Exp972 version of the Exp660 rule - a witness that cannot witness is a
+    no-op guard, and printing its value is what caught it (the arm run "passed" with screen=UNKNOWN).
+  * WHY THIS IS NOT BENCHMARK GAMING: the binary, the clips, the task and the WER gate are untouched;
+    state 3 is the state every historical ladder cell was taken in (the loop's first ~20 h all read
+    1.19-1.22), and it is also the realistic product state (a user who just interacted with the phone).
+    What changes is that the state is now SET and RECORDED instead of hoped for. The honest quote keeps
+    the state name: 1.23 @ state 3, 1.85 @ state 1.
+  Anchor (state 3, default arm) 1.2288 at ~27.1 h, transcripts byte-identical (1a095c8496b4).
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas

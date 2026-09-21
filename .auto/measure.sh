@@ -87,6 +87,19 @@ if command -v adb >/dev/null 2>&1; then
   # .auto/device_fingerprint.txt.
   FP=$( { adb -s $DEV shell "getprop ro.build.fingerprint" 2>/dev/null | tr -d '\r'; } || true )
   echo "note: device fingerprint=${FP:-?}" >&2
+  # Exp972: SCREEN / BOOST-ARM state. Exp968-971 established that the protocol metric has THREE device
+  # states and that they are causally settable: state 3 (delivered 94-97 %) = screen ON + a recent
+  # user-activity event, which HOLDS while the screen stays on; state 2 (delivered ~18 %) = screen ON
+  # with no recent activity (what a bare KEYCODE_WAKEUP leaves you in); state 1 (delivered 0 %) = screen
+  # OFF. Protocol rtf reads ~1.22 / ~1.70 / ~1.85 respectively on the SAME binary. Every "mystery cap"
+  # of Exp954-967 was state 2: the loop woke the device but never armed it, and never recorded the
+  # display state at all. So: read mScreenState into the record, and ARM explicitly below.
+  # NB mScreenState lives in `dumpsys display`, NOT `dumpsys power` (Exp972: the first version grepped
+  # power, matched nothing, and silently recorded UNKNOWN - a witness that could not witness. Read-back
+  # of a self-check's own value is the only thing that catches this class.)
+  SCR=$( { adb -s $DEV shell "dumpsys display 2>/dev/null" | tr -d '\r' | grep -m1 -oE 'mScreenState=[A-Z]+'; } || true )
+  SCR=${SCR#mScreenState=}
+  echo "note: device screen_before=${SCR:-UNKNOWN} (Exp972: state 3 = screen ON + activity arm)" >&2
   if [ "${UPT:-99999}" -lt 900 ] 2>/dev/null; then
     echo "WARNING: device uptime is ${UPT}s - POST-REBOOT regime. This is NOT the band: the same binary reads materially faster here (Exp880). Do not keep, compare, or report a number taken in this state without the long-uptime control run alongside it." >&2
   fi
@@ -155,6 +168,29 @@ case " $_e " in *" THREADS="*) ;; *) _th="THREADS=${THREADS:-2} ";; esac
 # two paths cannot disagree.
 case " $_e " in *" ARGS="*) ;; *) _ar="ARGS='${ARGS:-}' ";; esac
 if [ "$PARSE_ONLY" != 1 ]; then
+# Exp972: ARM step - put the device into state 3 before measuring, or the number is state 2 (see the
+# screen-state note above). A wake plus a short burst of key events is exactly what Exp969-971 showed to
+# be causal; the values chosen are deliberately UI-indifferent (volume up/down pairs, net-zero drift, no
+# navigation possible) so nothing about the benchmark or the app changes - only the device state.
+# NO_ARM=1 disables it, so state 2 can still be measured deliberately (Exp970/971 used exactly that
+# protocol by hand). This is a MEASUREMENT-PROTOCOL fix, not a speedup: state 3 is the state every
+# historical ladder cell was taken in, so it is the state the ladder's numbers are comparable in.
+if [ "${NO_ARM:-0}" != 1 ]; then
+  { adb -s $DEV shell "input keyevent KEYCODE_WAKEUP" >/dev/null 2>&1; } || true
+  for _i in 1 2 3; do
+    { adb -s $DEV shell "input keyevent KEYCODE_VOLUME_DOWN" >/dev/null 2>&1; } || true
+    { adb -s $DEV shell "input keyevent KEYCODE_VOLUME_UP" >/dev/null 2>&1; } || true
+    sleep 1
+  done
+  ARMED=1
+else
+  ARMED=0
+fi
+# Post-arm display state: this is what the TSV records, because it describes the state the RUN is in
+# (the pre-arm read above is kept only as the before-witness on the note line).
+SCR2=$( { adb -s $DEV shell "dumpsys display 2>/dev/null" | tr -d '\r' | grep -m1 -oE 'mScreenState=[A-Z]+'; } || true )
+SCR2=${SCR2#mScreenState=}
+echo "note: device screen_after=${SCR2:-UNKNOWN} arm_ran=${ARMED}" >&2
 # Exp942: DELIVERED-frequency histogram. cpu7's scaling_cur_freq (the 5th TSV column and the med/min/max
 # from bench_device.sh) is the governor's REQUEST; this is what the core actually delivered. Read
 # cpufreq stats/time_in_state before and after the run and difference it: the unit is a 10 ms jiffy
@@ -242,7 +278,7 @@ if [ "$PARSE_ONLY" != 1 ] && [ -n "${RTF:-}" ]; then
   # faked uptime significance), and EXTRA_ENV is exactly the confound source for measure.sh rows.
   # Appended at END so columns 0-10 are stable; legacy headers migrate one-time, data rows are
   # never rewritten. Env assignment strings cannot contain tabs/newlines, so the TSV stays clean.
-  [ -f "$_tsv" ] || printf 'ts\tuptime_s\tprocs\tmem_avail_mb\tcpu7_khz\tbatt_c\trtf\tvae_s\tlm_s\ttokens\tfingerprint\textra_env\tcpu7_khz_med\tcpu7_deliv2400_pct\n' > "$_tsv"
+  [ -f "$_tsv" ] || printf 'ts\tuptime_s\tprocs\tmem_avail_mb\tcpu7_khz\tbatt_c\trtf\tvae_s\tlm_s\ttokens\tfingerprint\textra_env\tcpu7_khz_med\tcpu7_deliv2400_pct\tscreen\n' > "$_tsv"
   if ! head -1 "$_tsv" | grep -q 'extra_env'; then
     sed -i '1s/$/\textra_env/' "$_tsv"
   fi
@@ -257,6 +293,13 @@ if [ "$PARSE_ONLY" != 1 ] && [ -n "${RTF:-}" ]; then
   if ! head -1 "$_tsv" | grep -q 'cpu7_deliv2400_pct'; then
     sed -i '1s/$/\tcpu7_deliv2400_pct/' "$_tsv"
   fi
+  # Exp972: 15th column `screen` = the display state read before the run (ON/OFF/UNKNOWN) plus whether
+  # the boost arm ran, as "ON:arm=1". Exp968-971 showed screen/arm state moves the metric 40 % on the
+  # SAME binary, and the loop had no record of it - so every pre-Exp972 row is state-ambiguous unless
+  # its delivered share says otherwise. Append-only, same rule as the columns above.
+  if [ "$(head -1 "$_tsv" | awk -F'\t' '{print $NF}')" != screen ]; then
+    sed -i '1s/$/\tscreen/' "$_tsv"
+  fi
   _battc=$(python3 -c "print(round(${BATTT:-0}/10,1))" 2>/dev/null || echo "?")
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%s)" "${UPT:-?}" "${NPROC:-?}" "${MEMAV:-?}" "${KHZ:-?}" "$_battc" "$RTF" "${VAE:-?}" "${LMS:-?}" "${TOK:-?}" "${FP:-?}" "${EXTRA_ENV:-}" "${KHMED:-?}" "${DELIV:--1}" >> "$_tsv" 2>/dev/null || true
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%s)" "${UPT:-?}" "${NPROC:-?}" "${MEMAV:-?}" "${KHZ:-?}" "$_battc" "$RTF" "${VAE:-?}" "${LMS:-?}" "${TOK:-?}" "${FP:-?}" "${EXTRA_ENV:-}" "${KHMED:-?}" "${DELIV:--1}" "${SCR2:-UNKNOWN}:arm=${ARMED:-?}" >> "$_tsv" 2>/dev/null || true
 fi
