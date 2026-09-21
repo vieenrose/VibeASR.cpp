@@ -5774,3 +5774,32 @@ excluded) at 39.9 h uptime.
     deterministic exit status rather than to prevent an abort.
 Anchor 1.2268 (clean reps 1.2209 / 1.2327 at 2325.9 / 2328.2 MHz; one 1961.3 MHz rep flagged and excluded) at
 40.3 h uptime.
+
+- BEHAVIOR BOARD 11/11 + THE GATE'S PER-CLIP COLUMN TURNS OUT TO BE AN INSTRUMENT, BUT NOT THE ONE IT LOOKS LIKE
+  (Exp1038, 9 rounds since Exp1028; analysis is FREE - four archived armed same-config gates: 984/1005/1027/1037).
+  * Board: 11/11, ladder canaries EXACT 39/106/446/876 at 40.4 h - no behavioral drift from 10 rounds of harness work.
+  * **The per-clip rtf profile is a property of the clips, not of state noise**: on the SAME 40 clips, cross-rotation
+    r = 0.65-0.94, and after dividing each run by its own mean, **84.4 % of the per-clip variance is clip identity**;
+    per-clip repeatability 2.66 % (4.18 % unnormalized). Paired per-clip differences have sd 2.7-6.5 % -> se(mean)
+    0.43-1.02 % "for free" from a run the loop already does for WER.
+  * **THE TRAP, and the reason not to switch the speed instrument to the gate**: the session/state term is COMMON to
+    all 40 clips, so it cancels in none of those differences. Four same-config armed gates have run means
+    1.3808 / 1.3180 / 1.3789 / 1.3795 - **session sd 2.26 %** - which, not the 0.43 % clip se, is the error bar for
+    one run per arm. A t of -9.3 means "the difference is UNIFORM", not "it is REAL". Same family as Exp1027's
+    pooling-gate-means retraction. Correct division of labour: protocol reps answer "did the mean move"; the gate's
+    per-clip column answers "was it uniform or clip-selective", and does so at zero extra device cost.
+  * Applied: gate1005 is **uniformly** ~4.4 % faster (36/40 clips, sign test p=1.9e-07; halves -5.00 % short /
+    -3.73 % long), i.e. a session level shift, not a clip-selective effect - and its witness 2283.8 MHz is the
+    HIGHEST of the four while it is the FASTEST, re-confirming that the mean-MHz witness is not a fine speed
+    predictor above the knee (Exp1024/1025).
+  * **Shipped `.auto/gate_profile.py`** (in SELFTEST_TOOLS, so the coverage board runs it): prints the paired
+    mean/sd/se, the 40-way sign test, and a duration-half split so clip-selective effects are visible. Writing it
+    caught TWO bugs in my ad-hoc line: it reported "1/40 clips faster" where the tool says 36/40, and its sign test
+    used `range(min, 21)` instead of `min(b,c)` and printed **p=1.1, an impossible value** - the fourth
+    statistic-implementation bug in this loop (Exp655 used |b-c| instead of |b-n/2|). The tool now self-tests that
+    no split of n=40 can exceed p=1 and that a uniform shift reads sd~0/all-one-sided.
+  * **Correction to my own Exp1037 note**: the armed gate mean 1.3808 belongs to hyp-gate984 (Exp984), not to
+    Exp1005 as written there; the true armed means are the four values above. Provenance rule again - quote the
+    hyp TAG with a gate number, not the run number that mentioned it.
+Anchor 1.2350 (3 reps 1.2283 / 1.2458 / 1.2309, witnesses 2037.6 / 2007.1 / 2021.3 MHz) at 40.6 h - a warm
+session (batt 38.8 C after the 8-min board), which is also why its sd 0.74 % is above the usual 0.3-0.5 %.
