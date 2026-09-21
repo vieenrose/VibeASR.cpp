@@ -5120,3 +5120,29 @@ Consequences:
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
   are not evidence under cap either; the >=2 % ship bar transfers. Watch anchor 1.8454 (delivered 6),
   18th capped rep, byte-identical.
+
+- SHIPPED: `.auto/hardaudio_watch.sh` - THE HARD-AUDIO CHECK IS NOW ONE COMMAND, AND A RULE (Exp1015).
+  Exp1010-1014 hand-ran the same three-set sequence four times and each run produced a one-variable finding
+  the 40-utt gate could never have seen (overlap WER -8 pp on the shipped path; the cause isolated to the
+  boundary batch; +0.64 pp on zh-TW; consumer-mic English token-identical across six versions). The check is
+  now a script instead of heroics:
+      .auto/hardaudio_watch.sh            # gate_ms_v2 + holdout_en + holdout_zh (armed, witnessed)
+      .auto/hardaudio_watch.sh --quick    # overlap probe only
+      EXTRA_ENV=BOUND_BATCH_OFF=1 .auto/hardaudio_watch.sh    # any hatch, same command
+  It prints WER, diarization attribution, the token count and the P-state witness per set, carries the v4.8
+  reference values in its own footer, and states in its header that these are WATCHDOGS - measure and report,
+  never tune. First full run reproduces every documented value exactly: gate_ms_v2 WER 0.1765 / attr 0.4235,
+  holdout_en 0.2636 / attr 0.4907, holdout_zh 0.1538 / attr 0.6674 (= the corrected Exp654 value).
+  * SELF-INFLICTED, caught by running the tool rather than by reading it: the first version resolved the
+    eval directory as `.auto/../eval-bilingual` (i.e. inside the repo) instead of two levels up, so every WER
+    printed as "?" while the harness happily reported rtfs - the Exp1013 lesson again (a tool that cannot
+    see its inputs must fail loudly, not print a plausible blank). Fixed, then validated end-to-end with
+    --quick before the full run.
+  * AND THE AUDIT CAUGHT THE OTHER HALF: the new script was untracked, so check 16 (an auto-revert would
+    delete it) FAILED until it was committed in the same iteration - which is the rule the ledger has
+    carried since Exp659's lost sweep tooling.
+  * RULE ADDED TO `.auto/prompt.md` (Constraints): any change touching decode structure, boundary/segment
+    handling, quantization or the window protocol must be checked with this tool before it may be called
+    accuracy-neutral, because the 40-utt gate is read speech and cannot see that class of effect. The sets
+    stay watchdogs - measure, never optimize.
+Anchor (armed protocol capture restored). Tool committed in the same iteration, per the standing rule.
