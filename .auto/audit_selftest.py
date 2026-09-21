@@ -441,10 +441,20 @@ for cid, desc, plant, expect in FAULTS:
 for c, d in UNCOVERED:
     print(f"  UNCOVERED {c:22s} {d}")
 nfails, fails, out = run_audit()
-print(f"\nfinal clean-tree audit: {out.strip().splitlines()[-3] if len(out.splitlines()) > 3 else '?'}")
+# Exp1042: two silent-not-loud gaps in the board's OWN closing step. (a) The summary was extracted as
+# splitlines()[-3], which started printing an EMPTY string the day the audit grew a trailing line - a fragile
+# index for a machine-readable line (same family as Exp1019's column ping-pong and Exp1013's regex). Now the
+# line is found by its own prefix, and its absence is reported instead of guessed. (b) The non-green case only
+# printed a WARNING; the script's exit status came from the trailing `if`, so it exited 0 and "exit=0" proved
+# nothing. Now it exits 1, so a plant that fails to revert cannot be mistaken for a clean board.
+_summary = [l for l in out.splitlines() if l.strip().startswith('harness audit:')]
+print('\nfinal clean-tree audit: ' + (_summary[-1].strip() if _summary
+      else 'NO SUMMARY LINE - the audit output shape changed; do not trust this board run'))
 for f in fails:
     print('  ' + f[:150])
 print(f"\ncoverage: {n_fire}/{len(FAULTS)} plantable checks fire on their own fault; "
       f"{n_miss} silent or invalid; {len(UNCOVERED)} classes accepted as uncontrolled.")
-if nfails:
-    print("WARNING: the audit is NOT green after reverting every plant - investigate before trusting it.")
+if nfails or not _summary:
+    print("WARNING: the audit is NOT green after reverting every plant - investigate before trusting it "
+          f"(nfails={nfails}, summary_line_found={bool(_summary)}).")
+    sys.exit(1)

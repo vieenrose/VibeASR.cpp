@@ -5880,3 +5880,29 @@ Anchor 1.2259 (clean reps 1.2231 / 1.2287 at 2028.4 / 2317.2 MHz; one 1999.1 MHz
     discrimination by window count). One armed protocol rep restores the invariant, which the anchor run did.
 Anchor 1.2262 (clean reps 1.2225 / 1.2299 at 2034.7 / 2330.4 MHz; one 1989.8 MHz rep flagged and excluded) at
 41.9 h uptime.
+
+- COVERAGE BOARD 24/24, AND THE BOARD'S OWN CLOSING STEP HAD TWO SILENT GAPS (Exp1042, 8 rounds since Exp1034).
+  * Board: 24/24 plantable checks fire on their own fault, 0 silent/invalid, the same 3 accepted-uncontrolled
+    classes re-verified (co-runner, sweep's internal --dry, WARN-only capture identity).
+  * **Gap (a): the board's closing line went blank.** It extracted the audit summary as
+    `out.splitlines()[-3]`, an index into a machine-readable output; the audit has since grown a trailing line, so
+    the board printed `final clean-tree audit: ` + EMPTY and everybody (me, for at least two board runs) read that
+    as fine. Now the line is found by its own `harness audit:` prefix, and if no such line exists the board says
+    "NO SUMMARY LINE - the audit output shape changed; do not trust this board run". Same family as Exp1019's
+    column-name ping-pong and Exp1013's three-digit regex: never locate a machine-readable line by position.
+  * **Gap (b): the non-green case exited 0.** The code printed "WARNING: the audit is NOT green..." but the
+    statement was a trailing `if`, so the process status came from the successful print - my `exit=0` readings
+    proved nothing about the tree's state. Now it exits 1. Proven BOTH ways: with a SELFTEST tool moved aside the
+    board reports `137 passed, 1 failures`, prints `nfails=1, summary_line_found=True` and **exits 1**; restored,
+    it prints the real summary line and exits 0.
+  * **Exp1041's identity-case rule applied to the other A/B tools.** `compare_arms.py --gate X X refs.json`
+    handles the degenerate input correctly (b=0/c=0, McNemar p=1) - so last round's tie bug really was specific to
+    the clip-level sign test, and this tool is cleared. But probing its interface turned up a crash: it indexes
+    `sys.argv[1]` unconditionally, so running it with no arguments or with `--help` died with an IndexError, and
+    any unknown option was treated as a transcript PATH. Fixed with the strict guard used in Exp1034-36 (usage
+    line, exit 2): five bad invocations now report what is wrong with no traceback, while --selftest still PASSes
+    and the identity run is unchanged.
+  * MY OWN slip worth recording: I ran `bash -n` on a PYTHON file to syntax-check it (it dutifully reported a
+    bash syntax error at line 24, which is valid Python). Use `python3 -c "import ast; ast.parse(...)"` - that is
+    what the check became in this session's own commands.
+Anchor 1.2287 (3 reps 1.2312 / 1.2253 / 1.2296, witnesses 2036.3 / 2032.0 / 2039.0 MHz, sd 0.24 %) at 42.1 h.

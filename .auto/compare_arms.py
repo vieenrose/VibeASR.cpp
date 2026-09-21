@@ -168,8 +168,28 @@ def selftest():
 
 
 if __name__ == '__main__':
+    # Exp1042: strict argument checking. The old code indexed sys.argv[1] first thing, so running the tool with
+    # NO arguments, or with `--help`, died with an IndexError from the interpreter instead of a usage line - and
+    # any misspelled option was treated as a transcript PATH, which is the 'cannot be typed at' class of Exp1034
+    # (audit_harness), Exp1035 (rollback_audit) and Exp1036 (hardaudio_watch/fault_inject), except here it either
+    # crashed or tried to open a file named '--hlep'. Found by feeding this tool its own identity case (A vs A,
+    # which it PASSES: b=0/c=0, p=1) and then probing its interface.
+    _USAGE = ('usage: compare_arms.py --gate DIR_A DIR_B refs.json [label]\n'
+              '       compare_arms.py HYPA HYPB manifest.json [label]\n'
+              '       compare_arms.py --selftest')
+    if not sys.argv[1:]:
+        print('ERROR: no arguments given\n' + _USAGE, file=sys.stderr)
+        sys.exit(2)
+    if sys.argv[1].startswith('-') and sys.argv[1] not in ('--selftest', '--gate'):
+        print(f"ERROR: unknown option {sys.argv[1]} - valid: --gate, --selftest, or positional HYPA HYPB manifest\n"
+              + _USAGE, file=sys.stderr)
+        sys.exit(2)
     if sys.argv[1] == '--selftest':
         sys.exit(selftest())
+    _need = 5 if sys.argv[1] == '--gate' else 4      # --gate: script+flag+A+B+refs ; positional: script+A+B+manifest
+    if len(sys.argv) < _need:
+        print(f'ERROR: too few arguments ({len(sys.argv) - 1} given, need {_need - 1})\n' + _USAGE, file=sys.stderr)
+        sys.exit(2)
     if sys.argv[1] == '--gate':
         # compare_arms.py --gate <dirA> <dirB> <refs.json> [label]
         r = compare_gate(sys.argv[2], sys.argv[3], sys.argv[4])
