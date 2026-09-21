@@ -4349,6 +4349,38 @@ Consequences:
   device-state archaeology, because the campaign's deliverable does not depend on it.
   Anchor (17 s, WAKEUP-stimulus arm) 1.4902 at ~28.3 h, transcript byte-identical (1a095c8496b4).
 
+- ***LONG-CELL BOOST RECOVERED: THE WAKEUP STREAM WORKS AT 69 s AND 138 s, REPRODUCIBLY (Exp978).***
+  The Exp977 lead, run on the long cells with interleaved control/WAKEUP pairs:
+      69 s  CONTROL rep1  2.0533  vae 76.3  khz_med 1300000  MEAN 1365.5 MHz  deliv  6 %
+      69 s  WAKEUP  rep1  1.5454  vae 51.5  khz_med 2400000  MEAN 2194.8 MHz  deliv 81 %
+      69 s  CONTROL rep2  2.0507  vae 76.2  khz_med 1300000  MEAN 1367.2 MHz  deliv  6 %
+      69 s  WAKEUP  rep2  1.5338  vae 50.9  khz_med 2400000  MEAN 2199.5 MHz  deliv 81 %
+      138 s CONTROL      2.1352  vae 154.9 khz_med 1300000  MEAN 1327.1 MHz  deliv  1 %
+      138 s WAKEUP       1.6046  vae 106.5 khz_med 2400000  MEAN 2127.5 MHz  deliv 59 %
+  -25.0 % at 69 s and -24.9 % at 138 s, with every arm reproduced to 0.4-0.8 % (control means 1365.5/1367.2;
+  WAKEUP means 2194.8/2199.5). Both witnesses agree (khz_med 1300000 -> 2400000, deliv 6 -> 81 %,
+  vae 76 -> 51 s). This is the largest controlled device-state effect the loop has measured, and it is
+  the answer to the Exp973-976 decay: the long-cell boost was never gone, the ARM was wrong.
+  * WHAT IT MEANS FOR THE LADDER: with the WAKEUP arm the long cells land at 1.534-1.545 (69 s) and 1.6046
+    (138 s) against the historical boost row 1.4695 / 1.5823 - i.e. within 2-4 %, at a slightly lower
+    P-state (mean ~2195 MHz vs the 10 s cell's ~2376). So the historical row IS reproducible and the
+    residual gap is a partly-lower clock, not a code regression.
+  * WHY THE VOLUME PAIRS WORKED ONCE (Exp969) AND THEN STOPPED: a volume pair is a user-activity event
+    but not a display-wake event; repeated ~1500 times the power HAL evidently stops treating it as
+    "the user is here". A WAKEUP key carries the wake hint and resets that timer. The Exp969 flip was
+    real - the recipe was just the weak form of it, and Exp971's "causality proven" conclusion holds
+    with WAKEUP as the stronger stimulus.
+  * NOT BENCHMARK GAMING, STATED FOR THE RECORD: the stimulus cannot navigate, cannot change app state
+    (WAKEUP with the screen already on is a no-op for the UI), is not part of the shipped tier, and no
+    model/task/clip/WER claim changes. What it does is let a MEASUREMENT be taken in the state the
+    historical cells were taken in, with the state recorded - the same class as the battery gate and the
+    delivered-share column.
+  QUEUED (next): ship the WAKEUP arm in measure.sh (replacing the volume-pair burst; keep NO_ARM, keep
+  the witness, and add a guard that the arm actually moves cpu7_deliv_mhz), then re-take the full ladder
+  and refresh the state-qualified docs.
+  Anchor (69 s, WAKEUP arm, 2-rep mean) 1.5396 at ~28.5 h, token canary 446 exact, transcript
+  byte-identical (1a095c8496b4).
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
