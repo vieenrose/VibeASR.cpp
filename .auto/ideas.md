@@ -4638,6 +4638,20 @@ Consequences:
     majflt 0, transcript 1a095c8496b4 - the eighth armed protocol rep, mean 1.2457.
   Anchor (armed protocol) 1.2385 at ~31.5 h, transcript byte-identical.
 
+- SESSION-MEMORY SOAK ROTATION (Exp992, ~29 rounds since Exp963): 3 chat69 runs under ONE sampler, in the
+  armed state (witnesses 2180.8 / 2185.3 / 2047.9 MHz, so these are state-3 runs):
+      steady medians 2197.2 / 2196.7 / 2177.2 MB | peaks 2198.2 / 2198.2 / 2198.2 MB (**spread 0.1 MB**)
+      drift across runs -9.99 +/- 10.99 MB per run (within noise) | fds 3/3/3 flat | 446 tokens every run
+  Peak invariance is the verdict: NO SESSION GROWTH, reproducing Exp963 and Exp913 numerically (~2198 MB)
+  on a stack that has since gained the arm/witness machinery. The 2177.2 median on run 3 is the known
+  two-state pattern, not accumulation; the GLOBAL slope is INCONCLUSIVE by design (the +-11 MB/min SE is
+  the instrument's documented limit, Exp865d/913). And the third 'thread leak?' prompt is the phase
+  structure (1 load / 2 LM / 3 concurrent VAE), false alarm as recorded at Exp963.
+  * Rtfs 1.5526/1.5531/1.5875 (mean 1.5644) - quantifisably a state-3 69 s cell but HEAT-LOADED (the
+    battery ended at 37.6 C after three back-to-back 69 s runs), so these are not ladder cells; the
+    clean 69 s armed cell remains 1.5545 (Exp989).
+  Anchor (armed 69 s, heat-loaded) 1.5875 at ~31.9 h, token canary 446 exact.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
