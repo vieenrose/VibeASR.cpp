@@ -4760,6 +4760,19 @@ Consequences:
   Anchor (armed protocol rep) 1.2401 at ~33.2 h, witness 2378.2 MHz, deliv 98 %, transcript
   1a095c8496b4 byte-identical.
 
+- FAULT BOARD ROTATION (Exp998, ~46 rounds - the most aged board): **13/13 PASS, 0 fail** in the ARMED
+  state. 4 model truncations loud (LM tail/header-only, VAE tail -8MB/-64MB), healthy control 39 tokens
+  exit 0, unknown `--kv-type` refused, 3 config edges loud (`-c 16` still carrying the Exp949
+  'context exhausted' diagnostic the board now REQUIRES, `--vae-pieces` 7 and 0), header-only and empty
+  WAVs refused.
+  * The AUDIO probes are the interesting part: their bands are SAME-SESSION RELATIVE, and this is the third
+    regime they have survived - fresh-boot (calibrated, Exp886), the capped state (Exp964: H=1.8721), and
+    now the armed state (**H=1.2397**, probes 1.4097 / 1.3739, i.e. 1.11-1.14x H). An absolute band would
+    have false-failed in two of those three regimes, so Exp886's relative-band fix is doing exactly the
+    job it was written for, three times over.
+  Anchor (armed protocol rep) 1.2351 at ~33.5 h, witness 2375.0 MHz, transcript 1a095c8496b4
+  byte-identical.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
