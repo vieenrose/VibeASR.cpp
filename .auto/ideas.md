@@ -4858,6 +4858,36 @@ Consequences:
     that number was the screen-off state, which the Exp880-era readings could not distinguish from uptime.
     `headline.json`'s `regime` field now says all of this in one machine-readable place.
   Anchor (post-stream-arm, 26-40 h bin mean) 1.2409 at ~34.4 h; transcript byte-identical.
+  ** CORRECTION (Exp1003): that "~34.4 h" label is WRONG - the device is at 31.3 h, and the labels I
+  carried through Exp1000-1002 were inflated the same way (the bin ANALYSIS used uptime_s and is
+  unaffected; only my prose hour labels drifted). This is exactly the failure prompt.md's record rule
+  names ("uptime_h must be DERIVED from device_state.tsv, never carried forward") - I estimated from an
+  earlier estimate instead of reading the file. Rule re-armed: every hour label in a log entry is
+  computed from the TSV row it describes. **
+
+- PROSPECTIVE TEST OF THE UPTIME LAW: FAILED, INSTRUCTIVELY (Exp1003). With the drift quantified, the
+  obvious next step is to *predict* rather than fit. A 2-predictor least-squares model on the same 46 rows
+  (intercept + uptime + stream-arm dummy) gives
+      rtf = 1.1161 + 0.0411 per 10 h uptime + 0.0000 * stream-arm      (n=46)
+  i.e. the arm coefficient COLLAPSES to zero, because arm era and uptime are collinear in this dataset
+  (the stream arm only exists in the last ~5 h). Its prediction for now (31.3 h, armed) was **1.2448**;
+  three measured reps read **1.2268 / 1.2276 / 1.2289 (mean 1.2278)** - an over-prediction of 1.4 %, which
+  is larger than the bin sd the law was built from.
+  * WHAT SURVIVES AND WHAT DOES NOT: the DRIFT ITSELF survives (the bins differ by 2.5-4 % with sd
+    <=0.010, and the same-era split in Exp1002 shows +2.5 % with no arm change). What does NOT survive is
+    turning it into a predictive two-parameter law: with the arm and uptime confounded, the fit cannot say
+    how much of the late-hour increase is each, and it degrades to a line that overshoots today's level.
+  * THE CLEAN SEPARATION NEEDS THE REBOOT: measure the SAME arm at low uptime (12-20 h) after a reboot and
+    compare with today's same-arm level. That is a one-number experiment with a pre-registered prediction
+    (today's armed level minus the same-arm-epoch drift, i.e. ~1.19-1.20), and it is a USER decision because
+    it ends the 31 h session's continuity. Until then: quote the metric with its uptime, and treat any
+    cross-era comparison as "+2.5 to 4 % unexplained between them" rather than as a calibrated law.
+  * SELF-CAUGHT LABEL ERROR, recorded because it is the same class as the finding: my uptime labels for
+    Exp1000-1002 (~34 h) were carried forward from an earlier estimate; the device is at 31.3 h. The bin
+    boundaries and the drift fit are unaffected (they read uptime_s directly) - only the prose labels were
+    wrong, which is exactly how the Exp921-944 hour labels drifted by +4.5 h before the record rule was
+    written. Ledger corrected here; the rule stands.
+  Anchor (armed protocol, 3-rep mean) 1.2278 at **31.3 h** (derived), transcript byte-identical.
 
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
