@@ -5170,3 +5170,18 @@ Anchor (armed protocol capture restored). Tool committed in the same iteration, 
   cross-check against the TSV (armed protocol rows: n=58, mean 1.2177, consistent with the stated 1.22-1.25
   band). Fresh armed protocol cell this round 1.2232 at 32.9 h.
 Anchor (armed protocol) 1.2232 at 32.9 h (derived); witness 2032.3 MHz, transcript 1a095c8496b4.
+
+- BEHAVIORAL CONTRACTS ROTATION (Exp1018, ~26 rounds since Exp991): **11/11 PASS, 0 fail** on the current
+  binary (header prints ed4cb821 = the committed binary, tier from tier.env): silence/noise/music labels,
+  48 kHz stereo resample, sub-piece short36 (17 tok), twospk_overlap splits speakers, twospk one-tag = the
+  closed Exp650 behaviour recorded, and ladder canaries **EXACT 39/106/446/876**.
+  * The round also produced a live demonstration of the arm guards, which is worth recording because it is
+    the failure mode they exist for: the follow-up protocol anchor came back **flagged** (rtf 1.3145, mean
+    1908.2 MHz - the partial-arm level) and printed the WARNING; the next two reps were clean (1.2384 at
+    2005.2 MHz, 1.2327 at 2330.1 MHz). So the rule "a flagged run is a state sample to retry, never to
+    average" is not theoretical - it fired on ~1 in 3 runs in this window, and the clean reps sit exactly
+    where the armed series sits (1.2327/1.2384 vs the 1.2177-1.2458 band).
+  * Board ages after this round: soak Exp992 (26), fault Exp998 (20), coverage Exp997 (21), rollback Exp996
+    (22), guard Exp1006 (12), gate Exp1005 (13), behavior current.
+Anchor (armed protocol retry mean) 1.2356 at 33.1 h (derived); witnesses 2005.2 / 2330.1 MHz, transcript
+1a095c8496b4 byte-identical.
