@@ -4993,6 +4993,32 @@ Consequences:
   Anchor (armed protocol, post-idle 3-rep mean) 1.2251 at 32.0 h (derived); witnesses 2320-2335 MHz,
   transcript 1a095c8496b4.
 
+- ***THE SHIPPED STACK'S HARD-PROBE (OVERLAP/DIRARIZATION) WER IMPROVED 25.9 % -> 17.6 % - A GAIN THE 40-UTT GATE
+  COULD NOT SEE (Exp1010).*** Re-running the two bilingual/diarization probes on the current stack (a product
+  axis the WER gate does not cover) reproduced v1 exactly and turned up a real change on v2:
+      v1 (gate_ms.wav)      attribution 0.5670 (documented 0.5670), consistency 0.743, tags 1/4, en 10.7 %,
+                            zh 15.9 % - EVERY documented number reproduced exactly
+      v2 (gate_ms_v2.wav)   shipped: WER **0.1765** (S=13 D=0 I=2 H=72), attribution 0.4235 (doc 0.424),
+                            tags 4/4 | lean: WER 0.2471, attribution unchanged
+  * CONTROLLED, NOT A SCORING ARTIFACT: the ARCHIVED v4.1-era shipped transcript (`.auto/hyp-msv2-shipped.txt`,
+    Sep 13) re-scored TODAY with the same scorer and manifest gives **0.2588** - exactly the documented 25.9 % -
+    so the 8.2 pp difference is a real output change between then and now. The archived shipped and lean
+    transcripts scored identically in that era (both 0.2588), while today they differ (17.65 % vs 24.71 %),
+    i.e. the improvement is on the SHIPPED path.
+  * WHY IT MATTERS: the 40-utt gate has been output-identical for fourteen consecutive runs, and this is the
+    first measurable ACCURACY movement the loop has found since the reference gates - on a hard probe
+    (3 grid-aligned overlap pairs, 4 voices, 45 s) where the v4.6-v4.8 changes plausibly act (final-window
+    flush, boundary-token batch, blocked-transpose cont all touch the tail/boundary of a window). It is also
+    the answer to a question the loop had left implicit: the shipped changes were "output-identical" ON THE
+    READ-SPEECH GATE, which is a narrow claim - on overlap audio they were not.
+  * ATTRIBUTION IS UNMOVED (0.4235 vs 0.424, tags 4/4) - recognition and separation are independent axes,
+    exactly as the Exp846 four-arm characterization concluded. Caveat kept: 85 ref tokens on one 45 s clip
+    cannot rank SER systems, so this is a probe-level observation, not a WER claim for the corpus.
+  DOCS: RESULTS.md's v2 sentence now carries the re-measurement, the archived-transcript control and the
+    shipped-vs-lean split; the older four-arm numbers are labelled as the v4.1 era they came from.
+    Audit green after the commit (134/3 warnings/0 failures).
+  Anchor (v2 probe run, shipped tier, armed) 1.1483 at 32.1 h (derived); witness 2358.1 MHz, 136 tokens.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
