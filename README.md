@@ -29,19 +29,26 @@ To enable efficient edge CPU deployment, we replace the original Qwen2.5-7B lang
 
 ## Autoresearch: Phone Streaming Optimization (`streaming-1.5B`)
 
-An autonomous experiment loop (965 runs, branch `autoresearch/phone-rtf-20260909`) optimized
+An autonomous experiment loop (980 runs, branch `autoresearch/phone-rtf-20260909`) optimized
 on-device streaming inference of the 1.5B variant on a Dimensity 1300 phone (OPPO, Android 13,
 CPU-only, 2 big cores), with accuracy gates on every change.
 
 <div align="center">
 
-| Tier | 10 s RTF | 69 s RTF | WER (40-utt gate) | Peak RSS |
-|:---|:---:|:---:|:---:|:---:|
-| Baseline (F16 VAE + Q4_K_M LM) | 12.24 | — | — | 3.3 GB |
-| **MAX-SPEED v4.8 (default)** | **1.19** | 1.47 | 4.55% | 2.19 GB |
-| MAX-SPEED-LEAN (p13, sub-2 GB) | 2.08 | 2.32 | 4.65% | 1.75 GB |
+| Tier | 10 s RTF | 17 s | 69 s RTF | 138 s | WER (40-utt gate) | Peak RSS |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|
+| Baseline (F16 VAE + Q4_K_M LM) | 12.24 | — | — | — | — | 3.3 GB |
+| **MAX-SPEED v4.8 (default)** | **1.25** | 1.46 | 1.56 | 1.65 | 4.55% | 2.19 GB |
+| MAX-SPEED-LEAN (p13, sub-2 GB) | 2.08 | 2.24 | 2.32 | 2.38 | 4.65% | 1.75 GB |
 
 </div>
+
+> **Device state is quoted with every number.** The big cores have three measurable states and the
+> harness now sets and records which one a run is in: **armed** (the row above, mean delivered
+> ~2045 MHz), **unarmed** (1.67-1.70) and **screen off** (1.85) — the same binary, 48% apart, driven
+> entirely by whether the phone has recent user activity and its display on. A run whose witness falls
+> below 2000 MHz prints a warning instead of being silently reported as a speed. The historical 1.19
+> cell was measured at ~2377 MHz on the same binary.
 
 - **−90% RTF** via three waves: A78 codegen + mmap loader, blocked-int8 LM/VAE kernels, then fused
   elementwise ops (depthwise-conv1d kernel, layer-scale+residual, gelu+bias, rms_norm·gamma, in-kernel
@@ -51,9 +58,8 @@ CPU-only, 2 big cores), with accuracy gates on every change.
   guard clip, fault/behavior/rollback/soak boards, and a 40-utt WER re-gate on every source change.
 - **Read-speech qualifier**: the 4.55% WER is LibriSpeech test-clean; on held-out consumer-mic English
   the same system reads ~30% (domain gap measured, never optimized against).
-- **State discipline**: numbers are quoted with device regime and clock state (fresh-boot boost 1.19 vs
-  settled +11.6%; the same binary reads 1.85 long-uptime) — see `.auto/headline.json` for the
-  machine-readable current claim.
+- **State discipline**: numbers are quoted with the measurement state and its witness — see
+  `.auto/headline.json` for the machine-readable current claim.
 
 Details: [STREAMING_1P5B.md](STREAMING_1P5B.md) (tier ladder) · [RESULTS.md](RESULTS.md) (all cells)
 · `.auto/ideas.md` (full experiment ledger) · `.auto/headline.json` (current claim).

@@ -8,16 +8,16 @@
   "protocol_hash": "1a095c8496b4",
   "regime": "fresh-boot (device uptime 19 h at Exp944; the SAME byte-identical binary read 1.85 on the pre-reboot long-uptime device - Exp880 showed the device state, not the code, moved the metric)",
   "shipped": {
-    "label": "MAX-SPEED v4.8, FRESH-BOOT regime, boost state (delivered 2.4 GHz 96-98 %)",
-    "rtf10": 1.19,
-    "rtf17": 1.34,
-    "rtf69": 1.47,
-    "rtf138": 1.58,
+    "label": "MAX-SPEED v4.8, ARMED measurement state (burst + KEYCODE_WAKEUP stream, Exp979 recipe)",
+    "rtf10": 1.25,
+    "rtf17": 1.46,
+    "rtf69": 1.56,
+    "rtf138": 1.65,
     "gate_mean": 1.34,
     "wer_pct": 4.55,
     "rss_gb": 2.19,
-    "provenance": "rtf10 = mean of 8 delivered-boost protocol runs, sd 0.21 % (Exp942, the run that shipped the delivered-frequency column); ladder cells from ONE session, ascending, no idle between cells (Exp939), with the boost-start variant at Exp940 (1.24/1.35/1.43/1.54 - its 10 s cell hit the Exp940 LM transient); gate_mean and WER from Exp944 (gate944 (40/40, paired b=0/c=0 of 731 vs gate941 AND gate852, 0/40 differing); RSS 2191.8 MB, majflt 0; state levels from Exp938 (S/B/S/B design) and Exp942 (delivered column)",
-    "state_levels": "boost 1.192 / settled 1.333 (+11.6 %, Exp938 S/B/S/B + Exp942 delivered column); partial states (delivered 47-48 %) exist and sit between (Exp943); product envelope: 6 repeated 10 s transcriptions stay boost, then +11.6 %"
+    "provenance": "rtf10 = 1.2440/1.2533/1.2465 (three armed reps, Exp979/980) -> 1.25; ladder cells from ONE ascending armed session (Exp980): 1.2465 / 1.4648 / 1.5619 / 1.6478, canaries 39/106/446/876 exact, RSS 2191.7-2206.0 MB, majflt 0. WAIT-VALUE NOTE: the historical 1.1937 10 s cell (Exp939) was measured at mean delivered ~2377 MHz; the armed cells run at mean ~2045 MHz (same binary, lower P-state), which is the uniform +3..6 % seen on every cell. The unarmed counterpart of the same recipe reads 1.3385 (mean 1904 MHz) - the guard prints a WARNING when that happens, so a published cell must name its witness. gate mean/WER from Exp944 (gate944, 40/40, paired b=0/c=0 of 731 vs gate941 AND gate852, 0/40 differing); no src/ or tier file changed in Exp968-980, so no re-gate was owed",
+    "state_levels": "THREE device states, each settable and recorded (Exp968-980). state 3 BOOST: protocol 1.22-1.25, mean delivered 2045-2377 MHz, screen ON + recent user activity. state 2 UNARMED: 1.67-1.70, mean ~1790 MHz, screen ON with no recent activity. state 1 SCREEN OFF: 1.85, mean ~1280 MHz. Long cells decay out of state 3 unless the activity STREAM continues (69 s: 2.05 unarmed -> 1.54 armed; 138 s: 2.14 -> 1.61, Exp978)."
   },
   "shipped_long_uptime": {
     "label": "MAX-SPEED v4.8 (DEFAULT, p1, defer OFF, tail flush ON, boundary batch ON, blocked-transpose cont ON)",
@@ -40,5 +40,17 @@
     "wer_pct": 4.65,
     "rss_gb": 1.75,
     "provenance": "whole row re-measured in ONE session (Exp864); token canaries 39/106/432/847 identical to Exp847; 40-utt mean cell still from v4.7"
+  },
+  "device_state": {
+    "_why": "Exp968-980 turned 'the metric is 1.19 or 1.85 and nobody knows why' into a three-state model with a per-run witness. Before Exp972 the loop never recorded the display state at all, and before Exp975 it recorded only the 2.4 GHz share - which reads 0 % for a 2.15 GHz run and so mislabelled the fastest long cells of the day as 'capped' (Exp974).",
+    "states": {
+      "boost": "rtf10 1.22-1.25 | mean 2045-2377 MHz | screen ON + recent user activity; the state every historical ladder cell was taken in",
+      "unarmed": "rtf10 1.67-1.70 | mean ~1790 MHz | screen ON, no recent activity",
+      "screen_off": "rtf10 1.85 | mean ~1280 MHz | display off (and the historical 'long-uptime regime' 1.85 is this state, not silicon drift)"
+    },
+    "arm_recipe": "measure.sh arms before every run: KEYCODE_WAKEUP + three volume pairs (UI-indifferent) to ARM, then a KEYCODE_WAKEUP stream every 3 s spanning the run to HOLD, sentinel-stopped. NO_ARM=1 disables it; ARM_STREAM=0 keeps burst-only. A volume-pair-only burst (the Exp972 recipe) lifted the state once and then stopped working after ~1500 events (Exp977/979).",
+    "witnesses": "cpu7_deliv2400_pct (share of the 2.4 GHz step - NECESSARY BUT NOT SUFFICIENT: reads 0 % at 2.15 GHz), cpu7_deliv_mhz (MEAN delivered MHz - the number that names the P-state; 16th TSV column) and cpu7_deliv_ge2000_pct (share >= 2.0 GHz). GUARD: an armed run whose mean is below 2000 MHz prints a WARNING and must not be compared with boosted cells.",
+    "reliability": "the arm is NOT 100 % effective: the protocol cell has read 1.2465 and 1.3385 (mean 1904) on consecutive runs, so a cell is a sample from a two-level state unless the witness is checked.",
+    "rule": "quote the state (and its witness) with every speed number; never average a low-witness cell with boosted ones; the WER gate is state-independent (12 consecutive gates identical)."
   }
 }

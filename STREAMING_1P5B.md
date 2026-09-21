@@ -458,8 +458,10 @@ everything else stays F16.
   mean **4.77**, WER 5.10% (S=31 D=3 I=3), RSS **2.05 GB**, 69 s transcript
   diff vs accuracy-first 3.93%.
 
-**Current best: 1.19 (era v4.8, FRESH-BOOT regime, boost state)** — the same byte-identical binary read
-1.85 on the pre-reboot long-uptime device (Exp880), so quote the regime with any number. The ladder in
+**Current best: 1.25 (era v4.8, ARMED measurement state = burst + wake-hint stream, mean delivered
+~2045 MHz)** — the historical 10 s cell 1.19 was the SAME byte-identical binary at mean ~2377 MHz, and
+the unarmed device reads 1.67-1.70 (screen on) or 1.85 (screen off), so quote the state AND its
+`cpu7_deliv_mhz` witness with any number (Exp968-980). The ladder in
 this section is history only; the live ladder is in
 RESULTS.md and the machine-readable statement is `.auto/headline.json`, which `audit_harness.py`
 check 9 enforces against every current-state claim in these docs.

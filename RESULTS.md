@@ -1,18 +1,25 @@
 # Results — VibeVoice-ASR-Streaming 1.5B on phone CPU (RTF)
 
-**Headline (era v4.8):** phone RTF **12.24 → 1.19 (−90.3 %)** on the 10 s protocol clip in the
-**fresh-boot regime, boost state** (delivered 2.4 GHz 96-98 %), at
+**Headline (era v4.8):** phone RTF **12.24 → 1.25 (−89.8 %)** on the 10 s protocol clip in the
+**armed measurement state** (burst + wake-hint stream; mean delivered ~2045 MHz), at
 **equal-or-better accuracy** (40-utt WER 4.55 % vs 4.55 % for the original
 configuration), with **less RAM** (2.19 GB vs 2.99 GB) and a **1.2 s** model load.
 All numbers are measured on-device (OPPO CPH2371, Dimensity 1300, 8 GB, Android 13),
 CPU-only, `-t 2` pinned to the two 2.4 GHz prime cores.
 
-> **Regime matters as much as the code.** The same byte-identical binary reads **1.85** on the
-> pre-reboot *long-uptime* device and **1.19** on the current *fresh-boot* device (Exp880) - a 36 %
-> difference from device state alone. On top of that the big core has two clock states: **boost 1.192**
-> (delivered 96-98 % at 2.4 GHz) and **settled 1.333** (+11.6 %, 0 % at 2.4 GHz), with partial states
-> in between; a user dictating repeated 10 s clips keeps boost for ~6 uses and then sees +11.6 %
-> (Exp938/942/943). Always quote the regime and the state with a number.
+> **State matters as much as the code.** The big core has THREE states and the loop can now set and
+> record each one: **boost** (protocol 1.22–1.25, mean delivered 2045–2377 MHz, screen ON + recent user
+> activity), **unarmed** (1.67–1.70, mean ~1790 MHz, screen ON with no recent activity) and **screen off**
+> (1.85, mean ~1280 MHz). The historical *long-uptime regime* 1.85 was this last state, not silicon
+> drift. Long clips DECAY out of boost unless the activity stream continues (69 s: 2.05 unarmed → 1.54
+> armed; 138 s: 2.14 → 1.61), and `measure.sh` now arms every run and records the witness
+> (`cpu7_deliv_mhz`, mean delivered MHz) on the same line as the number. An armed run below 2000 MHz
+> prints a WARNING: quote the state with every speed number (Exp968–980).
+>
+> The historical 10 s cell **1.19** was measured at mean ~2377 MHz; the armed cells above run at mean
+> ~2045 MHz on the SAME binary, which is the uniform +3–6 % seen across every cell. Nothing in this row
+> is a code change — no `src/` or tier file moved in Exp968–980 — so a reported speed difference of that
+> size between sessions should be read as P-state, not as code.
 
 > **Era: v4.7** (v4.6 final-window flush Exp829/830 + v4.7 single-pass boundary-token prefill
 > Exp835). The headline above is generated-state, not hand-typed history: `.auto/headline.json`
@@ -68,7 +75,7 @@ regenerated audio must hash to `984e60b14cfe…` to be the same probe).
 | **max-speed-lean (era **v4.8** at p13, `--vae-pieces 13 VAE_DEFER_LATE=1`, flush active from Exp830, Exp643/708/711/732/766/781/784/785/786/830/847/864; WHOLE ROW re-measured in ONE session (Exp864), token canaries 39/106/432/847 identical to Exp847 so the faster cont changed no output; the 40-utt mean cell is still the v4.7 measurement** | 1.75 GB | **2.08** | **2.24** | **2.32** | **2.38** | 2.13 *(v4.7 cell)* | **4.65 %**† | **1.75 GB** |
 | _same, 26 pieces (pre-flush cells - the p13 row above is the shipping lean tier)_ | 1.82 GB | _2.88_ | — | _2.83_ | _3.20_ | — | _4.55 % (tag `leanp26c`)_ | _1.84 GB_ |
 | **whole-file / server path** (Exp578/579) | — | — | — | live set **188-313 MB** for 6-10 s files | — | — | — | — |
-| **max-speed (shipped, era **v4.8** — v4.7 + blocked-transpose cont; FRESH-BOOT regime cells re-measured in ONE session Exp939 with the delivered-frequency column, Exp942/944; the pre-reboot long-uptime device read 1.85/2.01/2.10/2.16 for the SAME binary, Exp864)** | 2.19 GB | **1.19** | **1.34** | **1.47** | **1.58** | **1.34** | **4.55 %** | 2.19 GB |
+| **max-speed (shipped, era **v4.8** — v4.7 + blocked-transpose cont; ARMED measurement state (burst + wake-hint stream, Exp979) with the ladder re-taken in ONE session under it, Exp980; the SAME binary reads 1.67-2.14 unarmed and 1.85 with the screen off, Exp968-978)** | 2.19 GB | **1.25** | **1.46** | **1.56** | **1.65** | **1.34** | **4.55 %** | 2.19 GB |
 | _138 s sustained (last full RSS soak: v4.5, Exp826, 2191 MB flat; 138 s cell re-measured v4.6)_ | | — | — | — | _2.24_ | — | — | _2206 MB_ |
 | _same tier at PIECES=2, defer ON (previous default, pre-flush cells)_ | 2.11 GB | _2.46_ | _2.41_ | _2.43_ | _2.75_ | — | _4.51 %_ | _2.12 GB_ |
 | _same tier with F16 conv weights (`VAE_FILE=vae-encoder-q4x4ffn.gguf`, the reference build, pre-flush cells)_ | 2.2 GB | _2.54_ | _2.47_ | _2.50_ | _2.82_ | _4.41 %_ | — | _2.23 GB_ |
