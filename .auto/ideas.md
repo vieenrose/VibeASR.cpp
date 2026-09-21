@@ -4410,6 +4410,31 @@ Consequences:
     arm's own guard is exercised by the ARM_STREAM=0 and NO_ARM paths on every round that uses them.
   Anchor (10 s protocol cell, hybrid arm, 2-rep mean) 1.2487 at ~28.7 h, transcript byte-identical.
 
+- THE ARMED LADDER, ONE ASCENDING SESSION, SHIPPED HYBRID ARM (Exp980). Token canaries exact
+  (39/106/446/876), peak RSS 2191.7/2192.7/2198.3/2206.0 MB, majflt 0:
+      clip    rtf      vae_s   lm_s    MEAN MHz   deliv   historical boost cell (Exp939/940)
+      10 s    1.2465    7.2     5.3     2045.1     78 %    1.1937
+      17 s    1.4648   12.5    12.4     2110.5     80 %    1.3418
+      69 s    1.5619   52.5    55.2     2161.5     70 %    1.4695
+      138 s   1.6478  111.1   116.3     2018.1     13 %    1.5823
+  The arm RECOVERS every long cell (unarmed comparators from Exp973/976: 17 s 1.67, 69 s 2.02-2.10,
+  138 s 2.12-2.14) and the residual gap to the historical row is uniform ~3-6 %, with the witness showing
+  the reason: this device now delivers 2018-2161 MHz mean where the historical cells ran at ~2377.
+  * THE ARM IS NOT 100 % RELIABLE, AND THE GUARD SAYS SO: the protocol cell's second rep read 1.3385 with
+    mean 1903.9 and printed the WARNING. So the same recipe yields 1.2465 or 1.3385 on consecutive runs -
+    i.e. a cell is a sample from a two-level state unless the witness is checked. This is exactly why the
+    guard exists; any published cell must name its witness value, and a cell whose witness is low must be
+    retried/rejected rather than averaged with boosted ones.
+  * RESIDUAL GAP IS EXPLAINED, NOT HIDDEN: at the SAME mean P-state the code matches the historical
+    performance (Exp978: 69 s WAKEUP 1.5338-1.5454 at mean 2195-2200 vs historical 1.4695 at a higher
+    clock; 138 s 1.6046 at 2127). Nothing in this round suggests a code regression - and nothing needs
+    re-gating, since no src/ or tier file changed in the whole Exp968-980 sequence.
+  QUEUED (next, documentation): refresh the state-qualified numbers into RESULTS.md (ladder row + the
+  three-state model + the witness rules), a `device_state` block in .auto/headline.json, and a caveat in
+  the README's autoresearch section - then let audit check 9 (prose vs headline.json) drive the edits to
+  green, which is the doc-drift trigger working as designed.
+  Anchor (10 s protocol cell, armed) 1.2465 at ~28.9 h, transcript byte-identical (1a095c8496b4).
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
