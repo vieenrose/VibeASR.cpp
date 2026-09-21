@@ -4381,6 +4381,35 @@ Consequences:
   Anchor (69 s, WAKEUP arm, 2-rep mean) 1.5396 at ~28.5 h, token canary 446 exact, transcript
   byte-identical (1a095c8496b4).
 
+- SHIPPED: THE ARM IS NOW A BURST **PLUS** A STREAM, WITH A GUARD (Exp979, harness change). measure.sh's
+  arm became: the Exp972 burst (wake + 3 volume pairs) to ARM, then a KEYCODE_WAKEUP stream every 3 s
+  spanning the whole run to HOLD, stopped by deleting a sentinel file. `NO_ARM=1` still disables it and
+  `ARM_STREAM=0` keeps the burst only; the TSV `screen` column records which arm ran ("ON:arm=wake").
+  * A NEW GUARD, AND IT EARNED ITS KEEP IMMEDIATELY: if the arm ran and `cpu7_deliv_mhz` < 2000, the run
+    prints a loud WARNING that it is in an unboosted state and must not be compared with boosted cells.
+    The FIRST run of the stream-only recipe (10 s protocol cell) tripped it: 1.3388, mean 1933 MHz - a
+    REGRESSION against the old burst recipe's 1.2288/2377. Without the guard that would have been filed
+    as a slow run; with it, the cause was obvious within one iteration.
+  * DIAGNOSIS AND FIX: the burst delivers 7 events in ~4 s, the stream one every 3 s, so a 13 s
+    measurement never accumulates the same activity under stream-only. Restoring the burst first (hybrid)
+    recovered the short cell: 1.2440 / 1.2533 (means 2044.3 / 2045.9 - reproducible to 0.1 %), and the
+    69 s hybrid cell reads 1.5629 / mean 2143.7, i.e. it keeps the long-cell win too.
+  * ARM-RECIPE COMPARISON ON THE 10 s PROTOCOL CELL (single reps except the hybrid, 2 reps):
+      hybrid (default)  1.2440 / 1.2533   mean 2044 / 2046   <- SHIPPED default
+      stream only       1.3388            mean 1933
+      burst only        1.5174            mean 1779        <- the old recipe has DEGRADED
+    The burst-only recipe used to give 1.2288 at mean 2377 (Exp972 validation, ~15 rounds ago), so its
+    collapse is consistent with the habituation story and the stream is doing the real work now.
+  * HONEST COST: the arm mechanism is not free - each injected event is an on-device `input` invocation
+    (a fresh app_process), so the stream costs device CPU DURING the run. The current best protocol cell
+    (1.244-1.253, mean ~2045 MHz) is ~1.5-2 % above the historical 1.19-1.23 cells, which were taken at
+    mean ~2377 MHz. The gap is a DEVICE P-STATE gap, is visible in the witness on every run, and is not a
+    code regression.
+  * Audit green (135/1/0) after the change, capture refreshed to the protocol transcript
+    (1a095c8496b4), no stale sentinels left in /tmp. Fault/coverage guards untouched by this change; the
+    arm's own guard is exercised by the ARM_STREAM=0 and NO_ARM paths on every round that uses them.
+  Anchor (10 s protocol cell, hybrid arm, 2-rep mean) 1.2487 at ~28.7 h, transcript byte-identical.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas

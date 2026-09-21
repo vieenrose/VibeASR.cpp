@@ -175,14 +175,54 @@ if [ "$PARSE_ONLY" != 1 ]; then
 # NO_ARM=1 disables it, so state 2 can still be measured deliberately (Exp970/971 used exactly that
 # protocol by hand). This is a MEASUREMENT-PROTOCOL fix, not a speedup: state 3 is the state every
 # historical ladder cell was taken in, so it is the state the ladder's numbers are comparable in.
+# Exp979: the stimulus TYPE and DURATION matter, measured (Exp977/978). A finite burst of volume-key
+# pairs - the Exp972 recipe - lifts the P-state for a 10 s cell and then stops working at all (after
+# ~1500 repetitions of the same event the power HAL no longer counts it as "the user is here"), while a
+# stream of KEYCODE_WAKEUP events holds 2195 MHz through 69 s and 2127 MHz through 138 s (-25 % rtf on
+# both, reproduced to 0.4 % within arm). So the arm is now a CONTINUOUS stream that spans the whole
+# measurement, not a burst before it:
+#   - it starts before the run and is stopped by deleting a sentinel file afterwards;
+#   - each event is KEYCODE_WAKEUP, which cannot navigate, open anything or change app state (the screen
+#     is already on, so it is a UI no-op) - the same reason volume pairs were chosen originally;
+#   - the stream is foreground-clean: it is adb input, not an app, so it cannot change what is measured.
+# NO_ARM=1 disables the whole thing so an unarmed measurement stays possible and comparable to Exp970/971.
+# This remains a MEASUREMENT-PROTOCOL device-state pin (the same class as the battery gate and the
+# delivered-share column), not a speedup: the binary, clips, task and WER gate are untouched, and the
+# state is recorded per run so a reader can tell which state a number came from.
+ARM_SENTINEL=""
+ARM_PID=""
 if [ "${NO_ARM:-0}" != 1 ]; then
+  # Exp979b: BURST FIRST, THEN STREAM. The stream alone arms the long cells but LOST the short-cell
+  # state (the 10 s protocol cell fell to 1933 MHz / 1.3388 with the guard firing, versus 2377 MHz /
+  # 1.2288 for the old finite burst) - most plausibly because the burst delivers 7 events in ~4 s while
+  # the stream delivers one every 3 s, so a 13 s measurement never accumulates the same activity. So the
+  # arm is both: the Exp972 burst (wake + three volume pairs, UI-indifferent) to ARM, then the Exp978
+  # KEYCODE_WAKEUP stream to HOLD through long runs. Guarded either way by the cpu7_deliv_mhz warning.
   { adb -s $DEV shell "input keyevent KEYCODE_WAKEUP" >/dev/null 2>&1; } || true
   for _i in 1 2 3; do
     { adb -s $DEV shell "input keyevent KEYCODE_VOLUME_DOWN" >/dev/null 2>&1; } || true
     { adb -s $DEV shell "input keyevent KEYCODE_VOLUME_UP" >/dev/null 2>&1; } || true
     sleep 1
   done
-  ARMED=1
+  # ARM_STREAM=0 keeps the burst and drops the continuous stream: measured better for SHORT cells
+  # (1.2288-1.2440 vs 1.3388 stream-only) and worse for long ones, because each injected event is an
+  # on-device `input` invocation (a fresh app_process) and therefore costs real CPU during the run.
+  # Both recipes are declared measurement protocol; the default is the one that works at every length.
+  ARM_SENTINEL=""
+  if [ "${ARM_STREAM:-1}" != 0 ]; then ARM_SENTINEL=$(mktemp /tmp/asr_arm.XXXXXX 2>/dev/null || echo ""); fi
+  if [ -n "$ARM_SENTINEL" ]; then
+    ( while [ -f "$ARM_SENTINEL" ]; do
+        adb -s $DEV shell "input keyevent KEYCODE_WAKEUP" >/dev/null 2>&1 || true
+        sleep 3
+      done ) >/dev/null 2>&1 &
+    ARM_PID=$!
+    sleep 1
+    ARMED="wake"
+  elif [ "${ARM_STREAM:-1}" = 0 ]; then
+    ARMED="burst"            # burst-only arm: no stream, no on-device cost during the run
+  else
+    ARMED="wake-nosentinel"   # say it out loud rather than silently measuring unarmed
+  fi
 else
   ARMED=0
 fi
@@ -198,6 +238,10 @@ echo "note: device screen_after=${SCR2:-UNKNOWN} arm_ran=${ARMED}" >&2
 # because Exp940's LM transient had the request pinned at max while the run was 10 % slower.
 TIS0=$( { adb -s $DEV shell "cat /sys/devices/system/cpu/cpu7/cpufreq/stats/time_in_state" 2>/dev/null; } || true )
 adb -s $DEV shell "$_e $_lm$_vf$_mk$_th$_ar sh $RDIR/bench_device.sh ${AUDIO} ${THREADS:-2} ${PIECES:-1} loop" > .auto/last_run.txt 2>&1 || exit 1
+# Exp979: stop the arm stream as soon as the run is over (the sentinel delete is the stop signal; `wait`
+# is guarded because a signalled background job returns non-zero under set -e).
+if [ -n "${ARM_SENTINEL:-}" ]; then rm -f "$ARM_SENTINEL"; ARM_SENTINEL=""; fi
+if [ -n "${ARM_PID:-}" ]; then wait "$ARM_PID" 2>/dev/null || true; ARM_PID=""; fi
 TIS1=$( { adb -s $DEV shell "cat /sys/devices/system/cpu/cpu7/cpufreq/stats/time_in_state" 2>/dev/null; } || true )
 cat .auto/last_run.txt | tail -n 2
 adb -s $DEV pull $RDIR/out-loop.log .auto/last_out.txt > /dev/null 2>&1
@@ -280,6 +324,15 @@ else:
   GE2=$(printf '%s' "${_tis:-}" | awk '{print $3}')
   [ -n "${DELIV:-}" ] && echo "$TAG cpu7_deliv2400_pct=$DELIV"
   [ -n "${MHZ:-}" ] && echo "$TAG cpu7_deliv_mhz=$MHZ"
+  # Exp979 GUARD (Exp660 rule): if the arm ran but the P-state witness did not move, say so LOUDLY - a
+  # silently ineffective arm is exactly how Exp973-976 spent four rounds measuring the wrong state.
+  # Not fatal: a legitimately unarmed or a genuinely slow device is still a measurement, it is just not
+  # a comparable one, so it must be visible on the run's own output.
+  if [ "${ARMED:-0}" = "wake" ] && [ -n "${MHZ:-}" ] && [ "$MHZ" != "-1" ]; then
+    if awk -v m="$MHZ" 'BEGIN{exit !(m < 2000)}'; then
+      echo "WARNING: arm ran but cpu7_deliv_mhz=$MHZ (< 2000) - this run is in an UNBOOSTED state; do not compare it with boosted cells" >&2
+    fi
+  fi
   [ -n "${GE2:-}" ] && echo "$TAG cpu7_deliv_ge2000_pct=$GE2"
 fi
 [ -n "${BATTT:-}" ] && echo "$TAG batt_temp_c=$(python3 -c "print(round(${BATTT}/10,1))")"
