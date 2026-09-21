@@ -10,7 +10,25 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 DEV=AYBY6HQCMBF6B6KZ
 RDIR=/data/local/tmp/vibeasr
+# Exp1037: VALIDATE arguments (the Exp1035/Exp1036 class, queued in Exp1035 - this gate run is its proof).
+# Nothing used to reject anything: `eval40.sh --quick` became TAG=--quick START=0 COUNT=40 and ran a FULL ~9 min
+# gate writing into hyp---quick, and START/COUNT go straight into `for ((i=START; ...))`, where a flag evaluates
+# as ARITHMETIC (prefix-decrement of an unset variable = 0) so the gate runs ZERO utterances and still reaches
+# its summary. Its switches are ENV VARS (RESUME=1, VAE_FILE=, LM_FILE=, PIECES=, EXTRA_ENV=, NO_ARM=1).
+for _a in "$@"; do
+  case "$_a" in
+    -*) echo "ERROR: eval40.sh takes POSITIONAL args only: <hyp-tag> <start> <count>; its switches are env vars (RESUME=1, VAE_FILE=, PIECES=, ...). Got '$_a'" >&2; exit 2 ;;
+  esac
+done
 TAG=${1:-a78}; START=${2:-0}; COUNT=${3:-40}
+case "$TAG" in ''|*[!A-Za-z0-9._-]*) echo "ERROR: hyp tag must be a simple name (letters/digits/._-), got '$TAG'" >&2; exit 2 ;; esac
+case "$START" in ''|*[!0-9]*) echo "ERROR: <start> must be a non-negative integer, got '$START'" >&2; exit 2 ;; esac
+case "$COUNT" in ''|*[!0-9]*) echo "ERROR: <count> must be a positive integer, got '$COUNT'" >&2; exit 2 ;; esac
+[ "$COUNT" -ge 1 ] || { echo "ERROR: <count> must be >= 1 - zero utterances is not a gate" >&2; exit 2; }
+# The start bound comes from the SET ITSELF, not a hardcoded 40, so the guard cannot drift if the gate set grows.
+NWAVS=$( { ls ../eval-librispeech/wav24k/*.wav 2>/dev/null | wc -l; } || echo 0 )
+[ "${NWAVS:-0}" -gt 0 ] || NWAVS=40
+[ "$START" -lt "$NWAVS" ] || { echo "ERROR: <start>=$START is past the end of the $NWAVS-utt set" >&2; exit 2; }
 # THESE THREE DEFAULTS MUST EQUAL THE SHIPPED TIER. Exp694: they did not (VAE defaulted to
 # vae-encoder-q8_0mixed, LM to the accuracy-first Q4_K_M, PIECES to the historical 13), so a gate run
 # without explicit env measured a DIFFERENT SYSTEM - two variables off the tier being shipped and ~31 %
@@ -102,10 +120,10 @@ if [ "${NO_ARM:-0}" != 1 ]; then
 fi
 TIS0=$( { adb -s $DEV shell "cat /sys/devices/system/cpu/cpu7/cpufreq/stats/time_in_state" 2>/dev/null; } || true )
 mapfile -t WAVS < <(ls ../eval-librispeech/wav24k/*.wav | sort)
-SUM=0; N=0
+SUM=0; N=0; SKIPPED=0
 for ((i=START; i<START+COUNT && i<${#WAVS[@]}; i++)); do
   W=${WAVS[$i]}; B=$(basename "$W"); K=${B%.wav}
-  [ -s "$OUT/$K.txt" ] && { echo "skip $K"; continue; }
+  [ -s "$OUT/$K.txt" ] && { echo "skip $K"; SKIPPED=$((SKIPPED+1)); continue; }
   adb -s $DEV push "$W" $RDIR/ls40/ >/dev/null 2>&1
   # Exp941: per-utterance TIMESTAMP. The first attempt at state telemetry here sampled the big core's
   # governor request before/after each utterance - and it is INERT: 35 of 40 samples read 1430000, the
@@ -160,6 +178,17 @@ print(round(sum(f * v for f, v in d.items()) / tot / 1000, 1) if tot > 0 else -1
     fi
   fi
 fi
-[ $N -gt 0 ] && echo "METRIC rtf=$(python3 -c "print(round($SUM/$N,4))")"
+# Exp1037: a gate must COVER the range it was asked for. The loop legitimately skips existing transcripts (that
+# is how RESUME works), so compare against run+skipped, not against COUNT alone - otherwise a resumed gate looks
+# partial. The rtf line is an `if` rather than `[ $N -gt 0 ] && ...` for DETERMINISM, not because the AND-list
+# aborts: measured on this host, a bare `[ c ] && cmd` does NOT abort mid-script or inside a loop (it continues,
+# exit 0); it only propagates a 1 when it is the last statement of a FUNCTION body or of the script itself, which
+# would set -e. Corrects the wording in this file's Exp679-era notes and in audit_harness.py - see ideas.md Exp1037.
+EXPECTED=$(( COUNT < ${#WAVS[@]} - START ? COUNT : ${#WAVS[@]} - START ))
+if [ $((N + SKIPPED)) -ne "$EXPECTED" ]; then
+  echo "ERROR: gate covered $((N + SKIPPED)) of $EXPECTED utterances in range [$START,$((START + COUNT))) ($N run, $SKIPPED skipped) - refusing to report a partial gate as a gate" >&2
+  exit 1
+fi
+if [ "$N" -gt 0 ]; then echo "METRIC rtf=$(python3 -c "print(round($SUM/$N,4))")"; fi
 echo "METRIC utts=$N"
 echo "done tag=$TAG n=$N"

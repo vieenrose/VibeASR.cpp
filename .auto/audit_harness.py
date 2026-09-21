@@ -1195,9 +1195,13 @@ for p_ in sorted(glob.glob(os.path.join(HERE, '*.py'))):
 # eval40.sh / checks.sh / measure_xwin.sh had that shape, so a run log missing one optional timer line
 # would kill the metric block mid-way. The peer CUDA loop hit the same bug from the other side and had
 # believed for ~180 runs that a knob was tested when the script could not execute at all with it off.
-# Same class as Exp854's `grep -c` abort - and note the trap has an inner variant: `[ -z "$x" ] && ...`
-# as the LAST statement of a loop body makes the for loop return 1 and set -e exits (found while writing
-# the fix for this very check, which is why the fix uses `if`).
+# Same class as Exp854's `grep -c` abort. The neighbouring AND-list form was CHARACTERIZED HERE (Exp1037)
+# because the previous version of this comment had it WRONG: it claimed a bare `[ c ] && cmd` aborts when it is
+# the last statement of a LOOP body. Measured on this host (bash 5, set -euo pipefail) - mid-script, in a `for`
+# body and in a `while` body it does NOT abort (execution continues, script exit 0); it propagates a 1 only as
+# the last statement of a FUNCTION body or of the script itself, and a scan of .auto/*.sh finds NO function
+# ending that way. So preferring `if` there is about determinism of the exit status, not about an abort. The
+# `X=$( ... | grep ... )` form above stays the genuinely fatal shape, which is what this check enforces.
 sites = []
 for s_ in scripts:
     if not s_.endswith('.sh'):

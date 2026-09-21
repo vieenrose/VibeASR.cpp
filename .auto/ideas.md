@@ -5744,3 +5744,33 @@ excluded) at 39.9 h uptime.
     Fixed by deciding errexit from comment-stripped code with an anchored pattern (matches `set -e`, `set -euo`,
     `-o errexit`; NOT `set -uo pipefail`), proven both ways: the clean tree is back to 137/1/0 and plant 15 still
     fires (1/1), so the guard did not lose its teeth.
+
+- GATE BOARD #17 + eval40's ARG GUARD + A SHELL RULE THIS LOOP HAD WRITTEN DOWN WRONG (Exp1037, 9 rounds since Exp1027).
+  * **Gate: 17th consecutive identical profile.** WER 4.55 % (S=29 D=2 I=2), and PAIRED b=0/c=0 of 731 against
+    BOTH the frozen reference (hyp-gate852) and the previous rotation (hyp-gate1005) - output-identical, which is
+    the sensitive test, not WER parity. Armed gate mean 1.3795 at witness 2121.6 MHz, vs 1.3808 @ 2283.8
+    (Exp1005) and 1.3789 @ 2127.2 (Exp1027): +/-0.15 % across three armed rotations, so within one era the gate
+    mean is stable even though ACROSS eras it is an era record (Exp1027's caveat stands).
+  * **eval40.sh arg guard shipped - the item queued in Exp1035, proven by the gate run itself.** Before: any
+    leading-dash argument became the HYP TAG (`--quick` -> writes into hyp---quick, runs the full ~9 min gate),
+    and START/COUNT went straight into `for ((i=START; i<START+COUNT; ...))`, where a flag evaluates as
+    ARITHMETIC (prefix-decrement of an unset var = 0) so the gate ran ZERO utterances and still reached its
+    summary. Five bad invocations now exit 2 with specific messages and NO adb call (verified: 0 adb mentions in
+    stderr), and the start bound comes from the SET ITSELF (`ls wav24k/*.wav | wc -l`) rather than a hardcoded 40.
+    A coverage assertion was added: run+skipped must equal the in-range utterance count, so a partial gate can
+    never be reported as a gate. Honest caveat: the EXPECTED arithmetic is unit-checked (0/40->40, 0/1->1,
+    38/10->2, 39/1->1) but the FAIL branch is UNEXERCISED by design - it can only fire if the loop ever covers
+    less than it claims, since skip-on-existing is the only other exit and is counted.
+  * **CORRECTION - a shell rule in this loop's own notes was wrong (5th prior-note-wrong case: Exp1013 regex,
+    Exp1019 bimodality, Exp1020 uptime slope, Exp1022c unwitnessed H, and this).** The Exp679-era text, repeated
+    in an audit_harness.py comment, says a bare `[ cond ] && cmd` "aborts on the false branch" / "as the LAST
+    statement of a loop body makes the for loop return 1 and set -e exits". Measured here (bash 5, `set -euo
+    pipefail`): mid-script -> continues, exit 0; as the last statement of a `for` body -> continues, exit 0; in a
+    `while` body -> continues, exit 0. It propagates a 1 (and therefore aborts) only as the last statement of a
+    FUNCTION body or of the SCRIPT itself. The genuinely fatal shape is `X=$( ... | grep ... )`, which does abort
+    (that is what audit check 15 enforces, and it is correct). A scan of every .auto/*.sh function body found NO
+    function ending in an AND-list, so nothing in this harness was ever exposed - the numbers stand, only the
+    stated reason was wrong. Both comments now carry the measured characterization; `if` is still preferred, for
+    deterministic exit status rather than to prevent an abort.
+Anchor 1.2268 (clean reps 1.2209 / 1.2327 at 2325.9 / 2328.2 MHz; one 1961.3 MHz rep flagged and excluded) at
+40.3 h uptime.
