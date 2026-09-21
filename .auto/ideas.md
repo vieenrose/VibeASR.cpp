@@ -4034,3 +4034,19 @@ Consequences:
   .auto/equiv-map.md: the committed file is stale (Sep 16, vs gate791, 66 sets) but migrating its
   reference is a doc decision for an unblocked round, not a capped-watch round.
   Watch anchor 1.8413 (delivered 7), 14th capped rep, byte-identical, speeds quarantined.
+
+- GUARD ROTATION #20 UNDER THE CAP: RATIO SURVIVES, LEVEL SHIFTS (Exp961). All four arms capped
+  (request pinned 1.3 GHz, delivered 0, tx hashes in the ARM lines so no manual device pull needed):
+  Pproto 1.8463 (39 tok) | Gguard 1.9845 (55) | G2guard 1.9760 (55) | P2proto 1.8567 (+0.6 %, no step).
+  Premium = guard mean / P1 = +7.3 % - BELOW the boost series (+9.0-9.9) and below Exp947's +8.5 % FAIL
+  floor, but that floor was calibrated for boost; the sweep is internally clean (G arms agree to 0.4 %,
+  transcripts P = 1a095c8496b4 / G = 849cca7df5bc pairwise, fluent), so this is a state-conditional
+  premium, not an overfit flag.
+  * Per-token decomposition: (G-P) wall diff = 0.129 rtf x ~10.3 s / 16 tok ~= 83 ms/tok vs ~72 ms in
+  boost (1.15x), while the VAE-dominated protocol body scaled 1.64x (Exp958). Decode tokens are LESS
+  clock-sensitive than VAE compute - the same roofline from a third angle (Exp958 history-mining was
+  the second, Exp678 contention the first: contention hurt the LM most, clock cap hurts the VAE most).
+  The premium shrinks under cap precisely because its denominator is VAE-heavy.
+  * RULE REFINED: the guard premium is a clock-state-conditional ratio. Quote it only within one state;
+  a cross-state premium comparison (7.3 vs 9.7) measures clock-sensitivity, not overfit.
+  Anchor (capped, quarantined) Pproto 1.8463 at ~25.0 h, byte-identical.
