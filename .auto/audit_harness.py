@@ -1208,6 +1208,13 @@ for s_ in scripts:
         continue
     if 'set -e' not in txt:
         continue                       # no abort-on-failure, so an unguarded grep just yields empty
+    # Exp1036: decide errexit from the CODE, not from prose. The line above is only a cheap pre-filter; a COMMENT
+    # that merely mentions `set -e` used to reclassify a `set -uo pipefail` script and produced 5 false positives
+    # (found by writing exactly such a comment in hardaudio_watch.sh - the audit was right to complain, wrong
+    # about why, which is the same 'the guard read the text, not the semantics' family as Exp1013/Exp1023).
+    code_ = '\n'.join(l for l in txt.split('\n') if not l.lstrip().startswith('#'))
+    if not re.search(r'^\s*set\b[^\n]*(?:\s-[a-z]*e[a-z]*\b|-o\s+errexit)', code_, re.M):
+        continue
     for i_, ln in enumerate(txt.split('\n')):
         if re.match(r'^\s*[A-Za-z_][A-Za-z0-9_]*=\$\(', ln) and re.search(r'\b(grep|sed -n)\b', ln):
             if '|| true' not in ln and '|| :' not in ln and '|| exit' not in ln and '|| :' not in ln:

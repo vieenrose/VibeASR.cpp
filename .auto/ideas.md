@@ -5735,3 +5735,12 @@ Anchor 1.2276 (3 reps 1.2319 / 1.2260 / 1.2250, witnesses 2037.7 / 2326.3 / 2031
     discarded per 'retry, never average' rather than averaged in.
 Anchor 1.2284 (clean reps 1.2302 / 1.2284 / 1.2267 at 2036 / 2034 / 2331 MHz; one 1999.9 MHz rep flagged and
 excluded) at 39.9 h uptime.
+  * **My own comment caused a false FAIL, and the fix is that a guard must read CODE, not prose.** The audit's
+    errexit test was `'set -e' in txt`, a substring match over the whole file. My new hardaudio_watch comment
+    contains the words `set -e` (explaining why the `[ cond ] && cmd` form was replaced), which reclassified a
+    `set -uo pipefail` script as errexit and produced 5 FAILs about unguarded `$(grep ...)` lines that cannot
+    abort anything in that script. The audit was right to complain and wrong about why - the same
+    text-not-semantics family as Exp1013's three-digit regex and Exp1023's capture-vs-measurement confusion.
+    Fixed by deciding errexit from comment-stripped code with an anchored pattern (matches `set -e`, `set -euo`,
+    `-o errexit`; NOT `set -uo pipefail`), proven both ways: the clean tree is back to 137/1/0 and plant 15 still
+    fires (1/1), so the guard did not lose its teeth.
