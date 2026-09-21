@@ -5437,5 +5437,5 @@ Anchor (P mean) 1.2306 at 36.0 h (derived); witnesses 2041.8 / 2043.3 MHz; G mea
   * Session spread between two ARMED gates: gate1005 1.3180 (witness 2284) vs gate1027 1.3789 (2127) = +4.62 %
     (per-utt sd 3.27 %). Both sit above the knee, where 157 MHz is worth ~0.2 %, so this is session-level
     state spread - consistent with Exp1005's +-5 % characterization, and NOT evidence of a regression.
-Anchor 2.2e+00? no: protocol 2-rep mean 1.2245 at 36.3 h (derived; witnesses 2033.1 partial / 2322.0 full -
-the known bimodality, and per Exp1025 both above the knee so the 0.13 % gap between them is state noise).
+Anchor: protocol 2-rep mean **1.2245** at 36.3 h uptime (derived; witnesses 2033.1 and 2322.0 MHz - the known
+arm bimodality, and per Exp1025 both sit above the knee, so their 0.13 % rtf gap is state noise, not signal).
