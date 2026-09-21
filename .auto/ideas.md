@@ -4110,6 +4110,35 @@ Consequences:
     measure.sh + check 18 + TSV (needs the Exp942-style lockstep migration).
   Anchor (screen ON, 2 reps pooled) 1.7081 at ~26.3 h, transcripts byte-identical (1a095c8496b4).
 
+- ***USER-ACTIVITY INJECTION RESTORED FULL BOOST CLOCKS - AND IT PERSISTED (Exp969).*** Premise: under
+  screen-ON the request median was still 1300000, so a second mechanism had to hold the clock. Test:
+  interleaved 2x2 A/B, screen ON both arms, arm "act" injecting a stream of key events (VOLUME_DOWN/
+  VOLUME_UP pairs every ~4 s for the run's duration - chosen because they are real user-activity hints
+  but cannot navigate the UI or change app state; net volume drift zero):
+      rep1 idle  1.7043  request 1300000  deliv 19 %
+      rep1 act   1.2195  request 2400000  deliv 95 %   <- FULL BOOST, exactly the historical boost level
+      rep2 idle  1.2277  request 2400000  deliv 94 %   <- STILL BOOSTED without injection
+      rep2 act   1.2258  request 2400000  deliv 95 %
+  So one burst of injected user activity flipped the device into the full boost state, and that state
+  SURVIVED the subsequent arms (the rep2 idle control is the evidence). rtf at boost is 1.2195-1.2277 vs
+  1.70 screen-ON-capped and 1.85 screen-OFF. This is the device state that produced every "1.19" cell in
+  the ladder, and the loop can now reach it ON DEMAND instead of waiting for it.
+  * CONFOUND, STATED PLAINLY: rep1 idle -> rep1 act is a real within-pair flip, but the 2x2 layout cannot
+    separate "the injection caused it" from "the device happened to exit the state at that moment"
+    (e.g. an internal timer). The rep2 idle arm rules out "injection must be continuous", not "timer
+    coincidence". DISCRIMINATING TEST QUEUED (Exp970): let it go idle + screen off for several minutes
+    and see whether it reverts to 1300000; if it does, inject again and see whether it re-boosts. That
+    A->B->A->B cycle is what makes it causal rather than coincidental.
+  * NOT A BENCHMARK TRICK: nothing in the model, the harness or the task changed - this is the SAME
+    binary and clip, and the state had been reached passively many times before (all pre-Exp954 anchors).
+    It is a device-state/measurement-protocol finding, exactly like the delivered-share and regime rules.
+    Still to be recorded as a protocol step (an "arm-up" before measuring) with its own guard, so no
+    future number silently mixes states again - and the honest quote remains state-qualified.
+  * Boost-level sanity: 1.2195-1.2277 is slightly above the historical boost mean (1.192); delivered
+    reads 94-95 % vs the historical 96-97 %, i.e. this is boost or just under it. Do NOT overwrite the
+    headline cells from a single 2x2 - re-baseline properly (several spaced reps, screen-state pinned).
+  Anchor (boost, pooled 3 arms) 1.2243 at ~26.4 h, transcripts byte-identical (1a095c8496b4).
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
