@@ -29,7 +29,7 @@ To enable efficient edge CPU deployment, we replace the original Qwen2.5-7B lang
 
 ## Autoresearch: Phone Streaming Optimization (`streaming-1.5B`)
 
-An autonomous experiment loop (980 runs, branch `autoresearch/phone-rtf-20260909`) optimized
+An autonomous experiment loop (1000+ runs, branch `autoresearch/phone-rtf-20260909`) optimized
 on-device streaming inference of the 1.5B variant on a Dimensity 1300 phone (OPPO, Android 13,
 CPU-only, 2 big cores), with accuracy gates on every change.
 
@@ -44,11 +44,17 @@ CPU-only, 2 big cores), with accuracy gates on every change.
 </div>
 
 > **Device state is quoted with every number.** The big cores have three measurable states and the
-> harness now sets and records which one a run is in: **armed** (the row above, mean delivered
-> ~2045 MHz), **unarmed** (1.67-1.70) and **screen off** (1.85) — the same binary, 48% apart, driven
-> entirely by whether the phone has recent user activity and its display on. A run whose witness falls
-> below 2000 MHz prints a warning instead of being silently reported as a speed. The historical 1.19
-> cell was measured at ~2377 MHz on the same binary.
+> harness sets and records which one a run is in: **armed** (the row above, mean delivered ~2.0-2.4 GHz),
+> **unarmed** (1.67-1.70) and **screen off** (1.85) — the same binary, ~48% apart, driven by whether the
+> phone has recent user activity and its display on. A run whose witness falls below 2000 MHz prints a
+> warning instead of being silently reported as a speed.
+>
+> **The metric also drifts with device uptime** (+~0.17 %/h inside the boot: armed cells read 1.1939 at
+> 12-20 h of uptime and 1.2242 at 26-40 h, with the delivered share flat, so it is not the clock). The
+> row above is the ~31 h-uptime level; the historical 1.19 cells were 12-20 h-uptime cells of the SAME
+> binary. The effect survives control for background processes, memory and battery temperature, so it is
+> a vendor power-management effect we cannot measure further without root or a reboot — which is why every
+> number here carries its state *and* its uptime.
 
 - **−90% RTF** via three waves: A78 codegen + mmap loader, blocked-int8 LM/VAE kernels, then fused
   elementwise ops (depthwise-conv1d kernel, layer-scale+residual, gelu+bias, rms_norm·gamma, in-kernel

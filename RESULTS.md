@@ -16,8 +16,17 @@ CPU-only, `-t 2` pinned to the two 2.4 GHz prime cores.
 > (`cpu7_deliv_mhz`, mean delivered MHz) on the same line as the number. An armed run below 2000 MHz
 > prints a WARNING: quote the state with every speed number (Exp968–980).
 >
-> The historical 10 s cell **1.19** was measured at mean ~2377 MHz; the armed cells above run at mean
-> ~2045 MHz on the SAME binary, which is the uniform +3–6 % seen across every cell. Nothing in this row
+> **And the metric drifts with device UPTIME inside that state** (Exp1002/1003/1004): armed protocol cells
+> read **1.1939** at 12–20 h uptime (n=14) and **1.2242** at 26–40 h (n=14, same burst arm), i.e. ~+0.17 %/h,
+> with the delivered share flat (−0.5 pp per 10 h) so it is not the clock moving. The drift survives control
+> for background process count, available memory and battery temperature (partial r ≈ +0.93–0.95), so it is
+> a vendor power-management effect that is not measurable further from userspace; a two-parameter
+> (uptime + arm) fit is not identifiable because the axes are collinear (Exp1003). The cells above are the
+> **~31 h**-uptime level.
+>
+> The historical 10 s cell **1.19** was measured at 12–20 h uptime and mean ~2377 MHz; the armed cells above
+> are later-uptime cells of the SAME binary — together the difference is ~+4 %, attributed as arm ~+1.3 %,
+> uptime ~+2.5 %, P-state ~+0.5 % (Exp999/1002). Nothing in this row
 > is a code change — no `src/` or tier file moved in Exp968–980 — so a reported speed difference of that
 > size between sessions should be read as P-state, not as code.
 
