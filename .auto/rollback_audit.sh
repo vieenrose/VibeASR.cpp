@@ -11,6 +11,17 @@
 #
 # Usage: .auto/rollback_audit.sh [reps]
 set -uo pipefail
+# Exp1035: VALIDATE reps. It is read straight into `for ((r = 1; r <= REPS; r++))`, so an argument like
+# `--quick` was parsed as ARITHMETIC (prefix-decrement of an unset variable = 0) and the ladder silently ran
+# ZERO arms and printed its summary - a silent, not loud, failure of exactly the class Exp1015/Exp1034 fixed
+# elsewhere. Reject anything that is not a positive integer.
+if [ $# -gt 0 ]; then
+  case "$1" in
+    -*) echo "ERROR: unknown argument '$1' - usage: rollback_audit.sh [reps]" >&2; exit 2 ;;
+    ''|*[!0-9]*) echo "ERROR: reps must be a positive integer, got '$1' (a flag would evaluate as 0 in the arm loop and run NO arms)" >&2; exit 2 ;;
+  esac
+  [ "$1" -ge 1 ] || { echo "ERROR: reps must be >= 1" >&2; exit 2; }
+fi
 REPS=${1:-2}
 cd "$(dirname "$0")/.." || exit 1
 
@@ -25,7 +36,7 @@ ARMS=(
   "dw_axpy|VAE_DW_AXPY_OFF=1"          # Exp664 fused dw-tap axpy -> per-tap mul+add chain
   "mm_m2|GGML_MM_M2_OFF=1"             # Exp765 two-column GEMV tail -> one column per weight pass
   "ct_block|VAE_CT_BLOCK_OFF=1"        # Exp586 channels-first block layout -> [T,C] legacy path
-  "bound_batch|BOUND_BATCH_OFF=1",                                                       # Exp835: one 28-row prefill batch -> three decodes per window (isolated 1-row = full weight stream)
+  "bound_batch|BOUND_BATCH_OFF=1"                                                    # Exp835: one 28-row prefill batch -> three decodes per window (isolated 1-row = full weight stream). Exp1035: this element used to END WITH A COMMA inside the array word, so the arm exported BOUND_BATCH_OFF=1, - harmless while every knob tests PRESENCE, but a latent trap the day one compares the value.                                                       # Exp835: one 28-row prefill batch -> three decodes per window (isolated 1-row = full weight stream)
   "flush_off|FLUSH_TAIL_OFF=1"                                                       # Exp830: a PROTOCOL switch, not a fusion - must reproduce the pre-Exp829 hash 55ac39b635cb
   "cont_tile_off|GGML_CONT_TILE_OFF=1"  # Exp864 (v4.8): the blocked-transpose cont fast path (CONT site 7)
   "stack_off|VAE_DW_CONV1D_OFF=1 VAE_GELU_BIAS_OFF=1 VAE_NORM_FUSE_OFF=1 GGML_GELU_BATCH_OFF=1 VAE_LS_FUSE_OFF=1 VAE_DW_AXPY_OFF=1 GGML_MM_M2_OFF=1 VAE_DW_LPAD_OFF=1 BOUND_BATCH_OFF=1 GGML_CONT_TILE_OFF=1"  # Exp824: the honest "what does the fusion stack buy" arm - everything EXCEPT the layout revert, so it stays output-preserving

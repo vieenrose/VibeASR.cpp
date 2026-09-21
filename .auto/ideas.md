@@ -5684,3 +5684,31 @@ sd 0.26 %) at 39.2 h uptime (derived).
   {1,2,13,26}) and exits 2 - that pattern is what the others need. Rule for whoever does this: apply the guard
   and then run the tool once in its cheapest legitimate mode, so the guard is proven in both directions rather
   than assumed - which is why it was not done opportunistically here.
+
+- ROLLBACK LADDER ROTATED, AND IT HAD TWO BUGS IN ITS OWN ARGUMENT HANDLING (Exp1035, 10 rounds since Exp1024-25).
+  * **Identity contract holds exactly**: 12 of 15 arms byte-identical to the default hash 1a095c8496b4, and the
+    three documented exceptions reproduce their ARCHIVED hashes to the character - ct_block ad1953f30010,
+    flush_off 55ac39b635cb (the pre-Exp829 protocol hash), ALL_OFF c4031e597b20. Every escape hatch is still a
+    rollback path, not a different system.
+  * **Armed costs this rotation (1 rep) vs Exp1024 (2 reps):** stack_off +39.1/+39.1, ALL_OFF +44.1/+44.9,
+    ct_block +16.5/+17.1, flush_off +12.2/+12.8, dw_conv1d +11.9/+12.7, gelu_bias +6.0/+3.8, bound_batch
+    +3.6/+4.1 (Exp1025's paired ABAB said +3.97, so this arm is confirmed twice more), gelu_batch +3.1/+3.8,
+    norm_fuse +2.0/+3.1, dw_lpad +2.4/+2.9, cont_tile +1.5/+2.3, ls_fuse +1.6/+2.1, mm_m2 +0.6/+0.6,
+    dw_axpy +0.1/+0.5. Agreement is within 1 pp everywhere EXCEPT gelu_bias (+6.0 vs +3.8), which is the one
+    arm that differs by more than a rep-level wobble - single rep, early in the session, witness 2110 MHz vs
+    default 2037 (both above the knee, so per Exp1025 not state). The runbook keeps Exp1024's 2-rep numbers;
+    gelu_bias gets re-measured with the next 2-rep ladder.
+  * **BUG 1 (silent-zero arms):** `REPS=${1:-2}` went straight into `for ((r = 1; r <= REPS; r++))`, so
+    `rollback_audit.sh --quick` parsed `--quick` as ARITHMETIC (prefix-decrement of an unset variable = 0) and
+    ran ZERO arms while still printing its summary table. Now validated: non-integer or any flag exits 2, proven
+    with three bad invocations that never reach the device (`--quick`, `abc`, `0`). This completes the Exp1034
+    queue for this tool; eval40/hardaudio_watch/fault_inject stay queued with the proof run each needs.
+  * **BUG 2 (comma inside an array word):** the arm element was written `"bound_batch|BOUND_BATCH_OFF=1",` - the
+    comma is INSIDE the bash word, so the arm exported `BOUND_BATCH_OFF=1,`. Harmless today because every knob
+    tests PRESENCE (verified: no getenv in src/ or demo/ compares a value), and Exp1024/1025's bound_batch
+    numbers are therefore valid - but a live trap the day a knob compares "1". Fixed, and proven in telemetry:
+    this rotation's row reads `BOUND_BATCH_OFF=1`, earlier rows read `BOUND_BATCH_OFF=1,`.
+  * Lesson generalized: an array element with a trailing comma and a numeric variable fed from "$1" are both
+    SILENT because bash reports no error for either - when a harness tool takes a number or a flag, validate it
+    at the top and say what would have happened otherwise (the guard's message now names the zero-arms failure).
+Anchor 1.2276 (3 reps 1.2319 / 1.2260 / 1.2250, witnesses 2037.7 / 2326.3 / 2031.4 MHz) at 39.5 h uptime.
