@@ -209,15 +209,29 @@ th = threading.Thread(target=poll, daemon=True)
 REPEAT = REPEAT_N
 runs = []
 out = ''
+# Exp1040: a soak that samples nothing used to say only 'never visible to pidof', which left the REAL cause
+# (the wrapped command failing fast - e.g. `--clip chat69.wav` given as a bare name where measure.sh wants a
+# path) invisible. Capture the wrapped exit codes and stderr so the diagnosis is printed, not hunted.
+_rcs, _last_err = [], ''
 th.start()
 for _r in range(REPEAT):
     _t0 = time.time()
-    out += subprocess.run(cmd, capture_output=True, text=True).stdout
+    _p = subprocess.run(cmd, capture_output=True, text=True)
+    out += _p.stdout
+    _rcs.append(_p.returncode)
+    _last_err = _p.stderr or _last_err
     runs.append((_t0, time.time()))
 stop.set(); th.join(timeout=2)
 
 if not samples:
     print('NO SAMPLES - the process was never visible to pidof; this soak proved nothing')
+    if any(rc != 0 for rc in _rcs):
+        print(f'  CAUSE: the wrapped command exited {_rcs} (non-zero) - its last stderr lines:')
+        for _l in [x for x in (_last_err or '').strip().split('\n') if x][-4:]:
+            print('   |', _l)
+    else:
+        print(f'  wrapped exit codes {len(_rcs)} x 0 - it ran but ended before the sampler saw a pid; '
+              'check the clip path and length (a sub-second clip yields no 5 s samples)')
     sys.exit(2)
 
 base = samples[0][0]

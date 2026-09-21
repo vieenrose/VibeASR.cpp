@@ -5827,3 +5827,31 @@ session (batt 38.8 C after the 8-min board), which is also why its sd 0.74 % is 
     precision statement, and the retraction. Lesson generalized: when a measurement's STATE changes, refreshing the
     numbers in the ledger is not enough - the prose row is what a runbook quotes.
 Anchor 1.2274 (3 reps 1.2251 / 1.2327 / 1.2244, witnesses 2028.8 / 2334.3 / 2323.0 MHz, sd 0.38 %) at 41.3 h.
+
+- SOAK BOARD + A SAMPLE-LESS SOAK THAT BLAMED THE WRONG THING (Exp1040, 8 rounds since Exp1032).
+  * Soak: 3 x 69 s armed runs, per-run peaks 2198.3 / 2198.2 / 2198.2 MB (spread 0.1), steady medians
+    2177.1 / 2176.9 / 2187.1, descriptors 3->3 FLAT, threads "2->3 in every run, FLAT within every run" ->
+    NO SESSION GROWTH by the peak statistic (reproduces Exp1020/1032/1038). The tool's separate
+    "memory verdict: INCONCLUSIVE" line is the reconciled artifact from Exp1020: the cross-restart slope contains
+    the mmap first-touch ramp and cannot resolve; the peak statistic is the discriminator.
+  * HARNESS FINDING (mine, twice in one round): the first soak printed "NO SAMPLES - the process was never
+    visible to pidof" and finished in 2 s. Cause: I passed `--clip chat69.wav` (a BARE NAME) where measure.sh
+    wants a path, so measure.sh exited 1 immediately - and my own run command piped through grep/tail, which
+    swallowed rss_soak's exit 2 so run_experiment reported PASSED. Two rules, both already in the ledger and both
+    re-broken by me: (a) Exp1020 - never pipe a soak through tail; (b) new: wrap run commands in `set -o pipefail`
+    or capture to a file, because an exit code through a pipe is not evidence of anything.
+  * FIX SHIPPED (silent -> loud): rss_soak now captures the wrapped command's exit codes and stderr and, when it
+    samples nothing, prints them. Proven by negative control - the same bad invocation now reads
+    `CAUSE: the wrapped command exited [1] (non-zero)` + `ERROR: --clip file not found: chat69.wav`, still exit 2.
+  * FREE ANALYSIS (no device time): per-hatch cost statistics from device_state.tsv, armed era only, each arm row
+    paired with its temporally-nearest default row. Tight hatches: gelu_bias +5.94 +/- 0.16 %, ls_fuse +1.75
+    +/- 0.34, mm_m2 +0.52 +/- 0.22, ct_block +16.80 +/- 0.33, dw_conv1d +12.02 +/- 0.63, gelu_batch +3.42 +/- 0.45
+    -> quoting any of them to +/-1 % is honest. bound_batch (+/-1.46, n=11) and flush (+/-4.25) are looser only
+    because their rows include single-variable A/B probes and one partial-arm pairing, not hatch instability.
+    dw_axpy +0.21 +/- 0.31 (8th confirmation of inertness). This independently confirms Exp1039's retraction - the
+    gelu_bias arm is the TIGHTEST in the ladder, which is exactly why it could never have moved 2 pp.
+  * ANALYSIS TRAP FOUND HERE: the same hatch exists under two telemetry keys - `BOUND_BATCH_OFF=1,` (pre-Exp1035
+    comma bug) and `=1` (after) - so a naive group-by silently splits an arm in two (7 + 9 rows). Normalize env
+    strings before any telemetry-derived statistic.
+Anchor 1.2259 (clean reps 1.2231 / 1.2287 at 2028.4 / 2317.2 MHz; one 1999.1 MHz rep flagged and excluded) at
+41.6 h uptime.
