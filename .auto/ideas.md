@@ -6068,3 +6068,28 @@ Anchor 1.2276 (3 reps 1.2197 / 1.2293 / 1.2339 at 2024.0 / 2033.3 / 2342.8 MHz, 
     `import gate_profile; gate_profile.load(path)` - when a tool already parses a file, call it.
 Anchor 1.2251 (2 cooled reps 1.2233 / 1.2268 at 2318.7 / 2324.4 MHz, sd 0.20 %; warm-post-board reps excluded) at
 45.2 h uptime; audit 141/1/0.
+
+- SOAK BOARD: NO GROWTH (twice, with a longer session than usual) AND A THREAD-VERDICT CLOCK BUG FIXED (Exp1050, 5 rounds)
+  * 2 x 138 s (a 4x longer session than the standard 69 s recipe): per-run peaks 2206.0 / 2205.9 MB (spread 0.1),
+    medians differ by 19.3 MB (the known two-state pattern), fd FLAT 3->3. The slope fitter needs >=3 runs, so the
+    tool printed its BOUND rather than a fake verdict - correct behavior, kept.
+  * 3 x 69 s (the standard recipe, so the fitter applies): peaks 2198.2 / 2198.2 / 2198.1 MB, medians identical to
+    0.0 MB, **session-memory verdict: FLAT - no leak signal** (a positive verdict, tighter than recent rounds),
+    fd FLAT, threads FLAT. majflt 0.
+  * THE BUG THE LONGER SESSION FOUND: the thread verdict excluded "the first 20 s of every run" measured from the
+    WRAPPER's start, but `measure.sh` spends ~15 s on pre-checks and pushing before the binary exists - measured
+    14.6 s to first sample - so on a 138 s clip the skip left only ~5 s of program life and caught the legitimate
+    1->2->3 spin-up: 'thread leak?' twice, consistently, on a soak whose peaks were flat to 0.1 MB. Fixed to
+    anchor the skip on the program's FIRST SAMPLE (samples without a thread count are the ones taken before the
+    process exists, so that sample IS the appearance time).
+  * Two new selftest cases make the fix load-bearing: 'late appearance, ramp ok' (today's real shape -> FLAT) and
+    'late appearance, leak' (same late appearance, then 3->4->6 -> must still alarm). Proven: re-planting the old
+    anchor makes the first case FAIL with 'threads per run: 1->3 thread leak', restoring makes it pass; the second
+    case passes in both.
+  * MY OWN REGRESSION, CAUGHT BY THE EXISTING SUITE IN ONE LINE: my first version added a 'short run' fallback
+    that used everything after appearance when nothing survived the skip - which turned the honest 'only startup
+    sampled -> NOT MEASURED' case into 'FLAT'. The pre-existing case caught it immediately; fallback removed, so a
+    run with no post-ramp samples still says NOT MEASURED. RULE: never let a fallback convert "not measured" into
+    "clean" - this is the same class as the Exp1042 exit-0-on-failure bug and Exp1021's nan slope.
+Anchor 1.2295 (3 reps 1.2317 / 1.2287 / 1.2280 at 2328.9 / 2031.8 / 2041.3 MHz, sd 0.16 %, no flagged rep) at
+45.7 h uptime; audit 141/1/0, rss_soak selftest 6/6 cases.

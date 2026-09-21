@@ -81,6 +81,14 @@ def _selftest():
          [(0.0, 15.0)], 'NOT MEASURED'),
         ('single run, flat',         samp([(float(t), 2 + (i % 2)) for i, t in enumerate(range(0, 101, 10))]),
          [], 'FLAT'),
+        # Exp1050: the wrapper starts ~15 s before the binary exists. These two cases pin the fix - the FIRST
+        # must not alarm (it is today's real 138 s shape), the SECOND must still alarm despite the same late
+        # appearance, so anchoring on appearance cannot become a way to hide a leak.
+        ('late appearance, ramp ok', samp(list(zip(range(15, 176, 5), [1] * 2 + [2] * 2 + [3] * 29))),
+         [(0.0, 175.0)], 'FLAT'),
+        ('late appearance, leak',    samp(list(zip(range(15, 176, 5),
+                                        [1] * 2 + [2] * 2 + [3] * 8 + [4] * 6 + [6] * 15))),
+         [(0.0, 175.0)], 'thread leak'),
     ]
     for name, pts, wins, want in tvcases:
         got = thread_verdict(pts, wins)
@@ -90,7 +98,7 @@ def _selftest():
             rc = 1
     if rc == 0:
         print('  rss_soak self-test: PASS (leaks detected, flat accepted, unresolvable cases reported '
-              'honestly, thread verdict proven both ways)')
+              'honestly, thread verdict proven both ways including a late process appearance)')
     return 0
 
 
@@ -287,9 +295,12 @@ def thread_verdict(samples, runs, skip=20.0):
     Two traps. (1) A cross-run min/max is meaningless with --repeat: a fresh process legitimately starts at 1
     thread and grows to ~3, so the old global min/max "changed" on every clean soak and printed 'thread
     leak?' - it did exactly that on a soak whose per-run peaks were flat to 0.2 MB. (2) The same growth
-    exists WITHIN a run as startup, so the first `skip` seconds of every window are excluded (the same rule
-    the per-run RSS median uses). Past the ramp, 2<->3 alternation is normal (two encoder chains plus a
-    transient) and stays under the threshold; a rise of >= 2 past the ramp is a leak signal.
+    exists WITHIN a run as startup, so the first `skip` seconds are excluded - but measured from the
+    PROGRAM'S FIRST SAMPLE, not from the start of the wrapper window (Exp1050: on a 138 s soak the verdict
+    flipped to 'thread leak?' with 1->3 twice, because `measure.sh` spends ~15 s on pre-checks and pushing
+    before the binary exists, so a 20 s skip measured from the wrapper skipped only ~5 s of program life and
+    caught the legitimate 1->2->3 spin-up). Samples with no thread count are the ones taken while the process
+    does not exist, so the first sample carrying a count IS the appearance time.
     """
     pts = [(s_[0], s_[4]) for s_ in samples if len(s_) > 4 and s_[4]]
     if not pts:
@@ -297,12 +308,17 @@ def thread_verdict(samples, runs, skip=20.0):
     wins = list(runs) if runs else [(pts[0][0], pts[-1][0])]
     spans = []
     for (t0, t1) in wins:
-        v = [n for t, n in pts if t0 + skip <= t <= t1]
+        inw = [(t, n) for t, n in pts if t0 <= t <= t1]
+        if not inw:
+            continue
+        appear = inw[0][0]                    # first sample where the process exists
+        v = [n for t, n in inw if t >= appear + skip]
         if v:
             spans.append((min(v), max(v)))
     if not spans:
-        return (f'threads: NOT MEASURED - every sample fell inside the startup ramp (first {skip:.0f} s of '
-                'each run); lengthen the soak or lower the ramp skip - do NOT read this as clean')
+        return (f'threads: NOT MEASURED - every sample fell inside the startup ramp (first {skip:.0f} s after '
+                'the process appeared) or the process was never seen; lengthen the soak or lower the ramp skip - '
+                'do NOT read this as clean')
     txt = 'threads per run: ' + ' '.join(f'{a}->{b}' for a, b in spans)
     worst = max(b - a for a, b in spans)
     if worst > 1:
