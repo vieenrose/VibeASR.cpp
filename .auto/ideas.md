@@ -4972,6 +4972,27 @@ Consequences:
     Exp57/610), so what this round proves is the COMMAND + tier + runtime identity, not a clean rebuild.
   Anchor (documented-recipe run) 1.2259 at 31.7 h (derived); transcript 1a095c8496b4.
 
+- IS THE DRIFT A LOAD-RECENCY EFFECT RATHER THAN UPTIME? TESTED, NEGATIVE (Exp1009). Exp1002's drift is an
+  epoch-level association (12-20 h vs 26-40 h), and the archived covariates do not explain it - so the next
+  candidate mechanism was thermal/load HISTORY rather than uptime: if the metric recovers after a long idle,
+  then "uptime" is a proxy for "how hard the device has been driven lately", which would be a much more
+  actionable statement. Design: 2 reps, then 20 minutes of complete idle, then 3 reps, all armed and all at
+  mean 2.05-2.34 GHz so the state is identical.
+      pre-idle  (2): 1.2348 / 1.2279            mean 1.2314
+      post-idle (3): 1.2189 / 1.2257 / 1.2308   mean 1.2251   (-0.51 %)
+  * NEGATIVE: post-idle is 0.5 % faster, but with sd ~0.44 %/rep the difference's standard error is ~0.40 %
+    (t ~ 1.3) - i.e. the test cannot resolve an effect of that size and the honest reading is "no idle
+    recovery detectable", bounding any such effect at <=~1 %. Within the post-idle window the reps drift
+    UPWARD (1.2189 -> 1.2308), which is the opposite of recovery. The 20-minute idle also RE-ARMED nothing
+    about the state (all five reps read 2.05-2.34 GHz mean), so this was a clean like-for-like test.
+  * WHAT IT ADDS: the epoch-level drift stands as an association with uptime (or with something that only
+    changes over hours), and the fine-scale variation inside one epoch is ~+-0.5 % noise around ~1.23 at
+    32 h. So: (i) no need to insert long idles before measurements beyond the thermal discipline already in
+    place; (ii) any future "the device got faster/slower" claim inside an epoch should be treated as noise
+    unless it exceeds ~1 %; (iii) the mechanism remains unresolved and user-inaccessible (Exp1004).
+  Anchor (armed protocol, post-idle 3-rep mean) 1.2251 at 32.0 h (derived); witnesses 2320-2335 MHz,
+  transcript 1a095c8496b4.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
