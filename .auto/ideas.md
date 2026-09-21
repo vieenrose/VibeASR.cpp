@@ -4773,6 +4773,35 @@ Consequences:
   Anchor (armed protocol rep) 1.2351 at ~33.5 h, witness 2375.0 MHz, transcript 1a095c8496b4
   byte-identical.
 
+- WHY IS THE ARM THERE, AND HOW MUCH DOES IT COST? (Exp999, host + device). Three findings:
+  (a) MULTI-KEYCODE INVOCATIONS SAVE NOTHING: `input keyevent 26 26 26` is accepted (RC=0) but costs
+      191 ms vs 182 ms for three separate calls - i.e. the ~50-64 ms cost is PER EVENT, not per JVM start
+      (my Exp988 attribution of it to "a fresh app_process per call" was only half the story; the event's
+      dispatch/power-hint path dominates). Packing events cannot reduce the price.
+  (b) A CHEAPER EVENT PATH DOES NOT EXIST HERE: adb shell IS in the `input` group (gid 1004) and
+      /dev/input/event* is group-writable, but `sendevent` is still refused - SELinux (u:r:shell:s0) blocks
+      raw input injection, and there is no root. So the only stimulus available is the `input` command.
+  (c) THE ARM'S COST, BOUNDED BY A POSITIVE CONTROL: tripling the event rate (ARM_PERIOD=1 vs the 3 s
+      default) changed the protocol cell by only **+0.33 %** (1.2511 vs 1.2470, all reps in the same armed
+      level) - i.e. even 10x the events cannot be shown to cost more than ~0.5 %, so the arm is NOT the
+      main reason today's cells sit above the historical 1.19.
+  * ***WHAT THE P-STATE ACTUALLY CONTRIBUTES, FROM THE POOLED ARMED ROWS (default config only - the Exp906
+    config-filter lesson applied, which removes the rollback-ladder arms that had poisoned my first cut)***:
+      HIGH-P (>= 2200 MHz, mean 2354): n=10  mean rtf **1.2409**  sd 0.0039
+      LOW-P  (<  2200 MHz, mean 2038): n=17  mean rtf 1.2466  sd 0.0056
+      difference +0.46 %, se 0.0018, t=3.08 -> a ~15 % clock difference moves the metric by under 0.5 %.
+    So `deliv_mhz` is NOT purely binary (Exp994's matched pair was a coincidence - retract that nuance: the
+    threshold design is still right, the *insensitivity* claim was too strong), and above 2000 MHz the
+    metric is nearly flat in the mean. The measured slope (~3 % rtf per GHz) tells us the metric is mostly
+    memory/bandwidth-limited in this clock range, which is also why the Exp974 2.15-vs-2.4 GHz long cells
+    differed by only 4-6 % instead of the 12 % the clock ratio would suggest.
+  * CONSEQUENCE FOR THE HEADLINE: today's armed cell (1.2444 all-P, 1.2409 high-P) sits ~4 % above the
+    pre-reboot 1.19, and the two candidate explanations are now BOUNDED and named: the arm/instrument
+    (<= 0.5 % by the control above) and the device's own long-uptime state (the Exp880 axis, which this
+    session cannot separate without a reboot). Nothing suggests a code regression - no src or tier file
+    has changed since v4.8, and the twelve+ gate runs are output-identical.
+  Anchor (armed protocol, high-P subset mean) 1.2409 at ~33.7 h, transcript byte-identical.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
