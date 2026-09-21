@@ -5906,3 +5906,20 @@ Anchor 1.2262 (clean reps 1.2225 / 1.2299 at 2034.7 / 2330.4 MHz; one 1989.8 MHz
     bash syntax error at line 24, which is valid Python). Use `python3 -c "import ast; ast.parse(...)"` - that is
     what the check became in this session's own commands.
 Anchor 1.2287 (3 reps 1.2312 / 1.2253 / 1.2296, witnesses 2036.3 / 2032.0 / 2039.0 MHz, sd 0.24 %) at 42.1 h.
+
+- GUARD #26 + FAULT BOARD, BOTH IN ONE ROUND, BOTH EXPECTED-NULL AND BOTH GREEN (Exp1043, 6 rounds each).
+  * Guard: Pproto 1.2293 / 1.2353, Gguard 1.3600 / 1.3575 = premium **+10.26 %**. The armed series is
+    9.57 / 10.77 / 10.26 / 10.22 / 10.37 / 10.26 -> **10.2 +/- 0.45 % over 26 rotations**, i.e. after ~40 rounds of
+    protocol-local work the never-optimized 10 s slice still tracks the protocol at the same per-decode-token
+    premium. The guard clip's transcript hash 849cca7df5bc is byte-identical to the archived rotations, so its
+    OUTPUT has held for the whole armed era, not just its ratio.
+  * Fault board: **13/13 PASS**, healthy baseline H = 1.2328 (armed, above the knee). Truncated and lying WAV
+    headers are still MEASURED with the content-derived denominator (1.4056 / 1.3496 - the relative-band probe
+    that has now survived at least four device regimes), 44 B and 0 B files are REFUSED with no metric, and every
+    config edge is loud (n_ctx below one window, pieces = 0, pieces not dividing 26, unknown --kv-type).
+  * Ordering note that matters for the audit's capture check: the fault board runs the binary directly and its
+    DIAGNOSTIC arms refresh .auto/last_out.txt with non-protocol captures, so the audit WARNs (by window count,
+    Exp1023). Running the anchor reps LAST restores the protocol capture, which is why the closing audit came back
+    139/1/0 with only the known asset-collision WARN.
+Anchor 1.2291 (3 reps 1.2295 / 1.2302 / 1.2277, witnesses 2331.9 / 2331.1 / 2041.9 MHz, sd 0.10 % - the tightest
+session in a while) at 42.3 h uptime; the guard rotation's own P reps bracket it (1.2293 / 1.2353).
