@@ -5572,3 +5572,40 @@ Anchor 1.2265 (3 reps 1.2275 / 1.2256 / 1.2265, sd 0.08%, witnesses 2035.6 / 232
     1.16 / 1.26 / 1.35 on the same three sets), i.e. the lean tier costs +14.6 / +12.1 / +13.4 % there - the
     same +12-15 % as on read speech, so the tier gap is domain-independent.
 Anchor 1.2282 (3 reps 1.2250 / 1.2298 / 1.2299, witnesses 2029.7 / 2037.0 / 2328.5 MHz) at 38.0 h uptime.
+
+- SOAK BOARD + THE BATCH DECISION PUT THROUGH THE PAIRED TEST (Exp1032, 11 rounds since Exp1020-21).
+  * **Soak: no session growth.** 3 armed 69 s runs, peaks 2198.3 / 2198.3 / 2198.3 MB (identical to 0.1 MB),
+    descriptor verdict FLAT, threads 2->3 in every run and FLAT within every run, majflt 0, canary 446 x3.
+    Reproduces Exp1020-21 (2198.2-2198.4). The soak runs themselves were partial-state (witness ~1987 MHz) -
+    irrelevant for RSS, noted so nobody reads their rtfs as cells.
+  * **The zh puzzle from Exp1031, decomposed with two arms on holdout_zh** (batch gate is
+    `pieces==1 && !defer && !xwin`, so defer also switches the batch off at p1 - which makes p1+defer a free
+    probe of "batch off, granularity unchanged"):
+      (p1, defer off, batch ON)  = text A, WER 0.1538   | (p1, defer off, batch OFF) = text B, WER 0.1474
+      arm X (p1, defer ON)       = 637 tok, WER 0.1474 = B   -> defer is TEXT-INERT at p1 (Exp554 confirmed)
+      arm Y (p13, defer OFF)     = 656 tok, WER 0.1560 = neither A nor B
+      lean  (p13, defer ON)      = 641 tok, WER 0.1538 = text A byte-identical
+    So at p13 the defer flag DOES move the output (15 tokens) while at p1 it does not, and the lean tier's zh
+    equality with shipped is a **path coincidence, not an invariance**. Do not cite it as evidence of any
+    general equivalence.
+  * **Paired tests on everything the lean-batch decision rests on** (free - saved transcripts):
+      overlap `gate_ms_v2` shipped vs batch OFF : b=0 / c=6 of 85, McNemar exact **p=0.031**, CI [-12.9,-2.4] pp
+      overlap lean tier vs batch OFF at p1      : **0 / 85 discordant** (identity - the deficit IS the batch)
+      overlap lean tier vs shipped tier         : b=6 / c=0, **p=0.031** (the same 6 tokens)
+      overlap archived pre-flush lean vs default: b=6 / c=0, p=0.031 - the same 6 tokens across eras
+      zh shipped vs batch OFF (arm X)           : b=7 / c=6 of 468, p=1.0, CI [-0.85,+2.14] pp -> NOT a cost
+      zh shipped vs arm Y                       : b=2 / c=3 of 468, p=1.0
+    **Net recommendation-relevant statement: the boundary batch is a measured, significant +7.1 pp on overlapped
+    speech and neutral as far as any available paired test can tell on read speech, consumer-mic English and
+    zh-TW - its only price is speed (~2.6 % of the lean tier).** The "it costs 0.64 pp on zh" line was a point
+    estimate at the corpus's power limit and is now labelled as such in RESULTS.md.
+  * Two self-caught harness slips, both of families this loop has already been bitten by:
+    1. I ran the soak tool through `... | tail -n 16`, which DESTROYED its verdict lines (the deliverable) and
+       the saved "full output" was already truncated - so the board looked unrun. Fix: redirect to a file and
+       grep afterwards. Same family as Exp1029's truncated per-arm headers.
+    2. `awk -F'\t' '{print $2,$3,...}'` on device_state.tsv printed garbage (rtf=138874) because I guessed the
+       column indices - use the header names via csv.DictReader, never positions (the header has been migrated
+       several times; Exp1019 found a 306-field header once).
+  * Guard demo: anchor rep1 read 1.3883 @ 1811.6 MHz with batt 40.4 C after the soak -> flagged, cooled 200 s,
+    then 1.2238 @ 2327.5 and 1.2334 @ 2043.2. The cooldown-and-re-probe recipe from Exp1030 works in production.
+Anchor 1.2286 (2 clean reps; 1 flagged partial excluded) at 38.8 h uptime.
