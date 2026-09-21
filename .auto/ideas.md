@@ -4050,3 +4050,13 @@ Consequences:
   * RULE REFINED: the guard premium is a clock-state-conditional ratio. Quote it only within one state;
   a cross-state premium comparison (7.3 vs 9.7) measures clock-sensitivity, not overfit.
   Anchor (capped, quarantined) Pproto 1.8463 at ~25.0 h, byte-identical.
+
+- ROLLBACK IDENTITY AUDIT UNDER CAP: ALL HATCHES HOLD (Exp962). 15 arms x 2 reps, every arm capped
+  (1300000 throughout), rep order reversed: 12/15 arms byte-identical to default (1a095c8496b4),
+  flush_off = 55ac39b635cb both reps (the pre-v4.6 hash, as documented), ct_block 37 tok
+  (ad1953f30010), ALL_OFF 38 tok (c4031e597b20) - every hash deterministic across reps, and the map
+  matches Exp906's exactly. Clock speed does not move numerics (as constructed), so the whole escape-
+  hatch matrix is re-verified despite the cap; only the COST column is quarantined (capped-conditional:
+  dw_conv1d +8.7, gelu_bias +5.4, bound_batch +2.8, flush +13.7, stack_off +26.2, ALL_OFF +39.6 - NOT
+  runbook updates, quoted here only so a future boost ladder can diff against them).
+  Default arm 1.8488; watch anchor after 1.8511 (delivered 0), byte-identical. 15th/16th capped reps.
