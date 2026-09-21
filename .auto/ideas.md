@@ -4011,3 +4011,14 @@ Consequences:
 - CAP STILL STUCK, 11th CAPPED REP (Exp957): post-wake anchor 1.8403, request 1300000, delivered 6,
   batt 30.2 C, transcript byte-identical. No user direction on reboot yet - no reboot. Capped level is
   stable to ~1.84-1.86 across all reps. Awaiting user decision (reboot / wait / host-only).
+
+- CAPPED-STATE PHASE SCALING, FROM HISTORY (Exp958, host-only, no device time): medians over
+  device_state.tsv, 26 boost rows (delivered 94-98, default config) vs 8 capped rows:
+  rtf 1.196 -> 1.853 (1.55x), vae 7.1 -> 11.65 (1.64x), lm 4.9 -> 6.9 (1.41x). Clock ratio alone
+  (2.4/1.3) predicts 1.85x, so both phases scale SUB-clock - and the VAE is MORE clock-sensitive than
+  the LM, consistent with the standing roofline (VAE compute-bound GEMMs, LM mixed bandwidth/latency:
+  Exp533/678). A clock cap hurts compute-bound work most; contention (Exp678) hurt the LM most -
+  the two stressors mirror each other. LIMIT: prefill/decode/load are not TSV columns, so the LM's
+  internal split under cap cannot be mined historically (only the latest last_err.txt keeps it).
+  If a per-phase TSV extension is ever wanted, that is the column set to add - queued, not built.
+  Watch anchor this round 1.846 (delivered 6), 12th capped rep, byte-identical.
