@@ -4290,6 +4290,38 @@ Consequences:
     fault 18 re-proven to fire (coverage 1/1), TSV now 16 columns with the header migrated append-only.
   Anchor (state 3, default arm) 1.2296 at ~27.8 h, transcript byte-identical.
 
+- P-STATE RETRY RULE: WORKS AS DESIGNED, AND IT PROVES THE LONG-CELL BOOST IS GONE (Exp976). Each ladder
+  cell was retried until its mean delivered frequency was >= 2000 MHz (3 attempts for 10/17 s, 2 for
+  69/138 s), with every attempt recorded and the outcome reported either way:
+      CELL   outcome   attempts  accepted rtf  mean MHz  (rejected attempts' means)
+      10 s   ACCEPTED      1        1.2231     2375.6    -
+      17 s   REJECTED      3        1.6733     1789.9    (1790.8, 1787.0)
+      69 s   REJECTED      2        2.0150     1404.9    (1405.3)
+      138 s  REJECTED      2        2.1189     1350.4    (1350.7)
+  * The rule is sound and the retries are REPRODUCIBLE (17 s: 1790.8/1787.0/1789.9 = 0.2 % spread;
+    69 s: 1405.3/1404.9; 138 s: 1350.7/1350.4) - so the rejections are state, not noise. The 10 s cell
+    accepts on the FIRST attempt in every round it has ever been run (five rounds now: 1.2195/1.2283/
+    1.2288/1.2257/1.2231, means 2330-2377), i.e. the arm reliably establishes state 3 and the state holds
+    for ~10 s.
+  * THE MEAN-MHz WITNESS SEES A MONOTONE DECAY with clip length: 2376 / 1790 / 1405 / 1350 MHz. Note
+    1790 for the 17 s cell - its khz_med is 1300000, so the mean is picking up intermittent bursts that
+    the single-step columns could not show. This is the Exp973 decay, now measured by an instrument that
+    was validated against both extremes.
+  * HONEST READING: (i) today the device sustains full boost for ~10-15 s and nothing longer, so a
+    boost-state LONG cell cannot be taken right now - Exp974's 69 s/138 s boosted cells were real but are
+    not reproducible on demand; (ii) therefore the loop must publish a STATE-QUALIFIED ladder: the 10 s
+    boost cell (1.2231) plus the state-2/1 cells for all four lengths (1.67 / 2.02 / 2.12), and must NOT
+    mix them into a single "ladder" as if it were one regime. The historical 1.19/1.34/1.47/1.58 row is a
+    boost-regime row and stays labelled as such; it is reproducible only when the device cooperates.
+  * COST NOTE: the retry policy spent 1113 s of device time for 7 runs (the two 138 s cells alone are
+    ~7 min). A retry policy is only worth it where an accept is PLAUSIBLE; for long cells today it is a
+    known-negative, so do not burn attempts on it again without a mechanism change.
+  QUEUED: (1) test a DIFFERENT activity stimulus (this round's arm has been the same volume-pair stream
+  for ~1500 events; if the power HAL habituates to a repeated event shape, a different one - a tap/swipe
+  or a media key - may restore long-cell boost, and that is cheap to test); (2) doc refresh with the
+  state-qualified ladder; (3) re-read the historical delivered-share notes under the corrected units.
+  Anchor (boost, 10 s cell, accepted) 1.2231 at ~28.2 h, transcript byte-identical (1a095c8496b4).
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
