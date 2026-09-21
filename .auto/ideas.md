@@ -4086,3 +4086,9 @@ Consequences:
 
 - WATCH, 17th CAPPED REP (Exp966): post-wake anchor 1.8429 (request 1300000, delivered 7, batt 31.1 C),
   byte-identical, speeds quarantined. All boards current; noise/rate/fast-LT need boost.
+
+- CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
+  sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
+  other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
+  are not evidence under cap either; the >=2 % ship bar transfers. Watch anchor 1.8454 (delivered 6),
+  18th capped rep, byte-identical.
