@@ -5803,3 +5803,27 @@ Anchor 1.2268 (clean reps 1.2209 / 1.2327 at 2325.9 / 2328.2 MHz; one 1961.3 MHz
     hyp TAG with a gate number, not the run number that mentioned it.
 Anchor 1.2350 (3 reps 1.2283 / 1.2458 / 1.2309, witnesses 2037.6 / 2007.1 / 2021.3 MHz) at 40.6 h - a warm
 session (batt 38.8 C after the 8-min board), which is also why its sd 0.74 % is above the usual 0.3-0.5 %.
+
+- ROLLBACK LADDER 2-REP RUN SETTLES gelu_bias - AND THE "OUTLIER" WAS MY OWN MIS-COMPARISON (Exp1039, owed since Exp1035).
+  * Ladder green: 12/15 arms byte-identical to 1a095c8496b4; the 3 documented exceptions at their exact archived
+    hashes (flush_off 55ac39b635cb, ct_block ad1953f30010 37 tok, ALL_OFF c4031e597b20 38 tok). Costs (2 reps,
+    order-reversed rep2, default 1.2312): stack_off +39.1, ALL_OFF +43.7, ct_block +16.6, flush +12.3, dw_conv1d
+    +11.5, gelu_bias +5.8, bound_batch +3.7, gelu_batch +3.2, dw_lpad +1.8, norm_fuse +1.7, cont_tile +1.7,
+    ls_fuse +1.5, mm_m2 +0.4, dw_axpy -0.0 (7th confirmation it is inert on the shipped path).
+  * **NEW RESOLUTION STATEMENT for every ladder number**: measured from the 15 rep-pairs, median |rep1/rep2 - 1| =
+    0.19 % (max 0.67 %), default drift +0.07 %. So a >1 pp difference WITHIN one ladder is noise, while a >1 pp
+    difference BETWEEN ladders is real. That is what made the gelu_bias question answerable.
+  * **RETRACTION (6th prior-note-wrong case): gelu_bias was never an outlier.** Exp1035 wrote "+6.0 vs +3.8 in
+    Exp1024"; Exp1024's committed table has no gelu_bias row at all - +3.8 is GGML_GELU_BATCH_OFF's value, which I
+    read off the wrong row. The telemetry archive settles it for free: all 11 archived rows with extra_env =
+    'VAE_GELU_BIAS_OFF=1' read +5.3 % to +6.9 %, including Exp1024's OWN two reps (+6.18 / +5.90) and the unarmed
+    era (1.9450 vs 1.8464). Stable at about +0.71 s on the 10 s clip. No measurement was ever wrong, only that
+    comparison - so the 2-rep "re-measure" I owed turned out to be answerable without device time at all, and the
+    2-rep run then confirmed it independently.
+  * **DOC-DRIFT FINDING (the rule from Exp647 applied): RESULTS.md had no ARMED-era ladder row.** Exp996 and
+    Exp1024 refreshed the numbers in the armed state, but the last row a reader would find was Exp883's fresh-boot
+    row (default 1.1913) - whose percentages are systematically smaller because the default was slower, exactly
+    the state-dependence Exp996 warned about. Added an armed row with absolute seconds first (Exp883's rule), the
+    precision statement, and the retraction. Lesson generalized: when a measurement's STATE changes, refreshing the
+    numbers in the ledger is not enough - the prose row is what a runbook quotes.
+Anchor 1.2274 (3 reps 1.2251 / 1.2327 / 1.2244, witnesses 2028.8 / 2334.3 / 2323.0 MHz, sd 0.38 %) at 41.3 h.
