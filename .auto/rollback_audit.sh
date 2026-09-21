@@ -32,7 +32,7 @@ ARMS=(
   "ALL_OFF|VAE_DW_CONV1D_OFF=1 VAE_GELU_BIAS_OFF=1 VAE_NORM_FUSE_OFF=1 GGML_GELU_BATCH_OFF=1 VAE_LS_FUSE_OFF=1 VAE_DW_AXPY_OFF=1 GGML_MM_M2_OFF=1 VAE_DW_LPAD_OFF=1 BOUND_BATCH_OFF=1 GGML_CONT_TILE_OFF=1 VAE_CT_BLOCK_OFF=1"
 )
 
-declare -A SUM N HASH TOK KMD
+declare -A SUM N HASH TOK KMD MZW
 REF=""
 DEV=${DEV:-$(grep -m1 '^DEV=' .auto/measure.sh | cut -d= -f2)}   # single source: measure.sh
 # Exp883 thermal gate: each arm runs only when the battery reads settled (<= 370 = 37.0 C).
@@ -85,12 +85,18 @@ for ((r = 1; r <= REPS; r++)); do
     # heat drift the rep-reversal exists to cancel. Print it per arm and carry it into the summary.
     kmd=$(echo "$out" | grep -o 'METRIC cpu7_khz_med=[0-9]*' | cut -d= -f2)
     KMD[$name]="${KMD[$name]:-}${kmd:-?} "
-    echo "rep$r $name rtf=$rtf tok=$tok hash=$h clock=${kmd:-?}$gate"
+    # Exp996: the arm's P-state WITNESS (mean delivered MHz, Exp975/987). Costs only belong in a runbook
+    # if they were measured in the state the runbook's numbers describe, and Exp962's ladder was run
+    # entirely in the capped state - those costs were quarantined for exactly this reason. Record the
+    # witness per arm so a future reader can tell which state a cost was measured in.
+    mzw=$(echo "$out" | grep -o 'METRIC cpu7_deliv_mhz=[0-9.]*' | cut -d= -f2)
+    MZW[$name]="${MZW[$name]:-}${mzw:-?} "
+    echo "rep$r $name rtf=$rtf tok=$tok hash=$h clock=${kmd:-?} mhz=${mzw:-?}$gate"
   done
 done
 
 echo
-echo "arm           mean_rtf   vs_default   tokens   clock       transcript_identity"
+echo "arm           mean_rtf   vs_default   tokens   clock       mean_mhz  transcript_identity"
 base=$(python3 -c "print(${SUM[default]:-1}/${N[default]:-1})")   # MEAN, not the raw sum (Exp814: the
                                                                                                                    # first version divided by the sum and printed -50% for every arm)
 for a in "${ARMS[@]}"; do
@@ -102,7 +108,7 @@ for a in "${ARMS[@]}"; do
   if [ "$distinct" = 1 ] && [ "${HASH[$name]%% *}" = "$REF" ]; then id="identical to default"
   elif [ "$distinct" = 1 ]; then id="deterministic but DIFFERS from default"
   else id="UNSTABLE across reps"; fi
-  printf "%-13s %-10s %-12s %-8s %-11s %s\n" "$name" "$mean" "$d" "${TOK[$name]:-?}" "${KMD[$name]:-?}" "$id"
+  printf "%-13s %-10s %-12s %-8s %-11s %-9s %s\n" "$name" "$mean" "$d" "${TOK[$name]:-?}" "${KMD[$name]:-?}" "${MZW[$name]:-?}" "$id"
 done
 echo
 echo "ref transcript hash: $REF  (all arms must match it to count as a rollback path)"

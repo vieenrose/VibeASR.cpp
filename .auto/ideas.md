@@ -4717,6 +4717,36 @@ Consequences:
     file now carries the statistics instead of one rep).
   Anchor (armed protocol, pooled 6-rep mean) 1.2427 at ~32.9 h, transcript byte-identical (1a095c8496b4).
 
+- ROLLBACK LADDER IN THE ARMED STATE - RUNBOOK COSTS USABLE AGAIN (Exp996, 15 arms, all armed). The
+  Exp962 ladder was run entirely in the CAPPED state, so its cost column was quarantined; the ladder's
+  arms go through measure.sh, so they inherit the arm for free. Per-arm witness added to the tool first
+  (Exp987's lesson applied to the 4th tool - per-arm line + summary now carry `mhz=`, and every arm read
+  clock 2400000 with witnesses 2062-2350 MHz, i.e. all armed):
+      arm              armed cost   (capped cost, Exp962)   identity
+      dw_conv1d          +12.1 %        +8.7 %              identical
+      gelu_bias           +6.9 %        +5.4 %              identical
+      gelu_batch          +3.6 %        +4.1 %              identical
+      norm_fuse           +3.5 %        +1.0 %              identical
+      dw_lpad             +2.5 %        +3.1 %              identical
+      cont_tile_off       +2.5 %        +1.6 %              identical
+      ls_fuse             +2.1 %        +1.4 %              identical
+      mm_m2               +0.6 %        +0.2 %              identical
+      dw_axpy             +0.2 %        +0.1 %              identical
+      ct_block           +16.7 %       +19.8 %              deterministic, DIFFERS (37 tok)
+      flush_off          +12.2 %       +13.7 %              pre-v4.6 hash 55ac39b635cb (documented)
+      bound_batch         +4.3 %        +2.8 %              identical
+      stack_off          +41.0 %       +26.2 %              identical
+      ALL_OFF            +44.4 %       +39.6 %              deterministic, DIFFERS (38 tok)
+      default (ref)     1.2458                                            1a095c8496b4
+  * TWO CONCLUSIONS: (1) IDENTITY IS STATE-INDEPENDENT, as the loop has now shown three ways - 12/15 arms
+    byte-identical to the default in the armed state, with the same three documented exceptions and their
+    exact historical hashes, so every escape hatch is still a rollback path; (2) THE COSTS ARE NOT
+    state-independent: the fusion stack's price rises from +26.2 % (capped) to **+41.0 %** (armed) and
+    ALL_OFF from +39.6 to +44.4 %, i.e. the fusion stack is worth MORE when the clock is high (its savings
+    are CPU-side, so they scale with clock while the surrounding memory traffic does not). The runbook
+    should quote the armed column, and any pre-Exp996 cost table must be read as capped-conditional.
+  Anchor (armed ladder default arm) 1.2458 at ~33.0 h, transcript byte-identical.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
