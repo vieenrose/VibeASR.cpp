@@ -123,6 +123,31 @@ for r in $(seq 1 "$REPS"); do
       sleep 60
       if [ "$w" = 3 ]; then HOT=" HOT"; fi
     done
+    # Exp987: ARM THE SWEEP. This tool - the loop's primary A/B runner, used for all 21 guard rotations -
+    # never armed, so its arms ran in the UNARMED device state (Pproto 1.85 vs the armed protocol's
+    # 1.25). Ratios survive (every arm shared the state), which is why the rotations stayed comparable,
+    # but absolute ARM-line numbers were not. The same Exp979 recipe as measure.sh now spans each arm:
+    # burst to ARM, then a KEYCODE_WAKEUP stream to HOLD, stopped after the arm's device run.
+    # NO_ARM=1 restores the old unarmed behaviour. The witness printed below is read from the SHARED
+    # .auto/deliv_share.py (all three numbers), so the two harnesses cannot drift apart (Exp869 class).
+    A_SENT=""
+    if [ "${NO_ARM:-0}" != 1 ]; then
+      adb -s $DEV shell "input keyevent KEYCODE_WAKEUP" >/dev/null 2>&1 || true
+      for _i in 1 2 3; do
+        adb -s $DEV shell "input keyevent KEYCODE_VOLUME_DOWN" >/dev/null 2>&1 || true
+        adb -s $DEV shell "input keyevent KEYCODE_VOLUME_UP" >/dev/null 2>&1 || true
+        sleep 1
+      done
+      A_SENT=$(mktemp /tmp/asr_sweep_arm.XXXXXX 2>/dev/null || echo "")
+      if [ -n "$A_SENT" ]; then
+        ( while [ -f "$A_SENT" ]; do
+            adb -s $DEV shell "input keyevent KEYCODE_WAKEUP" >/dev/null 2>&1 || true
+            sleep 3
+          done ) >/dev/null 2>&1 &
+        A_PID=$!
+        sleep 1
+      fi
+    fi
     # Exp947: per-arm DELIVERED state (Exp942's column, extracted into .auto/deliv_share.py). The
     # request-based clock fields below come from bench_device.sh's own sampling; this is the
     # request-independent one, and it is what certifies that every arm ran in the same state.
@@ -130,7 +155,12 @@ for r in $(seq 1 "$REPS"); do
     adb -s $DEV shell "$DEF_ENV $envs THREADS=$threads sh $RDIR/bench_device.sh $audio $threads $pieces $tag" \
       > .auto/multi-run-$tag.txt 2>&1
     adb -s $DEV shell "cat /sys/devices/system/cpu/cpu7/cpufreq/stats/time_in_state" > /tmp/tis1.$$ 2>/dev/null || true
-    dv=$( { python3 .auto/deliv_share.py /tmp/tis0.$$ /tmp/tis1.$$ 2>/dev/null; } || true )
+    if [ -n "${A_SENT:-}" ]; then rm -f "$A_SENT"; A_SENT=""; fi
+    if [ -n "${A_PID:-}" ]; then wait "$A_PID" 2>/dev/null || true; A_PID=""; fi
+    _w=$( { python3 .auto/deliv_share.py /tmp/tis0.$$ /tmp/tis1.$$ 2>/dev/null; } || true )
+    dv=$(printf '%s' "${_w:-}" | awk '{print $1}')
+    mz=$(printf '%s' "${_w:-}" | awk '{print $2}')
+    g2=$(printf '%s' "${_w:-}" | awk '{print $3}')
     rm -f /tmp/tis0.$$ /tmp/tis1.$$
     adb -s $DEV pull $RDIR/err-$tag.log .auto/multi-err-$tag.txt >/dev/null 2>&1
     # Exp919: also pull the arm's STDOUT (where the [n/m] window lines are). Until now the transcript
@@ -153,7 +183,10 @@ for r in $(seq 1 "$REPS"); do
     rss=$(grep -oE 'hwm_kb=[0-9]+' .auto/multi-run-$tag.txt | head -1 | cut -d= -f2)
     maj=$(grep -oE 'majflt_delta=-?[0-9]+' .auto/multi-run-$tag.txt | head -1 | cut -d= -f2)
     echo "$label"$'\t'"$rtf"$'\t'"$tok"$'\t'"${rss:-0}"$'\t'"${tx:-none}"$'\t'"${kmd:-?}"$'\t'"${dv:-?}" >> "$TSV"
-    echo "ARM $label | rep=$r | rtf=$rtf | tokens=$tok | rss_kb=${rss:-?} | majflt=${maj:-?} | tx=${tx:-none} | clock=${kmn:-?}/${kmd:-?}/${kmx:-?}kHz | deliv2400=${dv:-?}%$HOT"
+    echo "ARM $label | rep=$r | rtf=$rtf | tokens=$tok | rss_kb=${rss:-?} | majflt=${maj:-?} | tx=${tx:-none} | clock=${kmn:-?}/${kmd:-?}/${kmx:-?}kHz | deliv2400=${dv:-?}% mean_mhz=${mz:-?} ge2000=${g2:-?}% arm=$( [ "${NO_ARM:-0}" = 1 ] && echo off || echo wake )$HOT"
+    if [ "${NO_ARM:-0}" != 1 ] && [ -n "${mz:-}" ] && [ "$mz" != "-1" ] && awk -v m="$mz" 'BEGIN{exit !(m < 2000)}'; then
+      echo "WARNING: sweep arm '$label' ran armed but mean_mhz=$mz (< 2000) - an UNBOOSTED-state arm" >&2
+    fi
   done
 done
 

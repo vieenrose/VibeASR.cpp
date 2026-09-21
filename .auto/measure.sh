@@ -302,37 +302,16 @@ if [ -n "${TIS0:-}" ] && [ -n "${TIS1:-}" ]; then
   # 2150000 vs 2.02 at 1300000, both reporting deliv2400=0). Emit the whole picture from the same
   # histogram: the 2.4 share, the MEAN delivered MHz (one number that names the P-state), and the share
   # at >= 2.0 GHz. The mean is the durable disambiguator; it is also recorded in the TSV.
-  _tis=$( { python3 -c "
-def rd(p):
-    return {int(l.split()[0]): int(l.split()[1]) for l in open(p) if len(l.split()) == 2}
-a, b = rd('/tmp/tis0.$$'), rd('/tmp/tis1.$$')
-d = {k: b.get(k, 0) - a.get(k, 0) for k in set(a) | set(b)}
-d = {k: v for k, v in d.items() if v > 0}
-tot = sum(d.values())
-if tot <= 0:
-    print('-1 -1 -1')
-else:
-    # UNITS: time_in_state keys are kHz. Emit the mean in MHz (1 decimal) so the column NAME and the
-    # value agree - the first cut emitted kHz under a `mhz` header, caught by reading the value back
-    # (2376516 vs 2376.5) before committing.
-    print(round(100 * d.get(2400000, 0) / tot), round(sum(f * v for f, v in d.items()) / tot / 1000, 1),
-          round(100 * sum(v for f, v in d.items() if f >= 2000000) / tot))
-" 2>/dev/null; } || true )
+  # Exp987: the three witnesses come from the SHARED .auto/deliv_share.py, not from a private copy of
+  # the parse - measure.sh and run_rtf_multi.sh had two copies of the same rule, which is how the loop's
+  # duplicated rules drift (Exp869/816). Units and the >=2.0 GHz disambiguator live in that file now.
+  _tis=$( { python3 .auto/deliv_share.py /tmp/tis0.$$ /tmp/tis1.$$ 2>/dev/null; } || true )
   rm -f /tmp/tis0.$$ /tmp/tis1.$$
   DELIV=$(printf '%s' "${_tis:-}" | awk '{print $1}')
   MHZ=$(printf '%s' "${_tis:-}" | awk '{print $2}')
   GE2=$(printf '%s' "${_tis:-}" | awk '{print $3}')
   [ -n "${DELIV:-}" ] && echo "$TAG cpu7_deliv2400_pct=$DELIV"
   [ -n "${MHZ:-}" ] && echo "$TAG cpu7_deliv_mhz=$MHZ"
-  # Exp979 GUARD (Exp660 rule): if the arm ran but the P-state witness did not move, say so LOUDLY - a
-  # silently ineffective arm is exactly how Exp973-976 spent four rounds measuring the wrong state.
-  # Not fatal: a legitimately unarmed or a genuinely slow device is still a measurement, it is just not
-  # a comparable one, so it must be visible on the run's own output.
-  if [ "${ARMED:-0}" = "wake" ] && [ -n "${MHZ:-}" ] && [ "$MHZ" != "-1" ]; then
-    if awk -v m="$MHZ" 'BEGIN{exit !(m < 2000)}'; then
-      echo "WARNING: arm ran but cpu7_deliv_mhz=$MHZ (< 2000) - this run is in an UNBOOSTED state; do not compare it with boosted cells" >&2
-    fi
-  fi
   [ -n "${GE2:-}" ] && echo "$TAG cpu7_deliv_ge2000_pct=$GE2"
 fi
 [ -n "${BATTT:-}" ] && echo "$TAG batt_temp_c=$(python3 -c "print(round(${BATTT}/10,1))")"

@@ -4549,6 +4549,29 @@ Consequences:
     transcript 1a095c8496b4 so the audit's "capture is not the protocol clip" WARN clears.
   Anchor (armed protocol) 1.2463 at ~30.1 h, transcript byte-identical.
 
+- THE SWEEP IS ARMED TOO, AND THE PREMIUM COMES BACK TO ITS ARMED BAND (Exp987, harness change).
+  `run_rtf_multi.sh` - the primary A/B runner, whose arms had been running UNARMED - now uses the same
+  Exp979 recipe per arm (burst to ARM, KEYCODE_WAKEUP stream to HOLD, stopped after the arm's run;
+  `NO_ARM=1` restores the old behaviour) and prints the arm's witnesses. Validated with both controls on
+  a 2-arm sweep (1 rep each):
+      ARMED    Pproto 1.2519 (mean 2340.2 MHz, deliv 95 %) | Gguard 1.3717 (2334.1, 95 %)  -> +9.57 %
+      NO_ARM=1 Pproto 1.8534 (mean 1314.1 MHz, deliv  2 %) | Gguard 1.9997 (1284.4,  0 %)  -> +7.90 %
+  So Exp986's unarmed +7.19 % and the historical armed series (+9.0-9.9 %) are BOTH real: the premium is
+  a state-conditional ratio, and with the sweep armed the guard rotation is comparable with the armed
+  protocol cells again instead of living in a parallel unarmed world. Transcripts unchanged in both arms
+  (Pproto 1a095c8496b4, Gguard 849cca7df5bc).
+  * ONE IMPLEMENTATION OF THE WITNESS (the drift fix, not just the feature): `deliv_share.py` now returns
+    all three numbers (deliv2400, mean MHz, ge2000) and `measure.sh` STOPPED carrying its own private copy
+    of that parse - the two harnesses had two copies of the same rule, which is exactly how the loop's
+    duplicated rules drift apart (Exp869/816). Its --selftest was extended to check the new numbers on
+    the same planted dumps (mean 2396 vs 2000 MHz, ge2000 100 % on a 2.0 GHz dump, -1 for every witness
+    on an unchanged dump) rather than trusting the new code by inspection.
+  * WITNESS GRANULARITY CAVEAT: the armed sweep's Pproto (1.2519 at mean 2340 MHz) and measure.sh's
+    armed protocol cell minutes later (1.2505 at mean 2061 MHz) agree to 0.1 % in rtf while their MEANS
+    differ by 12 %. The mean names the STATE and separates 1.28/1.85 from 2.1/2.4 - it is not a
+    fine-grained speed predictor, and the guard's 2000 MHz line is a state threshold, not a model.
+  Anchor (armed protocol, 5th rep) 1.2505 at ~30.3 h, transcript byte-identical (1a095c8496b4).
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
