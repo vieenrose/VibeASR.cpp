@@ -4068,3 +4068,5 @@ Consequences:
   All three runs 446 tokens exact. Reproduces Exp913/887 numerically (~2198 MB peaks) UNDER THE CAP -
   memory behavior is clock-independent, so this board stays interpretable in any state. RTFs
   2.10-2.12 (boost band 1.47) quarantined. Soak board current.
+  (The verdict block's 'threads: min=1 max=3 - thread leak?' is the known phase structure - 1 load /
+  2 LM / 3 concurrent VAE, one 1 at a run boundary - per Exp913's instrument note, not a leak.)
