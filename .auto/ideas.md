@@ -5281,3 +5281,8 @@ peak_rss 2191.5-2191.7 MB.
     sub-floor reading as a **retry signal, not a fixed penalty**, and never as a valid cell.
 Anchor (armed protocol, post-cooldown mean) 1.2334 at 34.6 h (derived); witnesses 2330.3 / 2334.8 MHz,
 batt 36.8 C, tokens 39.
+  * Same-round board rotation: **fault board 13/13 PASS** (~23 rounds since Exp998) - truncated model tails
+    and headers fail loudly, unknown flag loud, truncated/lying WAV headers still measured with the
+    content-derived denominator (1.4054 / 1.3610 vs healthy H=1.2252), empty/header-only WAVs refused, and the
+    config edges (n_ctx below one window; pieces 0 / non-divisor) are loud. Board ages now: fault & soak &
+    behavior & coverage current; guard Exp1006 (15), gate Exp1005 (16), rollback Exp996 (25, oldest).
