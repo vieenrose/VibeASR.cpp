@@ -27,7 +27,7 @@ def _selftest():
     ns = {'math': math, 'statistics': statistics}
     src = open(__file__, encoding='utf-8').read()
     lines = src.splitlines()
-    for name in ('trend', 'trend_se', 'classify'):
+    for name in ('trend', 'trend_se', 'classify', 'thread_verdict'):
         try:
             i = next(j for j, l in enumerate(lines) if l.startswith('def ' + name + '('))
         except StopIteration:
@@ -43,6 +43,7 @@ def _selftest():
             block.append(ln); i += 1
         exec('\n'.join(block), ns)
     trend, trend_se, classify = ns['trend'], ns['trend_se'], ns['classify']
+    thread_verdict = ns['thread_verdict']
     rng = __import__('random').Random(7)
     def series(slope, noise):
         return [(i * 10.0, 2180.0 + (i * 10.0 / 60.0) * slope + rng.uniform(-noise, noise)) for i in range(30)]
@@ -65,8 +66,31 @@ def _selftest():
             rc = 1
     print(f'  resolution at +-12 MB noise: detectable slope >= {0.5 + 2 * trend_se(series(0.0, 12.0)):.2f} MB/min'
           '  (threshold 0.5 plus 2se)')
+    # Thread-verdict cases (Exp1020b), proven in both directions with synthetic series: the wrapped command
+    # runs on the phone, so no device-side thread-leak target exists and a plant is not available.
+    def samp(pairs):        # (t, threads) -> full sample tuples; only [0] and [4] are read
+        return [(t, 2180.0, 2180.0, 4800.0, n, 3) for t, n in pairs]
+    tvcases = [
+        ('clean soak with restarts', samp([(float(t), 2 + (i % 2)) for i, t in enumerate(range(0, 56, 8))]
+                                        + [(65.0 + t, 2 + (i % 2)) for i, t in enumerate(range(0, 56, 8))]),
+         [(0.0, 60.0), (65.0, 125.0)], 'FLAT'),
+        ('leak inside one run',      samp([(float(t), n) for t, n in zip(range(0, 111, 10),
+                                                                         [1, 1, 2, 2, 2, 4, 4, 4, 4, 4, 4])]),
+         [(0.0, 115.0)], 'thread leak'),
+        ('only startup sampled',     samp([(float(t), n) for t, n in zip(range(0, 16, 5), [1, 2, 3])]),
+         [(0.0, 15.0)], 'NOT MEASURED'),
+        ('single run, flat',         samp([(float(t), 2 + (i % 2)) for i, t in enumerate(range(0, 101, 10))]),
+         [], 'FLAT'),
+    ]
+    for name, pts, wins, want in tvcases:
+        got = thread_verdict(pts, wins)
+        mark = 'ok' if want in got else f'WRONG, expected {want!r}: {got}'
+        print(f'  selftest {name:28s} -> {mark}')
+        if want not in got:
+            rc = 1
     if rc == 0:
-        print('  rss_soak self-test: PASS (leaks detected, flat accepted, unresolvable cases reported honestly)')
+        print('  rss_soak self-test: PASS (leaks detected, flat accepted, unresolvable cases reported '
+              'honestly, thread verdict proven both ways)')
     return 0
 
 
@@ -240,6 +264,39 @@ def classify(slope, se, threshold=0.5):
 
 
 
+def thread_verdict(samples, runs, skip=20.0):
+    """Per-run thread verdict (Exp1020b). Kept as a function so --selftest can prove BOTH directions with no
+    device time: the fix's first version was controlled only in the negative direction (a clean soak stopped
+    false-alarming), which is half of what a guard needs (Exp660's rule: a check is untrustworthy until a
+    fault makes it fail).
+
+    Two traps. (1) A cross-run min/max is meaningless with --repeat: a fresh process legitimately starts at 1
+    thread and grows to ~3, so the old global min/max "changed" on every clean soak and printed 'thread
+    leak?' - it did exactly that on a soak whose per-run peaks were flat to 0.2 MB. (2) The same growth
+    exists WITHIN a run as startup, so the first `skip` seconds of every window are excluded (the same rule
+    the per-run RSS median uses). Past the ramp, 2<->3 alternation is normal (two encoder chains plus a
+    transient) and stays under the threshold; a rise of >= 2 past the ramp is a leak signal.
+    """
+    pts = [(s_[0], s_[4]) for s_ in samples if len(s_) > 4 and s_[4]]
+    if not pts:
+        return 'threads: NOT MEASURED - no sample carried a thread count'
+    wins = list(runs) if runs else [(pts[0][0], pts[-1][0])]
+    spans = []
+    for (t0, t1) in wins:
+        v = [n for t, n in pts if t0 + skip <= t <= t1]
+        if v:
+            spans.append((min(v), max(v)))
+    if not spans:
+        return (f'threads: NOT MEASURED - every sample fell inside the startup ramp (first {skip:.0f} s of '
+                'each run); lengthen the soak or lower the ramp skip - do NOT read this as clean')
+    txt = 'threads per run: ' + ' '.join(f'{a}->{b}' for a, b in spans)
+    worst = max(b - a for a, b in spans)
+    if worst > 1:
+        return txt + f'  thread leak? the count rises by {worst} WITHIN a run, past the startup ramp'
+    return txt + ('  FLAT within every run (a restart resets the count and the startup ramp is excluded, '
+                  'so a cross-run min/max would always look like a change)')
+
+
 def trend(pairs):
     """Least-squares MB/min over (t_seconds, rss_mb) pairs - shared so the self-test uses this code path."""
     if len(pairs) > 2 and statistics.pstdev([t for t, _ in pairs]) > 0:
@@ -271,6 +328,12 @@ if REPEAT > 1:
         print(f'  session-memory verdict: {classify(sl, se)}')
         hws = [h for _, _, h, _ in meds]
         print(f'  peak per run: {" ".join(f"{h:.1f}" for h in hws)} MB  (spread {max(hws) - min(hws):.1f} MB)')
+        # Exp1020b: an INCONCLUSIVE verdict must still BOUND the answer. A slope needs >= 3 runs, so a 2-run
+        # soak used to print 'nan +/- nan' and 'too few samples to fit' - technically honest, practically a
+        # shrug, when the deltas themselves say 'any growth is under X MB'. Say that instead.
+        print(f'  bound: |median delta| = {abs(meds[-1][1] - meds[0][1]):.1f} MB over {len(meds) - 1} run '
+              f'interval(s), peak spread {max(hws) - min(hws):.1f} MB -> any session growth is under those '
+              'numbers (a fitted slope needs >= 3 runs)')
         # The peak is the statistic that answers 'does a session grow?': it is per-run, monotone within a run,
         # and immune to the +-20 MB two-state RSS pattern that makes per-run MEDIANS step (Exp865f: three
         # runs gave medians 2176.8 / 2176.8 / 2197.2 but peaks 2198.2 / 2198.1 / 2198.2 - state, not drift).
@@ -328,27 +391,9 @@ if fds:
 else:
     print('descriptor verdict: NOT MEASURED - /proc/<pid>/fd was unreadable, this soak proved nothing about fds')
 if ths:
-    # Exp1020: with --repeat the sample series spans process RESTARTS, and a fresh process legitimately
-    # starts at 1 thread and grows to 3, so a cross-run min/max ALWAYS "changes" - the old line reported
-    # "thread leak?" on a clean 3-run soak whose per-run peaks were flat to 0.2 MB. A leak is a rise
-    # WITHIN one run's window, so decide it per run.
-    if REPEAT > 1 and runs:
-        spans = []
-        for (t0, t1) in runs:
-            v = [s_[4] for s_ in samples if len(s_) > 4 and s_[4] and t0 + 5 <= s_[0] <= t1]
-            if v:
-                spans.append((min(v), max(v)))
-        if spans:
-            rises = [b - a for a, b in spans if b - a > 1]
-            print('threads per run: ' + ' '.join(f'{a}->{b}' for a, b in spans) +
-                  ('  FLAT within every run (a restart legitimately resets the count, so the cross-run '
-                   'min/max always looks like a change)' if not rises
-                   else '  thread leak? the count rises WITHIN a run'))
-        else:
-            print(f'threads: min={min(ths)} max={max(ths)} (no per-run windows had samples - NOT MEASURED)')
-    else:
-        print(f'threads: min={min(ths)} max={max(ths)} ' +
-              ('FLAT' if max(ths) - min(ths) <= 1 else f'CHANGES by {max(ths) - min(ths)} - thread leak?'))
+    # Exp1020/1020b: per-run decision with the startup ramp excluded - see thread_verdict() for the two
+    # traps (restarts reset the count; startup growth is legitimate) and --selftest for both directions.
+    print(thread_verdict(samples, runs))
 for line in out.splitlines():
     if line.startswith('METRIC'):
         print(line)

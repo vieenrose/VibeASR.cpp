@@ -5253,3 +5253,31 @@ Anchor (armed protocol mean of the two knob-control runs) 1.2251 at 33.5 h (deri
     you are regressing on the changelog. This is Exp1003/1004's non-identifiability made concrete.
 Anchor (armed protocol mean) 1.2275 at 34.3 h (derived); witnesses 2034.4 / 2322.2 MHz, tokens 39,
 peak_rss 2191.5-2191.7 MB.
+
+- THREAD VERDICT MADE TESTABLE BOTH WAYS + SOAK VERDICT NOW BOUNDS (Exp1021). Closes Exp1020's named gap
+  ("positive case not exercised").
+  * `thread_verdict(samples, runs, skip=20.0)` is now a real function, so `--selftest` pulls it with the same
+    exec-from-source trick it uses for trend/trend_se/classify, and **audit check 14 already covers it**
+    (rss_soak.py is in SELFTEST_TOOLS - no new audit code needed). Four cases: clean soak with restarts ->
+    FLAT; a rise inside one window -> 'thread leak'; only-startup-sampled -> NOT MEASURED (explicitly *not*
+    clean); single run -> FLAT. 8/8 selftest cases pass.
+  * The function also fixes a second trap the Exp1020 version still had: the **startup ramp is itself a
+    legitimate 1 -> 3 growth**, so a plain within-run rise test would false-alarm whenever sampling starts at
+    process birth. The first 20 s of every window are now excluded (the same rule the per-run RSS median
+    uses). Device negative control with a 1 s interval: `threads per run: 2->3 2->3 FLAT within every run`.
+  * **An INCONCLUSIVE soak verdict must still bound the answer.** A 2-run soak printed
+    `drift across runs = +nan +/- nan` + "too few samples to fit" - honest but a shrug. It now adds
+    `bound: |median delta| = 14.4 MB over 2 run interval(s), peak spread 0.1 MB -> any session growth is under
+    those numbers`. A 3x69 s re-soak reproduces Exp1020 exactly: peaks 2198.2/2198.2/2198.3 MB (spread 0.1),
+    fd FLAT at 3, per-run threads flat, tokens 446 x3 -> NO SESSION GROWTH by the peak statistic.
+  * 69 s armed cells from that soak: **1.4500 / 1.4977 / 1.5518** at witnesses 2359.5 / 2226.3 / 2088.3 MHz -
+    the HI/LO ordering again, and consistent with the documented 1.53-1.56 cells (taken in weaker states).
+  * **Guard demonstration #2, and a refinement of Exp1020's regression.** After the soaks, three consecutive
+    protocol runs landed just below the boost floor (1974.3 / 1991.0 / 1666.1 MHz -> 1.2739 / 1.2626 / 1.3130,
+    i.e. +3 to +7 %) and all three printed the WARNING; after a 150 s cooldown two clean runs at 2330 MHz gave
+    1.2338 / 1.2330 (batt 36.8 C, warm from the soaks, which explains the +0.5 % vs the earlier 2330 MHz runs
+    at 1.227). Note the sub-floor class is NOT homogeneous: runs at 1970-1999 MHz cost only ~+3-4 %, while
+    Exp1020's single PARTIAL-ARM coefficient (+0.0974 s ~ +8 %) averages in the 1500-1965 MHz runs. So treat a
+    sub-floor reading as a **retry signal, not a fixed penalty**, and never as a valid cell.
+Anchor (armed protocol, post-cooldown mean) 1.2334 at 34.6 h (derived); witnesses 2330.3 / 2334.8 MHz,
+batt 36.8 C, tokens 39.
