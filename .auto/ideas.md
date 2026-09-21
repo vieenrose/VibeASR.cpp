@@ -6038,3 +6038,33 @@ Anchor 1.2278 (3 reps 1.2299 / 1.2319 / 1.2215 at 2322.8 / 2038.3 / 2024.6 MHz, 
     window count; my invented pattern keyed on a word that never appears).
 Anchor 1.2276 (3 reps 1.2197 / 1.2293 / 1.2339 at 2024.0 / 2033.3 / 2342.8 MHz, sd 0.58 %, no flagged rep) at
 44.6 h uptime; audit 141/1/0, coverage 24/24.
+
+- GATE #19 + BEHAVIOR 11/11, AND gate_profile'S ENVELOPE CORRECTED (it was 12x too tight) (Exp1049, 5 rounds each)
+  * Gate: 40/40, WER 4.55 % (S=29 D=2 I=2) - **19th consecutive identical profile** - paired b=0/c=0 of 731 vs
+    both the frozen hyp-gate852 and the previous rotation hyp-gate1044; armed gate mean 1.3643 @ 2164.6 MHz.
+    Behavior board 11/11 with canaries EXACT 39 / 106 / 446 / 876.
+  * gate_profile's 2nd live use: mean **+1.46 %**, 26/40 clips in B's favor, p=0.081, halves +1.18 / +1.75. That is
+    4x outside the |mean| <= 0.35 % "normal envelope" I wrote at Exp1044, so per my own rule I investigated - and
+    the envelope was the wrong part, not the gate. Free archive analysis over the armed same-config gates, each
+    classified by ITS OWN gate-state.log (un-stamped gate982 quarantined as a distance, not a pair, per Exp657):
+      gate1005 -4.32 % (p=0.000, 40/40 clips faster) | gate1027 +0.14 | gate1037 +0.14 | gate1044 +0.46 | gate1049 -0.97
+    -> **between-rotation |mean| up to ~4-5 % is ordinary SESSION LEVEL**; median 0.46 %, sd 1.77 %. Selectivity
+    is the SIGN TEST plus halves DISAGREEING, not the magnitude of the mean. Exp1044's 0.35 % figure came from four
+    rotations that happened to sit at the same level - RETRACTED and replaced by this distribution.
+  * The one large level shift (gate1005, -4.3 % uniformly) came with the only clearly-high clock (2283.8 vs
+    ~2120 MHz), and a naive 6-point fit of gate mean on gate_mean_mhz returns R2=0.984 at -0.36 ms/100 MHz. Do not
+    believe it: five points sit within 35 MHz of each other, so that is ONE high-leverage point doing all the work
+    (n_eff ~ 1) - Exp1026's degeneracy in a new costume. Reading: "the clock plausibly drives session level" yes,
+    "the slope is 0.36 ms/100 MHz" no (and it is 6x below Exp1025's within-session paired ABAB estimate, whose
+    design is strictly better).
+  * The thermal pre-note FIRED LIVE for the first time ("device was 39.5 C at the last recorded run") right after
+    ~16 min of gate+board work, and its warning was warranted: those reps read 1.2469 / 1.2447 at witnesses
+    1987-2017 MHz (right at the knee). Procedure fix worth keeping: cool and then RE-TAKE - my loop printed the
+    flagged rep BEFORE cooling, which leaves the bad value as the thing on screen. Cooled to 35.7 C, the anchor
+    came back 1.2233 / 1.2268 at 2318.7 / 2324.4 MHz, i.e. in line with the day's other anchors (1.2275-1.2278).
+  * Three of my own parser slips in one round, all CRASHING LOUDLY (better than silent): I re-implemented the
+    rtf.log parse and read the wrong field (the real format is `<i> <clip> rtf=<x> tok=<n>`), re-implemented the
+    gate-state parse and missed that the key is `mean_mhz=`, and mistyped a variable. The fix that worked was
+    `import gate_profile; gate_profile.load(path)` - when a tool already parses a file, call it.
+Anchor 1.2251 (2 cooled reps 1.2233 / 1.2268 at 2318.7 / 2324.4 MHz, sd 0.20 %; warm-post-board reps excluded) at
+45.2 h uptime; audit 141/1/0.
