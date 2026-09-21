@@ -4087,6 +4087,29 @@ Consequences:
 - WATCH, 17th CAPPED REP (Exp966): post-wake anchor 1.8429 (request 1300000, delivered 7, batt 31.1 C),
   byte-identical, speeds quarantined. All boards current; noise/rate/fast-LT need boost.
 
+- ***THE CAP IS (LARGELY) A SCREEN-OFF ARTIFACT - FOUND, MECHANISM-VERIFIED (Exp968).*** Interleaved
+  A/B, 2 reps each, screen state confirmed by `dumpsys power` immediately before each arm:
+      screen ON  (mWakefulness=Awake)  1.7032 / 1.7130   vae 10.2/10.3  deliv 18/18 %
+      screen OFF (mWakefulness=Asleep) 1.8554 / 1.8494   vae 11.7/11.6  deliv  0/0  %
+  -8.3 % rtf, -12 % VAE, delivered 0 -> 18 %, with 0.6 % spread WITHIN arms vs 8.3 % BETWEEN. Deterministic
+  state variable, not noise. Every "capped" rep from Exp954 onward was measuring the SCREEN-OFF state -
+  the loop had been treating a display/Doze policy as a mysterious governor parking.
+  * HOW IT WAS MISSED: the loop checked `mWakefulness` (Awake/Asleep) and did wake the device, but never
+    checked `mScreenState=ON` and never pinned it for the duration of a measurement. The KEYCODE_WAKEUP
+    in the watch rounds evidently did not leave the display in a state the power HAL treats as active.
+  * SCOPE / DO NOT OVER-READ: screen-ON is NECESSARY BUT NOT SUFFICIENT - delivered is still only 18 %
+    (boost is 96-97 %) and the governor's request median is still 1300000, so something ELSE still holds
+    the clock down (next hypothesis: no genuine user activity/touch; the device is screen-on-idle).
+    Also: `settings put system screen_off_timeout` is PERMISSION-DENIED (com.android.shell lacks
+    WRITE_SETTINGS) - and the read-back proved the value was ALREADY 1800000, so my attempted "setting
+    change" was a silent no-op (the Exp764/832 class) that ALSO nearly got recorded as a change I made.
+    Rule reaffirmed: read the value back before and after, and treat a failed write as "not changed".
+  * PROTOCOL CONSEQUENCE: screen state must be pinned AND recorded next to the delivered share, in the
+    same class as the regime/state rules. QUEUED: (1) a user-activity probe (inject touch just before
+    the run, screen ON) to see if the request median finally rises; (2) a screen-state column/note in
+    measure.sh + check 18 + TSV (needs the Exp942-style lockstep migration).
+  Anchor (screen ON, 2 reps pooled) 1.7081 at ~26.3 h, transcripts byte-identical (1a095c8496b4).
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
