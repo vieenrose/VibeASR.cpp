@@ -4922,6 +4922,20 @@ Consequences:
     of running it.
   Anchor (armed gate mean) 1.318 at 31.5 h (derived); witness 2283.8 MHz.
 
+- GUARD ROTATION #23, ARMED, WITH ITS UPTIME LABEL (Exp1006). 1 rep, internally clean, at **31.5 h** uptime:
+      Pproto 1.2257 (39 tok, deliv 95 %) | Gguard 1.3528 (55 tok) | G2guard 1.3501 (55 tok) | P2proto 1.2274 (+0.1 %)
+      witnesses: 2321-2325 MHz on the guard arms -> premium = **+10.26 %**
+  * The three ARMED rotations now read +9.57 (Exp987), +10.77 (Exp994), +10.26 (this) = **10.2 +/- 0.6 %**,
+    against the unarmed control +7.2 % (Exp986) and the capped-era +7.3 % (Exp961). The never-optimized
+    slice still tracks the protocol at exactly the decode-token premium (+16 tokens), with the two guard
+    arms agreeing to 0.2 % and P2 to 0.1 % - no overfit signal in 23 rotations.
+  * UPTIME LABELS FOR THE PREMIUM SERIES (the Exp1002/1003 lesson applied): the two earlier armed
+    rotations predate the drift discovery, so their uptimes are only known approximately (~29.6 h from the
+    Exp987 session, ~32.6 h from Exp994's); from here on every rotation records its own derived uptime, so
+    the premium series can eventually be checked for drift the same way the protocol cells were.
+  Anchor (sweep Pproto, armed) 1.2257 at 31.5 h; post-sweep protocol anchor 1.2302 (witness 2030.0 MHz),
+  transcript 1a095c8496b4 byte-identical.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
