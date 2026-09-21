@@ -5384,3 +5384,30 @@ Anchor: the ladder's own default arm, 1.2235 mean of 2 reps (witnesses 2314.7 / 
     wrong while the measurements stood - Exp1013 regex, Exp1019 bimodality, Exp1020 uptime slope, Exp1022c
     unwitnessed H, Exp1024 confound story.)
 Anchor (paired A mean) 1.2279 at 35.9 h (derived); B mean 1.2767; witnesses 2038-2094 MHz, all above the knee.
+
+- GUARD ROTATION #24 + A CHANGEPOINT SCAN THAT DOESN'T WORK (Exp1026, ~20 rounds since Exp1006).
+  * Interleaved P,G,G,P armed (P = protocol, G = the never-optimized guard slice slice10b_24k.wav):
+    P 1.2261 / 1.2351 (mean 1.2306), G 1.3587 / 1.3541 (mean 1.3564) -> **premium +10.22 %**, inside the armed
+    series 9.57 (Exp987) / 10.77 (Exp994) / 10.26 (Exp1006) = 10.2 +/- 0.5 %. **No overfit signal**: 24
+    rotations of the protocol path and the never-touched slice still moves 10 % more per token.
+  * Bonus identity: the guard slice's transcript hash is **849cca7df5bc, byte-identical to the archived
+    rotation's** (the Exp100x-era ledger records the same hash) - so the guard clip's OUTPUT has been stable
+    across ~20 rotations, not just its speed.
+  * The witnesses behaved exactly as Exp1025's step model predicts: G read 2169/2162 MHz vs P 2042/2043, a
+    ~125 MHz gap from G's longer decode (55 vs 39 tokens), worth ~2.5 ms = 0.2 % above the knee. Under the
+    old pooled linear slope I would have "corrected" the premium down by 1.7 % and reported a false drift.
+  * **DEAD END, RECORDED SO NOBODY REPEATS IT:** trying to *locate* the knee by scanning a single-step
+    threshold to minimize RSS gives garbage - the minimizer lands at 1500-1600 MHz, i.e. at NO step at all,
+    because RSS reduction there comes from 3 extreme partial runs (rtf 1.30-1.48) whose leverage (~0.19 of
+    the residual) beats what 14 below-knee points explain at 2000 MHz. The grid I did print shows it:
+    RSS 0.054 @ 1600 (n_below=3), 0.092 @ 2000 (n_below=14), 0.187 @ 2100+. What the data DOES support:
+    below 2000 mean 1.3316 (n=14, +7.9 %), above 1.2335 +/- 0.0093 (n=87) with slope -2.0 +/- 0.6 ms/100 MHz
+    (-0.17 %/100 MHz, flat). The knee's LOCATION is unidentifiable from telemetry because the arm makes runs
+    bimodal (they land at 1507-1965 or 2000-2383 MHz - there is almost nothing between 1965 and 2000 to
+    bracket it tighter). The guard's 2000 MHz sits inside that bracket, which is the right engineering choice
+    (reject and retry rather than accept a partial run). Rule: never use an RSS-minimizing changepoint on a
+    small-n tail; read the plateau structure where the samples actually are.
+  * Two units slips in one round, both caught by reading the value back: the scan's `best[0] and best[1]`
+    (truthiness instead of indexing) printed a threshold as a residual, and polyfit's slope is ms/MHz not
+    ms/100 MHz (which made the above-knee slope look 100x smaller than Exp1025's -2.16; it agrees at -2.0).
+Anchor (P mean) 1.2306 at 36.0 h (derived); witnesses 2041.8 / 2043.3 MHz; G mean 1.3564 (55 tok).
