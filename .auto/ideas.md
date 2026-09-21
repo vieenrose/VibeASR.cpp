@@ -4470,6 +4470,29 @@ Consequences:
     this 1.892 with the historical gate means in the decay series.
   Anchor (unarmed gate state; protocol capture untouched by eval40) 1.2465 at ~29.1 h.
 
+- SHIPPED: THE 40-UTT GATE IS NOW ARMED AND RECORDS ITS OWN WITNESS (Exp983, harness change).
+  eval40.sh gained the Exp979 arm for the duration of the utterance loop (burst, then a KEYCODE_WAKEUP
+  stream every 3 s; the stream is stopped after the last utterance) plus a gate-level witness: the mean
+  delivered big-core MHz over the WHOLE gate, printed as `METRIC gate_mean_mhz` and appended to
+  `$OUT/gate-state.log`. NO_ARM=1 restores the old unarmed behaviour on purpose.
+  * WITNESS FILE, NOT run-info.log: run-info.log's exact text is the RESUME guard's comparison key, so
+    appending to it would make every resume fail the provenance check. The witness goes to a separate
+    file in the same output dir.
+  * VALIDATED WITH BOTH CONTROLS (4-utterance gates, fresh tags; these are partial validation sets, NOT
+    accuracy gates - `score_hyp.py` correctly refuses them as partial without ALLOW_PARTIAL):
+      ARMED      mean rtf 1.3217   gate_mean_mhz 2157.1
+      NO_ARM=1   mean rtf 1.8727   gate_mean_mhz 1296.4
+    -29 % on the gate mean, and the armed value (1.32) is back in line with the historical gate means
+    (~1.34) instead of the unarmed 1.892 measured last round - i.e. the instrument gap of Exp982 is
+    closed, and the token canaries were identical across both arms (17/17/14/19 tokens on the first four
+    utterances, same as the full gates: accuracy is state-independent, as thirteen gates have shown).
+  * GUARD: an armed gate whose witness dips below 2000 MHz prints a WARNING, same rule as measure.sh, so
+    a gate mean cannot silently be an unboosted-state number.
+  * Audit green (135/1/0) after the commit; `bash -n` clean. QUEUED: the next scheduled full gate will
+    produce the first ARMED 40-utt mean for the decay series (Exp982's 1.892 must never be compared with
+    the historical ~1.34 means - it is the unarmed state).
+  Anchor (armed 4-utt validation gate) 1.3217 at ~29.3 h, WER not scored (partial set by design).
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas

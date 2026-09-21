@@ -69,6 +69,32 @@ for _f in "$VAE_FILE" "$LM_FILE"; do
     adb -s $DEV push "$_hf" "$RDIR/" > /dev/null 2>&1 || { echo "ERROR: push failed for $_f" >&2; exit 1; }
   fi
 done
+# Exp983: ARM THE GATE. eval40 invokes the binary directly, so it never got measure.sh's arm and the
+# gate ran in the UNARMED device state - its mean rtf read 1.892 where historical gates read ~1.34, i.e.
+# the gate's SPEED column silently changed state while its WER column did not (WER is state-independent,
+# 13 identical gates). So: the same Exp979 recipe (burst, then a KEYCODE_WAKEUP stream) now spans the
+# utterance loop, and the gate's own witness (mean delivered big-core MHz over the whole gate) is written
+# to $OUT/gate-state.log - NOT to run-info.log, whose exact text is the resume guard's comparison key.
+# NO_ARM=1 keeps the old unarmed behaviour for anyone who wants that state deliberately.
+ARM_SENTINEL=""; ARM_PID=""
+if [ "${NO_ARM:-0}" != 1 ]; then
+  adb -s $DEV shell "input keyevent KEYCODE_WAKEUP" >/dev/null 2>&1 || true
+  for _i in 1 2 3; do
+    adb -s $DEV shell "input keyevent KEYCODE_VOLUME_DOWN" >/dev/null 2>&1 || true
+    adb -s $DEV shell "input keyevent KEYCODE_VOLUME_UP" >/dev/null 2>&1 || true
+    sleep 1
+  done
+  ARM_SENTINEL=$(mktemp /tmp/asr_gate_arm.XXXXXX 2>/dev/null || echo "")
+  if [ -n "$ARM_SENTINEL" ]; then
+    ( while [ -f "$ARM_SENTINEL" ]; do
+        adb -s $DEV shell "input keyevent KEYCODE_WAKEUP" >/dev/null 2>&1 || true
+        sleep 3
+      done ) >/dev/null 2>&1 &
+    ARM_PID=$!
+    sleep 1
+  fi
+fi
+TIS0=$( { adb -s $DEV shell "cat /sys/devices/system/cpu/cpu7/cpufreq/stats/time_in_state" 2>/dev/null; } || true )
 mapfile -t WAVS < <(ls ../eval-librispeech/wav24k/*.wav | sort)
 SUM=0; N=0
 for ((i=START; i<START+COUNT && i<${#WAVS[@]}; i++)); do
@@ -103,6 +129,31 @@ PY
   SUM=$(python3 -c "print($SUM+$R)"); N=$((N+1))
 done
 adb -s $DEV shell "rm -rf $RDIR/ls40" >/dev/null 2>&1
+# Exp983: stop the arm stream, then record the gate's own P-state witness next to the transcripts.
+TIS1=$( { adb -s $DEV shell "cat /sys/devices/system/cpu/cpu7/cpufreq/stats/time_in_state" 2>/dev/null; } || true )
+if [ -n "${ARM_SENTINEL:-}" ]; then rm -f "$ARM_SENTINEL"; ARM_SENTINEL=""; fi
+if [ -n "${ARM_PID:-}" ]; then wait "$ARM_PID" 2>/dev/null || true; ARM_PID=""; fi
+if [ -n "${TIS0:-}" ] && [ -n "${TIS1:-}" ]; then
+  printf '%s\n' "$TIS0" > /tmp/gtis0.$$
+  printf '%s\n' "$TIS1" > /tmp/gtis1.$$
+  GW=$( { python3 -c "
+def rd(p):
+    return {int(l.split()[0]): int(l.split()[1]) for l in open(p) if len(l.split()) == 2}
+a, b = rd('/tmp/gtis0.$$'), rd('/tmp/gtis1.$$')
+d = {k: b.get(k, 0) - a.get(k, 0) for k in set(a) | set(b)}
+d = {k: v for k, v in d.items() if v > 0}
+tot = sum(d.values())
+print(round(sum(f * v for f, v in d.items()) / tot / 1000, 1) if tot > 0 else -1)
+" 2>/dev/null; } || true )
+  rm -f /tmp/gtis0.$$ /tmp/gtis1.$$
+  if [ -n "${GW:-}" ] && [ "$GW" != "-1" ]; then
+    printf 'gate_state arm=%s mean_mhz=%s utts=%s\n' "$([ "${NO_ARM:-0}" = 1 ] && echo off || echo wake)" "$GW" "$N" >> "$OUT/gate-state.log" 2>/dev/null || true
+    echo "METRIC gate_mean_mhz=$GW"
+    if [ "${NO_ARM:-0}" != 1 ] && awk -v m="$GW" 'BEGIN{exit !(m < 2000)}'; then
+      echo "WARNING: gate ran armed but gate_mean_mhz=$GW (< 2000) - the gate mean is an UNBOOSTED-state number" >&2
+    fi
+  fi
+fi
 [ $N -gt 0 ] && echo "METRIC rtf=$(python3 -c "print(round($SUM/$N,4))")"
 echo "METRIC utts=$N"
 echo "done tag=$TAG n=$N"
