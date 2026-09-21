@@ -3997,3 +3997,13 @@ Consequences:
   If still capped, the decision is reboot-as-regime-event (destroys the 24 h fresh-boot series, needs
   Exp880-style re-baseline) vs extended wait - that choice goes to the user, not the loop.
   Anchor (capped, quarantined) 1.8476 at ~24.4 h (delivered 6, max touched 2400000 once), byte-identical.
+
+- CAP PERSISTS ~60+ MIN; RECOVERY WATCH EXHAUSTED, DECISION ESCALATED (Exp956). Post-wake anchor
+  (delivered 8, max 2400000) + LT arm 1.8343 (delivered 0, 30.2 C) - both capped, transcripts
+  byte-identical. Capped LT replicate #2 matches #1 within ~20 ms/window (w1 3582/3572, w2 3340/3362,
+  w3 3355/3342, w4 1332/1335): the capped state's per-window signature is as stable as the slow-LM
+  one's was. Tallies since onset: ~10 capped reps, 0 spontaneous recoveries over ~1 h of wall time
+  including gate workload, wake, awake-idle, re-sleep. The loop has no remaining non-invasive lever
+  (stayon unavailable, governor files denied, no thermal/battery cause, no background culprit).
+  NEXT: reboot-as-regime-event vs extended wait vs repurpose the downtime - asked the user (Exp956).
+  Anchor (capped, quarantined) ~1.84 at ~24.5 h, byte-identical.
