@@ -4232,6 +4232,46 @@ Consequences:
     honest long-clip number is the state-1/2 one.
   Anchor 1.2257 (state 3, armed, 10 s cell) at ~27.3 h, transcripts byte-identical.
 
+- ***THE ARM IS NOT A RELIABLE STATE CONTROL, AND `deliv2400` ALONE MISREADS A 2.15 GHz RUN AS "CAPPED"
+  (Exp974).*** Two rounds of the injection test, 69 s cell, interleaved burst-arm vs continuous-injection,
+  plus one 138 s continuous arm. All arms arm_ran=1 (measure.sh's own burst); the "cont" arms additionally
+  injected key events THROUGH the run:
+      69 s burst(rep1)  2.0155  vae 74.4  khz_med 1300000  deliv 10   <- genuinely capped
+      69 s cont (rep1)  1.4521  vae 48.1  khz_med 2400000  deliv 99
+      69 s burst(rep2)  1.4550  vae 48.1  khz_med 2400000  deliv 99   <- NO continuous injection, full boost
+      69 s cont (rep2)  1.4475  vae 47.9  khz_med 2400000  deliv 99
+      69 s burst(rep3)  1.4741  vae 49.0  khz_med 2400000  deliv 72
+      69 s cont (rep3)  1.5340  vae 52.0  khz_med 2150000  deliv  0   <- NOT capped: 2.15 GHz P-state
+      138 s cont        1.5718  vae 104.0 khz_med 2150000  deliv  0   <- matches the historical 1.58 cell
+  (a) CAUSALITY REVISITED: continuous injection is neither NECESSARY (rep2's burst-only arm held 99 %
+      through 69 s) nor SUFFICIENT (rep3's continuous arm ended at 2.15 GHz). So Exp969/971's clean 2->3
+      flip was a real event but the arm does NOT give the loop deterministic control at the 69 s scale -
+      the device still oscillates between P-states on a minutes timescale. The 10 s protocol cell, by
+      contrast, has been reliably arming (1.2283/1.2288/1.2257/1.2195 - four separate rounds).
+  (b) ***INSTRUMENT DEFECT (6th "the number I measured is not the number I meant")***: `cpu7_deliv2400_pct`
+      is the share of the SINGLE 2.4 GHz step. A run the governor steers to 2150000 reads 0 % - and the
+      loop has been treating 0 % as "capped" since Exp942. It is not: the 2.15 GHz runs above are the
+      FASTEST long cells of the day (1.5340 / 1.5718, matching the historical 1.4695 / 1.5823 ladder
+      cells), while a truly capped run at 1300000 reads 2.0155. The disambiguator is `cpu7_khz_med`
+      (1300000 vs 2150000 vs 2400000), which is ALREADY in the TSV - so this is a reading rule, and the
+      durable fix is to record the full time_in_state histogram instead of one step's share.
+      Consequences: (i) every "deliv 0 %" note in the Exp952-973 ledger means "not at 2.40 GHz", which
+      may be either capped-at-1.3 or boosted-at-2.15 - where the rtf was available, the two are 2.02 vs
+      1.53 and clearly distinguishable; (ii) Exp968's screen A/B (both arms 1300000) and Exp969/971's
+      boost A/B (both arms 2400000) are UNAFFECTED because their arms differed in rtf AND in request, not
+      only in the 2.4 share; (iii) Exp973's ladder cells all read khz_med 1300000, so "the arm decays with
+      length" stands for THOSE cells - but this round proves the same clips can also run boosted, so the
+      ladder is state-unstable run to run, not length-determined.
+  (c) GOOD NEWS, and it is the first time it has been seen since Exp953: a 138 s cell ran at a real boost
+      P-state at 1.5718 (historical cell 1.5823) with NO injection at all, and 69 s cells ran 1.4475-1.4741
+      (historical 1.4695). The historical long-clip ladder is REPRODUCIBLE on this binary - it just is not
+      controllable yet.
+  QUEUED: (1) record the full time_in_state histogram per run (a 16-slot column or a side file) so the
+  P-state mix is exact rather than inferred from one step; (2) re-state the long-clip protocol: pin the
+  P-state by CHECKING khz_med during the run and rejecting/retrying cells that drift (a rejected-cell
+  policy, like the batt<=37.0 C gate the ladder already has); (3) then re-take the ladder.
+  Anchor 1.4475 (best 69 s cell, khz_med 2400000, deliv 99) at ~27.6 h, transcript byte-identical.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
