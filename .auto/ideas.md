@@ -4493,6 +4493,22 @@ Consequences:
     the historical ~1.34 means - it is the unarmed state).
   Anchor (armed 4-utt validation gate) 1.3217 at ~29.3 h, WER not scored (partial set by design).
 
+- 14th CONSECUTIVE IDENTICAL GATE, FIRST FULL ARMED GATE (Exp984). gate984: 40/40 scored, WER
+  **4.55 %** (S=29 D=2 I=2 - identical profile fourteen gates running), paired b=0/c=0 of 731 vs BOTH
+  gate982 and gate852 (CI [0,0], p=1.0), 0/40 transcripts differing.
+  * THE ARM IS NOW VISIBLE IN THE GATE'S OWN NUMBERS: gate mean rtf **1.3808** with witness
+    **gate_mean_mhz 2122.5** (armed), against Exp982's UNARMED 1.892 at the same 40 utterances - and the
+    wall time says the same thing (475 s vs 643 s, -26 %). The armed mean sits in the historical gate
+    band (~1.34) instead of the unarmed one, so the gate's speed column is comparable again and the
+    Exp982 gap is closed end-to-end on a full gate, not just on a 4-utterance control.
+  * `headline.json`'s shipped.gate_mean moved 1.34 -> **1.38** with its provenance rewritten to
+    gate984 + the explicit warning that Exp982's 1.892 (unarmed) must never be compared with it; audit
+    check 9 stayed green (no prose quotes the gate mean, so nothing else had to move).
+  * ACCURACY IS STATE-INDEPENDENT, AGAIN: the transcripts are byte-identical to gate982 (which ran
+    UNARMED) and to gate852, so the device state moved the SPEED by ~27 % and the TEXT by zero - the
+    cleanest possible statement of what the Exp968-984 work does and does not touch.
+  Anchor (armed full gate mean) 1.3808 at ~29.6 h; per-utterance canaries all in band.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
