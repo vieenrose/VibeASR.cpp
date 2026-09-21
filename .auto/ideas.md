@@ -4435,6 +4435,25 @@ Consequences:
   green, which is the doc-drift trigger working as designed.
   Anchor (10 s protocol cell, armed) 1.2465 at ~28.9 h, transcript byte-identical (1a095c8496b4).
 
+- STATE-QUALIFIED DOCS SHIPPED, DRIVEN BY THE GUARD (Exp981). The doc-drift trigger worked exactly as
+  designed: `.auto/headline.json` gained a `device_state` block (three states with rtf + witness, the arm
+  recipe, the witness rules, the reliability caveat) and its shipped cells moved to the armed ladder
+  (rtf10 1.25, 17 s 1.46, 69 s 1.56, 138 s 1.65); audit check 9 then named the three prose sites that
+  disagreed and refused to go green until they were fixed in the same commit:
+    RESULTS.md "Headline ...: 12.24 -> 1.19" -> **12.24 -> 1.25 (-89.8 %)**, and its shipped tier TABLE
+      row (1.19/1.34/1.47/1.58 -> 1.25/1.46/1.56/1.65) with the FRESH-BOOT regime label replaced by the
+      ARMED-state label + the unarmed/screen-off comparators;
+    STREAMING_1P5B.md "Current best: 1.19 (FRESH-BOOT regime, boost state)" -> 1.25 (ARMED state);
+    .auto/prompt.md "Current best: 1.19" -> 1.25 with the witness rule and the three states;
+    README.md's autoresearch section -> 4-cell table + a state-qualification note (and the 980-run count).
+  * The two-level state paragraph in RESULTS.md was REWRITTEN into the three-state model (boost / unarmed /
+    screen-off) with the explicit statement that the historical "long-uptime regime" 1.85 was the
+    screen-off state, and that the historical 1.19 was the SAME binary at ~2377 MHz vs today's ~2045 -
+    i.e. the +3-6 % is P-state, not code.
+  * Audit after the commit: 135 checks / 1 explained WARN / 0 failures, i.e. the docs and the machine-
+    readable state agree again. No src/ or tier file was touched by this round.
+  Anchor (unchanged, no device time this round): 1.2465 at ~28.9 h.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
