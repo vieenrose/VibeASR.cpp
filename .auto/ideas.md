@@ -4207,6 +4207,31 @@ Consequences:
     the state name: 1.23 @ state 3, 1.85 @ state 1.
   Anchor (state 3, default arm) 1.2288 at ~27.1 h, transcripts byte-identical (1a095c8496b4).
 
+- FIRST ARMED LADDER, AND THE ARM DECAYS WITH RUN LENGTH (Exp973). All four cells in one ascending
+  session with measure.sh's new default arm; token canaries exact (39/106/446/876):
+      clip   rtf     vae_s   lm_s    deliv   (state at the END of the cell's average)
+      10 s   1.2257   7.1     5.1     94 %
+      17 s   1.6593  14.9    13.3     45 %
+      69 s   2.0087  74.2    64.4     10 %
+      138 s  2.1127 152.9   138.6      5 %
+  The delivered share decays MONOTONICALLY with clip length while the arm held at the start of every
+  cell (all four show screen=ON:arm=1). So one activity burst arms state 3 for roughly ~10-20 s and then
+  it decays - i.e. the arm is an EVENT with a time constant, not a latch. That is the cleanest
+  explanation of why short cells reproduce the historical boost and long cells do not.
+  * HISTORICAL CROSS-CHECK (host-only, from the TSV): at uptime 18.28-18.29 h the 17 s cell read
+    1.3394/1.3390 with deliv 97 % - fully boosted END TO END - while today the same cell starts at 94 %
+    and averages 45 %. Same binary, same clip: the difference is the device's willingness to SUSTAIN
+    boost, which has changed over the session. The 69 s/138 s historical cells (1.4695/1.5823) predate
+    the delivered column (Exp942), so their state mix is unknown and they are NOT comparable to today's
+    cells - which is exactly why the ladder now records the state.
+  * NOT A REGRESSION CLAIM: nothing about the code changed. These are honest cells for a NAMED state
+    history, and they say the loop can only take a boost-cell for a SHORT clip right now. Whether that is
+    intrinsic (power budget) or activity-driven is the next experiment: inject continuously THROUGH a
+    69 s run and see whether the decay is prevented. If it is, the state is settable for long clips too
+    (continuous input = a user holding the phone); if it is not, the long-clip boost is gone and the
+    honest long-clip number is the state-1/2 one.
+  Anchor 1.2257 (state 3, armed, 10 s cell) at ~27.3 h, transcripts byte-identical.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
