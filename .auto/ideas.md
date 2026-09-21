@@ -4165,6 +4165,25 @@ Consequences:
     from "it arms itself on a timer".
   Anchor (boost, pooled) 1.2170 at ~26.6 h, transcripts byte-identical.
 
+- ***CAUSALITY PROVEN: USER ACTIVITY ARMS BOOST, SCREEN-OFF DISARMS IT (Exp971).*** The decisive
+  A->A->B->A, starting from a known-reverted state (state 2 reachable on demand via 3 min screen-off):
+      R1 after screen-off 3 min     1.7030  req 1300000  deliv 18 %   <- state 2
+      I2 idle 3 min, NO injection   1.7039  req 1300000  deliv 18 %   <- state 2 PERSISTS (no timer arms it)
+      B3 inject                     1.2285  req 2400000  deliv 94 %   <- 2 -> 3 by INJECTION
+      R4 after screen-off 3 min     1.7127  req 1300000  deliv 18 %   <- 3 -> 2 by SCREEN-OFF
+  This closes the Question Exp969/970 left open. I2 is the key arm: idling 3 min on screen-on changed
+  NOTHING (1.7030 -> 1.7039, 0.05 %), so the flip in B3 (1.7039 -> 1.2285) is attributable to the
+  injected activity and not to a coincidental timer, and R4 shows the transition is reversible. Full
+  chain: user-activity event ARMS state 3; it holds while the screen stays on; screen-off DISARMS it.
+  * Practical rule for this loop: any measurement's state is (screen state) x (armed?), and the state can
+    now be SET: sleep 3 min + wake = state 2; then inject key events = state 3. Anchors must name it.
+  * HONEST SCOPE: this does not create speed - the same binary, clip and task measured 1.19 in this state
+    for the session's first ~20 h. It explains the 1.85 "long-uptime regime" (state 1/2, screen off),
+    the 1.70 "sticky cap" (state 2, screen on, unarmed), and restores the ability to take the 1.19-1.22
+    boost measurement deliberately. What remains to be re-established is the LADDER under a pinned,
+    named state (queued: arm-up step in measure.sh + guard, then spaced reps per cell).
+  Anchor (state 3) 1.2285 at ~26.9 h, transcripts byte-identical (1a095c8496b4).
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
