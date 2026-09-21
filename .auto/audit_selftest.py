@@ -265,6 +265,28 @@ def plant_telemetry_gap():
     return lambda: os.rename(q, p)
 
 
+def plant_protocol_capture_gap():
+    # Exp1023: check 18's newer-capture branch now separates a PROTOCOL capture (a speed measurement that
+    # escaped telemetry -> FAIL) from a DIAGNOSTIC one (fault/config probes, which run the binary directly
+    # and write no row on purpose -> WARN). Plant the measurement case exactly: make the current protocol
+    # capture newer than the TSV without adding a row. copystat restores the original ordering on revert -
+    # mtimes are not tracked by git, so a plain file copy would not undo the fault.
+    cap, tsv, bak = '.auto/last_out.txt', '.auto/device_state.tsv', '.auto/last_out.txt.selftest_bak'
+    if not (os.path.exists(cap) and os.path.exists(tsv)):
+        raise RuntimeError('need both last_out.txt and device_state.tsv to plant this')
+    nwin = sum(1 for ln in open(cap, encoding='utf-8', errors='ignore') if ln.startswith('['))
+    if nwin != 4:
+        raise RuntimeError(f'last_out.txt holds {nwin} window lines, not the protocol clip - refresh it with '
+                           'measure.sh --skip-build before planting this fault')
+    shutil.copy2(cap, bak)
+    os.utime(cap, None)
+
+    def restore():
+        shutil.copystat(bak, cap)
+        os.remove(bak)
+    return restore
+
+
 def plant_unguarded_grep():
     # Reproduce the Exp876 class in one line: an unguarded $(grep ...) assignment in a set -e script.
     return snap_append('.auto/checks.sh', '\nZZ_SELFTEST=$( grep -oE zzz .auto/config.json | head -n1 )\n')
@@ -344,6 +366,8 @@ FAULTS = [
     ('19 arm guard',        'the arm state-guard is deleted from measure.sh',  plant_arm_guard,
      'check 19.*MISSING'),
     ('18 telemetry gap',    'runs stop being recorded in device_state.tsv',   plant_telemetry_gap,  'not being recorded'),
+    ('18 protocol capture', 'a speed measurement writes a capture but no telemetry row',
+     plant_protocol_capture_gap, 'check 18.*PROTOCOL capture'),
     ('18 header format',    'a column migration duplicates TSV header fields',  plant_telemetry_header,
      'check 18.*duplicate column names|check 18.*header has'),
     ('7e derivation',         'a clip note describes audio that was not used', plant_false_derivation,

@@ -1345,8 +1345,27 @@ else:
                     else f"header has {len(_hdr)} fields, expected exactly 16")
             bad(f"check 18: device_state.tsv malformed ({_why}) - the telemetry write is broken, not just absent")
         elif os.path.getmtime(_max) > os.path.getmtime(_tsv) + 1:
-            bad("check 18: .auto/last_out.txt is NEWER than device_state.tsv - the latest run escaped "
-                "device-state telemetry recording")
+            # Exp1023: this branch used to FAIL for ANY newer capture, but two different things make a capture
+            # newer than the telemetry: (a) a SPEED MEASUREMENT whose row was lost - the failure this guard
+            # exists for - and (b) a DIAGNOSTIC run (fault_inject's truncated-model fixtures, a lying-header
+            # probe, a config edge) that calls the binary directly and writes no row ON PURPOSE, because its
+            # rtf is not a measurement and some arms produce no metric at all. After every fault board the
+            # guard cried (b) - Exp1022b/c did exactly that, and nearly sent me building a "shared telemetry
+            # writer" for a writer that was fine (the board's H comes from measure.sh, so it IS recorded).
+            # The window count (check 16's discriminator) tells them apart: 4 window lines IS the protocol
+            # clip, so a newer 4-window capture with no row means a measurement escaped -> FAIL.
+            _nw = -1
+            try:
+                _nw = sum(1 for ln in open(_max, encoding='utf-8', errors='ignore') if ln.startswith('['))
+            except OSError:
+                pass
+            if _nw == 4:
+                bad("check 18: the PROTOCOL capture is newer than device_state.tsv - a speed measurement "
+                    "escaped device-state telemetry recording (re-run measure.sh, or record the row)")
+            else:
+                warn(f"check 18: .auto/last_out.txt ({_nw} window lines, not the protocol clip) is newer "
+                     "than device_state.tsv - a diagnostic run refreshed the capture without a row, which is "
+                     "correct for fault/config probes but wrong if anything in it measured speed")
         else:
             ok(f"check 18: device_state.tsv recording ({len(_lines) - 1} runs logged, latest matches capture)")
     except OSError:

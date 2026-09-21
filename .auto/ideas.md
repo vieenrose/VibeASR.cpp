@@ -5303,3 +5303,25 @@ batt 36.8 C, tokens 39.
     and a plant must show that removing the fault-board call is caught. Watch the Exp987 failure mode: a
     block-spanning edit once silently deleted the arm guard from measure.sh.
 Anchor unchanged (armed protocol 1.2334 at 34.7 h; the post-board rep is appended to device_state.tsv).
+
+- THE "TELEMETRY GAP" WAS A GUARD BUG, NOT A WRITER BUG (Exp1023) - **corrects Exp1022c**, which queued a
+  shared telemetry writer on the premise that the fault board's baseline H had no witness. It does: line 95 of
+  fault_inject.sh takes H from `SKIP_BUILD=1 "$HERE/measure.sh"`, which writes the row and the state columns.
+  What writes a capture with no row are the board's **diagnostic arms** (truncated models, lying WAV headers,
+  config edges) - deliberately, because their rtf is not a measurement and the refused loads emit none. So
+  the queued refactor is DROPPED, recorded here so nobody rebuilds it.
+  * The real defect was in check 18: its newer-capture branch treated "a measurement lost its row" (the failure
+    it exists for) and "a probe refreshed the capture" (normal, after every board) as the same event. Fixed
+    with check 16's discriminator - **4 window lines IS the protocol clip**: newer + 4 windows -> FAIL "a speed
+    measurement escaped telemetry"; any other window count -> WARN naming the count and the reason.
+  * Both branches proven, not asserted. New plant `18 protocol capture` (make the protocol capture newer than
+    the TSV without a row; exact revert via shutil.copystat because mtimes are not tracked by git) -> FIRED
+    with the FAIL text; and the real fast board `FAULT_HEALTHY=0` (12 pass, diagnostic only) -> the audit now
+    WARNs with "(0 window lines, not the protocol clip) ... correct for fault/config probes". Check 18 now has
+    three plants: gap / protocol capture / header format.
+  * STANDING RULE: when a guard complains, first identify what the complaining artifact IS. This is the fourth
+    case where a note I wrote in a previous round was wrong and nearly bought work (Exp1013's three-digit
+    regex, Exp1019's "bimodal by uptime" reading, Exp1020's negative uptime slope, Exp1022c's unwitnessed H).
+    Cheap version of the rule: read the call site before designing the fix - here it cost one grep.
+Anchor (armed protocol mean) 1.2282 at 35.0 h (derived); witnesses 2039.3 / 2035.2 MHz, tokens 39,
+peak_rss 2191.4-2191.6 MB, capture refreshed (protocol, 4 windows).
