@@ -3979,3 +3979,21 @@ Consequences:
     are reported, never averaged into bands.
   Anchor (capped, quarantined) 1.8633 at ~24.2 h (batt 32.2 C, delivered 0), transcript byte-identical
   - the transcript surviving a 1.6x clock cap unchanged is itself a robustness datum.
+
+- CAP PERSISTS ~50 MIN; DOZE-MAINTENANCE HYPOTHESIS FALSIFIED (Exp955). Two more capped arms after
+  wake (1.8476 delivered 6, LT 1.85 delivered 0) + one after a 5-min held-awake wait (1.8538, 30/30 at
+  1.3 GHz, delivered 0, batt 29.8 C) - transcripts byte-identical throughout. Mechanism tests:
+  (a) the device re-sleeps within minutes (Asleep at round start despite last round's wake), but holding
+  it awake is NOT available: `svc power stayon true` is Killed (not permitted), mStayOn=false, so the
+  wait ran Asleep again - the test as designed did not execute; Doze-maintenance is NOT excluded, only
+  untestable by this path (reverted: stayon was already false, nothing changed).
+  (b) the cap is therefore robust to: 10-min gate workload, wake, 20+ min idle, re-sleep, batt 29.8-30.3 C.
+  Governor files (governor/max_freq) are permission-denied, so the parked-max cannot be read directly -
+  the request column (1300000, 30/30) is the only witness.
+  * CAPPED LT PROFILE (quarantined, for the record): w1 vae 3572/pre 929/dec 1180, w2 3362/935/1022,
+  w3 3342/950/945, w4 1335/436/509 - vae/prefill scale ~1.65-1.78x vs boost (clock ratio 2.4/1.3 = 1.85
+  would predict more; don't model a quarantined state).
+  * ESCALATION PATH (no unilateral reboot): one more round of spontaneous-recovery watch (cheap anchor).
+  If still capped, the decision is reboot-as-regime-event (destroys the 24 h fresh-boot series, needs
+  Exp880-style re-baseline) vs extended wait - that choice goes to the user, not the loop.
+  Anchor (capped, quarantined) 1.8476 at ~24.4 h (delivered 6, max touched 2400000 once), byte-identical.
