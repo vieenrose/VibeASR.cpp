@@ -4060,3 +4060,11 @@ Consequences:
   dw_conv1d +8.7, gelu_bias +5.4, bound_batch +2.8, flush +13.7, stack_off +26.2, ALL_OFF +39.6 - NOT
   runbook updates, quoted here only so a future boost ladder can diff against them).
   Default arm 1.8488; watch anchor after 1.8511 (delivered 0), byte-identical. 15th/16th capped reps.
+
+- SESSION-MEMORY SOAK ROTATION (Exp963, ~50 rounds since Exp913): 3 chat69 runs under one sampler,
+  per-run peaks 2198.3/2198.2/2198.2 MB (spread 0.1 MB) = NO SESSION GROWTH; steady medians
+  2176.9/2176.9/2177.3 (two-state pattern, not accumulation); fds flat; global slope INCONCLUSIVE by
+  design (two-state spikes dominate +-11 MB/min SE - the instrument's known limit, same as Exp913).
+  All three runs 446 tokens exact. Reproduces Exp913/887 numerically (~2198 MB peaks) UNDER THE CAP -
+  memory behavior is clock-independent, so this board stays interpretable in any state. RTFs
+  2.10-2.12 (boost band 1.47) quarantined. Soak board current.

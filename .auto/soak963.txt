@@ -1,0 +1,26 @@
+  drift across runs = +0.19 +/- 0.22 MB per run   first-vs-last = +0.4 MB
+  session-memory verdict: FLAT - no leak signal
+  peak per run: 2198.3 2198.2 2198.2 MB  (spread 0.2 MB)
+  per-run peak is invariant -> NO SESSION GROWTH (the median step is the two-state pattern, not accumulation)
+
+samples=85  span=7.8 min  first=1667.3 MB  last=2177.3 MB  min=1320.7  max=2198.3  peak(HWM)=2198.3
+full-range trend = +3.42 MB/min   net last-first = +509.9 MB   <- includes the first-touch ramp of the mmap'd weights; NOT the leak indicator
+steady state from t=5s (sample 1/85): trend = -0.88 +/- 11.13 MB/min (95% interval, 84 samples),  band 1320.7-2198.3 MB (877.6 MB wide), HWM 2191.5 -> 2198.3 MB
+memory verdict: INCONCLUSIVE - slope +/- 2se straddles the threshold; re-run or lengthen the soak
+descriptors: first=3 last=3 min=3 max=3 net=+0 trend=+0.00/min / limit 32768
+descriptor verdict: FLAT - no fd leak
+threads: min=1 max=3 CHANGES by 2 - thread leak?
+
+--- per-run METRIC summary ---
+METRIC rtf=2.0997
+METRIC tokens=446
+METRIC peak_rss_mb=2198.3
+METRIC batt_temp_c=32.5
+METRIC rtf=2.1008
+METRIC tokens=446
+METRIC peak_rss_mb=2198.2
+METRIC batt_temp_c=33.0
+METRIC rtf=2.1174
+METRIC tokens=446
+METRIC peak_rss_mb=2198.2
+METRIC batt_temp_c=33.4
