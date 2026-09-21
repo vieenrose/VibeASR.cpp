@@ -5215,3 +5215,41 @@ Anchor (armed protocol retry mean) 1.2356 at 33.1 h (derived); witnesses 2005.2 
     the knob in run_rtf_multi.sh -> FAIL naming "sweep arm threshold knob".
   * Protocol rows this round: 1.2236 / 1.2266 (both 2320 MHz), i.e. the fast mode; no code change to src/.
 Anchor (armed protocol mean of the two knob-control runs) 1.2251 at 33.5 h (derived).
+
+- SOAK ROTATION + rss_soak BUGS + WHAT "UPTIME" REALLY PREDICTS (Exp1020, ~28 rounds since Exp992).
+  * **Session-memory question RESOLVED** (Exp992's own verdict line was INCONCLUSIVE, and its ledger note
+    claimed "no session growth" from peak invariance - the two were never reconciled). Correct invocation is
+    `--repeat K` (per-run peaks), with a clip long enough for in-window samples: **3 x 69 s -> per-run peaks
+    2198.4 / 2198.2 / 2198.2 MB (spread 0.2 MB)**, medians 2182.1 / 2176.9 / 2196.1, fd FLAT at 3 (limit
+    32768), majflt 0, tokens 446 exact in all three. The tool prints the right rule itself: "per-run peak is
+    invariant -> NO SESSION GROWTH (the median step is the two-state pattern, not accumulation)". So the
+    median-slope line says INCONCLUSIVE *by design*; the peak line is the decision statistic. Two 138 s
+    single-process soaks agree: bands 23.8 / 25.7 MB, HWM +3.5 / +10.3 MB, peaks 2205.8 / 2205.9 (delta
+    0.1 MB). The ~22 MB RSS oscillation is the 2-vs-3-thread state (visible in the sample table).
+  * **138 s armed cells 1.4980 / 1.5530** (witnesses 2363.8 / 2184.0 MHz) vs the documented ladder cell
+    1.6478 taken at ~2018 MHz: the gap is the P-state mode, not code - consistent with the regression below.
+  * **BUG 1 (rss_soak.py): a straight-line flag parse leaked flags into the wrapped command.** `--interval 5`
+    was only stripped if it came first, so `--repeat 4 --interval 5 -- CMD` executed a program named
+    `--interval` (a FileNotFoundError here; SILENT if that token had named something executable). Now a loop
+    parser with hard errors for unknown flags and for a missing command, and the usage line documents
+    `--repeat K` (the check-17 discipline applied to a python tool). Controls: `--bogus` -> ERROR, bare
+    `--repeat 2` -> ERROR, `--selftest` still PASS.
+  * **BUG 2 (rss_soak.py): the thread verdict false-alarmed on multi-run soaks.** Cross-run min/max of the
+    thread count always "changes" because a restart resets it, so a clean soak printed "thread leak?". Now
+    decided per run (a rise WITHIN a window is the leak). Negative control proven: `threads per run: 2->2
+    2->3 FLAT within every run`. POSITIVE CASE NOT EXERCISED - it needs a device-side threaded target (the
+    wrapped command runs on the phone, so a host-side synthetic parent is invisible to the poller); recorded
+    as a known gap rather than as coverage.
+  * **STATS (host-only, n=65 armed protocol rows, uptime 28.2-33.6 h):** with the P-state as a categorical
+    control, PARTIAL-ARM rows are **+0.0974 +/- 0.0117 s (t=8.3, ~+8 %)** and HI-vs-LO is **-0.0055 +/-
+    0.0089 (t=-0.6)** -> the guard's <floor exclusion is worth ~8 % (the retry rule is right), and the two
+    boosted sub-modes are indistinguishable, so pooling LO+HI rows for ladder cells is legitimate. This round's
+    own pair shows it: 1.2280 @ 2034 MHz vs 1.2270 @ 2322 MHz.
+  * **AND A TRAP: "uptime" is partly a proxy for "harness version".** Pooled armed rows give -0.31 %/h
+    (t=-4.9) - the OPPOSITE sign to Exp1002's +0.17 %/h - because that span contains the arm-recipe
+    transitions of Exp977-979 (the 30->31 h step is -1.4 %). Restricted to >= 31 h, where the arm recipe was
+    stable, the slope is **+0.22 +/- 0.13 %/h (n=27)**, i.e. the epoch-level drift figure replicates once the
+    recipe is held fixed. Rule: any uptime regression inside one boot must hold the harness/arm fixed, else
+    you are regressing on the changelog. This is Exp1003/1004's non-identifiability made concrete.
+Anchor (armed protocol mean) 1.2275 at 34.3 h (derived); witnesses 2034.4 / 2322.2 MHz, tokens 39,
+peak_rss 2191.5-2191.7 MB.

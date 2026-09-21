@@ -7,7 +7,7 @@ per-window buffers never released) is invisible in a peak sample taken at exit, 
 only over minutes - which is exactly where a phone assistant actually runs. Exp644/614 did this
 by hand; this makes it one command.
 
-Usage:  rss_soak.py [--interval N] -- <command ...>
+Usage:  rss_soak.py [--interval N] [--repeat K] -- <command ...>   (K runs of one command -> per-run peaks)
 Prints a time series, then min/max/first/last and a least-squares slope in MB/min, and re-prints
 any METRIC lines the wrapped command emitted (so the soak result lands in the same place as a
 normal run).
@@ -83,14 +83,23 @@ if '--selftest' in sys.argv:
 
 args = sys.argv[1:]
 interval = 5.0
-if args and args[0] == '--interval':
-    interval = float(args[1]); args = args[2:]
-if args and args[0] == '--repeat':            # Exp865f: strip it here, or it leaks into the wrapped argv
-    REPEAT_N = int(args[1]); args = args[2:]   # and the harness tries to execute a flag as a program
-else:
-    REPEAT_N = 1
+REPEAT_N = 1
+# Exp1020: flags must be stripped in a LOOP. The old straight-line parse handled '--interval N --repeat K'
+# but not the other order: after consuming '--repeat K' it never revisited '--interval', so the flag pair
+# LEAKED into the wrapped argv and the soak "ran" a command named '--interval' - a FileNotFoundError in a
+# traceback, and (worse) it would have been silent if '--interval' had happened to be an executable name.
+# Unknown leading flags are now a hard error rather than a command.
+while args and args[0] in ('--interval', '--repeat'):
+    if args[0] == '--interval':
+        interval = float(args[1]); args = args[2:]
+    else:
+        REPEAT_N = int(args[1]); args = args[2:]
+if args and args[0].startswith('--') and args[0] != '--':
+    sys.exit(f'ERROR: unknown flag {args[0]!r} (valid: --interval N, --repeat N, then -- <command ...>)')
 if args and args[0] == '--':
     args = args[1:]
+if not args:
+    sys.exit('ERROR: no command to run. Usage: rss_soak.py [--interval N] [--repeat K] -- <command ...>')
 
 DEV = re.search(r'^DEV=(\S+)', open('.auto/measure.sh').read(), re.M).group(1)
 PROC = os.environ.get('SOAK_PROC', 'asr_streaming')
@@ -319,8 +328,27 @@ if fds:
 else:
     print('descriptor verdict: NOT MEASURED - /proc/<pid>/fd was unreadable, this soak proved nothing about fds')
 if ths:
-    print(f'threads: min={min(ths)} max={max(ths)} ' +
-          ('FLAT' if max(ths) - min(ths) <= 1 else f'CHANGES by {max(ths) - min(ths)} - thread leak?'))
+    # Exp1020: with --repeat the sample series spans process RESTARTS, and a fresh process legitimately
+    # starts at 1 thread and grows to 3, so a cross-run min/max ALWAYS "changes" - the old line reported
+    # "thread leak?" on a clean 3-run soak whose per-run peaks were flat to 0.2 MB. A leak is a rise
+    # WITHIN one run's window, so decide it per run.
+    if REPEAT > 1 and runs:
+        spans = []
+        for (t0, t1) in runs:
+            v = [s_[4] for s_ in samples if len(s_) > 4 and s_[4] and t0 + 5 <= s_[0] <= t1]
+            if v:
+                spans.append((min(v), max(v)))
+        if spans:
+            rises = [b - a for a, b in spans if b - a > 1]
+            print('threads per run: ' + ' '.join(f'{a}->{b}' for a, b in spans) +
+                  ('  FLAT within every run (a restart legitimately resets the count, so the cross-run '
+                   'min/max always looks like a change)' if not rises
+                   else '  thread leak? the count rises WITHIN a run'))
+        else:
+            print(f'threads: min={min(ths)} max={max(ths)} (no per-run windows had samples - NOT MEASURED)')
+    else:
+        print(f'threads: min={min(ths)} max={max(ths)} ' +
+              ('FLAT' if max(ths) - min(ths) <= 1 else f'CHANGES by {max(ths) - min(ths)} - thread leak?'))
 for line in out.splitlines():
     if line.startswith('METRIC'):
         print(line)
