@@ -4821,6 +4821,20 @@ Consequences:
     in the provenance; the lean WER 4.65 % and the zh b=0/c=0 parity (Exp846) stand as they are.
   Anchor (armed lean 10 s cell) 1.4460 at ~34.0 h, canary 39 exact.
 
+- THE LEAN TIER'S LAST STALE CELL REFRESHED: ARMED 40-UTT GATE (Exp1001). `gatelean1001` (p13 +
+  VAE_DEFER_LATE=1, armed, witness 2147.4 MHz): 40/40 scored, WER **4.68 %** (S=30 D=2 I=2), gate mean
+  **1.4955** (replacing the pre-arm 2.13 cell).
+  * ACCURACY vs SHIPPED, PAIRED ON THE SAME 731 TOKENS: A 0.0465 vs B 0.0451 = **+0.14 pp from exactly ONE
+    discordant token** (b=1/c=0, McNemar p=1.0). So the lean tier is statistically indistinguishable from
+    the shipped tier on this gate - the same conclusion Exp655 reached on hard audio (b=0/c=1, p=1.0) and
+    Exp846 on zh (b=0/c=0), now with the third independent set agreeing. The ~+8 % RTF cost (1.4955 vs the
+    shipped armed 1.3808) buys ~350 MB and ONE token of text on 40 utterances.
+  * DOCS: `headline.json`'s lean block now carries gate_mean 1.50 / WER 4.68 % with provenance naming the
+    armed ladder + this gate, and the three prose sites (RESULTS.md lean row, prompt.md tier table, README
+    lean row) were moved in the same commit - no drift, audit green afterwards (134/3 warnings/0 fail).
+    The lean row's 'stale' flag is now gone: BOTH shipped rows have armed ladders AND armed gates.
+  Anchor (armed lean gate mean) 1.4955 at ~34.2 h; gate witness 2147.4 MHz.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
