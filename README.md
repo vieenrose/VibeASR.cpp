@@ -59,10 +59,11 @@ CPU-only, 2 big cores), with accuracy gates on every change.
 - **−90% RTF** via three waves: A78 codegen + mmap loader, blocked-int8 LM/VAE kernels, then fused
   elementwise ops (depthwise-conv1d kernel, layer-scale+residual, gelu+bias, rms_norm·gamma, in-kernel
   causal pad), blocked-int8 conv weights, tail-GEMV, boundary-batch prefill, and a final-window flush.
-- **Accuracy-guarded, not overfit**: the 40-utt LibriSpeech gate reads zero discordant tokens vs the
-  frozen reference across **15 consecutive gates** (paired McNemar, not just WER parity); a never-optimized
-  guard clip, fault/behavior/rollback/soak boards, a 40-utt WER re-gate on every source change, and a
-  three-set **hard-audio watchdog** (`.auto/hardaudio_watch.sh`) for changes the read-speech gate cannot see.
+- **Accuracy-guarded, not overfit**: the 40-utt LibriSpeech gate has returned the **identical S/D/I profile
+  (WER 4.55 %) for 15 consecutive gates**, with **zero discordant tokens of 731** against the frozen
+  reference wherever it is re-checked (b=0/c=0, exact McNemar p=1.0) - plus a never-optimized guard clip,
+  fault/behavior/rollback/soak boards, a 40-utt WER re-gate on every source change, and a three-set
+  **hard-audio watchdog** (`.auto/hardaudio_watch.sh`) for the changes that gate cannot see.
 - **Read-speech qualifier**: the 4.55% WER is LibriSpeech test-clean; on held-out consumer-mic English
   the same system reads **26.4%**, and 29.6% on Common Voice `en` (domain gap measured, never optimized
   against).
