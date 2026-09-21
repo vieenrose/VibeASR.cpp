@@ -4454,6 +4454,22 @@ Consequences:
     readable state agree again. No src/ or tier file was touched by this round.
   Anchor (unchanged, no device time this round): 1.2465 at ~28.9 h.
 
+- 13th CONSECUTIVE IDENTICAL GATE, NOW IN THE ARMED-STATE ERA (Exp982). gate982: 40/40 scored,
+  WER **4.55 %** (S=29 D=2 I=2 - the identical profile thirteen gates running), paired b=0/c=0 of 731
+  tokens vs BOTH gate954 and gate852 (CI exactly [0,0], McNemar p=1.0) and **0/40 transcripts
+  differing** (byte set). Stamp verifies the tier and BIN ed4cb821 = the current binary, so this is
+  output determinism on the unchanged system. WER is state-independent, as it has been through every
+  device-state change of Exp952-980 - which is the point of running it here: the accuracy claim did not
+  move while the speed claim was being requalified.
+  * NEW INSTRUMENT GAP FOUND (queued, cheap): `eval40.sh` does NOT arm - it invokes the binary directly,
+    so the gate runs in the UNARMED state and its mean rtf read **1.892** where the historical gates read
+    ~1.34 in the armed state. The accuracy comparison is unaffected (WER is state-independent), but the
+    gate MEAN is a speed-adjacent number, so it must either be armed or labelled as unarmed. Fix queued:
+    run the same KEYCODE_WAKEUP stream for the duration of the gate (like the Exp941 batt sampler), or
+    record the witness per utterance and quote the gate mean with its state. Until then, do not compare
+    this 1.892 with the historical gate means in the decay series.
+  Anchor (unarmed gate state; protocol capture untouched by eval40) 1.2465 at ~29.1 h.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
