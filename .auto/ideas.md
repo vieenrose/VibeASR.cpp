@@ -4078,3 +4078,8 @@ Consequences:
   what makes it interpretable under cap - absolute bands would have false-failed (Exp886 lesson).
   Post-board anchor 1.8517 (delivered 0), byte-identical. (measure.sh flagged 38 % other-busy on that
   anchor - a background flare, Exp862 class; the capped verdict stands on dozens of reps, not this one.)
+
+- COVERAGE BOARD: 20/20 PLANTABLE CHECKS FIRE (Exp965, host-only, ~2 min): every plantable audit check
+  fails on its own planted fault (0 silent/invalid); 3 classes accepted as uncontrolled (co-runner -
+  would poison the session; sweep-resolves-to-tier - own --dry control; capture-identity - WARN-only by
+  design, manual control documented). Final clean-tree audit green. No device time, no file changes.
