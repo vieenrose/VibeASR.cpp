@@ -5622,3 +5622,24 @@ Anchor 1.2286 (2 clean reps; 1 flagged partial excluded) at 38.8 h uptime.
   batch also applies on the deferred path (Exp835 noted it flips ONE token at p13, which is a gate-run
   requirement, not a blocker), then re-gating: 40-utt byte-identity is not expected for this class, so use the
   paired test plus the hard-audio watchdog.
+
+- FAULT BOARD + A CANARY-INSTRUMENT RULE THAT CHANGES HOW WE READ TOKEN COUNTS (Exp1033, 10 rounds since Exp1022b).
+  * **Fault board 13/13 PASS**: damaged/truncated VAE and LM (incl. LM tail -8 MB, header-only 1 MB) fail loudly,
+    config edges loud (`n_ctx` below one window -> "frames failed"; pieces not a divisor of 26, pieces = 0 ->
+    "must divide 26"), and the RTF denominator stays content-derived. No silent-corruption path on the current
+    tree.
+  * **Following yesterday's arm Y properly (free, saved transcripts) - my "15 tokens moved" phrasing was wrong.**
+    Repetition check: all four zh arms have ZERO repeated 4-grams and longest repeated span 0, so the extra
+    tokens are not a loop. Character-level diff vs the shipped text:
+      lean (p13, defer ON)      0 dropped / 0 added   (byte-identical, matches the md5)
+      arm X (p1, defer ON)     18 dropped / 17 added   (reproduces Exp1014's "17 chars / 10 spans")
+      arm Y (p13, defer OFF)    6 dropped /  7 added   (WER 0.1560, 5 discordant tokens, p=1.0)
+    Arm Y emits 15 MORE LM tokens than lean but its text is *closer* to shipped than arm X's is. Therefore the
+    LM token count includes control tokens and is **not a content measure across encoder paths**.
+  * **Instrument rule (generalizes, and it matters because the loop uses canaries as fingerprints): token canaries
+    identify a path's DECODING, not its TEXT.** Within a path a count difference means output changed; across
+    paths it can be pure control tokens. Any equivalence claim across tiers/paths must use the text diff and the
+    paired discordant count - which is exactly what Exp1031/1032 did, so no earlier conclusion moves.
+  * Doc: RESULTS.md's Exp1032 layer reworded from "the defer flag moves the output (656 vs 641 tokens)" to the
+    accurate statement above.
+Anchor 1.2297 (3 reps 1.2288 / 1.2278 / 1.2326, witnesses 2332.1 / 2332.0 / 2044.6 MHz) at 39.0 h uptime.
