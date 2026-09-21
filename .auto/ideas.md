@@ -4802,6 +4802,25 @@ Consequences:
     has changed since v4.8, and the twelve+ gate runs are output-identical.
   Anchor (armed protocol, high-P subset mean) 1.2409 at ~33.7 h, transcript byte-identical.
 
+- THE LEAN TIER'S LADDER WAS AN UNARMED-STATE ARTIFACT - REFRESHED ARMED (Exp1000). The shipped row was
+  re-measured armed in Exp980; the LEAN row (p13 + VAE_DEFER_LATE=1) still carried Exp864's 2.08 / 2.24 /
+  2.32 / 2.38, which were taken in the unarmed/capped state. One armed ascending session:
+      clip     rtf      vae_s   lm_s    tokens  RSS (MB)   witness
+      10 s     1.4460    8.6     5.9      39     1752.1     2038 MHz
+      17 s     1.5446   13.6    12.6     106     1753.1     2183 MHz
+      69 s     1.6073   56.5    54.3     432     1758.4     2241 MHz
+      138 s    1.6489  113.0   114.5     847     1766.3     2276 MHz
+  * Canaries 39/106/432/847 are EXACTLY the documented lean canaries (Exp847/864), so the lean tier's
+    (slightly lower) token output is unchanged - and the RSS 1.75 GB is reproduced. The old cells are
+    SUPERSEDED, not beaten: they were a different state, and the docs now say so.
+  * This closes the last stale cell in the two shipped rows: shipped 1.24 / 1.46 / 1.56 / 1.65 and lean
+    1.45 / 1.54 / 1.61 / 1.65 are now both armed-state ladders measured on the same stack. Doc-drift:
+    `headline.json`'s lean block moved to the armed cells and check 9 immediately named the two prose
+    sites that disagreed (RESULTS.md's lean row, prompt.md's tier table) - both fixed in this commit,
+    plus README's lean row. The lean 40-utt gate MEAN (2.13) still predates the arm and is flagged stale
+    in the provenance; the lean WER 4.65 % and the zh b=0/c=0 parity (Exp846) stand as they are.
+  Anchor (armed lean 10 s cell) 1.4460 at ~34.0 h, canary 39 exact.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas

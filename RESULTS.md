@@ -72,7 +72,7 @@ regenerated audio must hash to `984e60b14cfe…` to be the same probe).
 
 | tier | files | 10 s | 17 s | 69 s | 138 s | 40-utt mean | WER | RSS |
 |---|---|---|---|---|---|---|---|---|
-| **max-speed-lean (era **v4.8** at p13, `--vae-pieces 13 VAE_DEFER_LATE=1`, flush active from Exp830, Exp643/708/711/732/766/781/784/785/786/830/847/864; WHOLE ROW re-measured in ONE session (Exp864), token canaries 39/106/432/847 identical to Exp847 so the faster cont changed no output; the 40-utt mean cell is still the v4.7 measurement** | 1.75 GB | **2.08** | **2.24** | **2.32** | **2.38** | 2.13 *(v4.7 cell)* | **4.65 %**† | **1.75 GB** |
+| **max-speed-lean (era **v4.8** at p13, `--vae-pieces 13 VAE_DEFER_LATE=1`, flush active from Exp830; WHOLE ROW re-measured in ONE ARMED session (Exp1000), token canaries 39/106/432/847 EXACT (the documented lean canaries); the previous 2.08-2.38 cells were UNARMED/capped state and are superseded, not regressions; the 40-utt mean cell (2.13) still predates the arm and is flagged stale** | 1.75 GB | **1.45** | **1.54** | **1.61** | **1.65** | 2.13 *(v4.7 cell)* | **4.65 %**† | **1.75 GB** |
 | _same, 26 pieces (pre-flush cells - the p13 row above is the shipping lean tier)_ | 1.82 GB | _2.88_ | — | _2.83_ | _3.20_ | — | _4.55 % (tag `leanp26c`)_ | _1.84 GB_ |
 | **whole-file / server path** (Exp578/579) | — | — | — | live set **188-313 MB** for 6-10 s files | — | — | — | — |
 | **max-speed (shipped, era **v4.8** — v4.7 + blocked-transpose cont; ARMED measurement state (burst + wake-hint stream, Exp979) with the ladder re-taken in ONE session under it, Exp980; the SAME binary reads 1.67-2.14 unarmed and 1.85 with the screen off, Exp968-978)** | 2.19 GB | **1.25** | **1.46** | **1.56** | **1.65** | **1.34** | **4.55 %** | 2.19 GB |

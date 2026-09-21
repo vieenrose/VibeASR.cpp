@@ -31,15 +31,15 @@
     "provenance": "whole row re-measured in ONE session (Exp864); paired vs hyp-gate845: b=0/c=0 of 731, McNemar p=1.0, CI [0,0]"
   },
   "lean": {
-    "label": "max-speed-lean (p13 + VAE_DEFER_LATE=1)",
-    "rtf10": 2.08,
-    "rtf17": 2.24,
-    "rtf69": 2.32,
-    "rtf138": 2.38,
+    "label": "max-speed-lean (p13 + VAE_DEFER_LATE=1), ARMED measurement state",
+    "rtf10": 1.45,
+    "rtf17": 1.54,
+    "rtf69": 1.61,
+    "rtf138": 1.65,
     "gate_mean": 2.13,
     "wer_pct": 4.65,
     "rss_gb": 1.75,
-    "provenance": "whole row re-measured in ONE session (Exp864); token canaries 39/106/432/847 identical to Exp847; 40-utt mean cell still from v4.7"
+    "provenance": "WHOLE ROW re-measured in ONE armed ascending session (Exp1000): 1.4460 / 1.5446 / 1.6073 / 1.6489 with token canaries 39/106/432/847 EXACT (the documented lean canaries - the lean tier legitimately reads fewer tokens than the shipped tier on the English ladder), RSS 1752.1-1766.3 MB, witnesses 2038-2276 MHz, all armed. The previous cells (2.08/2.24/2.32/2.38, Exp864) were measured in the UNARMED/capped state and are therefore NOT comparable - they are superseded, not a regression. The 40-utt gate-mean cell (2.13) still predates the arm and is flagged as stale until a lean gate is re-run; the lean WER 4.65 % and the zh b=0/c=0 parity (Exp846) stand."
   },
   "device_state": {
     "_why": "Exp968-980 turned 'the metric is 1.19 or 1.85 and nobody knows why' into a three-state model with a per-run witness. Before Exp972 the loop never recorded the display state at all, and before Exp975 it recorded only the 2.4 GHz share - which reads 0 % for a 2.15 GHz run and so mislabelled the fastest long cells of the day as 'capped' (Exp974).",

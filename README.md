@@ -39,7 +39,7 @@ CPU-only, 2 big cores), with accuracy gates on every change.
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|
 | Baseline (F16 VAE + Q4_K_M LM) | 12.24 | — | — | — | — | 3.3 GB |
 | **MAX-SPEED v4.8 (default)** | **1.25** | 1.46 | 1.56 | 1.65 | 4.55% | 2.19 GB |
-| MAX-SPEED-LEAN (p13, sub-2 GB) | 2.08 | 2.24 | 2.32 | 2.38 | 4.65% | 1.75 GB |
+| MAX-SPEED-LEAN (p13, sub-2 GB) | 1.45 | 1.54 | 1.61 | 1.65 | 4.65% | 1.75 GB |
 
 </div>
 
