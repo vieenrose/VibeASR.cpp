@@ -5944,3 +5944,35 @@ session in a while) at 42.3 h uptime; the guard rotation's own P reps bracket it
     wait when it exceeds 40 C. That saves one wasted ~55 s run per heavy board day.
 Anchor 1.2218 (clean reps 1.2203 / 1.2232 at 2033.9 / 2030.0 MHz, sd 0.12 %; one 1793.3 MHz / 41.1 C rep flagged
 and excluded) at 42.7 h uptime.
+
+- THE THERMAL PRE-NOTE SHIPPED, AND IT TOOK FOUR OF MY OWN BUGS TO MAKE IT TRUSTWORTHY (Exp1045, Exp1044's queued item)
+  * Shipped: `thermal_note()` in the shared witness module `.auto/deliv_share.py` (+ a `--thermal <tsv>` CLI), called
+    from `measure.sh`'s pre-checks via `${STATE_TSV:-.auto/device_state.tsv}`. It prints a heads-up naming the last
+    recorded temperature and never sleeps - silently changing timing behaviour would be worse than a wasted rep.
+    Default threshold **38 C, not 40**: Exp1044's 41.1 C rep read 1793 MHz (deep thermal) while post-board reps at
+    38-39 C already sit AT the knee (one read 1996.9 MHz today), so 40 would have missed the case it exists for.
+    Override with `HOT_BATT_C`.
+  * BUG 1 (the important one): I wired it to `batt_temp_c`, which is `measure.sh`'s **METRIC** name; the TSV column
+    is **`batt_c`**. The note would have been permanently silent while its own selftest passed - Exp654/Exp660's
+    "a selftest that builds its own fixtures validates the assumption, not the world", verbatim. Fixed (both keys
+    accepted) AND the selftest now reads the REAL device_state.tsv header and FAILS if no battery column is there,
+    with a loud SKIP if the file is absent. Proven: planted rename -> exit 1 naming the header; restore -> exit 0.
+  * BUG 2 (cost real data, recovered): my *negative control* planted the fault by joining the header line with ';'
+    instead of renaming the field, and the restore did not undo the re-delimiting - leaving device_state.tsv's
+    header as one field. Caught by the md5 check I ran and by the still-failing selftest; repaired with the exact
+    inverse transform and verified (695 rows + the day's legit new rows). RULE: a plant that mutates a tracked
+    DATA file must be an exactly-reversible field edit (rename, never re-delimit), followed by a hash check.
+  * BUG 3 (third occurrence of this trap): `cmd | tail -n 2; echo $?` reported exit 0 for a selftest that had
+    FAILED - the pipe ate the status (Exp1040's grep/tail lesson, again). Statuses must be read un-piped.
+  * BUG 4 (a guard's false alarm, fixed properly): the audit's path extractor matched inside bash's
+    `${STATE_TSV:-.auto/device_state.tsv}` and reported `missing path referenced by measure.sh:
+    -.auto/device_state.tsv`. Fixed in the EXTRACTOR rather than by hiding the reference - leading expansion
+    punctuation is stripped so the default is still checked: bash-default form -> real path, a plain bogus path
+    still passes through unchanged, and the coverage board is **24/24** after the edit.
+  * What the note predicts, bounded honestly: at batt 35-36 C (cool) one rep still read 1970.3 MHz, so the
+    sub-knee class is NOT purely thermal - temperature is a weak correlate, not the mechanism (consistent with
+    Exp1004: the state is invisible from userspace). Use it as a heads-up; the witness remains the authority.
+  * Soak board by cadence: no session growth - per-run peaks 2198.2 / 2198.2 / 2198.3 MB, fd FLAT (3 -> 3),
+    threads FLAT within every run.
+Anchor 1.2298 (clean reps 1.2268 @ 2326.0 / 1.2327 @ 2043.6 MHz, sd 0.24 %; one rep flagged at 1970.3 MHz and
+excluded after a 200 s cool) at 43.3 h uptime.

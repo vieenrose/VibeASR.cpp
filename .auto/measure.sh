@@ -108,6 +108,11 @@ if command -v adb >/dev/null 2>&1; then
   if [ "${BUSYFRAC:-0}" -gt 25 ] 2>/dev/null; then
     echo "WARNING: device is burning ${BUSYFRAC}% of its cores on OTHER work - this run is PROVISIONAL, not a result. Typical culprit: Play Store / dex2oat / backup. Wait for it to settle or re-take 3 reps." >&2
   fi
+  # Exp1045 (queued in Exp1044): a thermal HEADS-UP, from the last recorded batt_temp_c. Exp1044's first anchor
+  # rep after ~17 min of boards read 1.4069 at 1793 MHz / 41.1 C - the witness guard caught it, but only after a
+  # wasted run. This never sleeps and never changes timing; a note is enough, and silence means cool-or-unknown.
+  _hot=$( { python3 .auto/deliv_share.py --thermal "${STATE_TSV:-.auto/device_state.tsv}" 2>/dev/null; } || true )
+  if [ -n "${_hot:-}" ]; then echo "note: $_hot" >&2; fi
 fi
 
 # Exp759: the research tool's discard-revert runs `git checkout -- .` at the SESSION workDir, which

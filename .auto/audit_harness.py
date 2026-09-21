@@ -137,6 +137,13 @@ for s in scripts:
         DEVICE_PATHS.setdefault(s, set()).update(dcl.group(1).split())
     for m in PATH_RE.finditer(txt):
         rel = m.group(1)
+        # `${STATE_TSV:-.auto/device_state.tsv}` is a bash default-expansion, and PATH_RE can start its match
+        # inside the ':-', handing back '-.auto/...'. The DEFAULT is a genuinely referenced path (it is what runs
+        # when the env is unset), so keep checking it - just strip the expansion's leading punctuation. Exp1045:
+        # the thermal-note line produced a false "missing path referenced by measure.sh" FAIL exactly this way.
+        rel = re.sub(r'^[-:+]+', '', rel)
+        if not rel:
+            continue
         rel = rel[2:] if rel.startswith('./') else rel   # NB: lstrip('./') would eat '.auto' -> 'auto'
         if rel in DEVICE_PATHS.get(s, set()):
             continue        # declared as a DEVICE-side artifact (see the DEVICE_PATHS marker) - checked in 3c
