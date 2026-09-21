@@ -4936,6 +4936,24 @@ Consequences:
   Anchor (sweep Pproto, armed) 1.2257 at 31.5 h; post-sweep protocol anchor 1.2302 (witness 2030.0 MHz),
   transcript 1a095c8496b4 byte-identical.
 
+- THE HEADLINE CLAIMS NOW CARRY THE UPTIME AXIS (Exp1007, docs only). The two top-line prose sites predated
+  the drift discovery, so a reader of either document would still have seen "state matters" without the
+  second qualifier that Exp1002-1004 established:
+    README (autoresearch section): the state note now adds a second paragraph - the metric drifts with
+      uptime (+~0.17 %/h; armed cells 1.1939 at 12-20 h vs 1.2242 at 26-40 h, delivered share flat), the
+      row above is the ~31 h level, the effect survives control for procs/memory/battery, and it is why
+      every number carries its state AND its uptime; the run count was refreshed (980 -> 1000+).
+    RESULTS.md (headline state paragraph): adds the uptime drift with its n and the control result, the
+      non-identifiability of the two-parameter fit (Exp1003), and states that the cells above are the ~31 h
+      level - plus the attribution of the historical 1.19 vs today (+4 % = arm ~1.3 %, uptime ~2.5 %,
+      P-state ~0.5 %).
+  * Doc-drift checks stayed green: no headline NUMBER changed, only the qualifiers around them, so check 9
+    had nothing to fire on; the audit was re-run after the commit (135 checks / 2 warnings / 0 failures).
+    The machine-readable `regime` field already carried this from Exp1002/1004, which is what made the two
+    prose sites easy to spot as the remaining gaps.
+  Anchor (armed protocol, 2-rep mean) 1.2258 at 31.6 h (derived); witnesses 2328.5 / 2326.5 MHz,
+  transcript byte-identical.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas
