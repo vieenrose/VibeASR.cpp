@@ -337,8 +337,13 @@ if [ -n "${TIS0:-}" ] && [ -n "${TIS1:-}" ]; then
   # audit_harness.py greps for this guard's string) so a silent deletion is a FAIL rather than a discovery
   # - the Exp660 rule applied to a guard that had no guard.
   if [ "${ARMED:-0}" = "wake" ] && [ -n "${MHZ:-}" ] && [ "$MHZ" != "-1" ]; then
-    if awk -v m="$MHZ" 'BEGIN{exit !(m < 2000)}'; then
-      echo "WARNING: arm ran but cpu7_deliv_mhz=$MHZ (< 2000) - this run is in an UNBOOSTED state; do not compare it with boosted cells" >&2
+    # Exp1019: the boost floor is a knob, not a constant - see audit_harness check 19's comment. The ARMED
+    # state alternates between two sub-levels by time window (archived protocol medians 2326-2328 MHz at
+    # 31-33 h vs 2003-2054 MHz at 29-31 and 33-34 h uptime, mean rtf 1.227 vs 1.245-1.253), so at the lower
+    # level a hard 2000 line sits inside the state's own spread. Default stays 2000, which separates the
+    # observed PARTIAL-ARM cluster (1507-1965 MHz, rtf 1.30-1.48) from any boosted run.
+    if awk -v m="$MHZ" -v t="${ARM_MIN_MHZ:-2000}" 'BEGIN{exit !(m < t)}'; then
+      echo "WARNING: arm ran but cpu7_deliv_mhz=$MHZ (< ${ARM_MIN_MHZ:-2000}) - this run is in an UNBOOSTED state; do not compare it with boosted cells" >&2
     fi
   fi
   [ -n "${GE2:-}" ] && echo "$TAG cpu7_deliv_ge2000_pct=$GE2"
@@ -375,13 +380,19 @@ if [ "$PARSE_ONLY" != 1 ] && [ -n "${RTF:-}" ]; then
   # the boost arm ran, as "ON:arm=1". Exp968-971 showed screen/arm state moves the metric 40 % on the
   # SAME binary, and the loop had no record of it - so every pre-Exp972 row is state-ambiguous unless
   # its delivered share says otherwise. Append-only, same rule as the columns above.
-  if [ "$(head -1 "$_tsv" | awk -F'\t' '{print $NF}')" != screen ]; then
+  # Exp1019 BUG FIX (and the reason this check is by MEMBERSHIP, not by last-field): two migrations that
+  # each asked "is MY name the last field?" ping-pong - the screen migration appends 'screen', then the
+  # cpu7_deliv_mhz migration appends its name, so the next run sees neither as last and appends BOTH again.
+  # That grew this header to 306 fields over ~40 runs while every data row stayed at 16, and audit check 18
+  # could not see it (it only required the header to START with ts/uptime_s and END with cpu7_deliv_mhz).
+  # Rule: a migration test must ask "does the column EXIST", never "is it last".
+  if ! head -1 "$_tsv" | tr '\t' '\n' | grep -qx screen; then
     sed -i '1s/$/\tscreen/' "$_tsv"
   fi
   # Exp975: 16th column `cpu7_deliv_mhz` = MEAN delivered big-core frequency (MHz) over the run's
   # counted time. Added because deliv2400 cannot distinguish "capped at 1.3 GHz" from "governed at
   # 2.15 GHz" (Exp974), while the mean names the P-state directly. Append-only.
-  if [ "$(head -1 "$_tsv" | awk -F'\t' '{print $NF}')" != cpu7_deliv_mhz ]; then
+  if ! head -1 "$_tsv" | tr '\t' '\n' | grep -qx cpu7_deliv_mhz; then
     sed -i '1s/$/\tcpu7_deliv_mhz/' "$_tsv"
   fi
   _battc=$(python3 -c "print(round(${BATTT:-0}/10,1))" 2>/dev/null || echo "?")

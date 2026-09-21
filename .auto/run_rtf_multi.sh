@@ -191,7 +191,7 @@ for r in $(seq 1 "$REPS"); do
     maj=$(grep -oE 'majflt_delta=-?[0-9]+' .auto/multi-run-$tag.txt | head -1 | cut -d= -f2)
     echo "$label"$'\t'"$rtf"$'\t'"$tok"$'\t'"${rss:-0}"$'\t'"${tx:-none}"$'\t'"${kmd:-?}"$'\t'"${dv:-?}" >> "$TSV"
     echo "ARM $label | rep=$r | rtf=$rtf | tokens=$tok | rss_kb=${rss:-?} | majflt=${maj:-?} | tx=${tx:-none} | clock=${kmn:-?}/${kmd:-?}/${kmx:-?}kHz | deliv2400=${dv:-?}% mean_mhz=${mz:-?} ge2000=${g2:-?}% arm=$( [ "${NO_ARM:-0}" = 1 ] && echo off || echo wake )$HOT"
-    if [ "${NO_ARM:-0}" != 1 ] && [ -n "${mz:-}" ] && [ "$mz" != "-1" ] && awk -v m="$mz" 'BEGIN{exit !(m < 2000)}'; then
+    if [ "${NO_ARM:-0}" != 1 ] && [ -n "${mz:-}" ] && [ "$mz" != "-1" ] && awk -v m="$mz" -v t="${ARM_MIN_MHZ:-2000}" 'BEGIN{exit !(m < t)}'; then
       echo "WARNING: sweep arm '$label' ran armed but mean_mhz=$mz (< 2000) - an UNBOOSTED-state arm" >&2
     fi
   done

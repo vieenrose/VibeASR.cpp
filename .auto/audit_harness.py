@@ -1331,11 +1331,19 @@ elif not os.path.exists(_tsv):
 else:
     try:
         _lines = [l for l in open(_tsv, encoding='utf-8', errors='ignore').read().splitlines() if l.strip()]
-        _hdr_ok = _lines and _lines[0].startswith('ts\tuptime_s') and _lines[0].rstrip().endswith('cpu7_deliv_mhz')
+        # Exp1019: this check used to accept any header that STARTED with ts/uptime_s and ENDED with
+        # cpu7_deliv_mhz, so a header that had grown to 306 fields by repeated migration survived ~40 runs
+        # unnoticed. It now requires the EXACT width and no duplicate column names - a format guard must be
+        # as strict as the format it claims to police, or it only catches the failures it already knows.
+        _hdr = _lines[0].rstrip('\n').split('\t') if _lines else []
+        _dups = sorted({c for c in _hdr if _hdr.count(c) > 1})
+        _hdr_ok = (len(_hdr) == 16 and _hdr[0] == 'ts' and _hdr[1] == 'uptime_s'
+                   and _hdr[-1] == 'cpu7_deliv_mhz' and not _dups)
         _last_ok = len(_lines) > 1 and len(_lines[-1].split('\t')) == 16
         if not _hdr_ok or not _last_ok:
-            bad("check 18: device_state.tsv malformed (header/column check) - the telemetry write "
-                "is broken, not just absent")
+            _why = (f"duplicate column names {_dups}" if _dups
+                    else f"header has {len(_hdr)} fields, expected exactly 16")
+            bad(f"check 18: device_state.tsv malformed ({_why}) - the telemetry write is broken, not just absent")
         elif os.path.getmtime(_max) > os.path.getmtime(_tsv) + 1:
             bad("check 18: .auto/last_out.txt is NEWER than device_state.tsv - the latest run escaped "
                 "device-state telemetry recording")
@@ -1350,10 +1358,16 @@ else:
 # guard's own absence is invisible unless something tests for it. So this check greps the live harness for
 # the guard's condition and its message, and FAILs if either is missing. Static by design - a runtime
 # control (ARM_PERIOD=8 producing a warning) is the behavioural proof and is recorded in the ledger.
+# Exp1019: the threshold moved from a hard-coded 2000 to the ARM_MIN_MHZ knob, so the check now requires the
+# knob in all three harnesses as well as the guard - otherwise a session could quietly drop the knob's use
+# while keeping a message that still says it checked the state.
 _need = [('.auto/measure.sh', "WARNING: arm ran but cpu7_deliv_mhz=", 'measure.sh arm guard message'),
-         ('.auto/measure.sh', 'm < 2000', 'measure.sh arm guard threshold test'),
+         ('.auto/measure.sh', 'm < t', 'measure.sh arm guard threshold test'),
+         ('.auto/measure.sh', 'ARM_MIN_MHZ', 'measure.sh arm guard threshold knob'),
          ('.auto/eval40.sh', 'WARNING: gate ran armed but gate_mean_mhz=', 'eval40 gate-arm guard'),
-         ('.auto/run_rtf_multi.sh', 'WARNING: sweep arm', 'sweep arm guard')]
+         ('.auto/eval40.sh', 'ARM_MIN_MHZ', 'eval40 gate-arm threshold knob'),
+         ('.auto/run_rtf_multi.sh', 'WARNING: sweep arm', 'sweep arm guard'),
+         ('.auto/run_rtf_multi.sh', 'ARM_MIN_MHZ', 'sweep arm threshold knob')]
 _missing = []
 for _rel, _pat, _what in _need:
     try:

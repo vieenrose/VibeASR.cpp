@@ -5185,3 +5185,33 @@ Anchor (armed protocol) 1.2232 at 32.9 h (derived); witness 2032.3 MHz, transcri
     (22), guard Exp1006 (12), gate Exp1005 (13), behavior current.
 Anchor (armed protocol retry mean) 1.2356 at 33.1 h (derived); witnesses 2005.2 / 2330.1 MHz, transcript
 1a095c8496b4 byte-identical.
+
+- ARM-STATE A/B TURNED INTO A HARNESS BUG FIND + TWO INSTRUMENT FIXES (Exp1019). Started as "is the partial-arm
+  mode caused by the screen being OFF when the arm starts?" - NOT TESTABLE THAT WAY (all six A/B runs reported
+  `screen_before=OFF`, i.e. the display policy drops the screen inside measure.sh's pre-checks, so A and B were
+  the same state), but the six runs plus the archived rows exposed something better:
+  * **BUG (found, fixed, controlled): `device_state.tsv`'s header had grown to 306 fields** while every data row
+    stayed at 16. Cause: two column migrations that each asked "is MY name the LAST field?" - the screen check
+    appends `screen`, then the cpu7_deliv_mhz check appends its name, so neither is last at the start of the
+    next run and BOTH append again: +2 fields per run for ~40 runs (since Exp975). Repair: header rewritten to
+    the canonical 16 columns, **data rows byte-identical** (`tail -n +2 | md5sum` equal before/after); the two
+    migrations now test MEMBERSHIP (`tr '\t' '\n' | grep -qx NAME`), and the idempotence control passed (two
+    more runs -> still 16 fields). Rule for this loop: **a migration test must ask "does the column exist",
+    never "is it last"**.
+  * **Why no guard saw it:** audit check 18 only required the header to START with ts/uptime_s and END with
+    cpu7_deliv_mhz - a duplicated header satisfies both. Check 18 now requires EXACTLY 16 fields and no
+    duplicate names, with a new plant (`18 header format`, duplicates a header column: first/last field
+    unchanged, so the old test would still pass). Coverage board now **23/23 plantable checks fire, 0 silent**.
+    Same lesson as Exp660/668: a format guard is only as good as the format it actually asserts, and a new
+    guard needs a plant the iteration it ships.
+  * **INSTRUMENT: the boost floor is a knob now (`ARM_MIN_MHZ`, default 2000).** The ARMED state is *bimodal at
+    the minute scale*: archived protocol medians 2326-2328 MHz (31-33 h uptime) vs 2003-2054 MHz (29-31, 33-34 h)
+    with mean rtf 1.227 vs 1.245-1.253, and the two modes alternate within minutes (this round's two
+    knob-control runs both read 2320 MHz right after runs at 1995-2010). So a hard 2000 line sits at the edge of
+    the lower mode and flags ~1 run in 4 there. 2000 stays the default because it still cleanly separates the
+    PARTIAL-ARM cluster (1507-1965 MHz, rtf 1.30-1.48); sessions can now state their floor explicitly instead of
+    editing the script. Audit check 19 was forced to change by this (it greps the guard's threshold test) and is
+    now stricter: message + threshold test + knob required in all three harnesses, control proven by renaming
+    the knob in run_rtf_multi.sh -> FAIL naming "sweep arm threshold knob".
+  * Protocol rows this round: 1.2236 / 1.2266 (both 2320 MHz), i.e. the fast mode; no code change to src/.
+Anchor (armed protocol mean of the two knob-control runs) 1.2251 at 33.5 h (derived).

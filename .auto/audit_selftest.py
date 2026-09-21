@@ -285,6 +285,22 @@ def plant_stale_device_lib():
     return restore
 
 
+def plant_telemetry_header():
+    # Exp1019: check 18 used to accept a header that merely STARTED with ts/uptime_s and ENDED with
+    # cpu7_deliv_mhz, so a header grown to 306 fields by two ping-ponging 'is it the last field?'
+    # migrations stayed green for ~40 runs. Plant: append a DUPLICATE column name - first and last field
+    # unchanged, so the old test still passes; the width/duplicate test must fail naming check 18.
+    p = '.auto/device_state.tsv'
+    if not os.path.exists(p):
+        raise RuntimeError('no device_state.tsv; audit should already fail check 18')
+    lines = open(p, encoding='utf-8').read().splitlines(True)
+    if lines[0].rstrip('\n').split('\t')[-1] != 'cpu7_deliv_mhz':
+        raise RuntimeError('header does not end with cpu7_deliv_mhz; check 18 is already red')
+    open(p, 'w', encoding='utf-8').writelines(
+        [lines[0].rstrip('\n') + '\tscreen\n'] + lines[1:])
+    return lambda: open(p, 'w', encoding='utf-8').writelines(lines)
+
+
 def plant_arm_guard():
     # Exp997: check 19 (the arm's <2000 MHz state guard must still exist) was added in Exp988b after that
     # guard was silently deleted by a refactor. A new guard needs a plant, or the coverage board reports
@@ -328,6 +344,8 @@ FAULTS = [
     ('19 arm guard',        'the arm state-guard is deleted from measure.sh',  plant_arm_guard,
      'check 19.*MISSING'),
     ('18 telemetry gap',    'runs stop being recorded in device_state.tsv',   plant_telemetry_gap,  'not being recorded'),
+    ('18 header format',    'a column migration duplicates TSV header fields',  plant_telemetry_header,
+     'check 18.*duplicate column names|check 18.*header has'),
     ('7e derivation',         'a clip note describes audio that was not used', plant_false_derivation,
      'derivation NOT proven|derivation .*payload lengths|is NOT a prefix'),
     ('7f silence part',       'a derivation gap is one sample too long',      plant_bad_silence,

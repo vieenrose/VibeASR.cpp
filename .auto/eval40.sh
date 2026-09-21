@@ -155,7 +155,7 @@ print(round(sum(f * v for f, v in d.items()) / tot / 1000, 1) if tot > 0 else -1
   if [ -n "${GW:-}" ] && [ "$GW" != "-1" ]; then
     printf 'gate_state arm=%s mean_mhz=%s utts=%s\n' "$([ "${NO_ARM:-0}" = 1 ] && echo off || echo wake)" "$GW" "$N" >> "$OUT/gate-state.log" 2>/dev/null || true
     echo "METRIC gate_mean_mhz=$GW"
-    if [ "${NO_ARM:-0}" != 1 ] && awk -v m="$GW" 'BEGIN{exit !(m < 2000)}'; then
+    if [ "${NO_ARM:-0}" != 1 ] && awk -v m="$GW" -v t="${ARM_MIN_MHZ:-2000}" 'BEGIN{exit !(m < t)}'; then
       echo "WARNING: gate ran armed but gate_mean_mhz=$GW (< 2000) - the gate mean is an UNBOOSTED-state number" >&2
     fi
   fi
