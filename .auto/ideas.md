@@ -4022,3 +4022,8 @@ Consequences:
   internal split under cap cannot be mined historically (only the latest last_err.txt keeps it).
   If a per-phase TSV extension is ever wanted, that is the column set to add - queued, not built.
   Watch anchor this round 1.846 (delivered 6), 12th capped rep, byte-identical.
+
+- HARNESS AUDIT GREEN + 13th CAPPED REP (Exp959): audit_harness.py 135 pass / 1 explained WARN
+  (chat==chat69 collision, marked stale) / 0 fail - tree, scripts, bin/.so sync, tier, assets all
+  consistent after the capped-series commits. Watch anchor 1.8475 (delivered 6, batt 30.4 C),
+  byte-identical, speeds quarantined. No reboot authorization yet.
