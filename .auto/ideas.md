@@ -5668,3 +5668,19 @@ Anchor 1.2297 (3 reps 1.2288 / 1.2278 / 1.2326, witnesses 2332.1 / 2332.0 / 2044
     future sweep if any of them is ever used in a hurry.
 Anchor 1.2265 (3 reps 1.2248 / 1.2301 / 1.2245, witnesses 2323.9 / 2332.6 / 2322.5 MHz - a fully armed session,
 sd 0.26 %) at 39.2 h uptime (derived).
+
+- QUEUED (found in Exp1034, deliberately NOT done there): four more tools parse arguments without rejecting
+  unknown ones, so a typo silently changes what runs. Static audit of the arg handling:
+    * `eval40.sh <tag> <start> <count>` - positional; swapping start/count runs a SUBSET and still prints
+      "done tag=... n=N", so the N must be read back from the output, not assumed. Validation is cheap (no
+      device cost to reject non-numeric or out-of-range values), and the fix should also assert N == count.
+    * `hardaudio_watch.sh --quick` - an unrecognized flag silently runs all three sets (~10 min of device time
+      instead of ~1). Validation costs one --quick run (1 min).
+    * `fault_inject.sh` - reads no arguments (its switches are env vars, e.g. FAULT_HEALTHY=0), so any argument
+      should exit 2. Validation costs one board run (~2.5 min), which is also its cadence run.
+    * `rollback_audit.sh` - same class; validating costs a full ladder (~13 min), so fold it into the next
+      rollback rotation rather than spending a run on it.
+  `run_rtf_multi.sh` is the good example: it validates ARM VALUES (threads must be a number, pieces in
+  {1,2,13,26}) and exits 2 - that pattern is what the others need. Rule for whoever does this: apply the guard
+  and then run the tool once in its cheapest legitimate mode, so the guard is proven in both directions rather
+  than assumed - which is why it was not done opportunistically here.
