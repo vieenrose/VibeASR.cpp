@@ -4747,6 +4747,19 @@ Consequences:
     should quote the armed column, and any pre-Exp996 cost table must be read as capped-conditional.
   Anchor (armed ladder default arm) 1.2458 at ~33.0 h, transcript byte-identical.
 
+- COVERAGE BOARD: 21/21 - INCLUDING THE GUARD ADDED LAST ROUND (Exp997). Every plantable audit check now
+  fails on its own planted fault (0 silent, 0 invalid), 3 classes accepted as uncontrolled, final clean-tree
+  audit green. The round's real content: **check 19 had NO plant**, so the coverage board would have
+  reported "all checks fire" while the newest guard - the one added precisely because a refactor deleted
+  its predecessor - was untested. That is the "an unrun test is not a test" gap this board exists to
+  catch, found by looking at the plant list rather than by a failure. Plant added (renames the guard's
+  message in measure.sh -> audit must FAIL naming check 19), verified with `--only 19` (FIRED), then the
+  full board: 21/21.
+  * Also confirms the check-18 plant still fires after the 14 -> 15 -> 16 column migrations (append-only
+    history, latest row held to the current width) - the migration never re-armed that plant.
+  Anchor (armed protocol rep) 1.2401 at ~33.2 h, witness 2378.2 MHz, deliv 98 %, transcript
+  1a095c8496b4 byte-identical.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas

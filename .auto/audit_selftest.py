@@ -285,11 +285,26 @@ def plant_stale_device_lib():
     return restore
 
 
+def plant_arm_guard():
+    # Exp997: check 19 (the arm's <2000 MHz state guard must still exist) was added in Exp988b after that
+    # guard was silently deleted by a refactor. A new guard needs a plant, or the coverage board reports
+    # "all checks fire" while the newest one is untested - exactly the gap this board exists to close.
+    # Plant: rename the guard's message inside measure.sh; the audit must FAIL naming check 19.
+    p = '.auto/measure.sh'
+    s = open(p, encoding='utf-8').read()
+    if 'WARNING: arm ran but cpu7_deliv_mhz=' not in s:
+        raise RuntimeError('arm-guard message not found in measure.sh; check 19 cannot be planted')
+    return snap_write(p, s.replace('WARNING: arm ran but cpu7_deliv_mhz=',
+                                   'PLANTED-ARM-GUARD-GONE:', 1))
+
+
 FAULTS = [
     ('5 device binary hash',  'a lib on the phone is not the one on the host', plant_stale_device_lib,
      'MISMATCH|missing on device'),
     ('15 set -e grep',      'a grep in $( ) can abort a set -e script',   plant_unguarded_grep,   'unguarded command substitution'),
     ('17 usage defaults',   'a usage line promises a default the struct lacks', plant_help_default, 'check 17.*-c'),
+    ('19 arm guard',        'the arm state-guard is deleted from measure.sh',  plant_arm_guard,
+     'check 19.*MISSING'),
     ('18 telemetry gap',    'runs stop being recorded in device_state.tsv',   plant_telemetry_gap,  'not being recorded'),
     ('7e derivation',         'a clip note describes audio that was not used', plant_false_derivation,
      'derivation NOT proven|derivation .*payload lengths|is NOT a prefix'),
