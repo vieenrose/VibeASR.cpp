@@ -142,7 +142,7 @@ for r in $(seq 1 "$REPS"); do
       if [ -n "$A_SENT" ]; then
         ( while [ -f "$A_SENT" ]; do
             adb -s $DEV shell "input keyevent KEYCODE_WAKEUP" >/dev/null 2>&1 || true
-            sleep 3
+            sleep ${ARM_PERIOD:-3}
           done ) >/dev/null 2>&1 &
         A_PID=$!
         sleep 1

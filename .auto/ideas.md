@@ -4572,6 +4572,30 @@ Consequences:
     fine-grained speed predictor, and the guard's 2000 MHz line is a state threshold, not a model.
   Anchor (armed protocol, 5th rep) 1.2505 at ~30.3 h, transcript byte-identical (1a095c8496b4).
 
+- HOW SPARSE CAN THE HOLD STREAM BE? AND A GUARD THAT HAD BEEN SILENTLY DELETED (Exp988).
+  * INJECTION COST, MEASURED: one `input keyevent` costs ~44 ms of device CPU (5 events, 224 ms total) -
+    it is a fresh app_process per call, so the stream is real (if small) contention during the measured
+    run. That is the price of the state lever, and it says a sparser stream should be cheaper.
+  * PERIOD SWEEP ON THE 69 s CELL (NO_ARM=1 + an external stream at the stated period, so the period is
+    the only variable): unarmed control 2.1020 (mean 1301.4 MHz) | 3 s 1.5582 (2175.2) | 6 s 1.5479
+    (2173.9) | 10 s 1.5294 (2198.7). A LONG cell holds the boost at 10 s spacing and is ~2 % faster there
+    - consistent with the 44 ms/event cost being removed rather than with a different state.
+  * BUT THE 13 s PROTOCOL CELL DOES NOT TOLERATE THE SPARSE PERIOD: at ARM_PERIOD=8 it read 1.4800 / 1.4675
+    / 1.4645 with means 1506.9 / 1533.8 / 1525.1 MHz - a FOURTH level (between armed ~2050-2340 and
+    unarmed ~1300), because only ~2 events land inside a 13 s run. So the default stays 3 s (dense) and
+    ARM_PERIOD is exposed for long cells, where sparser is better and cheaper. Documented in the code.
+  * ***SELF-INFLICTED, AND THE ROUND'S REAL FIND: the Exp979 <2000 MHz GUARD HAD BEEN SILENTLY DELETED***
+    by the Exp987 dedup edit, whose replacement block spanned the guard's text. It never announced itself;
+    I found it only by trying to make it fire at ARM_PERIOD=8 and seeing silence (the Exp660 rule: a guard
+    is untrustworthy until a control makes it fail - and its ABSENCE is invisible to every behavioural
+    test I had). Restored, then made undeletable-in-silence: audit check 19 now greps all three harnesses
+    for their arm-guard message + threshold, and the plant (removing the message) FAILS with a message
+    that names this exact incident. Verified: plant -> 1 FAIL (135/1/1), restore -> byte-identical -> green
+    at 136 checks. The guard also now demonstrably fires: ARM_PERIOD=8 prints the WARNING.
+  * Armed protocol cell series is now seven reps: 1.2440/1.2533/1.2465/1.2463/1.2505/1.2451/1.2349
+    (mean 1.2458, spread 1.5 %), the last two at mean 2040-2340 MHz.
+  Anchor (armed protocol, default 3 s stream) 1.2349 at ~30.6 h, transcript byte-identical.
+
 - CAPPED NOISE FLOOR, MINED (Exp967, host-only): 17 capped protocol rows (default config): mean 1.8502,
   sd 0.48 %/rep, range 0.038 (min 1.8343, max 1.8721 - the max is the fault-board H run with a 38 %
   other-busy flare). Wider than boost (0.21 %/rep, +-0.3 %) but same order: sub-1 % single-run deltas

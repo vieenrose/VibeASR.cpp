@@ -88,7 +88,7 @@ if [ "${NO_ARM:-0}" != 1 ]; then
   if [ -n "$ARM_SENTINEL" ]; then
     ( while [ -f "$ARM_SENTINEL" ]; do
         adb -s $DEV shell "input keyevent KEYCODE_WAKEUP" >/dev/null 2>&1 || true
-        sleep 3
+        sleep ${ARM_PERIOD:-3}
       done ) >/dev/null 2>&1 &
     ARM_PID=$!
     sleep 1

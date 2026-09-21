@@ -1339,6 +1339,30 @@ else:
     except OSError:
         bad("check 18: device_state.tsv unreadable")
 
+# ---- 19. the arm's state guard must still exist (Exp988b) ------------------------------------
+# The Exp979 guard ("armed run whose mean delivered MHz is < 2000 must WARN") was silently DELETED by the
+# Exp987 dedup edit, because that edit replaced a block whose text spanned the guard. Nothing failed: the
+# guard's own absence is invisible unless something tests for it. So this check greps the live harness for
+# the guard's condition and its message, and FAILs if either is missing. Static by design - a runtime
+# control (ARM_PERIOD=8 producing a warning) is the behavioural proof and is recorded in the ledger.
+_need = [('.auto/measure.sh', "WARNING: arm ran but cpu7_deliv_mhz=", 'measure.sh arm guard message'),
+         ('.auto/measure.sh', 'm < 2000', 'measure.sh arm guard threshold test'),
+         ('.auto/eval40.sh', 'WARNING: gate ran armed but gate_mean_mhz=', 'eval40 gate-arm guard'),
+         ('.auto/run_rtf_multi.sh', 'WARNING: sweep arm', 'sweep arm guard')]
+_missing = []
+for _rel, _pat, _what in _need:
+    try:
+        _txt = open(os.path.join(ROOT, _rel), encoding='utf-8', errors='replace').read()
+    except OSError:
+        _missing.append(_what + ' (file unreadable)'); continue
+    if _pat not in _txt:
+        _missing.append(_what)
+if _missing:
+    bad("check 19: the arm state-guard is MISSING from " + ', '.join(_missing) + " - an armed run in an "
+        "unboosted state would be reported silently (this is exactly what Exp987's dedup edit did)")
+else:
+    ok("check 19: all three harnesses still carry their arm state-guard (measure.sh, eval40.sh, run_rtf_multi.sh)")
+
 # ---- report -------------------------------------------------------------------
 print(f"harness audit: {len(oks)} checks passed, {len(warns)} warnings, {len(fails)} failures\n")
 if '--verbose' in sys.argv:

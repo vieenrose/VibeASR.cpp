@@ -204,6 +204,13 @@ if [ "${NO_ARM:-0}" != 1 ]; then
     { adb -s $DEV shell "input keyevent KEYCODE_VOLUME_UP" >/dev/null 2>&1; } || true
     sleep 1
   done
+  # Exp988: the stream's PERIOD is the knob ARM_PERIOD (default 3 s, unchanged). Measured on the 69 s
+  # cell: period 3 s -> 1.5582 (mean 2175.2 MHz), 6 s -> 1.5479 (2173.9), 10 s -> 1.5294 (2198.7), vs an
+  # unarmed control of 2.1020 (1301.4) - a LONG cell holds boost at 10 s spacing and is ~2 % faster there
+  # because every injected event costs ~44 ms of on-device CPU (a fresh app_process per `input` call).
+  # But the 13 s protocol cell does NOT tolerate the sparse period: at ARM_PERIOD=8 it read 1.4800 with
+  # mean 1506.9 MHz (a 4th, unboosted level) because only ~2 events land inside the run. So the default
+  # stays dense (3 s) and the knob is exposed for long cells, where sparser is better and cheaper.
   # ARM_STREAM=0 keeps the burst and drops the continuous stream: measured better for SHORT cells
   # (1.2288-1.2440 vs 1.3388 stream-only) and worse for long ones, because each injected event is an
   # on-device `input` invocation (a fresh app_process) and therefore costs real CPU during the run.
@@ -213,7 +220,7 @@ if [ "${NO_ARM:-0}" != 1 ]; then
   if [ -n "$ARM_SENTINEL" ]; then
     ( while [ -f "$ARM_SENTINEL" ]; do
         adb -s $DEV shell "input keyevent KEYCODE_WAKEUP" >/dev/null 2>&1 || true
-        sleep 3
+        sleep ${ARM_PERIOD:-3}
       done ) >/dev/null 2>&1 &
     ARM_PID=$!
     sleep 1
@@ -312,6 +319,16 @@ if [ -n "${TIS0:-}" ] && [ -n "${TIS1:-}" ]; then
   GE2=$(printf '%s' "${_tis:-}" | awk '{print $3}')
   [ -n "${DELIV:-}" ] && echo "$TAG cpu7_deliv2400_pct=$DELIV"
   [ -n "${MHZ:-}" ] && echo "$TAG cpu7_deliv_mhz=$MHZ"
+  # Exp988b: THIS GUARD WAS ACCIDENTALLY DELETED by the Exp987 dedup edit (the block it replaced spanned
+  # the guard's text) and nothing noticed until a control run at ARM_PERIOD=8 read a 4th, unboosted level
+  # (1.4675 / 1506.9 MHz) and stayed silent. Restored, and audited statically from Exp988b on (check 19 in
+  # audit_harness.py greps for this guard's string) so a silent deletion is a FAIL rather than a discovery
+  # - the Exp660 rule applied to a guard that had no guard.
+  if [ "${ARMED:-0}" = "wake" ] && [ -n "${MHZ:-}" ] && [ "$MHZ" != "-1" ]; then
+    if awk -v m="$MHZ" 'BEGIN{exit !(m < 2000)}'; then
+      echo "WARNING: arm ran but cpu7_deliv_mhz=$MHZ (< 2000) - this run is in an UNBOOSTED state; do not compare it with boosted cells" >&2
+    fi
+  fi
   [ -n "${GE2:-}" ] && echo "$TAG cpu7_deliv_ge2000_pct=$GE2"
 fi
 [ -n "${BATTT:-}" ] && echo "$TAG batt_temp_c=$(python3 -c "print(round(${BATTT}/10,1))")"
