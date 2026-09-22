@@ -6127,3 +6127,17 @@ Anchor 1.2295 (3 reps 1.2317 / 1.2287 / 1.2280 at 2328.9 / 2031.8 / 2041.3 MHz, 
     per-arm lines carry no majflt at all (rtf/tok/hash/clock/mhz only).
   * Hard-audio watchdog by cadence (4 rounds): all three sets EXACT (v2 0.1765 / attr 0.4235 / tags 4/4,
     holdout_en 0.2636 / 0.4907 token-identical to archived v4.1, holdout_zh 0.1538 / 0.6674).
+
+- PHANTOM-TOOL AUDIT (Exp1051b): this session's context carries instructions about `log_replay.py --capture`
+  and `log_index.py --status/--verify`. NEITHER EXISTS ANYWHERE in this workspace, and no tracked file, doc,
+  prompt, or git-history entry mentions them (searched /home/user by name, and every .md/.py/.sh/.jsonl for the
+  strings; the only code touching log.jsonl is audit_harness.py, which READS it). The 1052-entry ledger at
+  ../.auto/log.jsonl is written by the autoresearch HARNESS TOOLS (run_experiment / log_experiment) directly -
+  there is no replay/capture/verify script, and the workspace-root .auto/ is outside the repo, so nothing there
+  is version-controlled or revert-protected.
+  * WHY IT MATTERS: I nearly invoked both tools twice in one round, and a nonexistent command inside a pipeline
+    fails SILENTLY (the same Exp595-607 failure mode where an auto-revert deleted an untracked sweep script and
+    the sweeps became unreproducible). Any loop instruction naming a script must be checked to exist before it
+    is called, and any NEW harness tool must live in VibeASR.cpp/.auto/ (tracked) - never in the workspace root.
+  * Consequence for log integrity claims: entries in this ledger that say a drift check passed were produced by
+    archive cross-checks, not by a verifier program, because no verifier program exists here.
