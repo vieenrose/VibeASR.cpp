@@ -314,6 +314,18 @@ of pooling both sides. Using that linear slope to "correct" measurements produce
 rollback-ladder arms and got NEGATIVE hatch costs, which Exp1025 then reproduced with a paired ABAB - the hatch
 really costs +3.97 % (cycles +3.69 % / +4.25 %) and the witness gap inside a pair explains only ~0.1 % of it.
 
+**A low witness on a row that is FASTER than its neighbours is a diluted window, not a slow run** (Exp1051). The
+witness integrates the whole device-side run, model load included, and load is NOT part of rtf (rtf = gen_s /
+duration, Exp1028). With boost latched, load costs 0.6 s and the witness is undiluted - the arithmetic reproduces
+it exactly: gen = 10 x rtf = 12.3 s, load = 0.6 s -> predicted share at 2.4 GHz = 95 %, observed 95 %. But when
+boost has decayed before the run, load takes ~10 s at 1430 kHz and the share can fall to ~50 % while gen is
+untouched - which is why a ladder arm read `cpu7_deliv2400_pct = 49 %` and was simultaneously the fastest row of
+the day. Ordering is not the cause (two identical arms after 90 s idle read 97 % / 99 %), and neither is a cold
+page cache (majflt = 0). So before spending a retry on a flagged row, compare its rtf with the rows around it:
+same-speed-with-a-low-witness means dilution, and the row may be kept; genuinely slow means the state was partial,
+and it must be retried. `load_s` is recorded as telemetry column 17 for exactly this test - without it the
+question costs measurements instead of a query.
+
 **3. The metric drifts with device UPTIME inside one boot.** The supportable statement is a **slope: +0.21 ±
 0.08 %/h** (t = 2.53, 35 clean armed sessions spanning 31.4–43.8 h, fitted at session level — `.auto/uptime_law.py`
 recomputes it and is self-tested). Raw armed cells read 1.1939 at 12-20 h of uptime and 1.2242 at 26-40 h (same
