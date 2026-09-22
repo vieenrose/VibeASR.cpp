@@ -1370,12 +1370,20 @@ else:
         # as strict as the format it claims to police, or it only catches the failures it already knows.
         _hdr = _lines[0].rstrip('\n').split('\t') if _lines else []
         _dups = sorted({c for c in _hdr if _hdr.count(c) > 1})
-        _hdr_ok = (len(_hdr) == 16 and _hdr[0] == 'ts' and _hdr[1] == 'uptime_s'
-                   and _hdr[-1] == 'cpu7_deliv_mhz' and not _dups)
-        _last_ok = len(_lines) > 1 and len(_lines[-1].split('\t')) == 16
+        _lw = len(_lines[-1].split('\t')) if len(_lines) > 1 else -1
+        # Exp1051: the width is no longer a literal. Requiring exactly 16 meant the guard cried wolf for the
+        # whole session between a column being ADDED to the code and the first run migrating the header - and
+        # the coverage board, which runs the audit as its baseline, would have failed for that reason alone.
+        # What must actually hold is that the header and the newest DATA ROW AGREE (that is the Exp1019
+        # failure: header 306 fields, rows 16) with no duplicated names, ts/uptime_s first and the delivered-
+        # frequency column present. 306 != 16 still fails, and so does any off-by-one migration.
+        _hdr_ok = (16 <= len(_hdr) <= 24 and _hdr[0] == 'ts' and _hdr[1] == 'uptime_s'
+                   and 'cpu7_deliv_mhz' in _hdr and not _dups)
+        _last_ok = len(_lines) > 1 and _lw == len(_hdr)
         if not _hdr_ok or not _last_ok:
             _why = (f"duplicate column names {_dups}" if _dups
-                    else f"header has {len(_hdr)} fields, expected exactly 16")
+                    else f"header has {len(_hdr)} fields but the newest row has {_lw} - a migration that did "
+                         'not reach the rows, or a writer that lost a field')
             bad(f"check 18: device_state.tsv malformed ({_why}) - the telemetry write is broken, not just absent")
         elif os.path.getmtime(_max) > os.path.getmtime(_tsv) + 1:
             # Exp1023: this branch used to FAIL for ANY newer capture, but two different things make a capture

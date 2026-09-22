@@ -366,7 +366,7 @@ if [ "$PARSE_ONLY" != 1 ] && [ -n "${RTF:-}" ]; then
   # faked uptime significance), and EXTRA_ENV is exactly the confound source for measure.sh rows.
   # Appended at END so columns 0-10 are stable; legacy headers migrate one-time, data rows are
   # never rewritten. Env assignment strings cannot contain tabs/newlines, so the TSV stays clean.
-  [ -f "$_tsv" ] || printf 'ts\tuptime_s\tprocs\tmem_avail_mb\tcpu7_khz\tbatt_c\trtf\tvae_s\tlm_s\ttokens\tfingerprint\textra_env\tcpu7_khz_med\tcpu7_deliv2400_pct\tscreen\tcpu7_deliv_mhz\n' > "$_tsv"
+  [ -f "$_tsv" ] || printf 'ts\tuptime_s\tprocs\tmem_avail_mb\tcpu7_khz\tbatt_c\trtf\tvae_s\tlm_s\ttokens\tfingerprint\textra_env\tcpu7_khz_med\tcpu7_deliv2400_pct\tscreen\tcpu7_deliv_mhz\tload_s\n' > "$_tsv"
   if ! head -1 "$_tsv" | grep -q 'extra_env'; then
     sed -i '1s/$/\textra_env/' "$_tsv"
   fi
@@ -400,6 +400,13 @@ if [ "$PARSE_ONLY" != 1 ] && [ -n "${RTF:-}" ]; then
   if ! head -1 "$_tsv" | tr '\t' '\n' | grep -qx cpu7_deliv_mhz; then
     sed -i '1s/$/\tcpu7_deliv_mhz/' "$_tsv"
   fi
+  # Exp1051: 17th column `load_s` = the model-load seconds, which are NOT in rtf but ARE inside the witness
+  # window. Found the hard way: a ladder arm read deliv2400 = 49 % while being the FASTEST row of the day, and
+  # no archive column could distinguish a slow LOAD (harmless to rtf, dilutes the witness) from slow COMPUTE
+  # (which the step model says would cost ~+8 %). Membership-tested, appended at END, history never rewritten.
+  if ! head -1 "$_tsv" | tr '\t' '\n' | grep -qx load_s; then
+    sed -i '1s/$/\tload_s/' "$_tsv"
+  fi
   _battc=$(python3 -c "print(round(${BATTT:-0}/10,1))" 2>/dev/null || echo "?")
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%s)" "${UPT:-?}" "${NPROC:-?}" "${MEMAV:-?}" "${KHZ:-?}" "$_battc" "$RTF" "${VAE:-?}" "${LMS:-?}" "${TOK:-?}" "${FP:-?}" "${EXTRA_ENV:-}" "${KHMED:-?}" "${DELIV:--1}" "${SCR2:-UNKNOWN}:arm=${ARMED:-?}" "${MHZ:--1}" >> "$_tsv" 2>/dev/null || true
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(date +%s)" "${UPT:-?}" "${NPROC:-?}" "${MEMAV:-?}" "${KHZ:-?}" "$_battc" "$RTF" "${VAE:-?}" "${LMS:-?}" "${TOK:-?}" "${FP:-?}" "${EXTRA_ENV:-}" "${KHMED:-?}" "${DELIV:--1}" "${SCR2:-UNKNOWN}:arm=${ARMED:-?}" "${MHZ:--1}" "${LOAD:-?}" >> "$_tsv" 2>/dev/null || true
 fi

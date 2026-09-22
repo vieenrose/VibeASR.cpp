@@ -6093,3 +6093,37 @@ Anchor 1.2251 (2 cooled reps 1.2233 / 1.2268 at 2318.7 / 2324.4 MHz, sd 0.20 %; 
     "clean" - this is the same class as the Exp1042 exit-0-on-failure bug and Exp1021's nan slope.
 Anchor 1.2295 (3 reps 1.2317 / 1.2287 / 1.2280 at 2328.9 / 2031.8 / 2041.3 MHz, sd 0.16 %, no flagged rep) at
 45.7 h uptime; audit 141/1/0, rss_soak selftest 6/6 cases.
+
+- LADDER REPLICATED AGAIN, AND A WITNESS ANOMALY THAT LED TO A MISSING TELEMETRY COLUMN (Exp1051)
+  * Rollback ladder, 1 rep: identity exact (12/15 arms byte-identical to 1a095c8496b4; the 3 documented exceptions
+    at their archived hashes ad1953f30010 / 55ac39b635cb / c4031e597b20). Costs within ~1.3 pp of Exp1046 -
+    stack_off +40.0, ALL_OFF +45.0, ct_block +17.5, flush_off +13.2, dw_conv1d +11.1, gelu_bias +7.0,
+    bound_batch +4.1 (a FOURTH independent agreement with Exp1025's paired ABAB +3.97), gelu_batch +3.7,
+    norm_fuse +3.4, cont_tile +3.0, ls_fuse +2.5, dw_lpad +2.3, mm_m2 +1.5, dw_axpy +0.6.
+  * THE ANOMALY: the ladder's `default` row read cpu7_deliv2400_pct = 49 % (mean 1515.6 MHz), i.e. deep under the
+    knee, while being the FASTEST row of the whole day (1.2198). Under Exp1025's step model a sub-floor row costs
+    ~+8 %, so the two readings contradict each other. Tested three ways:
+      (a) NOT a first-arm artifact - two identical arms back to back after 90 s idle read 97 % / 99 % ge2000 with
+          rtf 1.2326 / 1.2315 (equal to 0.1 %);
+      (b) NOT a cold page cache - a post-decay run measured majflt = 0;
+      (c) the load-fraction arithmetic REPRODUCES a healthy witness exactly: gen = 10 x rtf = 12.3 s, load = 0.6 s
+          -> predicted ge2000 = 100*gen/(gen+load) = 95 %, observed 95 %.
+    So the model is: the witness window covers the whole device-side run INCLUDING model load, which is not in rtf.
+    When boost has decayed, load takes ~10 s unboosted and dilutes the witness to ~50 % without slowing gen at
+    all - which is exactly the contradictory row. RULE (refines Exp1025/Exp995): a below-knee witness on a row that
+    is FASTER than its neighbours is a diluted window, not a slow run - check that row's rtf before retrying it.
+  * HARNESS GAP THIS COST: the archive had no load column, so a question that should have been one query took
+    three measurements. `load_s` is now column 17 of device_state.tsv (append-only, membership-tested migration,
+    written from the existing LOAD variable; verified 16 -> 17 header and row, old rows untouched, 781 rows).
+  * TWO DEPENDENT BUGS THAT ADDING A COLUMN WOULD OTHERWISE HAVE CAUGHT ME WITH: audit check 18 hardcoded the
+    width (16) in two places AND required the header to END with cpu7_deliv_mhz, and the '18 header format' PLANT
+    asserted that same last field. So the new column would have made check 18 red for the wrong reason (between
+    the code change and the first run that migrates the header) and the plant unrunnable - the board reports that
+    as INVALID, which is how a silent guard gets born. Check 18 now enforces what actually matters: header width
+    == newest row width (the Exp1019 failure was 306 vs 16), no duplicated names, ts/uptime_s first, delivered-MHz
+    present; the plant duplicates a column taken FROM THE HEADER. Coverage 24/24 after, audit 141/1/0.
+  * MY OWN MISPARSE, 5th instance of the same family: an awk one-liner labelled field 7 "majflt" when it is
+    mean_mhz, so my first "majflt is huge!" reading was garbage. Parsed key=value instead - and found the ladder's
+    per-arm lines carry no majflt at all (rtf/tok/hash/clock/mhz only).
+  * Hard-audio watchdog by cadence (4 rounds): all three sets EXACT (v2 0.1765 / attr 0.4235 / tags 4/4,
+    holdout_en 0.2636 / 0.4907 token-identical to archived v4.1, holdout_zh 0.1538 / 0.6674).

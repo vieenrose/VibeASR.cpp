@@ -312,14 +312,18 @@ def plant_telemetry_header():
     # cpu7_deliv_mhz, so a header grown to 306 fields by two ping-ponging 'is it the last field?'
     # migrations stayed green for ~40 runs. Plant: append a DUPLICATE column name - first and last field
     # unchanged, so the old test still passes; the width/duplicate test must fail naming check 18.
+    # Exp1051: the duplicated name is taken FROM THE HEADER (column 6) and the precondition no longer names a
+    # LAST field - otherwise adding a column (load_s) would make this plant unrunnable, and the board would
+    # report 'invalid' where the real fact is 'the plant hardcoded a schema that moved'.
     p = '.auto/device_state.tsv'
     if not os.path.exists(p):
         raise RuntimeError('no device_state.tsv; audit should already fail check 18')
     lines = open(p, encoding='utf-8').read().splitlines(True)
-    if lines[0].rstrip('\n').split('\t')[-1] != 'cpu7_deliv_mhz':
-        raise RuntimeError('header does not end with cpu7_deliv_mhz; check 18 is already red')
+    _h = lines[0].rstrip('\n').split('\t')
+    if _h[0] != 'ts' or len(_h) < 6:
+        raise RuntimeError(f'header looks wrong (first={_h[:1]!r}, {len(_h)} fields); check 18 is already red')
     open(p, 'w', encoding='utf-8').writelines(
-        [lines[0].rstrip('\n') + '\tscreen\n'] + lines[1:])
+        [lines[0].rstrip('\n') + '\t' + _h[5] + '\n'] + lines[1:])
     return lambda: open(p, 'w', encoding='utf-8').writelines(lines)
 
 
