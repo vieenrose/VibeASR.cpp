@@ -1147,7 +1147,9 @@ struct vae_context {
 static bool load_encoder_weights(
     vae_model_t* model,
     AudioVAEEncoder& encoder,
-    const std::string& prefix) {
+    const std::string& prefix,
+    const int* true_kernel_sizes  // 7 values for this encoder
+) {
     
     // Load all downsample layers (0-6)
     for (int i = 0; i < AudioVAEEncoder::n_downsamples; i++) {
@@ -1165,17 +1167,20 @@ static bool load_encoder_weights(
             return false;
         }
         
-        // Read kernel size from weight tensor shape [out_channels, in_channels, kernel_size]
-        // In GGUF, dimensions are reversed, so ne[0] is kernel_size. A blocked-int8 weight is stored
-        // 2-D [K*IC, OC], so its kernel size comes from row / IC (see vae_conv_1d_i8).
-        vae_geom_ctx_init();
-        encoder.downsample_kernel_sizes[i] = vae_conv_kernel_size(
+        // Read kernel size: use true K from metadata (for padded weights), fallback to weight tensor
+        int true_K = true_kernel_sizes[i];
+        if (true_K <= 0) {
+            // Fallback: infer from weight tensor (for models without metadata)
+            true_K = vae_conv_kernel_size(
                 encoder.downsamples[i].conv_weight,
                 i ? AudioVAEEncoder::downsample_dims[i-1] : 0);
-        if (encoder.downsample_kernel_sizes[i] <= 0) {
-            fprintf(stderr, "%s: downsample %d conv has an unsupported weight layout\n", __func__, i);
-            return false;
+            if (true_K <= 0) {
+                fprintf(stderr, "%s: downsample %d conv has unsupported weight layout\n", __func__, i);
+                return false;
+            }
         }
+        vae_geom_ctx_init();
+        encoder.downsample_kernel_sizes[i] = true_K;
         encoder.downsamples[i].conv_geom = vae_conv_geom(encoder.downsamples[i].conv_weight,
                                                         encoder.downsample_kernel_sizes[i]);
     }
@@ -1594,6 +1599,32 @@ vae_model_t* vae_load_model_from_file(
         model->tensors[name] = tensor;
     }
     
+    // Read vae.kernel_size metadata (true kernel sizes for padded conv weights)
+    int true_kernel_sizes[14] = {0};
+    int key_id = gguf_find_key(gguf_ctx, "vae.kernel_size");
+    if (key_id >= 0) {
+        int n = gguf_get_arr_n(gguf_ctx, key_id);
+        if (n == 14) {
+            enum gguf_type type = gguf_get_arr_type(gguf_ctx, key_id);
+            const void* data = gguf_get_arr_data(gguf_ctx, key_id);
+            if (type == GGUF_TYPE_INT32) {
+                const int32_t* arr = (const int32_t*)data;
+                for (int i = 0; i < 14; i++) {
+                    true_kernel_sizes[i] = arr[i];
+                }
+                fprintf(stderr, "[VAE] Loaded true kernel sizes from metadata: ");
+                for (int i = 0; i < 14; i++) fprintf(stderr, "%d ", true_kernel_sizes[i]);
+                fprintf(stderr, "\n");
+            } else {
+                fprintf(stderr, "[VAE] Warning: vae.kernel_size has unexpected type %d\n", type);
+            }
+        } else {
+            fprintf(stderr, "[VAE] Warning: vae.kernel_size has %d elements, expected 14\n", n);
+        }
+    } else {
+        fprintf(stderr, "[VAE] Warning: vae.kernel_size metadata not found, will infer from weights\n");
+    }
+    
     size_t data_offset = gguf_get_data_offset(gguf_ctx);
     // Zero-copy plan: point the tensors straight into the read-only mapping and
     // keep it for the model's lifetime (file-backed clean pages are reclaimable
@@ -1726,12 +1757,12 @@ vae_model_t* vae_load_model_from_file(
     gguf_free(gguf_ctx);
     
     // Load encoder weights
-    if (!load_encoder_weights(model, model->acoustic_encoder, "acoustic")) {
+    if (!load_encoder_weights(model, model->acoustic_encoder, "acoustic", true_kernel_sizes)) {
         delete model;
         return nullptr;
     }
     
-    if (!load_encoder_weights(model, model->semantic_encoder, "semantic")) {
+    if (!load_encoder_weights(model, model->semantic_encoder, "semantic", true_kernel_sizes + 7)) {
         delete model;
         return nullptr;
     }

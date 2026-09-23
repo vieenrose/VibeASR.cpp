@@ -269,7 +269,13 @@ static int encode_frames(vae_context_t * vae_ctx, vae_cache_t * vcache,
 
 static void vibe_fault_handler(int sig, siginfo_t * si, void * uc) {
     ucontext_t * c = (ucontext_t *) uc;
+#if defined(__x86_64__)
+    void * pc = (void *) c->uc_mcontext.gregs[REG_RIP];
+#elif defined(__aarch64__)
     void * pc = (void *) c->uc_mcontext.pc;
+#else
+    void * pc = (void *) c->uc_mcontext.pc;
+#endif
     Dl_info info;
     if (dladdr(pc, &info) && info.dli_fbase) {
         fprintf(stderr, "[FAULT] sig=%d addr=%p pc=%p fbase=%p off=0x%lx sym=%s%+ld\n",
