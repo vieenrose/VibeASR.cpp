@@ -91,6 +91,26 @@ def thermal_note(rows, hot_c=None):
             'work can land partial-arm/thermal; cool ~120 s or expect a flagged rep')
 
 
+def witness_class(rtf, mhz, healthy_mean=None, healthy_sd=None, knee=2000.0):
+    """Verdict for ONE run: does a low clock witness mean the run was slow, or just witnessed badly?
+
+    Calibrated on the armed default-config protocol archive (Exp1052, 199 rows): rows whose mean delivered
+    frequency is below the knee split into two real classes - 20 PARTIAL-ARM runs costing +7.64 % (which
+    reproduces Exp1025's independently-measured +7.9 % step) and 5 FLAGGED-BUT-NEUTRAL runs costing +0.39 %,
+    whose witness was diluted by unboosted time inside the window (typically a slow model load, which is not
+    part of rtf). So the guard's flag is right ~80 % of the time, and the remaining 20 % costs a wasted ~55 s
+    retry. rtf decides it, because a dilution cannot slow the compute. Do NOT use the 2.4 GHz SHARE to decide:
+    it reads 60 % on the neutral class and 31 % on the slow one, i.e. it does not separate them (Exp974 again).
+    """
+    if rtf is None or mhz is None or mhz < 0:
+        return 'NO-WITNESS'
+    if mhz >= knee:
+        return 'CLEAN'
+    if healthy_mean and healthy_sd and abs(rtf - healthy_mean) <= 2 * healthy_sd:
+        return 'FLAGGED-BUT-NEUTRAL'      # keep; a neighbour comparison already explains the witness
+    return 'PARTIAL-ARM'                  # retry after a cooldown - never average it
+
+
 def _selftest():
     """Prove the parse fires on both states and refuses a no-change dump (Exp660 rule)."""
     d = tempfile.mkdtemp()
@@ -153,6 +173,20 @@ def _selftest():
                   f'note now = {"yes" if thermal_note(real) else "no (cool)"}')
     else:
         print('  live-data smoke: SKIPPED - no device_state.tsv next to deliv_share.py (column not verified)')
+    # Exp1052: witness_class must separate a real cap from a dilution using rtf, and must not crash on the
+    # degenerate inputs (no witness, no band). Planted from the archive's own class means, not invented.
+    for _args, _want in (((1.2250, 2330.0), 'CLEAN'),
+                         ((1.3249, 1869.0), 'PARTIAL-ARM'),
+                         ((1.2357, 1893.0), 'FLAGGED-BUT-NEUTRAL'),
+                         ((1.2258, None), 'NO-WITNESS'),
+                         ((-1.0, -1.0), 'NO-WITNESS'),
+                         ((9.99, 1900.0), 'PARTIAL-ARM')):     # no band given -> must still flag
+        _got = witness_class(*_args, 1.2309, 0.0078) if _args[1] is not None else witness_class(*_args)
+        if _got != _want:
+            print(f'FAIL: witness_class{_args} -> {_got}, expected {_want}'); ok = False
+    if witness_class(1.2357, 1893.0, 1.2309, 0.0) != 'PARTIAL-ARM':
+        print('FAIL: sd=0 must not make a flagged row look neutral (degenerate band must not silence the flag)')
+        ok = False
     if not ok:
         print("deliv_share --selftest: FAILED")
         return 1
