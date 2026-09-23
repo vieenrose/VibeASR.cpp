@@ -18,6 +18,10 @@
 #include <string>
 #include <vector>
 #include <thread>
+#include <unordered_map>
+
+// Mapping from geom tensor pointer to true_K (for int8 conv right-padding)
+static std::unordered_map<const struct ggml_tensor*, int> g_geom_true_k;
 
 #if defined(__unix__) || defined(__APPLE__)
 #include <fcntl.h>
@@ -546,12 +550,26 @@ static int vae_conv_kernel_size(const struct ggml_tensor* w, int64_t ic) {
 }
 
 // Geometry carrier for a blocked-int8 conv weight; nullptr when the weight needs none (F16 path).
-static struct ggml_tensor* vae_conv_geom(struct ggml_tensor* w, int K) {
+static struct ggml_tensor* vae_conv_geom(struct ggml_tensor* w, int K, bool is_first_downsample) {
     if (!w || ggml_n_dims(w) != 2 || !ggml_is_quantized(w->type)) return nullptr;
     const int64_t row = w->ne[0], OC = w->ne[1];
-    if (K <= 0 || row % K != 0 || row % 32 != 0 || OC % 4 != 0) return nullptr;
-    struct ggml_tensor* g = ggml_new_tensor_3d(vae_geom_ctx, GGML_TYPE_F16, K, row / K, OC);
+    // Only the first downsample layer (K=8, IC=1) is padded to K=32.
+    // Detect by checking if it's the first downsample layer (flag from caller).
+    int64_t padded_K, true_K, IC;
+    if (is_first_downsample) {
+        padded_K = 32;
+        true_K = K;  // metadata has true kernel size (8)
+        IC = row / 32;  // row = 32 * IC after padding
+    } else {
+        padded_K = K;
+        true_K = K;
+        IC = row / K;
+    }
+    if (padded_K <= 0 || row % padded_K != 0 || OC % 4 != 0) return nullptr;
+    // ne[0] = padded_K (for im2col output size), ne[3] = 1 (required by im2col)
+    struct ggml_tensor* g = ggml_new_tensor_4d(vae_geom_ctx, GGML_TYPE_F16, padded_K, IC, OC, 1);
     g->data = g_vae_geom_dummy;   // never dereferenced: im2col uses ne[] only
+    g_geom_true_k[g] = (int)true_K;  // store true_K for right-pad calculation
     return g;
 }
 
@@ -591,7 +609,15 @@ static struct ggml_tensor* vae_conv_1d_i8(
     // exactly the bytes the blocked gemm's in-kernel conversion would have produced. Removes the
     // per-matmul conversion AND 3/4 of the staging bytes. Bit-identity is the acceptance test.
     const bool q8col = vae_abl("VAE_CONV_I8_Q8COL");
-    struct ggml_tensor* im2col = ggml_im2col(ctx, geom, x, s0, 0, p0, 0, d0, 0, false,
+    // Exp684: geom->ne[0] = 32 (padded K for im2col).
+    // true_K stored in global map for right-pad calculation.
+    int true_K = g_geom_true_k[geom];
+    int right_pad = 32 - true_K;
+    struct ggml_tensor* x_padded = x;
+    if (right_pad > 0) {
+        x_padded = ggml_pad_ext(ctx, x, 0, right_pad, 0, 0, 0, 0, 0, 0); // right-pad time dimension
+    }
+    struct ggml_tensor* im2col = ggml_im2col(ctx, x_padded, geom, s0, 0, p0, 0, d0, 0, false,
                                              q8col ? GGML_TYPE_Q8_0 : (f16col ? GGML_TYPE_F16 : GGML_TYPE_F32));
     struct ggml_tensor* col = ggml_reshape_2d(ctx, im2col, im2col->ne[0],
                                               im2col->ne[2] * im2col->ne[1]);
@@ -1182,7 +1208,8 @@ static bool load_encoder_weights(
         vae_geom_ctx_init();
         encoder.downsample_kernel_sizes[i] = true_K;
         encoder.downsamples[i].conv_geom = vae_conv_geom(encoder.downsamples[i].conv_weight,
-                                                        encoder.downsample_kernel_sizes[i]);
+                                                        encoder.downsample_kernel_sizes[i],
+                                                        i == 0);
     }
     
     // Load stages
@@ -1273,7 +1300,7 @@ static bool load_encoder_weights(
                 (long long) AudioVAEEncoder::downsample_dims[6]);
         return false;
     }
-    encoder.head_conv_geom = vae_conv_geom(encoder.head_conv_weight, encoder.head_kernel_size);
+    encoder.head_conv_geom = vae_conv_geom(encoder.head_conv_weight, encoder.head_kernel_size, false);
     
     // Load connector weights (fc1 -> norm -> fc2)
     std::string connector_fc1_w = prefix + "_connector.fc1.weight";
@@ -1476,7 +1503,7 @@ static void vae_probe_int8_weights(struct vae_model* model) {
         float* xd = (float*) xa->data;
         for (int64_t c = 0; c < ic; c++) for (int64_t t = 0; t < tlen; t++)
             xd[c * tlen + t] = 0.03f * (float)(((c * 11 + t * 7) % 29) - 14);
-        struct ggml_tensor* ci = ggml_im2col(ctx, geom2, xa, 1, 0, 0, 0, 1, 0, false, GGML_TYPE_F32);
+        struct ggml_tensor* ci = ggml_im2col(ctx, xa, geom2, 1, 0, 0, 0, 1, 0, false, GGML_TYPE_F32);
         struct ggml_tensor* cc = ggml_reshape_2d(ctx, ci, ci->ne[0], ci->ne[2] * ci->ne[1]);
         struct ggml_tensor* wf = ggml_new_tensor_2d(ctx, GGML_TYPE_F16, pk, pm);
         memcpy(wf->data, rbuf.data(), (size_t) pk * pm * sizeof(ggml_fp16_t));
